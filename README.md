@@ -2,6 +2,19 @@
 
 This is an [Obsidian.md](https://obsidian.md) plugin to enhance the built-in PDF viewer and PDF embeds.
 
+## Features
+
+Most of the features are well-explained in the plugin settings.
+
+### Commands
+
+#### `Copy link to selection`
+
+This is the same thing as the "Copy link to selection" in the right-click menu, but this command allows you to trigger it quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
+
+> [!warning]
+> This command cannot be triggered from Command Palette. Make sure that you set a custom hotkey for it. 
+
 ## Installation
 
 Since this plugin is still in its alpha, it's not available in the community plugin browser yet.
