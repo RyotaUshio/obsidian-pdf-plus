@@ -4,7 +4,7 @@ This is an [Obsidian.md](https://obsidian.md) plugin to enhance the built-in PDF
 
 ## Installation
 
-Since this plugin is still in its beta, it's not available in the community plugin browser yet.
+Since this plugin is still in its alpha, it's not available in the community plugin browser yet.
 
 But you can install the latest beta release using [BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
