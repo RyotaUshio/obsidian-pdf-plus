@@ -32,7 +32,7 @@ Each feature can be toggled on and off in the plugin settings.
 
 Since this plugin is still in its alpha, it's not available in the community plugin browser yet.
 
-But you can install the latest beta release using [BRAT](https://github.com/TfTHacker/obsidian42-brat).
+But you can install the latest release using [BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
 1. Install the latest version of BRAT and enable it.
 2. _(Optional but highly recommended)_ In the BRAT settings, turn on `Auto-update plugins at startup` at the top of the page.
