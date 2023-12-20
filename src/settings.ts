@@ -125,7 +125,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly')
 			.setName('Open PDF links cleverly')
-			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection"');
+			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."');
 		new Setting(containerEl)
 			.setName('Clear highlights after a certain amount of time')
 			.addToggle((toggle) => {
@@ -146,17 +146,19 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.addHeading('Copying links to PDF files')
 		this.addToggleSetting('alias')
-			.setName('Copy link with alias');
+			.setName('Copy link with alias')
+			.setDesc('When copying a link to a selection or an annotation in a PDF file, Obsidian appends an alias "<pdf file title>, page <page number>" to the link text by default. Disable this option if you don\'t like it.');
 
 		this.addHeading('Embedding PDF files');
 		this.addToggleSetting('trimSelectionEmbed', (value) => this.display())
-			.setName('Trim selection embeds');
+			.setName('Trim selection embeds')
+			.setDesc('When embedding a selection from a PDF file, only the selection and its surroundings are displayed rather than the entire page.');
 		if (this.plugin.settings.trimSelectionEmbed) {
 			this.addSliderSetting('padding', 0, 500, 1)
 				.setName('Padding for trimmed selection embeds (px)');
 		}
 		this.addToggleSetting('persistentHighlightsInEmbed')
-			.setName('Do not clear highlights in embeds');
+			.setName('Do not clear highlights in a selection/annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
 			.setName('Make PDF embeds unscrollable');
 		this.addSliderSetting('zoomInEmbed', 0, 5, 1)

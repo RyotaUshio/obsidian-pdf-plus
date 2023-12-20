@@ -53,8 +53,8 @@ export default class PDFPlus extends Plugin {
 
 	registerCommands() {
 		this.addCommand({
-			id: 'copy-selection',
-			name: 'Copy selection',
+			id: 'copy-link-to-selection',
+			name: 'Copy link to selection',
 			checkCallback: (checking: boolean) => {
 				const selection = window.getSelection();
 				if (!selection) return false;
