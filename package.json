@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-pdf-plus",
 	"version": "0.1.0",
-	"description": "",
+	"description": "An Obsidian.md plugin to enhance PDF viewer & embeds.",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
@@ -22,6 +22,7 @@
 	},
 	"dependencies": {
 		"@codemirror/language": "^6.9.1",
-		"@lezer/common": "^1.1.0"
+		"@lezer/common": "^1.1.0",
+		"monkey-around": "^2.3.0"
 	}
 }

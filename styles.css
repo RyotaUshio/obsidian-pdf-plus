@@ -1,8 +1,15 @@
-/*
+/* @settings
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
+name: PDF++
+id: pdf-plus
+settings:
+    - 
+        id: hide-pdf-embed-toolbar
+        title: Hide toolbar in PDF embeds with a page specified
+        type: class-toggle
 
 */
+
+.hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar {
+    display: none;
+}
