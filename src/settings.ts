@@ -1,5 +1,5 @@
 import { PluginSettingTab, Setting } from 'obsidian';
-import PDFPlus from './main';
+import PDFPlus from 'main';
 
 
 export interface PDFPlusSettings {
@@ -8,6 +8,9 @@ export interface PDFPlusSettings {
 	padding: number;
 	embedUnscrollable: boolean;
 	zoomInEmbed: number;
+	openLinkCleverly: boolean;
+	highlightDuration: number;
+	persistentHighlightsInEmbed: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -15,7 +18,10 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	trimSelectionEmbed: true,
 	padding: 80,
 	embedUnscrollable: false,
-	zoomInEmbed: 1
+	zoomInEmbed: 0,
+	openLinkCleverly: true,
+	highlightDuration: 0,
+	persistentHighlightsInEmbed: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -114,23 +120,60 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
+
+		this.addHeading('Opening links to PDF files');
+		this.addToggleSetting('openLinkCleverly')
+			.setName('Open PDF links cleverly')
+			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection"');
+		new Setting(containerEl)
+			.setName('Clear highlights after a certain amount of time')
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.highlightDuration > 0)
+					.onChange((value) => {
+						this.plugin.settings.highlightDuration = value
+							? (this.plugin.settings.highlightDuration > 0
+								? this.plugin.settings.highlightDuration
+								: 1)
+							: 0;
+						this.display();
+					});
+			});
+		if (this.plugin.settings.highlightDuration > 0) {
+			this.addSliderSetting('highlightDuration', 0.1, 10, 0.1)
+				.setName('Highlight duration (sec)');
+		}
+
+		this.addHeading('Copying links to PDF files')
 		this.addToggleSetting('alias')
 			.setName('Copy link with alias');
-		this.addSliderSetting('padding', 0, 500, 1)
-			.setName('Padding for selection embeds (px)');
-		this.addToggleSetting('trimSelectionEmbed')
+
+		this.addHeading('Embedding PDF files');
+		this.addToggleSetting('trimSelectionEmbed', (value) => this.display())
 			.setName('Trim selection embeds');
+		if (this.plugin.settings.trimSelectionEmbed) {
+			this.addSliderSetting('padding', 0, 500, 1)
+				.setName('Padding for trimmed selection embeds (px)');
+		}
+		this.addToggleSetting('persistentHighlightsInEmbed')
+			.setName('Do not clear highlights in embeds');
 		this.addToggleSetting('embedUnscrollable')
 			.setName('Make PDF embeds unscrollable');
 		this.addSliderSetting('zoomInEmbed', 0, 5, 1)
-			.setName('Zoom level for PDF embeds');
+			.setName('Zoom level for PDF embeds (experimental)');
 
-		this.addDesc('You can find more options in Style Settings.')
+		this.addHeading('Style settings')
+			.setDesc('You can find more options in Style Settings > PDF++.')
 			.addButton((button) => {
 				button.setButtonText('Open')
 					.onClick(() => {
-						this.app.setting.openTabById('obsidian-style-settings');
+						const styleSettingsTab = this.app.setting.pluginTabs.find((tab) => tab.id === 'obsidian-style-settings');
+						if (styleSettingsTab) {
+							this.app.setting.openTab(styleSettingsTab);
+						} else {
+							open('obsidian://show-plugin?id=obsidian-style-settings');
+						}
 					});
-			})
+			});
 	}
 }

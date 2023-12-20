@@ -1,7 +1,8 @@
 import PDFPlus from "main";
 import { around } from "monkey-around";
 import { EditableFileView, Workspace, parseLinktext } from "obsidian";
-import { ObsidianViewer, PDFView, PDFViewerChild } from "typings";
+import { ObsidianViewer, PDFAnnotationHighlight, PDFTextHighlight, PDFView, PDFViewerChild } from "typings";
+import { onAnnotationLayerReady, onTextLayerReady } from "utils";
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
@@ -12,13 +13,37 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
     const viewer = child.pdfViewer;
     if (!viewer) return false;
 
-    (window as any).child = child;
-    (window as any).viewer = viewer;
-
     plugin.register(around(child.constructor.prototype, {
+        onResize(old) {
+            return function () {
+                const self = this as PDFViewerChild;
+                const ret = old.call(this);
+                plugin.pdfViwerChildren.set(self.containerEl.find('.pdf-viewer'), self);
+                // (window as any).child = self;
+                return ret;
+            }
+        },
         getMarkdownLink(old) {
             return function (subpath?: string, alias?: string, embed?: boolean): string {
                 return old.call(this, subpath, plugin.settings.alias ? alias : undefined, embed);
+            }
+        },
+        clearTextHighlight(old) {
+            return function () {
+                const self = this as PDFViewerChild;
+                if (plugin.settings.persistentHighlightsInEmbed && self.pdfViewer.isEmbed) {
+                    return;
+                }
+                old.call(this);
+            }
+        },
+        clearAnnotationHighlight(old) {
+            return function () {
+                const self = this as PDFViewerChild;
+                if (plugin.settings.persistentHighlightsInEmbed && self.pdfViewer.isEmbed) {
+                    return;
+                }
+                old.call(this);
             }
         }
     }));
@@ -27,8 +52,10 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         setHeight(old) {
             return function (height?: number | "page" | "auto") {
                 const self = this as ObsidianViewer;
+
+                // (window as any).viewer = self;
+
                 if (plugin.settings.trimSelectionEmbed && self.isEmbed && self.dom && typeof self.page === 'number' && typeof height !== 'number') {
-                    (window as any).embedViewer = self;
                     const beginSelectionEl = self.dom.viewerEl.querySelector('.mod-focused.begin.selected')
                     const endSelectionEl = self.dom.viewerEl.querySelector('.mod-focused.endselected')
                     if (beginSelectionEl && endSelectionEl) {
@@ -38,17 +65,14 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 }
 
                 if (self.isEmbed && plugin.settings.zoomInEmbed) {
-                    const listener = async () => {
+                    onTextLayerReady(self, async () => {
                         for (self._zoomedIn ??= 0; self._zoomedIn < plugin.settings.zoomInEmbed; self._zoomedIn++) {
-                            console.log(self._zoomedIn);
                             self.zoomIn();
                             await new Promise<void>((resolve) => {
                                 setTimeout(resolve, 50);
                             })
                         }
-                        self.eventBus._off("textlayerrendered", listener);
-                    };
-                    self.eventBus._on("textlayerrendered", listener);
+                    });
                 }
 
                 old.call(this, height);
@@ -65,32 +89,42 @@ export const patchWorkspace = (plugin: PDFPlus) => {
     plugin.register(around(Workspace.prototype, {
         openLinkText(old) {
             return function (linktext: string, sourcePath: string, ...args: any[]) {
-                const { path, subpath } = parseLinktext(linktext);
-                const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
+                if (plugin.settings.openLinkCleverly) {
+                    const { path, subpath } = parseLinktext(linktext);
+                    const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
 
-                if (file && file.extension === 'pdf') {
-                    const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
-                        return leaf.view instanceof EditableFileView && leaf.view.file === file;
-                    });
-                    if (leaf) {
-                        const view = leaf.view as PDFView;
-                        const self = this as Workspace;
-                        console.log(view);
-                        self.setActiveLeaf(leaf);
-                        const child = view.viewer.child;
-                        if (child) {
-                            child.applySubpath(subpath);
-                            if (child.subpathHighlight?.type === 'text') {
-                                const { page, range } = child.subpathHighlight;
-                                child.highlightText(page, range);
-                            } else if (child.subpathHighlight?.type === 'annotation') {
-                                const { page, id } = child.subpathHighlight;
-                                child.highlightAnnotation(page, id);
+                    if (file && file.extension === 'pdf') {
+                        const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
+                            return leaf.view instanceof EditableFileView && leaf.view.file === file;
+                        });
+                        if (leaf) {
+                            const view = leaf.view as PDFView;
+                            const self = this as Workspace;
+                            self.setActiveLeaf(leaf);
+                            const child = view.viewer.child;
+                            if (child) {
+                                child.applySubpath(subpath);
+                                if (child.subpathHighlight?.type === 'text') {
+                                    onTextLayerReady(child.pdfViewer, () => {
+                                        const { page, range } = child.subpathHighlight as PDFTextHighlight;
+                                        child.highlightText(page, range);
+                                        const duration = plugin.settings.highlightDuration;
+                                        if (duration > 0) setTimeout(() => child.clearTextHighlight(), duration * 1000);
+                                    });
+                                } else if (child.subpathHighlight?.type === 'annotation') {
+                                    onAnnotationLayerReady(child.pdfViewer, () => {
+                                        const { page, id } = child.subpathHighlight as PDFAnnotationHighlight;
+                                        child.highlightAnnotation(page, id);
+                                        const duration = plugin.settings.highlightDuration;
+                                        if (duration > 0) setTimeout(() => child.clearAnnotationHighlight(), duration * 1000);
+                                    });
+                                }
                             }
+                            return;
                         }
-                        return;
                     }
                 }
+
                 return old.call(this, linktext, sourcePath, ...args);
             }
         }

@@ -1,10 +1,12 @@
 import { Notice, Plugin } from 'obsidian';
-import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from './settings';
+import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { patchPDF, patchWorkspace } from 'patch';
+import { PDFView, PDFViewerChild } from 'typings';
 
 
 export default class PDFPlus extends Plugin {
 	settings: PDFPlusSettings;
+	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 
 	async onload() {
 		await this.loadSettings();
@@ -37,6 +39,8 @@ export default class PDFPlus extends Plugin {
 				evt.preventDefault();
 			}
 		}, { passive: false });
+
+		this.registerCommands();
 	}
 
 	async loadSettings() {
@@ -45,5 +49,33 @@ export default class PDFPlus extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	registerCommands() {
+		this.addCommand({
+			id: 'copy-selection',
+			name: 'Copy selection',
+			checkCallback: (checking: boolean) => {
+				const selection = window.getSelection();
+				if (!selection) return false;
+				const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+				const pageEl = range?.startContainer.parentElement?.closest('.page');
+				if (!pageEl || !(pageEl.instanceOf(HTMLElement)) || pageEl.dataset.pageNumber === undefined) return false;
+
+				const viewerEl = pageEl.closest<HTMLElement>('.pdf-viewer');
+				if (!viewerEl) return false;
+
+				const child = this.pdfViwerChildren.get(viewerEl);
+				if (!child) return false;
+
+				if (!checking) {
+					const page = parseInt(pageEl.dataset.pageNumber);
+					const selectionStr = child.getTextSelectionRangeStr(pageEl);
+					const linktext = child.getMarkdownLink(`#page=${page}&selection=${selectionStr}`, child.getPageLinkAlias(page));
+					navigator.clipboard.writeText(linktext);
+				}
+				return true;
+			}
+		});
 	}
 }

@@ -1,3 +1,4 @@
+import { ObsidianViewer, PDFViewerChild } from 'typings';
 export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement | null {
     if (!pageEl.contains(node))
         return null;
@@ -10,4 +11,28 @@ export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement |
             return n;
     }
     return null
+}
+
+export function onTextLayerReady(viewer: ObsidianViewer, cb: () => any) {
+    if (viewer.dom?.viewerEl.querySelector('.textLayer')) {
+        cb();
+        return;
+    }
+    const listener = async () => {
+        await cb();
+        viewer.eventBus._off("textlayerrendered", listener);
+    };
+    viewer.eventBus._on("textlayerrendered", listener);
+}
+
+export function onAnnotationLayerReady(viewer: ObsidianViewer, cb: () => any) {
+    if (viewer.dom?.viewerEl.querySelector('.annotationLayer')) {
+        cb();
+        return;
+    }
+    const listener = async () => {
+        await cb();
+        viewer.eventBus._off("annotationlayerrendered", listener);
+    };
+    viewer.eventBus._on("annotationlayerrendered", listener);
 }

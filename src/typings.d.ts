@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, Modal, Scope, TFile } from 'obsidian';
+import { App, Component, EditableFileView, Modal, PluginSettingTab, Scope, SettingTab, TFile } from 'obsidian';
 
 interface PDFView extends EditableFileView {
     viewer: PDFViewer;
@@ -37,6 +37,8 @@ interface PDFViewerChild {
     applySubpath(subpath?: string): any;
     highlightText(page: number, range: [[number, number], [number, number]]): void;
     highlightAnnotation(page: number, id: string): void;
+    clearTextHighlight(): void;
+    clearAnnotationHighlight(): void;
 }
 
 interface PDFHighlight {
@@ -69,11 +71,20 @@ interface ObsidianViewer {
 }
 
 interface AppSetting extends Modal {
+    openTab(tab: SettingTab): void;
     openTabById(id: string): any;
+    pluginTabs: PluginSettingTab[];
 }
 
 declare module "obsidian" {
     interface App {
         setting: AppSetting;
+        plugins: {
+            manifests: Record<string, PluginManifest>;
+        }
+    }
+
+    interface PluginSettingTab {
+        id: string;
     }
 }
