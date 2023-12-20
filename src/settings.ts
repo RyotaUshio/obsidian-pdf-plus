@@ -7,6 +7,7 @@ export interface PDFPlusSettings {
 	trimSelectionEmbed: boolean;
 	padding: number;
 	embedUnscrollable: boolean;
+	zoomInEmbed: number;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -14,6 +15,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	trimSelectionEmbed: true,
 	padding: 80,
 	embedUnscrollable: false,
+	zoomInEmbed: 1
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -120,6 +122,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Trim selection embeds');
 		this.addToggleSetting('embedUnscrollable')
 			.setName('Make PDF embeds unscrollable');
+		this.addSliderSetting('zoomInEmbed', 0, 5, 1)
+			.setName('Zoom level for PDF embeds');
 
 		this.addDesc('You can find more options in Style Settings.')
 			.addButton((button) => {

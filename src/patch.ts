@@ -33,17 +33,22 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     if (beginSelectionEl && endSelectionEl) {
                         height = endSelectionEl.getBoundingClientRect().bottom - beginSelectionEl.getBoundingClientRect().top;
                         height += plugin.settings.padding;
-                        console.log({ height });
                     }
                 }
 
+                if (self.isEmbed && !self._zoomedIn) {
+                    self._zoomedIn = true;
+                    setTimeout(async () => {
+                        for (let i = 0; i < plugin.settings.zoomInEmbed; i++) {
+                            self.zoomIn();
+                            await new Promise<void>((resolve) => {
+                                setTimeout(resolve, 50);
+                            })
+                        }
+                    }, 100);
+                }
+
                 old.call(this, height);
-            }
-        },
-        applySubpath(old) {
-            return function (subpath: string) {
-                console.log({ subpath });
-                return old.call(this, subpath);
             }
         }
     }));

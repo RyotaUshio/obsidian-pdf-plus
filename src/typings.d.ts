@@ -46,6 +46,8 @@ interface ObsidianViewer {
     isEmbed: boolean;
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
+    zoomIn(): void;
+    _zoomedIn?: boolean;
 }
 
 interface AppSetting extends Modal {
