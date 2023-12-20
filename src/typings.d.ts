@@ -25,6 +25,7 @@ interface PDFViewerChild {
     containerEl: HTMLElement;
     opts: any;
     pdfViewer: ObsidianViewer;
+    subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight | null;
     load(): void;
     getPage(page: number): any;
     getTextByRect(pageView: any, rect: number[]): any;
@@ -34,6 +35,22 @@ interface PDFViewerChild {
     onContextMenu(evt: MouseEvent): void;
     onResize(): void;
     applySubpath(subpath?: string): any;
+    highlightText(page: number, range: [[number, number], [number, number]]): void;
+    highlightAnnotation(page: number, id: string): void;
+}
+
+interface PDFHighlight {
+    page: number;
+}
+
+interface PDFTextHighlight extends PDFHighlight {
+    type: "text";
+    range: [[number, number], [number, number]];
+}
+
+interface PDFAnnotationHighlight extends PDFHighlight {
+    type: "annotation";
+    id: string;
 }
 
 interface ObsidianViewer {
@@ -44,10 +61,11 @@ interface ObsidianViewer {
     page?: number;
     subpath: string | null;
     isEmbed: boolean;
+    eventBus: any;
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
-    _zoomedIn?: boolean;
+    _zoomedIn?: number;
 }
 
 interface AppSetting extends Modal {

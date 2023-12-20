@@ -1,5 +1,6 @@
 import PDFPlus from "main";
 import { around } from "monkey-around";
+import { EditableFileView, Workspace, parseLinktext } from "obsidian";
 import { ObsidianViewer, PDFView, PDFViewerChild } from "typings";
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -36,16 +37,18 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     }
                 }
 
-                if (self.isEmbed && !self._zoomedIn) {
-                    self._zoomedIn = true;
-                    setTimeout(async () => {
-                        for (let i = 0; i < plugin.settings.zoomInEmbed; i++) {
+                if (self.isEmbed && plugin.settings.zoomInEmbed) {
+                    const listener = async () => {
+                        for (self._zoomedIn ??= 0; self._zoomedIn < plugin.settings.zoomInEmbed; self._zoomedIn++) {
+                            console.log(self._zoomedIn);
                             self.zoomIn();
                             await new Promise<void>((resolve) => {
                                 setTimeout(resolve, 50);
                             })
                         }
-                    }, 100);
+                        self.eventBus._off("textlayerrendered", listener);
+                    };
+                    self.eventBus._on("textlayerrendered", listener);
                 }
 
                 old.call(this, height);
@@ -55,3 +58,41 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
     return true;
 }
+
+export const patchWorkspace = (plugin: PDFPlus) => {
+    const app = plugin.app;
+
+    plugin.register(around(Workspace.prototype, {
+        openLinkText(old) {
+            return function (linktext: string, sourcePath: string, ...args: any[]) {
+                const { path, subpath } = parseLinktext(linktext);
+                const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
+
+                if (file && file.extension === 'pdf') {
+                    const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
+                        return leaf.view instanceof EditableFileView && leaf.view.file === file;
+                    });
+                    if (leaf) {
+                        const view = leaf.view as PDFView;
+                        const self = this as Workspace;
+                        console.log(view);
+                        self.setActiveLeaf(leaf);
+                        const child = view.viewer.child;
+                        if (child) {
+                            child.applySubpath(subpath);
+                            if (child.subpathHighlight?.type === 'text') {
+                                const { page, range } = child.subpathHighlight;
+                                child.highlightText(page, range);
+                            } else if (child.subpathHighlight?.type === 'annotation') {
+                                const { page, id } = child.subpathHighlight;
+                                child.highlightAnnotation(page, id);
+                            }
+                        }
+                        return;
+                    }
+                }
+                return old.call(this, linktext, sourcePath, ...args);
+            }
+        }
+    }));
+};

@@ -1,6 +1,6 @@
 import { Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from './settings';
-import { patchPDF } from 'patch';
+import { patchPDF, patchWorkspace } from 'patch';
 
 
 export default class PDFPlus extends Plugin {
@@ -10,6 +10,8 @@ export default class PDFPlus extends Plugin {
 		await this.loadSettings();
 		await this.saveSettings();
 		this.addSettingTab(new PDFPlusSettingTab(this));
+
+		patchWorkspace(this);
 
 		this.app.workspace.onLayoutReady(() => {
 			const success = patchPDF(this);
