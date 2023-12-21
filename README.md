@@ -10,8 +10,9 @@ Each feature can be toggled on and off in the plugin settings.
 ### Backlinks to PDF files
 
 - **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink.
+- **Backlink highlights background color**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
 
-This feature enriches Obsidian as a stand-alone PDf annotation tool. I recommend combining the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
+These features enrich Obsidian as a stand-alone PDf annotation tool. I recommend combining the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
 
 ### Opening links to PDF files
 
@@ -28,6 +29,7 @@ This feature enriches Obsidian as a stand-alone PDf annotation tool. I recommend
 
 ### Embedding PDF files
 
+- **Click PDF embeds to open links**: Clicking a PDF embed will open the embedded file.
 - **Trim selection embeds**: When embedding a selection from a PDF file, only the selection and its surroundings are displayed rather than the entire page.
 - **Do not clear highlights in a selection/annotation embeds**
 - **Make PDF embeds unscrollable**

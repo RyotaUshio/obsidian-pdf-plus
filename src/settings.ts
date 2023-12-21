@@ -13,6 +13,7 @@ export interface PDFPlusSettings {
 	highlightDuration: number;
 	persistentHighlightsInEmbed: boolean;
 	highlightBacklinks: boolean;
+	clickEmbedToOpenLink: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightDuration: 0,
 	persistentHighlightsInEmbed: true,
 	highlightBacklinks: true,
+	clickEmbedToOpenLink: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -165,6 +167,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('When copying a link to a selection or an annotation in a PDF file, Obsidian appends an alias "<pdf file title>, page <page number>" to the link text by default. Disable this option if you don\'t like it.');
 
 		this.addHeading('Embedding PDF files');
+		this.addToggleSetting('clickEmbedToOpenLink')
+			.setName('Click PDF embeds to open links')
+			.setDesc('Clicking a PDF embed will open the embedded file.');
 		this.addToggleSetting('trimSelectionEmbed', () => this.display())
 			.setName('Trim selection/annotation embeds')
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');

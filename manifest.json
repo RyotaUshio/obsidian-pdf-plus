@@ -1,7 +1,7 @@
 {
 	"id": "pdf-plus",
 	"name": "PDF++",
-	"version": "0.6.0",
+	"version": "0.6.1",
 	"minAppVersion": "1.3.5",
 	"description": "Enhance PDF viewer & embeds.",
 	"author": "Ryota Ushio",
