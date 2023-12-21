@@ -56,14 +56,17 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 // (window as any).viewer = self;
 
                 if (plugin.settings.trimSelectionEmbed && self.isEmbed && self.dom && typeof self.page === 'number' && typeof height !== 'number') {
-                    const selected = self.dom.viewerEl.querySelectorAll('.mod-focused');
-                    if (selected.length) {
-                        height = selected[selected.length - 1].getBoundingClientRect().bottom - selected[0].getBoundingClientRect().top;
-                        height += plugin.settings.padding;
-                    }
+                    setTimeout(() => {
+                        const selected = self.dom!.viewerEl.querySelectorAll('.mod-focused');
+                        if (selected.length) {
+                            height = selected[selected.length - 1].getBoundingClientRect().bottom - selected[0].getBoundingClientRect().top;
+                            height += plugin.settings.padding;
+                        }
+                        old.call(this, height);
+                    }, 200);
+                } else {
+                    old.call(this, height);
                 }
-
-                old.call(this, height);
 
                 if (self.isEmbed && plugin.settings.zoomInEmbed) {
                     onTextLayerReady(self, async () => {
