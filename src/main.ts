@@ -1,8 +1,9 @@
-import { Notice, Plugin, parseLinktext } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { patchPDF, patchWorkspace } from 'patch';
 import { PDFViewerChild } from 'typings';
-import { highlightSubpath, iteratePDFViews } from 'utils';
+import { iteratePDFViews } from 'utils';
+import { BacklinkManager } from 'backlinks';
 
 
 export default class PDFPlus extends Plugin {
@@ -43,18 +44,30 @@ export default class PDFPlus extends Plugin {
 
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
 			for (const viewerEl of this.pdfViwerChildren.keys()) {
-				if (!viewerEl.isShown()) this.pdfViwerChildren.delete(viewerEl);
+				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
 			}
 		}));
 
-		// this.app.workspace.onLayoutReady(() => {
-		// 	this.updateBacklinkHighlights();
-		// 	this.registerEvent(this.app.metadataCache.on('resolved', () => {
-		// 		this.updateBacklinkHighlights();
-		// 	}));
-		// })
+		this.app.workspace.onLayoutReady(() => {
+			iteratePDFViews(this.app, (view) => {
+				view.viewer.then((child) => {
+                    if (!view.viewer.backlinkManager) {
+                        view.viewer.backlinkManager = view.viewer.addChild(new BacklinkManager(this, child.pdfViewer));
+                    }
+                    view.viewer.backlinkManager.file = view.file;
+                    view.viewer.backlinkManager.highlightBacklinks();
+                });
+			});
+		});
+
+		this.registerHoverLinkSource('pdf-plus', {
+			defaultMod: true,
+			display: 'PDF++ backlinks'
+		});
 
 		this.registerCommands();
+
+		(window as any).pdfPlus = this;
 	}
 
 	async loadSettings() {
@@ -89,22 +102,6 @@ export default class PDFPlus extends Plugin {
 					navigator.clipboard.writeText(linktext);
 				}
 				return true;
-			}
-		});
-	}
-
-	updateBacklinkHighlights() {
-		iteratePDFViews(this.app, async (view) => {
-			const file = view.file;
-			const child = view.viewer.child;
-			if (!file || !child) return;
-			const backlinks = this.app.metadataCache.getBacklinksForFile(file);
-			for (const sourcePath of backlinks.keys()) {
-				for (const link of backlinks.get(sourcePath) ?? []) {
-					const { subpath } = parseLinktext(link.link);
-					highlightSubpath(child, subpath, 0);
-					await sleep(100);
-				}
 			}
 		});
 	}

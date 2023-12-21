@@ -1,3 +1,4 @@
+import { BacklinkManager } from 'backlinks';
 import { App, Component, EditableFileView, Modal, PluginSettingTab, Scope, SettingTab, TFile } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
@@ -17,6 +18,8 @@ interface PDFViewer extends Component {
     opts: any;
     then(cb: (child: PDFViewerChild) => void): void;
     loadFile(file: TFile): Promise<void>;
+    /** Added by this plugin */
+    backlinkManager?: BacklinkManager;
 }
 
 interface PDFViewerChild {
@@ -62,6 +65,7 @@ interface ObsidianViewer {
         viewerContainerEl: HTMLElement;
     } | null;
     page?: number;
+    pagesCount: number;
     subpath: string | null;
     isEmbed: boolean;
     eventBus: any;
@@ -70,6 +74,7 @@ interface ObsidianViewer {
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
+    /** Added by this plugin */
     _zoomedIn?: number;
 }
 
@@ -83,6 +88,32 @@ interface RawPDFViewer {
 interface PDFPageView {
     pdfPage: PDFPageProxy;
     viewport: PageViewport;
+    div: HTMLDivElement; // div.page[data-page-number][data-loaded]
+    textLayer: TextLayerBuilder;
+    annotationLayer: AnnotationLayerBuilder;
+}
+
+interface TextLayerBuilder {
+    div: HTMLDivElement; // div.textLayer
+    textDivs: HTMLElement[];
+    textContentItems: TextContentItem[];
+    render(): Promise<any>;
+}
+
+interface AnnotationLayerBuilder {
+    div: HTMLDivElement; // div.annotationLayer
+    pageDiv: HTMLDivElement; // div.page
+    render(): Promise<any>;
+}
+
+interface TextContentItem {
+    str: string;
+    dir: string;
+    width: number;
+    height: number;
+    transform: number[];
+    fontName: string;
+    hasEOL: boolean;
 }
 
 interface AppSetting extends Modal {

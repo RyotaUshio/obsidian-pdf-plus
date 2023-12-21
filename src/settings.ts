@@ -12,6 +12,7 @@ export interface PDFPlusSettings {
 	dontActivateAfterOpen: boolean;
 	highlightDuration: number;
 	persistentHighlightsInEmbed: boolean;
+	highlightBacklinks: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -24,6 +25,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	dontActivateAfterOpen: true,
 	highlightDuration: 0,
 	persistentHighlightsInEmbed: true,
+	highlightBacklinks: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -123,6 +125,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
+
+		this.addHeading('Backlinks');
+		this.addToggleSetting('highlightBacklinks')
+			.setName('Highlight backlinks')
+			.setDesc('Each piece of text that is referenced elsewhere will be highlighted in the PDF viewer. Moreover, hovering over the highlighted text will show the backlink as a popover.');
 
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.display())

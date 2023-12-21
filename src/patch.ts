@@ -1,7 +1,8 @@
+import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
-import { EditableFileView, Workspace, parseLinktext } from "obsidian";
-import { ObsidianViewer, PDFView, PDFViewerChild } from "typings";
+import { EditableFileView, TFile, Workspace, parseLinktext } from "obsidian";
+import { ObsidianViewer, PDFView, PDFViewer, PDFViewerChild } from "typings";
 import { highlightSubpath, onTextLayerReady } from "utils";
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -12,6 +13,34 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
     if (!child) return false;
     const viewer = child.pdfViewer;
     if (!viewer) return false;
+
+    plugin.register(around(pdfView.viewer.constructor.prototype, {
+        onload(old) {
+            return async function () {
+                await old.call(this);
+                const self = this as PDFViewer;
+                self.then((child) => {
+                    if (!self.backlinkManager) {
+                        self.backlinkManager = self.addChild(new BacklinkManager(plugin, child.pdfViewer));
+                    }
+                });
+            }
+        },
+        loadFile(old) {
+            return async function (file: TFile) {
+                const ret = await old.call(this, file);
+                const self = this as PDFViewer;
+                self.then((child) => {
+                    if (!self.backlinkManager) {
+                        self.backlinkManager = self.addChild(new BacklinkManager(plugin, child.pdfViewer));
+                    }
+                    self.backlinkManager.file = file;
+                    self.backlinkManager.highlightBacklinks();
+                });
+                return ret;
+            }
+        }
+    }));
 
     plugin.register(around(child.constructor.prototype, {
         onResize(old) {
