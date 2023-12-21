@@ -1,8 +1,8 @@
 import PDFPlus from "main";
 import { around } from "monkey-around";
 import { EditableFileView, Workspace, parseLinktext } from "obsidian";
-import { ObsidianViewer, PDFAnnotationHighlight, PDFTextHighlight, PDFView, PDFViewerChild } from "typings";
-import { onAnnotationLayerReady, onTextLayerReady } from "utils";
+import { ObsidianViewer, PDFView, PDFViewerChild } from "typings";
+import { highlightSubpath, onTextLayerReady } from "utils";
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
@@ -56,13 +56,14 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 // (window as any).viewer = self;
 
                 if (plugin.settings.trimSelectionEmbed && self.isEmbed && self.dom && typeof self.page === 'number' && typeof height !== 'number') {
-                    const beginSelectionEl = self.dom.viewerEl.querySelector('.mod-focused.begin.selected')
-                    const endSelectionEl = self.dom.viewerEl.querySelector('.mod-focused.endselected')
-                    if (beginSelectionEl && endSelectionEl) {
-                        height = endSelectionEl.getBoundingClientRect().bottom - beginSelectionEl.getBoundingClientRect().top;
+                    const selected = self.dom.viewerEl.querySelectorAll('.mod-focused');
+                    if (selected.length) {
+                        height = selected[selected.length - 1].getBoundingClientRect().bottom - selected[0].getBoundingClientRect().top;
                         height += plugin.settings.padding;
                     }
                 }
+
+                old.call(this, height);
 
                 if (self.isEmbed && plugin.settings.zoomInEmbed) {
                     onTextLayerReady(self, async () => {
@@ -74,8 +75,6 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         }
                     });
                 }
-
-                old.call(this, height);
             }
         }
     }));
@@ -103,22 +102,8 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                             self.setActiveLeaf(leaf);
                             const child = view.viewer.child;
                             if (child) {
-                                child.applySubpath(subpath);
-                                if (child.subpathHighlight?.type === 'text') {
-                                    onTextLayerReady(child.pdfViewer, () => {
-                                        const { page, range } = child.subpathHighlight as PDFTextHighlight;
-                                        child.highlightText(page, range);
-                                        const duration = plugin.settings.highlightDuration;
-                                        if (duration > 0) setTimeout(() => child.clearTextHighlight(), duration * 1000);
-                                    });
-                                } else if (child.subpathHighlight?.type === 'annotation') {
-                                    onAnnotationLayerReady(child.pdfViewer, () => {
-                                        const { page, id } = child.subpathHighlight as PDFAnnotationHighlight;
-                                        child.highlightAnnotation(page, id);
-                                        const duration = plugin.settings.highlightDuration;
-                                        if (duration > 0) setTimeout(() => child.clearAnnotationHighlight(), duration * 1000);
-                                    });
-                                }
+                                const duration = plugin.settings.highlightDuration;
+                                highlightSubpath(child, subpath, duration);
                             }
                             return;
                         }

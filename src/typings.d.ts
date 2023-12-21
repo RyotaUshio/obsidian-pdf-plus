@@ -27,7 +27,7 @@ interface PDFViewerChild {
     pdfViewer: ObsidianViewer;
     subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight | null;
     load(): void;
-    getPage(page: number): any;
+    getPage(page: number): PDFPageView;
     getTextByRect(pageView: any, rect: number[]): any;
     getPageLinkAlias(page: number): string;
     getTextSelectionRangeStr(el: HTMLElement): string;
@@ -64,16 +64,56 @@ interface ObsidianViewer {
     subpath: string | null;
     isEmbed: boolean;
     eventBus: any;
+    pdfViewer: RawPDFViewer;
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
     _zoomedIn?: number;
 }
 
+interface RawPDFViewer {
+    pdfDocument: any; // PDFDocumentProxy;
+    pagesPromise: Promise<any> | null;
+    currentPageNumber: number; // accessor property; setter can be used to scroll to a page
+    getPageView(page: number): PDFPageView;
+}
+
+interface PDFPageView {
+    pdfPage: any; // PDFPageProxy;
+    viewport: PDFViewport;
+}
+
+interface PDFViewport {
+    width: number;
+    height: number;
+    offsetX: number;
+    offsetY: number;
+    rotation: number;
+    scale: number;
+    transform: number[];
+    viewBox: number[];
+    rawDims: any;
+}
+
 interface AppSetting extends Modal {
     openTab(tab: SettingTab): void;
     openTabById(id: string): any;
     pluginTabs: PluginSettingTab[];
+}
+
+// From https://github.com/Fevol/obsidian-typings/blob/b708f5ee3702a8622d16dab5cd0752be544c97a8/obsidian-ex.d.ts#L738
+interface CustomArrayDict<T> {
+	data: Record<string, T[]>;
+
+	add: (key: string, value: T) => void;
+	remove: (key: string, value: T) => void;
+	removeKey: (key: string) => void;
+	get: (key: string) => T[] | null;
+	keys: () => string[];
+	clear: (key: string) => void;
+	clearAll: () => void;
+	contains: (key: string, value: T) => boolean;
+	count: () => number;
 }
 
 declare module "obsidian" {
@@ -86,5 +126,9 @@ declare module "obsidian" {
 
     interface PluginSettingTab {
         id: string;
+    }
+
+    interface MetadataCache {
+        getBacklinksForFile(file: TFile): CustomArrayDict<LinkCache>;
     }
 }

@@ -151,8 +151,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.addHeading('Embedding PDF files');
 		this.addToggleSetting('trimSelectionEmbed', (value) => this.display())
-			.setName('Trim selection embeds')
-			.setDesc('When embedding a selection from a PDF file, only the selection and its surroundings are displayed rather than the entire page.');
+			.setName('Trim selection/annotation embeds')
+			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
 		if (this.plugin.settings.trimSelectionEmbed) {
 			this.addSliderSetting('padding', 0, 500, 1)
 				.setName('Padding for trimmed selection embeds (px)');
@@ -160,7 +160,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('persistentHighlightsInEmbed')
 			.setName('Do not clear highlights in a selection/annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
-			.setName('Make PDF embeds unscrollable');
+			.setName('Make PDF embeds with a page specified unscrollable');
 		this.addSliderSetting('zoomInEmbed', 0, 5, 1)
 			.setName('Zoom level for PDF embeds (experimental)');
 
