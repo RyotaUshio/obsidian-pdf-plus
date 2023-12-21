@@ -11,7 +11,7 @@ Each feature can be toggled on and off in the plugin settings.
 
 - **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink.
 
-This feature enriches Obsidian as a stand-alone PDf annotation tool. I recommend the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
+This feature enriches Obsidian as a stand-alone PDf annotation tool. I recommend combining the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
 
 ### Opening links to PDF files
 
