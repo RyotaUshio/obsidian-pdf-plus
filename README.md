@@ -7,6 +7,12 @@ It isn't meant to replace them, but instead, it aims to add some quality-of-life
 
 Each feature can be toggled on and off in the plugin settings.
 
+### Backlinks to PDF files
+
+- **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink.
+
+This feature enriches Obsidian as a stand-alone PDf annotation tool. I recommend the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
+
 ### Opening links to PDF files
 
 - **Open PDF links cleverly**: When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."
@@ -39,6 +45,11 @@ But you can install the latest release using [BRAT](https://github.com/TfTHacker
 2. _(Optional but highly recommended)_ In the BRAT settings, turn on `Auto-update plugins at startup` at the top of the page.
 3. Open the following URL in browser: `obsidian://brat?plugin=RyotaUshio/obsidian-pdf-plus`.
 4. Click the "Add Plugin" button.
+
+## Development principles
+
+- Always stick around Obsidian's built-in PDF viewer.
+- Never introduce plugin-dependent stuff.
 
 ## Support development
 
