@@ -99,7 +99,9 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                         if (leaf) {
                             const view = leaf.view as PDFView;
                             const self = this as Workspace;
-                            self.setActiveLeaf(leaf);
+                            self.revealLeaf(leaf);
+                            if (!plugin.settings.dontActivateAfterOpen) self.setActiveLeaf(leaf);
+
                             const child = view.viewer.child;
                             if (child) {
                                 const duration = plugin.settings.highlightDuration;

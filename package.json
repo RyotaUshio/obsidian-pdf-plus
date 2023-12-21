@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-pdf-plus",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"description": "An Obsidian.md plugin to enhance PDF viewer & embeds.",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -17,12 +17,11 @@
 		"builtin-modules": "3.3.0",
 		"esbuild": "0.17.3",
 		"obsidian": "latest",
+		"pdfjs-dist": "^4.0.269",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
 	},
 	"dependencies": {
-		"@codemirror/language": "^6.9.1",
-		"@lezer/common": "^1.1.0",
 		"monkey-around": "^2.3.0"
 	}
 }

@@ -1,4 +1,5 @@
 import { App, Component, EditableFileView, Modal, PluginSettingTab, Scope, SettingTab, TFile } from 'obsidian';
+import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
 interface PDFView extends EditableFileView {
     viewer: PDFViewer;
@@ -65,6 +66,7 @@ interface ObsidianViewer {
     isEmbed: boolean;
     eventBus: any;
     pdfViewer: RawPDFViewer;
+    pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
@@ -72,27 +74,15 @@ interface ObsidianViewer {
 }
 
 interface RawPDFViewer {
-    pdfDocument: any; // PDFDocumentProxy;
+    pdfDocument: PDFDocumentProxy;
     pagesPromise: Promise<any> | null;
     currentPageNumber: number; // accessor property; setter can be used to scroll to a page
     getPageView(page: number): PDFPageView;
 }
 
 interface PDFPageView {
-    pdfPage: any; // PDFPageProxy;
-    viewport: PDFViewport;
-}
-
-interface PDFViewport {
-    width: number;
-    height: number;
-    offsetX: number;
-    offsetY: number;
-    rotation: number;
-    scale: number;
-    transform: number[];
-    viewBox: number[];
-    rawDims: any;
+    pdfPage: PDFPageProxy;
+    viewport: PageViewport;
 }
 
 interface AppSetting extends Modal {
@@ -103,17 +93,17 @@ interface AppSetting extends Modal {
 
 // From https://github.com/Fevol/obsidian-typings/blob/b708f5ee3702a8622d16dab5cd0752be544c97a8/obsidian-ex.d.ts#L738
 interface CustomArrayDict<T> {
-	data: Record<string, T[]>;
+    data: Record<string, T[]>;
 
-	add: (key: string, value: T) => void;
-	remove: (key: string, value: T) => void;
-	removeKey: (key: string) => void;
-	get: (key: string) => T[] | null;
-	keys: () => string[];
-	clear: (key: string) => void;
-	clearAll: () => void;
-	contains: (key: string, value: T) => boolean;
-	count: () => number;
+    add: (key: string, value: T) => void;
+    remove: (key: string, value: T) => void;
+    removeKey: (key: string) => void;
+    get: (key: string) => T[] | null;
+    keys: () => string[];
+    clear: (key: string) => void;
+    clearAll: () => void;
+    contains: (key: string, value: T) => boolean;
+    count: () => number;
 }
 
 declare module "obsidian" {

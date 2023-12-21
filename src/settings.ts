@@ -9,6 +9,7 @@ export interface PDFPlusSettings {
 	embedUnscrollable: boolean;
 	zoomInEmbed: number;
 	openLinkCleverly: boolean;
+	dontActivateAfterOpen: boolean;
 	highlightDuration: number;
 	persistentHighlightsInEmbed: boolean;
 }
@@ -20,6 +21,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	embedUnscrollable: false,
 	zoomInEmbed: 0,
 	openLinkCleverly: true,
+	dontActivateAfterOpen: true,
 	highlightDuration: 0,
 	persistentHighlightsInEmbed: true,
 };
@@ -123,19 +125,25 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
 
 		this.addHeading('Opening links to PDF files');
-		this.addToggleSetting('openLinkCleverly')
+		this.addToggleSetting('openLinkCleverly', () => this.display())
 			.setName('Open PDF links cleverly')
 			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."');
+		if (this.plugin.settings.openLinkCleverly) {
+			this.addToggleSetting('dontActivateAfterOpen')
+				.setName('Don\'t move focus to PDF viewer after opening a link');
+		}
+
 		new Setting(containerEl)
 			.setName('Clear highlights after a certain amount of time')
 			.addToggle((toggle) => {
 				toggle.setValue(this.plugin.settings.highlightDuration > 0)
-					.onChange((value) => {
+					.onChange(async (value) => {
 						this.plugin.settings.highlightDuration = value
 							? (this.plugin.settings.highlightDuration > 0
 								? this.plugin.settings.highlightDuration
 								: 1)
 							: 0;
+						await this.plugin.saveSettings();
 						this.display();
 					});
 			});
@@ -150,7 +158,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('When copying a link to a selection or an annotation in a PDF file, Obsidian appends an alias "<pdf file title>, page <page number>" to the link text by default. Disable this option if you don\'t like it.');
 
 		this.addHeading('Embedding PDF files');
-		this.addToggleSetting('trimSelectionEmbed', (value) => this.display())
+		this.addToggleSetting('trimSelectionEmbed', () => this.display())
 			.setName('Trim selection/annotation embeds')
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
 		if (this.plugin.settings.trimSelectionEmbed) {
