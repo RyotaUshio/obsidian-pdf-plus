@@ -3,6 +3,12 @@
 name: PDF++
 id: pdf-plus
 settings:
+    -
+        id: pdf-backlink-highlight-color
+        title: Backlink highlights background color
+        type: variable-color
+        format: rgb
+        default: rgb(255, 208, 0)
     - 
         id: hide-pdf-embed-toolbar
         title: Hide toolbar in PDF embeds with a page specified
@@ -17,6 +23,10 @@ settings:
         step: 1
         default: 100
 */
+
+.textLayer .mod-focused.pdf-plus-backlink {
+    background-color: var(--pdf-backlink-highlight-color, rgb(var(--text-highlight-bg-rgb)));
+}
 
 .hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar {
     display: none;

@@ -17,7 +17,7 @@ interface PDFViewer extends Component {
     containerEl: HTMLElement;
     opts: any;
     then(cb: (child: PDFViewerChild) => void): void;
-    loadFile(file: TFile): Promise<void>;
+    loadFile(file: TFile, subpath?: string): Promise<void>;
     /** Added by this plugin */
     backlinkManager?: BacklinkManager;
 }
@@ -43,6 +43,9 @@ interface PDFViewerChild {
     highlightAnnotation(page: number, id: string): void;
     clearTextHighlight(): void;
     clearAnnotationHighlight(): void;
+    /** Added by this plugin */
+    file?: TFile;
+    backlinkManager?: BacklinkManager;
 }
 
 interface PDFHighlight {

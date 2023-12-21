@@ -1,5 +1,5 @@
 import PDFPlus from "main";
-import { App, Component, HoverParent, HoverPopover, TFile, parseLinktext } from "obsidian";
+import { App, Component, HoverParent, HoverPopover, Notice, TFile, parseLinktext } from "obsidian";
 import { ObsidianViewer } from "typings";
 
 
@@ -19,13 +19,24 @@ export class BacklinkManager extends Component implements HoverParent {
     }
 
     onload() {
-        this.highlightBacklinks();
-        this.registerEvent(this.app.metadataCache.on('resolved', () => {
+        if (!this.viewer.isEmbed) {
             this.highlightBacklinks();
-        }));
+            this.registerEvent(this.app.metadataCache.on('resolved', () => {
+                this.highlightBacklinks();
+            }));    
+        }
     }
 
     highlightBacklinks() {
+        try {
+            this._highlightBacklinks();
+        } catch (e) {
+            new Notice(`${this.plugin.manifest.name}: Failed to highlight backlinks. Reopen the file to retry.`)
+            console.error(e);
+        }
+    }
+
+    _highlightBacklinks() {
         if (!this.file) return;
 
         if (this.viewer.isEmbed) return;

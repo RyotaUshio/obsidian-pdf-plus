@@ -129,7 +129,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Backlinks to PDF files');
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks')
-			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink.');
+			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink. (Being a new feature, this may not work well in some cases. Please reopen the tab if you encounter any problem.)');
 
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.display())

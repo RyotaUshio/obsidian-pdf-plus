@@ -16,26 +16,35 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
     plugin.register(around(pdfView.viewer.constructor.prototype, {
         onload(old) {
-            return async function () {
-                await old.call(this);
+            return function () {
+                const ret = old.call(this);
                 const self = this as PDFViewer;
                 self.then((child) => {
                     if (!self.backlinkManager) {
                         self.backlinkManager = self.addChild(new BacklinkManager(plugin, child.pdfViewer));
                     }
+                    if (!child.backlinkManager) {
+                        child.backlinkManager = self.backlinkManager
+                    }
                 });
+                return ret;
             }
         },
         loadFile(old) {
-            return async function (file: TFile) {
-                const ret = await old.call(this, file);
+            return async function (file: TFile, subpath?: string) {
+                const ret = await old.call(this, file, subpath);
                 const self = this as PDFViewer;
                 self.then((child) => {
                     if (!self.backlinkManager) {
                         self.backlinkManager = self.addChild(new BacklinkManager(plugin, child.pdfViewer));
                     }
+                    if (!child.backlinkManager) {
+                        child.backlinkManager = self.backlinkManager
+                    }
                     self.backlinkManager.file = file;
                     self.backlinkManager.highlightBacklinks();
+
+                    child.file = file;
                 });
                 return ret;
             }
@@ -73,6 +82,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     return;
                 }
                 old.call(this);
+                child.backlinkManager?.highlightBacklinks();
             }
         }
     }));
@@ -101,9 +111,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     onTextLayerReady(self, async () => {
                         for (self._zoomedIn ??= 0; self._zoomedIn < plugin.settings.zoomInEmbed; self._zoomedIn++) {
                             self.zoomIn();
-                            await new Promise<void>((resolve) => {
-                                setTimeout(resolve, 50);
-                            })
+                            await sleep(50);
                         }
                     });
                 }

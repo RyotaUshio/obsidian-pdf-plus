@@ -42,6 +42,17 @@ export default class PDFPlus extends Plugin {
 			}
 		}, { passive: false });
 
+		this.registerDomEvent(window, 'click', (evt) => {
+			if (evt.target instanceof HTMLElement) {
+				const linktext = evt.target.closest('.pdf-embed[src]')?.getAttribute('src');
+				const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
+				if (linktext && viewerEl) {
+					const sourcePath = this.pdfViwerChildren.get(viewerEl)?.file?.path ?? '';
+					this.app.workspace.openLinkText(linktext, sourcePath);
+				}
+			}
+		})
+
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
 			for (const viewerEl of this.pdfViwerChildren.keys()) {
 				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
@@ -54,6 +65,9 @@ export default class PDFPlus extends Plugin {
                     if (!view.viewer.backlinkManager) {
                         view.viewer.backlinkManager = view.viewer.addChild(new BacklinkManager(this, child.pdfViewer));
                     }
+					if (!child.backlinkManager) {
+						child.backlinkManager = view.viewer.backlinkManager
+					}
                     view.viewer.backlinkManager.file = view.file;
                     view.viewer.backlinkManager.highlightBacklinks();
                 });
