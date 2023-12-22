@@ -1,5 +1,5 @@
 import PDFPlus from "main";
-import { App, Component, HoverParent, HoverPopover, Keymap, Notice, TFile, parseLinktext } from "obsidian";
+import { App, Component, HoverParent, HoverPopover, Keymap, MarkdownView, Notice, PaneType, SectionCache, TFile, parseLinktext } from "obsidian";
 import { BacklinkView, ObsidianViewer } from "typings";
 
 
@@ -100,22 +100,37 @@ export class BacklinkManager extends Component implements HoverParent {
                                         const fileDom = backlinkDom.getResult(sourceFile);
                                         if (!fileDom) return;
 
-                                        const index = fileDom.result.content.findIndex(([start, end]) => start === link.position.start.offset && end === link.position.end.offset);
+                                        // const itemDoms = fileDom?.vChildren.children; // better search view destroys this!! So we have to take a detour
+
+                                        const cache = this.app.metadataCache.getFileCache(sourceFile);
+                                        if (!cache?.sections) return;
+
+                                        const sectionsContainingBacklinks = new Set<SectionCache>();
+                                        for (const [start, end] of fileDom.result.content) {
+                                            const sec = cache.sections.find(sec => sec.position.start.offset <= start && end <= sec.position.end.offset);
+                                            if (sec) {
+                                                sectionsContainingBacklinks.add(sec);
+                                                if (start === link.position.start.offset && end === link.position.end.offset) {
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        const index = sectionsContainingBacklinks.size - 1;
                                         if (index === -1) return;
 
-                                        // const itemDoms = fileDom?.vChildren.children; // better search view clashes this
                                         backlinkItemEl = fileDom?.childrenEl.querySelectorAll<HTMLElement>('.search-result-file-match')[index];
-                                        
-                                        backlinkItemEl.addClass('hovered-backlink');
+
+                                        backlinkItemEl?.addClass('hovered-backlink');
                                     });
 
                                     this.eventManager.registerDomEvent(highlightedEl, 'mouseout', (event) => {
                                         backlinkItemEl?.removeClass('hovered-backlink');
                                     });
 
-                                    this.eventManager.registerDomEvent(highlightedEl, 'click', (event) => {
-                                        const paneType = Keymap.isModEvent(event);
-                                        if (paneType) {
+                                    this.eventManager.registerDomEvent(highlightedEl, 'dblclick', (event) => {
+                                        if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
+                                            const paneType = Keymap.isModEvent(event) || 'tab'; // keep the PDF view open
                                             this.app.workspace.openLinkText(sourcePath, "", paneType, {
                                                 eState: {
                                                     line: link.position.start.line

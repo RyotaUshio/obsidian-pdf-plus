@@ -1,6 +1,6 @@
 import { Component, Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { patchPDF, patchWorkspace } from 'patch';
+import { patchPDF, patchPagePreview, patchWorkspace } from 'patch';
 import { PDFView, PDFViewerChild } from 'typings';
 import { addColorPalette, copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
 import { BacklinkManager } from 'backlinks';
@@ -20,9 +20,11 @@ export default class PDFPlus extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
-		patchWorkspace(this);
-
+	
 		this.app.workspace.onLayoutReady(() => {
+			patchWorkspace(this);
+			patchPagePreview(this);
+
 			const success = patchPDF(this);
 			if (!success) {
 				const notice = new Notice(`${this.manifest.name}: Open a PDF file to enable the plugin.`, 0);

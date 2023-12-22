@@ -1,7 +1,7 @@
 import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
-import { ColorComponent, EditableFileView, OpenViewState, PaneType, TFile, Workspace, parseLinktext } from "obsidian";
+import { ColorComponent, EditableFileView, FileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, parseLinktext } from "obsidian";
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
 import { addColorPalette, highlightSubpath, isHexString, onTextLayerReady } from "utils";
 
@@ -168,3 +168,33 @@ export const patchWorkspace = (plugin: PDFPlus) => {
         }
     }));
 };
+
+export const patchPagePreview = (plugin: PDFPlus) => {
+    const app = plugin.app;
+    const pagePreview = app.internalPlugins.plugins['page-preview'].instance;
+
+    plugin.register(around(pagePreview.constructor.prototype, {
+        onLinkHover(old) {
+            return function (hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void {
+                if (plugin.settings.openOnHoverHighlight && hoverParent instanceof BacklinkManager) {
+                    const file = app.metadataCache.getFirstLinkpathDest(linktext, sourcePath);
+                    let leafFound = false;
+                    app.workspace.iterateAllLeaves((leaf) => {
+                        if (leafFound) return;
+
+                        if (leaf.view instanceof MarkdownView && leaf.view.file === file) {
+                            leaf.openLinkText(linktext, sourcePath, { eState: { line: state.scroll } });
+                            leafFound = true;
+                        }
+                    });
+                    if (!leafFound) {
+                        // seems like the third parameter is just ignored by Obsidian??
+                        app.workspace.openLinkText(linktext, sourcePath, true, { eState: { line: state.scroll } });
+                    }
+                    return;
+                }
+                old.call(this, hoverParent, targetEl, linktext, sourcePath, state);
+            }
+        }
+    }));
+}

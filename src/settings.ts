@@ -19,6 +19,8 @@ export interface PDFPlusSettings {
 	defaultColor: string;
 	colorPaletteInToolbar: boolean;
 	highlightColorSpecifiedOnly: boolean;
+	doubleClickHighlightToOpenBacklink: boolean;
+	openOnHoverHighlight: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -42,6 +44,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	defaultColor: '',
 	colorPaletteInToolbar: true,
 	highlightColorSpecifiedOnly: false,
+	doubleClickHighlightToOpenBacklink: true,
+	openOnHoverHighlight: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -227,6 +231,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink. (Being a new feature, this may not work well in some cases. Please reopen the tab if you encounter any problem.)');
+		this.addToggleSetting('openOnHoverHighlight')
+			.setName('Actually open backlink rather than popover preview when hovering over a highlight')
+			.setDesc('When hovering over a highlight, actually open the corresponding backlink instead of displaying a popover preview')
+		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
+			.setName('Double click a piece of highlighted text to open the corresponding backlink');
 		this.addToggleSetting('highlightBacklinksPane')
 			.setName('Highlight hovered backlinks in the backlinks pane')
 			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane. This feature is compatible with the Better Search Views plugin.');

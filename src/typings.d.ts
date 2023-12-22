@@ -1,5 +1,5 @@
 import { BacklinkManager } from 'backlinks';
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
 
@@ -68,6 +68,7 @@ interface PDFAnnotationHighlight extends PDFHighlight {
 
 interface ObsidianViewer {
     dom: {
+        containerEl: HTMLElement;
         viewerEl: HTMLElement;
         viewerContainerEl: HTMLElement;
     } | null;
@@ -371,6 +372,15 @@ declare module "obsidian" {
         setting: AppSetting;
         plugins: {
             manifests: Record<string, PluginManifest>;
+        },
+        internalPlugins: {
+            plugins: {
+                'page-preview': {
+                    instance: {
+                        onLinkHover(hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void;
+                    }
+                }
+            }
         }
         embedRegistry: EmbedRegistry;
     }
@@ -384,6 +394,7 @@ declare module "obsidian" {
     }
 
     interface WorkspaceLeaf {
+        group: string | null;
         openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
     }
 }
