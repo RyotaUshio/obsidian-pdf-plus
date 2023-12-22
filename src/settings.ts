@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting } from 'obsidian';
+import { DropdownComponent, HexString, Notice, PluginSettingTab, Setting } from 'obsidian';
 import PDFPlus from 'main';
 
 
@@ -15,6 +15,10 @@ export interface PDFPlusSettings {
 	highlightBacklinks: boolean;
 	clickEmbedToOpenLink: boolean;
 	highlightBacklinksPane: boolean;
+	colors: Record<string, HexString>;
+	defaultColor: string;
+	colorPaletteInToolbar: boolean;
+	highlightColorSpecifiedOnly: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -30,6 +34,14 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightBacklinks: true,
 	clickEmbedToOpenLink: true,
 	highlightBacklinksPane: true,
+	colors: {
+		'Yellow': '#ffd000',
+		'Red': '#EA5252',
+		'Blue': '#7b89f4'
+	},
+	defaultColor: '',
+	colorPaletteInToolbar: true,
+	highlightColorSpecifiedOnly: false,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -40,12 +52,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		super(plugin.app, plugin);
 	}
 
+	addSetting() {
+		return new Setting(this.containerEl);
+	}
+
 	addHeading(heading: string) {
-		return new Setting(this.containerEl).setName(heading).setHeading();
+		return this.addSetting().setName(heading).setHeading();
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>) {
-		return new Setting(this.containerEl)
+		return this.addSetting()
 			.addText((text) => {
 				text.setValue(this.plugin.settings[settingName])
 					.setPlaceholder(DEFAULT_SETTINGS[settingName])
@@ -58,7 +74,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addNumberSetting(settingName: KeysOfType<PDFPlusSettings, number>) {
-		return new Setting(this.containerEl)
+		return this.addSetting()
 			.addText((text) => {
 				text.setValue('' + this.plugin.settings[settingName])
 					.setPlaceholder('' + DEFAULT_SETTINGS[settingName])
@@ -72,7 +88,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addToggleSetting(settingName: KeysOfType<PDFPlusSettings, boolean>, extraOnChange?: (value: boolean) => void) {
-		return new Setting(this.containerEl)
+		return this.addSetting()
 			.addToggle((toggle) => {
 				toggle.setValue(this.plugin.settings[settingName])
 					.onChange(async (value) => {
@@ -85,7 +101,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: readonly string[], display?: (option: string) => string, extraOnChange?: (value: string) => void) {
-		return new Setting(this.containerEl)
+		return this.addSetting()
 			.addDropdown((dropdown) => {
 				const displayNames = new Set<string>();
 				for (const option of options) {
@@ -106,7 +122,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addSliderSetting(settingName: KeysOfType<PDFPlusSettings, number>, min: number, max: number, step: number) {
-		return new Setting(this.containerEl)
+		return this.addSetting()
 			.addSlider((slider) => {
 				slider.setLimits(min, max, step)
 					.setValue(this.plugin.settings[settingName])
@@ -120,17 +136,94 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addDesc(desc: string) {
-		return new Setting(this.containerEl)
+		return this.addSetting()
 			.setDesc(desc);
+	}
+
+	addColorSetting(name: string, color: HexString) {
+		const colors = this.plugin.settings.colors;
+		const isDefault = this.plugin.settings.defaultColor === name;
+		let previousColor = color;
+		return this.addSetting()
+			.addText((text) => {
+				text.setPlaceholder('Color name')
+					.setValue(name)
+					.onChange(async (newName) => {
+						if (newName in colors) {
+							new Notice('This color name is already used.');
+							text.inputEl.addClass('error');
+							return;
+						}
+						text.inputEl.removeClass('error');
+						delete colors[name];
+						const optionEl = this.containerEl.querySelector<HTMLOptionElement>(`#pdf-plus-default-color-dropdown > option[value="${name}"]`);
+						if (optionEl) {
+							optionEl.value = newName;
+							optionEl.textContent = newName;
+						}
+						name = newName;
+						colors[name] = color;
+						if (isDefault) this.plugin.settings.defaultColor = name;
+						await this.plugin.saveSettings();
+						this.plugin.loadStyle();
+					});
+			})
+			.addColorPicker((picker) => {
+				picker.setValue(color);
+				picker.onChange(async (newColor) => {
+					previousColor = color;
+					color = newColor;
+					colors[name] = color;
+					await this.plugin.saveSettings();
+					this.plugin.loadStyle();
+				});
+			})
+			.addExtraButton((button) => {
+				button.setIcon('rotate-ccw')
+					.setTooltip('Return to previous color')
+					.onClick(async () => {
+						color = previousColor;
+						colors[name] = color;
+						await this.plugin.saveSettings();
+						this.plugin.loadStyle();
+						this.redisplay();
+					});
+			})
+			.addExtraButton((button) => {
+				button.setIcon('trash')
+					.setTooltip('Delete')
+					.onClick(async () => {
+						delete colors[name];
+						await this.plugin.saveSettings();
+						this.plugin.loadStyle();
+						this.redisplay();
+					});
+			});
+	}
+
+	/** Refresh the setting tab and then scroll back to the original position. */
+	redisplay() {
+		(window as any).tab = this;
+		const firstSettingEl = this.containerEl.querySelector('.setting-item:first-child');
+		if (firstSettingEl) {
+			const { top, left } = firstSettingEl.getBoundingClientRect();
+			this.display();
+			this.containerEl.querySelector('.setting-item:first-child')?.scroll({ top, left, behavior: 'instant' });
+		} else {
+			this.display();
+		}
 	}
 
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		(window as any).tab = this;
+
 		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
 
-		this.addHeading('Backlinks to PDF files');
+		this.addHeading('Backlinks to PDF files')
+			.setDesc('Transform a link to a PDF file into a highlighted annotation.');
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink. (Being a new feature, this may not work well in some cases. Please reopen the tab if you encounter any problem.)');
@@ -138,8 +231,47 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Highlight hovered backlinks in the backlinks pane')
 			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane. This feature is compatible with the Better Search Views plugin.');
 
+		this.addSetting()
+			.setName('Highlight colors')
+			.setDesc('Append "&color={{COLOR NAME}}" to a link text to highlight the selection with a specified color, where {{COLOR NAME}} is one of the colors that you register below. e.g "[[file.pdf#page=1&selection=4,0,5,20&color=red]]"')
+			.addExtraButton((button) => {
+				button
+					.setIcon('plus')
+					.onClick(() => {
+						this.plugin.settings.colors[''] = '#';
+						this.redisplay();
+					});
+			})
+		for (const [name, color] of Object.entries(this.plugin.settings.colors)) {
+			this.addColorSetting(name, color)
+				.setClass('no-border');
+		}
+
+		this.addToggleSetting('highlightColorSpecifiedOnly', () => this.redisplay())
+			.setName('Only highlight a backlink when a color is specified')
+			.setDesc('By default, all backlinks are highlighted. If this option is enabled, a backlink will be highlighted only when a color is specified in the link text.');
+
+		if (!this.plugin.settings.highlightColorSpecifiedOnly) {
+			this.addDropdowenSetting(
+				'defaultColor',
+				['', ...Object.keys(this.plugin.settings.colors)],
+				(option) => option || 'Obsidian default',
+				() => this.plugin.loadStyle()
+			)
+				.setName('Default highlight color')
+				.setDesc('If no color is specified in link text, this color will be used.')
+				.then((setting) => {
+					const dropdown = setting.components[0] as DropdownComponent;
+					dropdown.selectEl.id = 'pdf-plus-default-color-dropdown';
+				})
+		}
+
+		this.addToggleSetting('colorPaletteInToolbar')
+			.setName('Show color palette in the toolbar')
+			.setDesc('A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with "&color=..." appended.');
+
 		this.addHeading('Opening links to PDF files');
-		this.addToggleSetting('openLinkCleverly', () => this.display())
+		this.addToggleSetting('openLinkCleverly', () => this.redisplay())
 			.setName('Open PDF links cleverly')
 			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."');
 		if (this.plugin.settings.openLinkCleverly) {
@@ -147,7 +279,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Don\'t move focus to PDF viewer after opening a link');
 		}
 
-		new Setting(containerEl)
+		this.addSetting()
 			.setName('Clear highlights after a certain amount of time')
 			.addToggle((toggle) => {
 				toggle.setValue(this.plugin.settings.highlightDuration > 0)
@@ -158,7 +290,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 								: 1)
 							: 0;
 						await this.plugin.saveSettings();
-						this.display();
+						this.redisplay();
 					});
 			});
 		if (this.plugin.settings.highlightDuration > 0) {
@@ -175,7 +307,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('clickEmbedToOpenLink')
 			.setName('Click PDF embeds to open links')
 			.setDesc('Clicking a PDF embed will open the embedded file.');
-		this.addToggleSetting('trimSelectionEmbed', () => this.display())
+		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())
 			.setName('Trim selection/annotation embeds')
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
 		if (this.plugin.settings.trimSelectionEmbed) {

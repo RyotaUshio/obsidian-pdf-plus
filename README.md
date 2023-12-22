@@ -10,8 +10,10 @@ Each feature can be toggled on and off in the plugin settings.
 ### Backlinks to PDF files
 
 - **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink.
-- **Backlink highlights background color**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
+  - By default, all backlinks are highlighted. But there is an option that allows you to highlight only backlinks with colors specified in the link text (see below).
 - **Highlight hovered backlinks in the backlinks pane**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane]((https://help.obsidian.md/Plugins/Backlinks)). This feature is compatible with the [Better Search Views]((https://github.com/ivan-lednev/better-search-views)) plugin.
+- **Custom highlight colors**: Append `&color={{COLOR NAME}}` to a link text to highlight the selection with a specified color, where `{{COLOR NAME}}` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
+- **Show color palette in the toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
 
 These features enrich Obsidian as a stand-alone PDF annotation tool. I recommend combining the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
 
@@ -52,7 +54,10 @@ But you can install the latest release using [BRAT](https://github.com/TfTHacker
 ## Development principles
 
 - Always stick around Obsidian's built-in PDF viewer.
-- Never introduce plugin-dependent stuff.
+- Don't introduce plugin-dependent stuff as much as possible.
+  - It can be tolerated only if 
+    - it brings a massive benifit
+    - and it won't leave anything that becomes just a random mess without this plugin.
 
 ## Support development
 

@@ -59,6 +59,10 @@ export class BacklinkManager extends Component implements HoverParent {
                 if (params.has('page') && params.has('selection')) {
                     const page = parseInt(params.get('page')!);
                     const selection = params.get('selection')!.split(',').map((s) => parseInt(s));
+                    const color = params.get('color') ?? undefined;
+
+                    if (!color && this.plugin.settings.highlightColorSpecifiedOnly) continue;
+
                     if (selection.length === 4) {
                         let backlinkItemEl: HTMLElement | null = null;
                         // @ts-ignore
@@ -66,13 +70,15 @@ export class BacklinkManager extends Component implements HoverParent {
                             this.highlightText(
                                 page,
                                 ...selection as [number, number, number, number],
-                                (textDiv) => {
-                                    this.eventManager.registerDomEvent(textDiv, 'mouseover', (event) => {
+                                color,
+                                (highlightedEl) => {
+                                    this.eventManager.registerDomEvent(highlightedEl, 'mouseover', (event) => {
+
                                         this.app.workspace.trigger('hover-link', {
                                             event,
                                             source: 'pdf-plus',
                                             hoverParent: this,
-                                            targetEl: textDiv,
+                                            targetEl: highlightedEl,
                                             linktext: sourcePath,
                                             state: { scroll: link.position.start.line }
                                         });
@@ -103,11 +109,11 @@ export class BacklinkManager extends Component implements HoverParent {
                                         backlinkItemEl.addClass('hovered-backlink');
                                     });
 
-                                    this.eventManager.registerDomEvent(textDiv, 'mouseout', (event) => {
+                                    this.eventManager.registerDomEvent(highlightedEl, 'mouseout', (event) => {
                                         backlinkItemEl?.removeClass('hovered-backlink');
                                     });
 
-                                    this.eventManager.registerDomEvent(textDiv, 'click', (event) => {
+                                    this.eventManager.registerDomEvent(highlightedEl, 'click', (event) => {
                                         const paneType = Keymap.isModEvent(event);
                                         if (paneType) {
                                             this.app.workspace.openLinkText(sourcePath, "", paneType, {
@@ -128,7 +134,7 @@ export class BacklinkManager extends Component implements HoverParent {
     }
 
     // This is a modified version of PDFViewerChild.prototype.hightlightText from Obsidian's app.js
-    highlightText(pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number, onHighlight?: (textDiv: HTMLElement) => void) {
+    highlightText(pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number, colorName?: string, onHighlight?: (highlightedEl: HTMLElement) => void) {
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
             const pageView = this.viewer.pdfViewer.getPageView(pageNumber - 1);
             if (pageView != null && pageView.div.dataset.loaded) {
@@ -152,8 +158,10 @@ export class BacklinkManager extends Component implements HoverParent {
                     const text = textContentItems[index].str.substring(from, to);
                     const textNode = document.createTextNode(text);
                     if (className) {
-                        textDiv.createSpan(className + " appended").append(textNode);
-                        onHighlight?.(textDiv);
+                        const highlightWrapperEl = textDiv.createSpan(className + " appended");
+                        if (colorName) highlightWrapperEl.dataset.highlightColor = colorName;
+                        highlightWrapperEl.append(textNode);
+                        onHighlight?.(highlightWrapperEl);
                     }
                     else textDiv.append(textNode);
                 }
@@ -167,6 +175,8 @@ export class BacklinkManager extends Component implements HoverParent {
                     for (let i = beginIndex + 1; i < endIndex; i++) {
                         this.highlightedTexts.push({ page: pageNumber, index: i });
                         textDivs[i].classList.add("mod-focused", "middle", "selected", cls);
+                        if (colorName) textDivs[i].dataset.highlightColor = colorName;
+                        onHighlight?.(textDivs[i]);
                     }
                     s(endIndex, endOffset, "mod-focused endselected " + cls);
                 }
@@ -175,6 +185,7 @@ export class BacklinkManager extends Component implements HoverParent {
         }
     }
 
+    // This is a modified version of PDFViewerChild.prototype.clearTextHighlight from Obsidian's app.js
     clearTextHighlight() {
         for (const { page, index } of this.highlightedTexts) {
             const pageView = this.viewer.pdfViewer.getPageView(page - 1);

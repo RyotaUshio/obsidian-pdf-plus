@@ -1,9 +1,9 @@
 import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
-import { EditableFileView, OpenViewState, PaneType, TFile, Workspace, parseLinktext } from "obsidian";
-import { ObsidianViewer, PDFView, PDFViewer, PDFViewerChild } from "typings";
-import { highlightSubpath, onTextLayerReady } from "utils";
+import { ColorComponent, EditableFileView, OpenViewState, PaneType, TFile, Workspace, parseLinktext } from "obsidian";
+import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
+import { addColorPalette, highlightSubpath, isHexString, onTextLayerReady } from "utils";
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
@@ -13,6 +13,8 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
     if (!child) return false;
     const viewer = child.pdfViewer;
     if (!viewer) return false;
+    const toolbar = child.toolbar;
+    if (!toolbar) return false;
 
     plugin.register(around(pdfView.viewer.constructor.prototype, {
         onload(old) {
@@ -115,6 +117,16 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         }
                     });
                 }
+            }
+        }
+    }));
+
+    plugin.register(around(toolbar.constructor.prototype, {
+        reset(old) {
+            return function () {
+                const self = this as PDFToolbar;
+                addColorPalette(plugin, self.toolbarLeftEl);
+                old.call(this);
             }
         }
     }));

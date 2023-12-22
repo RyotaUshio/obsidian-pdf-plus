@@ -1,19 +1,24 @@
-import { Notice, Plugin } from 'obsidian';
+import { Component, Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { patchPDF, patchWorkspace } from 'patch';
-import { PDFViewerChild } from 'typings';
-import { iteratePDFViews } from 'utils';
+import { PDFView, PDFViewerChild } from 'typings';
+import { addColorPalette, copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
 import { BacklinkManager } from 'backlinks';
 
 
 export default class PDFPlus extends Plugin {
 	settings: PDFPlusSettings;
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
+	elementManager: Component;
 
 	async onload() {
 		await this.loadSettings();
 		await this.saveSettings();
 		this.addSettingTab(new PDFPlusSettingTab(this));
+
+		this.elementManager = this.addChild(new Component());
+
+		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
 		patchWorkspace(this);
 
@@ -62,15 +67,17 @@ export default class PDFPlus extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			iteratePDFViews(this.app, (view) => {
 				view.viewer.then((child) => {
-                    if (!view.viewer.backlinkManager) {
-                        view.viewer.backlinkManager = view.viewer.addChild(new BacklinkManager(this, child.pdfViewer));
-                    }
+					if (!view.viewer.backlinkManager) {
+						view.viewer.backlinkManager = view.viewer.addChild(new BacklinkManager(this, child.pdfViewer));
+					}
 					if (!child.backlinkManager) {
 						child.backlinkManager = view.viewer.backlinkManager
 					}
-                    view.viewer.backlinkManager.file = view.file;
-                    view.viewer.backlinkManager.highlightBacklinks();
-                });
+					view.viewer.backlinkManager.file = view.file;
+					view.viewer.backlinkManager.highlightBacklinks();
+
+					if (child.toolbar) addColorPalette(this, child.toolbar.toolbarLeftEl);
+				});
 			});
 		});
 
@@ -92,31 +99,76 @@ export default class PDFPlus extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	registerEl<HTMLElementType extends HTMLElement>(el: HTMLElementType, component?: Component) {
+		component = component ?? this.elementManager;
+		component.register(() => el.remove());
+		return el;
+	}
+
+	loadStyle() {
+		this.elementManager.unload();
+		// reload only if parent is loaded
+		this.removeChild(this.elementManager);
+		this.addChild(this.elementManager);
+
+		for (const child of this.pdfViwerChildren.values()) {
+			if (child.toolbar) addColorPalette(this, child.toolbar.toolbarLeftEl);
+		}
+
+		const styleEl = this.registerEl(createEl('style', { attr: { id: 'pdf-plus-style' } }));
+		document.head.append(styleEl);
+
+		styleEl.textContent = Object.entries(this.settings.colors).map(([name, color]) => {
+			return isHexString(color) ? (
+`.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="${name}"] {
+	background-color: ${color};
+}`
+			) : '';
+		}).join('\n');
+		const defaultColor = this.settings.colors[this.settings.defaultColor];
+		if (defaultColor) {
+		styleEl.textContent += `
+.textLayer .mod-focused.pdf-plus-backlink {
+	background-color: ${defaultColor};
+}
+`
+		}
+		this.app.workspace.trigger('css-change');
+	}
+
 	registerCommands() {
 		this.addCommand({
 			id: 'copy-link-to-selection',
 			name: 'Copy link to selection',
-			checkCallback: (checking: boolean) => {
-				const selection = window.getSelection();
-				if (!selection) return false;
-				const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-				const pageEl = range?.startContainer.parentElement?.closest('.page');
-				if (!pageEl || !(pageEl.instanceOf(HTMLElement)) || pageEl.dataset.pageNumber === undefined) return false;
-
-				const viewerEl = pageEl.closest<HTMLElement>('.pdf-viewer');
-				if (!viewerEl) return false;
-
-				const child = this.pdfViwerChildren.get(viewerEl);
-				if (!child) return false;
-
-				if (!checking) {
-					const page = parseInt(pageEl.dataset.pageNumber);
-					const selectionStr = child.getTextSelectionRangeStr(pageEl);
-					const linktext = child.getMarkdownLink(`#page=${page}&selection=${selectionStr}`, child.getPageLinkAlias(page));
-					navigator.clipboard.writeText(linktext);
-				}
-				return true;
-			}
+			checkCallback: (checking: boolean) => copyLinkToSelection(this, checking)
 		});
+	}
+
+	// console utilities
+
+	getPDFView(): PDFView | undefined {
+		const leaf = this.app.workspace.activeLeaf;
+		if (leaf?.view.getViewType() === 'pdf') return leaf.view as PDFView;
+		return this.app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
+	}
+
+	getPDFViewer() {
+		return this.getPDFView()?.viewer;
+	}
+
+	getPDFViewerChild() {
+		return this.getPDFViewer()?.child;
+	}
+
+	getObsidianViewer() {
+		return this.getPDFViewerChild()?.pdfViewer;
+	}
+
+	getRawPDFViewer() {
+		return this.getObsidianViewer()?.pdfViewer;
+	}
+
+	getToolbar() {
+		return this.getPDFViewerChild()?.toolbar;
 	}
 }

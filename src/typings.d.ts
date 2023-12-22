@@ -33,6 +33,7 @@ interface PDFViewerChild {
     opts: any;
     pdfViewer: ObsidianViewer;
     subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight | null;
+    toolbar?: PDFToolbar;
     load(): void;
     getPage(page: number): PDFPageView;
     getTextByRect(pageView: any, rect: number[]): any;
@@ -77,11 +78,30 @@ interface ObsidianViewer {
     eventBus: any;
     pdfViewer: RawPDFViewer;
     pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
+    toolbar?: PDFToolbar;
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
     /** Added by this plugin */
     _zoomedIn?: number;
+}
+
+interface PDFToolbar {
+    pdfViewer: ObsidianViewer;
+    pageNumber: number;
+    pagesCount: number;
+    pageScale: number;
+    pageScaleValue: string;
+    pageInputEl: HTMLInputElement;
+    pageNumberEl: HTMLElement;
+    sidebarOptionsEl: HTMLElement;
+    sidebarToggleEl: HTMLElement;
+    toolbarEl: HTMLElement;
+    toolbarLeftEl: HTMLElement;
+    toolbarRightEl: HTMLElement;
+    zoomInEl: HTMLElement;
+    zoomOutEl: HTMLElement;
+    reset(): void;
 }
 
 interface RawPDFViewer {
