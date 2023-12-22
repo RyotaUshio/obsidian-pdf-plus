@@ -79,6 +79,8 @@ export class BacklinkManager extends Component implements HoverParent {
 
                                         // highlight the corresponding item in backlink pane
 
+                                        if (!this.plugin.settings.highlightBacklinksPane) return;
+
                                         const backlinkLeaf = this.app.workspace.getLeavesOfType('backlink')[0];
                                         if (!backlinkLeaf) return;
 
