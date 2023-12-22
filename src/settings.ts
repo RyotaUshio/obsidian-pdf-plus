@@ -208,7 +208,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		if (firstSettingEl) {
 			const { top, left } = firstSettingEl.getBoundingClientRect();
 			this.display();
-			this.containerEl.querySelector('.setting-item:first-child')?.scroll({ top, left, behavior: 'instant' });
+			this.containerEl.querySelector('.setting-item:first-child')?.scroll({ top, left });
 		} else {
 			this.display();
 		}
