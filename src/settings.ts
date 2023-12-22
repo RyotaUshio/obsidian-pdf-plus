@@ -14,6 +14,7 @@ export interface PDFPlusSettings {
 	persistentHighlightsInEmbed: boolean;
 	highlightBacklinks: boolean;
 	clickEmbedToOpenLink: boolean;
+	highlightBacklinksPane: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -28,6 +29,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	persistentHighlightsInEmbed: true,
 	highlightBacklinks: true,
 	clickEmbedToOpenLink: true,
+	highlightBacklinksPane: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -132,6 +134,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink. (Being a new feature, this may not work well in some cases. Please reopen the tab if you encounter any problem.)');
+		this.addToggleSetting('highlightBacklinksPane')
+			.setName('Highlight hovered backlinks in the backlinks pane')
+			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane. This feature is compatible with the Better Search Views plugin.');
 
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.display())

@@ -24,7 +24,8 @@ settings:
         default: 100
 */
 
-.textLayer .mod-focused.pdf-plus-backlink {
+.textLayer .mod-focused.pdf-plus-backlink,
+.pdf-embed .textLayer .mod-focused {
     background-color: var(--pdf-backlink-highlight-color, rgb(var(--text-highlight-bg-rgb)));
 }
 
@@ -37,4 +38,10 @@ settings:
     margin-left: auto !important;
     margin-right: auto !important;
     width: calc(var(--pdf-embed-width) / 100 * 100%) !important;
+}
+
+/* When hovering over a highlighted text in PDF viewer, highlight the corresponding item in backlink pane */
+.backlink-pane .search-result-file-match.hovered-backlink,
+.backlink-pane .search-result-file-matches:has(.better-search-views-tree) .better-search-views-file-match.hovered-backlink:not(:hover) {
+    background-color: var(--text-selection);
 }

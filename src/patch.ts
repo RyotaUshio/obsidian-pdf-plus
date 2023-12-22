@@ -1,7 +1,7 @@
 import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
-import { EditableFileView, TFile, Workspace, parseLinktext } from "obsidian";
+import { EditableFileView, OpenViewState, PaneType, TFile, Workspace, parseLinktext } from "obsidian";
 import { ObsidianViewer, PDFView, PDFViewer, PDFViewerChild } from "typings";
 import { highlightSubpath, onTextLayerReady } from "utils";
 
@@ -127,7 +127,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
 
     plugin.register(around(Workspace.prototype, {
         openLinkText(old) {
-            return function (linktext: string, sourcePath: string, ...args: any[]) {
+            return function (linktext: string, sourcePath: string, newLeaf?: PaneType | boolean, openViewState?: OpenViewState) {
                 if (plugin.settings.openLinkCleverly) {
                     const { path, subpath } = parseLinktext(linktext);
                     const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
@@ -137,22 +137,21 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                             return leaf.view instanceof EditableFileView && leaf.view.file === file;
                         });
                         if (leaf) {
-                            const view = leaf.view as PDFView;
-                            const self = this as Workspace;
-                            self.revealLeaf(leaf);
-                            if (!plugin.settings.dontActivateAfterOpen) self.setActiveLeaf(leaf);
-
-                            const child = view.viewer.child;
-                            if (child) {
-                                const duration = plugin.settings.highlightDuration;
-                                highlightSubpath(child, subpath, duration);
-                            }
-                            return;
+                            openViewState = openViewState ?? {};
+                            openViewState.active = !plugin.settings.dontActivateAfterOpen;
+                            return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
+                                const view = leaf.view as PDFView;
+                                const child = view.viewer.child;
+                                if (child) {
+                                    const duration = plugin.settings.highlightDuration;
+                                    highlightSubpath(child, subpath, duration);
+                                }
+                            })
                         }
                     }
                 }
 
-                return old.call(this, linktext, sourcePath, ...args);
+                return old.call(this, linktext, sourcePath, newLeaf, openViewState);
             }
         }
     }));

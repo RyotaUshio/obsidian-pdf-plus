@@ -50,10 +50,12 @@ export function highlightSubpath(child: PDFViewerChild, subpath: string, duratio
             if (!child.subpathHighlight) return;
             const { page, range } = child.subpathHighlight as PDFTextHighlight;
             child.highlightText(page, range);
-            if (duration > 0) setTimeout(() => {
-                child.clearTextHighlight();
-                child.backlinkManager?.highlightBacklinks();
-            }, duration * 1000);
+            if (duration > 0) {
+                setTimeout(() => {
+                    child.clearTextHighlight();
+                    child.backlinkManager?.highlightBacklinks();
+                }, duration * 1000);
+            }
         });
     } else if (child.subpathHighlight?.type === 'annotation') {
         onAnnotationLayerReady(child.pdfViewer, () => {

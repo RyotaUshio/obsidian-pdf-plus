@@ -1,6 +1,6 @@
 import PDFPlus from "main";
-import { App, Component, HoverParent, HoverPopover, Notice, TFile, parseLinktext } from "obsidian";
-import { ObsidianViewer } from "typings";
+import { App, Component, HoverParent, HoverPopover, Keymap, Notice, TFile, parseLinktext } from "obsidian";
+import { BacklinkView, ObsidianViewer } from "typings";
 
 
 export class BacklinkManager extends Component implements HoverParent {
@@ -23,7 +23,7 @@ export class BacklinkManager extends Component implements HoverParent {
             this.highlightBacklinks();
             this.registerEvent(this.app.metadataCache.on('resolved', () => {
                 this.highlightBacklinks();
-            }));    
+            }));
         }
     }
 
@@ -60,19 +60,60 @@ export class BacklinkManager extends Component implements HoverParent {
                     const page = parseInt(params.get('page')!);
                     const selection = params.get('selection')!.split(',').map((s) => parseInt(s));
                     if (selection.length === 4) {
+                        let backlinkItemEl: HTMLElement | null = null;
                         // @ts-ignore
                         this.viewer.pdfViewer._pagesCapability.promise.then(() => {
                             this.highlightText(
                                 page,
                                 ...selection as [number, number, number, number],
-                                (event, el) => {
-                                    this.app.workspace.trigger('hover-link', {
-                                        event,
-                                        source: 'pdf-plus',
-                                        hoverParent: this,
-                                        targetEl: el,
-                                        linktext: sourcePath,
-                                        state: { scroll: link.position.start.line }
+                                (textDiv) => {
+                                    this.eventManager.registerDomEvent(textDiv, 'mouseover', (event) => {
+                                        this.app.workspace.trigger('hover-link', {
+                                            event,
+                                            source: 'pdf-plus',
+                                            hoverParent: this,
+                                            targetEl: textDiv,
+                                            linktext: sourcePath,
+                                            state: { scroll: link.position.start.line }
+                                        });
+
+                                        // highlight the corresponding item in backlink pane
+
+                                        const backlinkLeaf = this.app.workspace.getLeavesOfType('backlink')[0];
+                                        if (!backlinkLeaf) return;
+
+                                        const backlinkView = backlinkLeaf.view as BacklinkView;
+                                        if (!backlinkView.containerEl.isShown()) return;
+
+                                        const backlinkDom = backlinkView.backlink.backlinkDom;
+                                        const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
+                                        if (!(sourceFile instanceof TFile)) return;
+
+                                        const fileDom = backlinkDom.getResult(sourceFile);
+                                        if (!fileDom) return;
+
+                                        const index = fileDom.result.content.findIndex(([start, end]) => start === link.position.start.offset && end === link.position.end.offset);
+                                        if (index === -1) return;
+
+                                        // const itemDoms = fileDom?.vChildren.children; // better search view clashes this
+                                        backlinkItemEl = fileDom?.childrenEl.querySelectorAll<HTMLElement>('.search-result-file-match')[index];
+                                        
+                                        backlinkItemEl.addClass('hovered-backlink');
+                                    });
+
+                                    this.eventManager.registerDomEvent(textDiv, 'mouseout', (event) => {
+                                        backlinkItemEl?.removeClass('hovered-backlink');
+                                    });
+
+                                    this.eventManager.registerDomEvent(textDiv, 'click', (event) => {
+                                        const paneType = Keymap.isModEvent(event);
+                                        if (paneType) {
+                                            this.app.workspace.openLinkText(sourcePath, "", paneType, {
+                                                eState: {
+                                                    line: link.position.start.line
+                                                }
+                                            });
+                                        }
                                     });
                                 }
                             );
@@ -85,7 +126,7 @@ export class BacklinkManager extends Component implements HoverParent {
     }
 
     // This is a modified version of PDFViewerChild.prototype.hightlightText from Obsidian's app.js
-    highlightText(pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number, onHover?: (evt: MouseEvent, el: HTMLElement) => void) {
+    highlightText(pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number, onHighlight?: (textDiv: HTMLElement) => void) {
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
             const pageView = this.viewer.pdfViewer.getPageView(pageNumber - 1);
             if (pageView != null && pageView.div.dataset.loaded) {
@@ -110,9 +151,7 @@ export class BacklinkManager extends Component implements HoverParent {
                     const textNode = document.createTextNode(text);
                     if (className) {
                         textDiv.createSpan(className + " appended").append(textNode);
-                        if (onHover) {
-                            this.eventManager.registerDomEvent(textDiv, 'mouseover', (evt) => onHover(evt, textDiv));
-                        }
+                        onHighlight?.(textDiv);
                     }
                     else textDiv.append(textNode);
                 }
@@ -136,7 +175,9 @@ export class BacklinkManager extends Component implements HoverParent {
 
     clearTextHighlight() {
         for (const { page, index } of this.highlightedTexts) {
-            const { textDivs, textContentItems } = this.viewer.pdfViewer.getPageView(page - 1).textLayer;
+            const pageView = this.viewer.pdfViewer.getPageView(page - 1);
+            if (!pageView) return;
+            const { textDivs, textContentItems } = pageView.textLayer;
             const textDiv = textDivs[index];
             textDiv.textContent = textContentItems[index].str;
             textDiv.className = textDiv.hasClass("textLayerNode") ? "textLayerNode" : "";

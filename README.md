@@ -11,6 +11,7 @@ Each feature can be toggled on and off in the plugin settings.
 
 - **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink.
 - **Backlink highlights background color**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
+- **Highlight hovered backlinks in the backlinks pane**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane]((https://help.obsidian.md/Plugins/Backlinks)). This feature is compatible with the [Better Search Views]((https://github.com/ivan-lednev/better-search-views)) plugin.
 
 These features enrich Obsidian as a stand-alone PDF annotation tool. I recommend combining the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
 

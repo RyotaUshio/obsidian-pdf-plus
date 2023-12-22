@@ -1,6 +1,9 @@
 import { BacklinkManager } from 'backlinks';
-import { App, Component, EditableFileView, Modal, PluginSettingTab, Scope, SettingTab, TFile } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
+
+
+/** PDF-related */
 
 interface PDFView extends EditableFileView {
     viewer: PDFViewer;
@@ -119,6 +122,196 @@ interface TextContentItem {
     hasEOL: boolean;
 }
 
+/** Backlink view */
+
+interface BacklinkView extends FileView {
+    backlink: BacklinkRenderer;
+    update(): void;
+}
+
+type TFileSortOrder = "alphabetical" | "alphabeticalReverse" | "byModifiedTime" | "byModifiedTimeReverse" | "byCreatedTime" | "byCreatedTimeReverse";
+
+interface BacklinkRenderer {
+    collapseAll: boolean;
+    extraContext: boolean;
+    sortOrder: TFileSortOrder;
+    showSearch: boolean;
+    searchQuery: null;
+    backlinkFile: null;
+    backlinkCollapsed: boolean;
+    backlinkQueue: Queue | null;
+    unlinkedFile: null;
+    unlinkedCollapsed: boolean;
+    unlinkedAliases: "";
+    unlinkedQueue: Queue | null;
+    app: App;
+    headerDom: any;
+    collapseAllButtonEl: HTMLElement;
+    extraContextButtonEl: HTMLElement;
+    showSearchButtonEl: HTMLElement;
+    backlinkHeaderEl: HTMLElement | null;
+    backlinkCountEl: HTMLElement | null;
+    backlinkDom: SearchResultDom;
+    unlinkedHeaderEl: HTMLElement | null;
+    unlinkedCountEl: HTMLElement | null;
+    unlinkedDom: SearchResultDom;
+    searchComponent: SearchComponent;
+}
+
+interface SearchResultDom {
+    changed: Debouncer<any, void>;
+    infinityScroll: any;
+    vChildren: VChildren<SearchResultDom, SearchResultFileDom>;
+    resultDomLookup: Map<TFile, SearchResultFileDom>;
+    focusedItem: SearchResultItemDom | null;
+    info: {
+        height: number;
+        width: number;
+        childLeft: number;
+        childLeftPadding: number;
+        childTop: number;
+        computed: boolean;
+        queued: boolean;
+        hidden: boolean;
+        next: boolean;
+    };
+    pusherEl: HTMLElement;
+    emptyStateEl: HTMLElement;
+    showingEmptyState: boolean;
+    working: boolean;
+    sortOrder: TFileSortOrder;
+    cleared: boolean;
+    collapseAll: boolean;
+    extraContext: boolean;
+    app: App;
+    el: HTMLElement;
+    childrenEl: HTMLElement;
+
+    startLoader(): void;
+    stopLoader(): void;
+    onChange(): void;
+    emptyResults(): void;
+    getResult(file: TFile): SearchResultFileDom | undefined;
+    addResult(file: TFile, result: any, content: string, showTitle: boolean): SearchResultFileDom;
+    removeResult(file: TFile): void;
+    setCollapseAll(collapseAll: boolean): void;
+    setExtraContext(extraContext: boolean): void;
+    onResize(): void;
+    getFiles(): TFile[];
+    getMatchCount(): number;
+    setFocusedItem(item: SearchResultItemDom | null): void;
+    changeFocusedItem(item: SearchResultItemDom | null): void;
+}
+
+interface SearchResultFileDom {
+    onMatchRender: Function | null;
+    collapsible: boolean;
+    collapsed: boolean;
+    extraContext: boolean;
+    showTitle: boolean;
+    separateMatches: boolean;
+    info: {
+        height: number;
+        width: number;
+        childLeft: number;
+        childLeftPadding: number;
+        childTop: number;
+        computed: boolean;
+        queued: boolean;
+        hidden: boolean;
+        next: boolean;
+    };
+    vChildren: VChildren<SearchResultFileDom, SearchResultItemDom>;
+    pusherEl: HTMLElement;
+    app: App;
+    parentDom: SearchResultDom;
+    childrenEl: HTMLElement;
+    result: {
+        content: SearchMatches;
+        properties: any[];
+    };
+    content: string;
+    file: TFile;
+    parent?: SearchResultDom; // same as parentDom
+    renderContentMatches(): void;
+    onResultMouseover(event: MouseEvent, el: HTMLElement, matches: SearchMatches): void;
+}
+
+interface SearchResultItemDom {
+    parentDom: SearchResultDom;
+    content: string;
+    cache: CachedMetadata;
+    start: number; // start position of a link (Loc.offset)
+    end: number; // end position of a link (Loc.offset)
+    matches: SearchMatches;
+    mutateEState: any;
+    el: HTMLElement;
+    showMoreBeforeEl: HTMLElement;
+    showMoreAfterEl: HTMLElement;
+    info: {
+        height: number;
+        width: number;
+        childLeft: number;
+        childLeftPadding: number;
+        childTop: number;
+        computed: boolean;
+        queued: boolean;
+        hidden: boolean;
+        next: boolean;
+    };
+    onMatchRender: Function | null;
+    parent?: SearchResultFileDom; // same as parentDom
+
+    onResultClick(evt: Event): void;
+    onFocusEnter(evt: Event): void;
+    onFocusExit(evt: Event): void;
+    toggleShowMoreContextButtons(): void;
+    showMoreBefore(): void;
+    showMoreAfter(): void;
+    getPrevPos(pos: number): number;
+    getNextPos(pos: number): number;
+    render(dotsBefore: boolean, dotsAfter: boolean): void;
+}
+
+interface VChildren<Owner, Child extends { parent?: Owner }> {
+    owner: Owner;
+    readonly children: Child[];
+    addChild(child: Child): void;
+    setChildren(children: Child[]): void;
+    removeChild(child: Child): void;
+    hasChildren(): boolean;
+    first(): Child | undefined;
+    last(): Child | undefined;
+    size(): number;
+    sort(compareFn?: (a: Child, b: Child) => number): Child[];
+    clear(): void;
+}
+
+interface RunnableInit {
+    onStart?: () => void;
+    onStop?: () => void;
+    onCancel?: () => void;
+}
+
+interface Runnable {
+    running: boolean;
+    cancelled: boolean;
+    onStart: (() => void) | null;
+    onStop: (() => void) | null;
+    onCancel: (() => void) | null;
+    start(): void;
+    stop(): void;
+    cancel(): void;
+    isRunning(): boolean;
+    isCancelled(): boolean;
+}
+
+interface Queue {
+    items: any;
+    promise: Promise<void> | null;
+    runnable: Runnable;
+}
+
 interface AppSetting extends Modal {
     openTab(tab: SettingTab): void;
     openTabById(id: string): any;
@@ -140,12 +333,26 @@ interface CustomArrayDict<T> {
     count: () => number;
 }
 
+type EmbedCreator = (info: any, file: TFile, subpath: string) => Component;
+
+interface EmbedRegistry {
+    embedByExtension: Record<string, EmbedCreator>;
+
+    registerExtension(extension: string, embedCreator: EmbedCreator): void;
+    unregisterExtension(extension: string): void;
+    registerExtensions(extensions: string[], embedCreator: EmbedCreator): void;
+    unregisterExtensions(extensions: string[]): void;
+    isExtensionRegistered(extension: string): boolean;
+    getEmbedCreator(file: TFile): EmbedCreator | null;
+}
+
 declare module "obsidian" {
     interface App {
         setting: AppSetting;
         plugins: {
             manifests: Record<string, PluginManifest>;
         }
+        embedRegistry: EmbedRegistry;
     }
 
     interface PluginSettingTab {
@@ -154,5 +361,9 @@ declare module "obsidian" {
 
     interface MetadataCache {
         getBacklinksForFile(file: TFile): CustomArrayDict<LinkCache>;
+    }
+
+    interface WorkspaceLeaf {
+        openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
     }
 }
