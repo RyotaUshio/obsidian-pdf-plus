@@ -13,7 +13,7 @@ Transform a link to a PDF file into a highlighted annotation.
 
 - **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification.
   - By default, all backlinks are highlighted. But there is an option that allows you to highlight only backlinks with colors specified in the link text (see below).
-- **Easily navigate to backlinks by hovering over a highlighted text in PDF viewer**: you can choose what happens when you hover over a highlighted text between the followings:
+- **Easily navigate to backlinks by pressing `Ctrl`/`Cmd` (by default) while hovering over a highlighted text in PDF viewer.**: you can choose what happens when you hover over a highlighted text between the followings:
   - Open backlink
   - Popover preview of backlink
 - **Double click a piece of highlighted text to open the corresponding backlink**

@@ -1,5 +1,6 @@
 import { DropdownComponent, HexString, Notice, PluginSettingTab, Setting } from 'obsidian';
 import PDFPlus from 'main';
+import { getModifierNameInPlatform } from 'utils';
 
 const HOVER_HIGHLIGHT_ACTIONS = {
 	'open': 'Open backlink',
@@ -237,10 +238,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
-
-		(window as any).tab = this;
+		this.containerEl.empty();
 
 		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
 
@@ -251,7 +249,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
 		this.addDropdowenSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS)
 			.setName('Action when hovering over highlighted text')
-			.setDesc('Easily open backlinks or display a popover preview of it by hovering over a highlighted text in PDF viewer.');
+			.setDesc(`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`);
+		this.addSetting()
+			.setName(`Require ${getModifierNameInPlatform('Mod')} to the above action`)
+			.setDesc('You can toggle this on and off in the core Page Preview plugin settings > PDF++ hover action.')
+			.addButton((button) => {
+				button.setButtonText('Open')
+					.onClick(() => {
+						this.app.setting.openTabById('page-preview')
+					});
+			});
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
 			.setName('Double click a piece of highlighted text to open the corresponding backlink');
 		this.addToggleSetting('highlightBacklinksPane')

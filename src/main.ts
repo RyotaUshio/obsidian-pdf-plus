@@ -85,7 +85,7 @@ export default class PDFPlus extends Plugin {
 
 		this.registerHoverLinkSource('pdf-plus', {
 			defaultMod: true,
-			display: 'PDF++ backlinks'
+			display: 'PDF++ hover action'
 		});
 
 		this.registerCommands();
