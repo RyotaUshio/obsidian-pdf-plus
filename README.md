@@ -9,8 +9,13 @@ Each feature can be toggled on and off in the plugin settings.
 
 ### Backlinks to PDF files
 
-- **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink.
+Transform a link to a PDF file into a highlighted annotation.
+
+- **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification.
   - By default, all backlinks are highlighted. But there is an option that allows you to highlight only backlinks with colors specified in the link text (see below).
+- **Easily navigate to backlinks by hovering over a highlighted text in PDF viewer**: you can choose what happens when you hover over a highlighted text between the followings:
+  - Open backlink
+  - Popover preview of backlink
 - **Double click a piece of highlighted text to open the corresponding backlink**
 - **Highlight hovered backlinks in the backlinks pane**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane]((https://help.obsidian.md/Plugins/Backlinks)). This feature is compatible with the [Better Search Views]((https://github.com/ivan-lednev/better-search-views)) plugin.
 - **Custom highlight colors**: Append `&color={{COLOR NAME}}` to a link text to highlight the selection with a specified color, where `{{COLOR NAME}}` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
@@ -51,6 +56,12 @@ But you can install the latest release using [BRAT](https://github.com/TfTHacker
 2. _(Optional but highly recommended)_ In the BRAT settings, turn on `Auto-update plugins at startup` at the top of the page.
 3. Open the following URL in browser: `obsidian://brat?plugin=RyotaUshio/obsidian-pdf-plus`.
 4. Click the "Add Plugin" button.
+
+## Remarks
+
+The following plugin(s) alters Obsidian's internals in such a way that prevent some aspects of other plugins from working properly, so I don't recommend using it together with this plugin.
+
+- [Close similar tabs](https://github.com/1C0D/Obsidian-Close-Similar-Tabs)
 
 ## Development principles
 

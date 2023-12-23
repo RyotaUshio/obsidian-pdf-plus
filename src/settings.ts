@@ -1,6 +1,10 @@
 import { DropdownComponent, HexString, Notice, PluginSettingTab, Setting } from 'obsidian';
 import PDFPlus from 'main';
 
+const HOVER_HIGHLIGHT_ACTIONS = {
+	'open': 'Open backlink',
+	'preview': 'Popover preview of backlink',
+} as const;
 
 export interface PDFPlusSettings {
 	alias: boolean;
@@ -20,7 +24,7 @@ export interface PDFPlusSettings {
 	colorPaletteInToolbar: boolean;
 	highlightColorSpecifiedOnly: boolean;
 	doubleClickHighlightToOpenBacklink: boolean;
-	openOnHoverHighlight: boolean;
+	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -45,7 +49,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	colorPaletteInToolbar: true,
 	highlightColorSpecifiedOnly: false,
 	doubleClickHighlightToOpenBacklink: true,
-	openOnHoverHighlight: true,
+	hoverHighlightAction: 'open',
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -104,12 +108,26 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 	}
 
-	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: readonly string[], display?: (option: string) => string, extraOnChange?: (value: string) => void) {
+	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: readonly string[], display?: (option: string) => string, extraOnChange?: (value: string) => void): Setting;
+	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: Record<string, string>, extraOnChange?: (value: string) => void): Setting;
+	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, ...args: any[]) {
+		let options: string[] = [];
+		let display = (optionValue: string) => optionValue;
+		let extraOnChange = (value: string) => { };
+		if (Array.isArray(args[0])) {
+			options = args[0];
+			if (typeof args[1] === 'function') display = args[1];
+			if (typeof args[2] === 'function') extraOnChange = args[2];
+		} else {
+			options = Object.keys(args[0]);
+			display = (optionValue: string) => args[0][optionValue];
+			if (typeof args[1] === 'function') extraOnChange = args[1];
+		}
 		return this.addSetting()
 			.addDropdown((dropdown) => {
 				const displayNames = new Set<string>();
 				for (const option of options) {
-					const displayName = display?.(option) ?? option;
+					const displayName = display(option) ?? option;
 					if (!displayNames.has(displayName)) {
 						dropdown.addOption(option, displayName);
 						displayNames.add(displayName);
@@ -230,10 +248,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Transform a link to a PDF file into a highlighted annotation.');
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks')
-			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification. Additionally, when you hover over the highlighted text, a popover will appear, displaying the corresponding backlink. (Being a new feature, this may not work well in some cases. Please reopen the tab if you encounter any problem.)');
-		this.addToggleSetting('openOnHoverHighlight')
-			.setName('Actually open backlink rather than popover preview when hovering over a highlight')
-			.setDesc('When hovering over a highlight, actually open the corresponding backlink instead of displaying a popover preview')
+			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
+		this.addDropdowenSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS)
+			.setName('Action when hovering over highlighted text')
+			.setDesc('Easily open backlinks or display a popover preview of it by hovering over a highlighted text in PDF viewer.');
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
 			.setName('Double click a piece of highlighted text to open the corresponding backlink');
 		this.addToggleSetting('highlightBacklinksPane')

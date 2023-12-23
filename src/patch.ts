@@ -1,7 +1,7 @@
 import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
-import { ColorComponent, EditableFileView, FileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, parseLinktext } from "obsidian";
+import { ColorComponent, EditableFileView, FileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceParent, WorkspaceSplit, parseLinktext } from "obsidian";
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
 import { addColorPalette, highlightSubpath, isHexString, onTextLayerReady } from "utils";
 
@@ -176,21 +176,28 @@ export const patchPagePreview = (plugin: PDFPlus) => {
     plugin.register(around(pagePreview.constructor.prototype, {
         onLinkHover(old) {
             return function (hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void {
-                if (plugin.settings.openOnHoverHighlight && hoverParent instanceof BacklinkManager) {
+                if (plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkManager) {
+                    // 1. If the target markdown file is already opened, open the link in the same leaf
+                    // 2. If not, create a new leaf under the same parent split as the first existing markdown leaf
                     const file = app.metadataCache.getFirstLinkpathDest(linktext, sourcePath);
-                    let leafFound = false;
-                    app.workspace.iterateAllLeaves((leaf) => {
-                        if (leafFound) return;
+                    let markdownLeaf: WorkspaceLeaf | null = null;
+                    let markdownLeafParent: WorkspaceSplit | null = null;
+                    app.workspace.iterateRootLeaves((leaf) => {
+                        if (markdownLeaf) return;
 
-                        if (leaf.view instanceof MarkdownView && leaf.view.file === file) {
-                            leaf.openLinkText(linktext, sourcePath, { eState: { line: state.scroll } });
-                            leafFound = true;
+                        if (leaf.view instanceof MarkdownView) {
+                            markdownLeafParent = leaf.parentSplit;
+                            if (leaf.view.file === file) {
+                                markdownLeaf = leaf;
+                            }
                         }
                     });
-                    if (!leafFound) {
-                        // seems like the third parameter is just ignored by Obsidian??
-                        app.workspace.openLinkText(linktext, sourcePath, true, { eState: { line: state.scroll } });
+                    if (!markdownLeaf) {
+                        markdownLeaf = markdownLeafParent
+                            ? app.workspace.createLeafInParent(markdownLeafParent, -1)
+                            : app.workspace.getLeaf('tab');
                     }
+                    markdownLeaf.openLinkText(linktext, sourcePath, { eState: { line: state.scroll } });
                     return;
                 }
                 old.call(this, hoverParent, targetEl, linktext, sourcePath, state);
