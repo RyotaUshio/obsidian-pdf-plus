@@ -113,7 +113,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 }
 
                 if (self.isEmbed && plugin.settings.zoomInEmbed) {
-                    onTextLayerReady(self, async () => {
+                    onTextLayerReady(self, null, async () => {
                         for (self._zoomedIn ??= 0; self._zoomedIn < plugin.settings.zoomInEmbed; self._zoomedIn++) {
                             self.zoomIn();
                             await sleep(50);

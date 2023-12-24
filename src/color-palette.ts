@@ -22,7 +22,6 @@ export class ColorPalette {
         plugin.registerEl(toolbarLeftEl.createDiv('pdf-toolbar-spacer'));
         this.paletteEl = plugin.registerEl(toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS }));
 
-
         for (const [name, color] of Object.entries(plugin.settings.colors)) {
             if (!isHexString(color)) continue;
 

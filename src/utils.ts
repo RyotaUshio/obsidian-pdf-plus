@@ -1,8 +1,8 @@
-import { PDFAnnotationHighlight, PDFTextHighlight, PDFView } from 'typings';
-import { App, ColorComponent, Keymap, Menu, Modifier, Platform, setIcon, setTooltip } from 'obsidian';
+import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView } from 'typings';
+import { App, Component, Modifier, Platform } from 'obsidian';
 import { ObsidianViewer, PDFViewerChild } from 'typings';
 import PDFPlus from 'main';
-import { COLOR_PALETTE_ACTIONS } from 'settings';
+
 export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement | null {
     if (!pageEl.contains(node))
         return null;
@@ -17,28 +17,45 @@ export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement |
     return null
 }
 
-export function onTextLayerReady(viewer: ObsidianViewer, cb: () => any) {
-    if (viewer.dom?.viewerEl.querySelector('.textLayer')) {
-        cb();
-        return;
-    }
-    const listener = async () => {
-        await cb();
-        viewer.eventBus._off("textlayerrendered", listener);
+/** 
+ * Register a callback executed when the text layer for a page gets rendered. 
+ * Note that PDF rendering is "lazy"; the text layer for a page is not rendered until the page is scrolled into view.
+ * 
+ * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
+ */
+export function onTextLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageView: PDFPageView, pageNumber: number) => any) {
+    viewer.pdfViewer._pages
+        .forEach((pageView, pageIndex) => {
+            if (pageView.textLayer) {
+                cb(pageView, pageIndex + 1); // page number is 1-based
+            }
+        });
+    const listener = async (data: { source: PDFPageView, pageNumber: number, numTextDivs: number }) => {
+        await cb(data.source, data.pageNumber);
+        if (!component) viewer.eventBus.off("textlayerrendered", listener);
     };
-    viewer.eventBus._on("textlayerrendered", listener);
+    component?.register(() => viewer.eventBus.off("textlayerrendered", listener));
+    return viewer.eventBus.on("textlayerrendered", listener);
 }
 
-export function onAnnotationLayerReady(viewer: ObsidianViewer, cb: () => any) {
-    if (viewer.dom?.viewerEl.querySelector('.annotationLayer')) {
-        cb();
-        return;
-    }
-    const listener = async () => {
-        await cb();
-        viewer.eventBus._off("annotationlayerrendered", listener);
+/** 
+ * Register a callback executed when the annotation layer for a page gets rendered. 
+ * 
+ * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
+ */
+export function onAnnotationLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageView: PDFPageView, pageNumber: number) => any) {
+    viewer.pdfViewer._pages
+        .forEach((pageView, pageIndex) => {
+            if (pageView.annotationLayer) {
+                cb(pageView, pageIndex + 1); // page number is 1-based
+            }
+        });
+    const listener = async (data: { source: PDFPageView, pageNumber: number }) => {
+        await cb(data.source, data.pageNumber);
+        if (!component) viewer.eventBus.off("annotationlayerrendered", listener);
     };
-    viewer.eventBus._on("annotationlayerrendered", listener);
+    component?.register(() => viewer.eventBus.off("annotationlayerrendered", listener));
+    return viewer.eventBus.on("annotationlayerrendered", listener);
 }
 
 export function iteratePDFViews(app: App, cb: (view: PDFView) => any) {
@@ -48,7 +65,7 @@ export function iteratePDFViews(app: App, cb: (view: PDFView) => any) {
 export function highlightSubpath(child: PDFViewerChild, subpath: string, duration: number) {
     child.applySubpath(subpath);
     if (child.subpathHighlight?.type === 'text') {
-        onTextLayerReady(child.pdfViewer, () => {
+        onTextLayerReady(child.pdfViewer, null, () => {
             if (!child.subpathHighlight) return;
             const { page, range } = child.subpathHighlight as PDFTextHighlight;
             child.highlightText(page, range);
@@ -60,7 +77,7 @@ export function highlightSubpath(child: PDFViewerChild, subpath: string, duratio
             }
         });
     } else if (child.subpathHighlight?.type === 'annotation') {
-        onAnnotationLayerReady(child.pdfViewer, () => {
+        onAnnotationLayerReady(child.pdfViewer, null, () => {
             if (!child.subpathHighlight) return;
             const { page, id } = child.subpathHighlight as PDFAnnotationHighlight;
             child.highlightAnnotation(page, id);

@@ -110,6 +110,7 @@ interface RawPDFViewer {
     pdfDocument: PDFDocumentProxy;
     pagesPromise: Promise<any> | null;
     currentPageNumber: number; // accessor property; setter can be used to scroll to a page
+    _pages: PDFPageView[];
     getPageView(page: number): PDFPageView;
 }
 
@@ -117,8 +118,8 @@ interface PDFPageView {
     pdfPage: PDFPageProxy;
     viewport: PageViewport;
     div: HTMLDivElement; // div.page[data-page-number][data-loaded]
-    textLayer: TextLayerBuilder;
-    annotationLayer: AnnotationLayerBuilder;
+    textLayer: TextLayerBuilder | null;
+    annotationLayer: AnnotationLayerBuilder | null;
 }
 
 interface TextLayerBuilder {
@@ -391,6 +392,8 @@ declare module "obsidian" {
     }
 
     interface MetadataCache {
+        initialized: boolean;
+        on(name: 'initialized', callback: () => void, ctx?: any): EventRef;
         getBacklinksForFile(file: TFile): CustomArrayDict<LinkCache>;
     }
 
