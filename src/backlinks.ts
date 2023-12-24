@@ -120,6 +120,7 @@ export class BacklinkManager extends Component implements HoverParent {
                                 hoverParent: this,
                                 targetEl: highlightedEl,
                                 linktext: sourcePath,
+                                sourcePath: this.file?.path ?? '',
                                 state: { scroll: linkCache.position.start.line }
                             });
 

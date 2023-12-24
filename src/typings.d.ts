@@ -404,6 +404,10 @@ declare module "obsidian" {
         openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
     }
 
+    interface WorkspaceTabs {
+        children: WorkspaceItem[];
+    }
+
     interface Menu {
         items: MenuItem[];
         setParentElement(el: HTMLElement): Menu;

@@ -1,4 +1,4 @@
-import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, getLinkpath, parseLinktext } from "obsidian";
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, getLinkpath, parseLinktext } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
@@ -185,7 +185,7 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                 const { path: linkpath, subpath } = parseLinktext(linktext);
                 const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
-                if (plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkManager) {
+                if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkManager) {
                     // 1. If the target markdown file is already opened, open the link in the same leaf
                     // 2. If not, create a new leaf under the same parent split as the first existing markdown leaf
                     let markdownLeaf: WorkspaceLeaf | null = null;
@@ -193,8 +193,23 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                     app.workspace.iterateRootLeaves((leaf) => {
                         if (markdownLeaf) return;
 
+                        let createInSameParent = true;
+
                         if (leaf.view instanceof MarkdownView) {
-                            markdownLeafParent = leaf.parentSplit;
+                            if (leaf.parentSplit instanceof WorkspaceTabs) {
+                                const sharesSameTabParentWithThePDF = leaf.parentSplit.children.some((item) => {
+                                    if (item instanceof WorkspaceLeaf && item.view.getViewType() === 'pdf') {
+                                        const view = item.view as PDFView;
+                                        return view.file?.path === sourcePath;
+                                    }
+                                });
+                                if (sharesSameTabParentWithThePDF) {
+                                    createInSameParent = false;
+                                }
+                            }
+
+                            if (createInSameParent) markdownLeafParent = leaf.parentSplit;
+
                             if (leaf.view.file === file) {
                                 markdownLeaf = leaf;
                             }
