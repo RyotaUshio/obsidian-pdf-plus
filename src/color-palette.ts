@@ -17,18 +17,23 @@ export class ColorPalette {
         plugin.registerEl(toolbarLeftEl.createDiv('pdf-toolbar-spacer'));
         this.paletteEl = plugin.registerEl(toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS }));
         this.itemEls = [];
-        this.action = 'copyLink';
+        this.action = plugin.settings.defaultColorPaletteAction;
 
         for (const [name, color] of Object.entries(plugin.settings.colors)) {
             if (!isHexString(color)) continue;
 
-            const itemEl = this.paletteEl.createDiv({ cls: [ColorPalette.CLS + '-item'] });
+            const itemEl = this.paletteEl.createDiv({ 
+                cls: ColorPalette.CLS + '-item',
+                attr: {
+                    'data-highlight-color': name,
+                }
+            });
             this.itemEls.push(itemEl);
 
             const pickerEl = itemEl.createEl("input", { type: "color" });
             pickerEl.value = color;
 
-            setTooltip(pickerEl, COLOR_PALETTE_ACTIONS[this.action] + ` and add ${name.toLowerCase()} highlight`);
+            this.setTooltipToItem(itemEl, name);
             plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
                 if (this.action === 'copyLink') copyLinkToSelection(plugin, false, false, { color: name });
                 else if (this.action === 'copyEmbed') copyLinkToSelection(plugin, true, false, { color: name });
@@ -51,6 +56,9 @@ export class ColorPalette {
                             .onClick(() => {
                                 this.action = action as keyof typeof COLOR_PALETTE_ACTIONS;
                                 menu.items.forEach((item) => item.setChecked(this.action === action));
+                                this.itemEls.forEach((itemEl) => {
+                                    this.setTooltipToItem(itemEl, itemEl.dataset.highlightColor!);
+                                });
                             })
                     });
                 }
@@ -65,6 +73,11 @@ export class ColorPalette {
                 });
             });
         });
+    }
+
+    setTooltipToItem(itemEl: HTMLElement, name: string) {
+        const pickerEl = itemEl.querySelector<HTMLInputElement>(':scope > input[type="color"]')!;
+        setTooltip(pickerEl, COLOR_PALETTE_ACTIONS[this.action] + ` and add ${name.toLowerCase()} highlight`);
     }
 }
 

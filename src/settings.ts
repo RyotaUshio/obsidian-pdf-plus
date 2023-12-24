@@ -43,6 +43,7 @@ export interface PDFPlusSettings {
 	doubleClickHighlightToOpenBacklink: boolean;
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
 	paneTypeForFirstMDLeaf: ExtendedPaneType;
+	defaultColorPaletteAction: keyof typeof COLOR_PALETTE_ACTIONS;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -70,6 +71,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'open',
 	paneTypeForFirstMDLeaf: 'split',
+	defaultColorPaletteAction: 'copyLink',
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -324,10 +326,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					dropdown.selectEl.id = 'pdf-plus-default-color-dropdown';
 				})
 		}
-
 		this.addToggleSetting('colorPaletteInToolbar')
 			.setName('Show color palette in the toolbar')
 			.setDesc('A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with "&color=..." appended.');
+		this.addDropdowenSetting('defaultColorPaletteAction', COLOR_PALETTE_ACTIONS)
+			.setName('Default action when clicking on a color palette item')
+			.setDesc('You can change it for each viewer with the dropdown menu in the color palette.')
 
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.redisplay())
