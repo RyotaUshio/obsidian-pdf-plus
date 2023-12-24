@@ -208,7 +208,6 @@ export const patchPagePreview = (plugin: PDFPlus) => {
 
                 if (plugin.settings.hoverPDFLinkToOpen && file?.extension === 'pdf') {
                     const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
-                        console.log({targetFile: file, leafFile: (leaf.view as any).file})
                         return leaf.view instanceof EditableFileView && leaf.view.file === file;
                     });
                     if (leaf) {
