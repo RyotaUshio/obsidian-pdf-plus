@@ -209,6 +209,7 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                         active: !plugin.settings.dontActivateAfterOpenMD,
                         eState: state?.scroll ? { line: state.scroll } : undefined
                     });
+                    app.workspace.revealLeaf(markdownLeaf);
                     return;
                 }
 
