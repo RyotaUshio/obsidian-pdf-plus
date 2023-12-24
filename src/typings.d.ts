@@ -1,7 +1,8 @@
-import { EditorView } from '@codemirror/view';
-import { BacklinkManager } from 'backlinks';
 import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent } from 'obsidian';
+import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
+
+import { BacklinkManager } from 'backlinks';
 
 
 /** PDF-related */

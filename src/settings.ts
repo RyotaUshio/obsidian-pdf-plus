@@ -1,6 +1,8 @@
 import { DropdownComponent, HexString, Notice, PaneType, PluginSettingTab, Setting } from 'obsidian';
+
 import PDFPlus from 'main';
 import { getModifierNameInPlatform } from 'utils';
+
 
 const HOVER_HIGHLIGHT_ACTIONS = {
 	'open': 'Open backlink',

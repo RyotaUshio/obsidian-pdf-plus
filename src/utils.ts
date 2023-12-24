@@ -1,7 +1,8 @@
-import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView } from 'typings';
 import { App, Component, Modifier, Platform } from 'obsidian';
-import { ObsidianViewer, PDFViewerChild } from 'typings';
+
 import PDFPlus from 'main';
+import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild } from 'typings';
+
 
 export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement | null {
     if (!pageEl.contains(node))

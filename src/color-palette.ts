@@ -1,5 +1,6 @@
-import PDFPlus from 'main';
 import { App, Menu, setIcon, setTooltip } from 'obsidian';
+
+import PDFPlus from 'main';
 import { COLOR_PALETTE_ACTIONS } from 'settings';
 import { copyAsQuote, copyLinkToSelection, isHexString } from 'utils';
 

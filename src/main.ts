@@ -1,10 +1,11 @@
 import { Component, Notice, Plugin } from 'obsidian';
-import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
+
 import { patchPDF, patchPagePreview, patchWorkspace } from 'patch';
-import { PDFView, PDFViewerChild } from 'typings';
-import { copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
 import { BacklinkManager } from 'backlinks';
 import { ColorPalette } from 'color-palette';
+import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
+import { copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
+import { PDFView, PDFViewerChild } from 'typings';
 
 
 export default class PDFPlus extends Plugin {

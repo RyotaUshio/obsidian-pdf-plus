@@ -1,7 +1,8 @@
-import PDFPlus from "main";
 import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile, parseLinktext } from "obsidian";
-import { BacklinkView, ObsidianViewer } from "typings";
+
+import PDFPlus from "main";
 import { onTextLayerReady } from "utils";
+import { BacklinkView, ObsidianViewer } from "typings";
 
 
 interface BacklinkInfo {
