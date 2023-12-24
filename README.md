@@ -7,7 +7,7 @@ See [here](#installation) for an installation guide.
 
 > [!note]
 > - This plugin is in the early phase of its development. Some parts are still clunky.
-> - ***I'm by no means an expert of web engineering or PDF handling. (As of Dec 2023, I've just started learning JavaScript half a year ago!) If you have some experiences, your help will be much appreciated.***
+> - If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
 
 ## Features
 
