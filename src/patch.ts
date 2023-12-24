@@ -150,7 +150,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                         });
                         if (leaf) {
                             openViewState = openViewState ?? {};
-                            openViewState.active = !plugin.settings.dontActivateAfterOpen;
+                            openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
                             return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
                                 const view = leaf.view as PDFView;
                                 const child = view.viewer.child;
@@ -197,7 +197,7 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                             ? app.workspace.createLeafInParent(markdownLeafParent, -1)
                             : app.workspace.getLeaf(plugin.settings.paneTypeForFirstMDLeaf || false);
                     }
-                    markdownLeaf.openLinkText(linktext, sourcePath, { eState: { line: state.scroll } });
+                    markdownLeaf.openLinkText(linktext, sourcePath, { active: !plugin.settings.dontActivateAfterOpenMD, eState: { line: state.scroll } });
                     return;
                 }
                 old.call(this, hoverParent, targetEl, linktext, sourcePath, state);

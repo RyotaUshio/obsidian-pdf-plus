@@ -23,7 +23,8 @@ export interface PDFPlusSettings {
 	embedUnscrollable: boolean;
 	zoomInEmbed: number;
 	openLinkCleverly: boolean;
-	dontActivateAfterOpen: boolean;
+	dontActivateAfterOpenPDF: boolean;
+	dontActivateAfterOpenMD: boolean;
 	highlightDuration: number;
 	persistentHighlightsInEmbed: boolean;
 	highlightBacklinks: boolean;
@@ -45,7 +46,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	embedUnscrollable: false,
 	zoomInEmbed: 0,
 	openLinkCleverly: true,
-	dontActivateAfterOpen: true,
+	dontActivateAfterOpenPDF: true,
+	dontActivateAfterOpenMD: true,
 	highlightDuration: 0,
 	persistentHighlightsInEmbed: true,
 	highlightBacklinks: true,
@@ -264,6 +266,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		if (this.plugin.settings.hoverHighlightAction === 'open') {
 			this.addDropdowenSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
 				.setName(`How to open markdown file with ${getModifierNameInPlatform('Mod').toLowerCase()}+hover when there is no open markdown file`);
+			this.addToggleSetting('dontActivateAfterOpenMD')
+				.setName('Don\'t move focus to markdown view after opening a backlink');
 		}
 		this.addSetting()
 			.setName(`Require ${getModifierNameInPlatform('Mod')} to the above action`)
@@ -324,8 +328,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Open PDF links cleverly')
 			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."');
 		if (this.plugin.settings.openLinkCleverly) {
-			this.addToggleSetting('dontActivateAfterOpen')
-				.setName('Don\'t move focus to PDF viewer after opening a link');
+			this.addToggleSetting('dontActivateAfterOpenPDF')
+				.setName('Don\'t move focus to PDF viewer after opening a PDF link');
 		}
 
 		this.addSetting()

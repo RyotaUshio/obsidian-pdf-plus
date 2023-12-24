@@ -26,7 +26,7 @@ These features enrich Obsidian as a stand-alone PDF annotation tool. I recommend
 ### Opening links to PDF files
 
 - **Open PDF links cleverly**: When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."
-- **Don\'t move focus to PDF viewer after opening a link**
+- **Don\'t move focus to PDF viewer after opening a PDF link**
 - **Clear highlights after a certain amount of time**
 
 ### Copying links to PDF files

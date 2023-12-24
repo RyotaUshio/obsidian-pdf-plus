@@ -1,5 +1,5 @@
 import PDFPlus from "main";
-import { App, Component, HoverParent, HoverPopover, Keymap, MarkdownView, Notice, PaneType, SectionCache, TFile, parseLinktext } from "obsidian";
+import { App, Component, HoverParent, HoverPopover, Keymap, Notice, SectionCache, TFile, parseLinktext } from "obsidian";
 import { BacklinkView, ObsidianViewer } from "typings";
 
 
@@ -16,6 +16,7 @@ export class BacklinkManager extends Component implements HoverParent {
         this.file = null;
         this.hoverPopover = null;
         this.eventManager = this.addChild(new Component());
+        plugin.addChild(this); // clear highlight on plugin unload
     }
 
     onload() {
@@ -25,6 +26,10 @@ export class BacklinkManager extends Component implements HoverParent {
                 this.highlightBacklinks();
             }));
         }
+    }
+
+    onunload() {
+        this.clearTextHighlight();
     }
 
     highlightBacklinks() {
