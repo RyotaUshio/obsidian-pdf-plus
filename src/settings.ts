@@ -14,7 +14,13 @@ const PANE_TYPE: Record<ExtendedPaneType, string> = {
 	'tab': 'New tab',
 	'split': 'Split right',
 	'window': 'New window',
-}
+};
+
+export const COLOR_PALETTE_ACTIONS = {
+	copyLink: 'Copy link to selection',
+	copyEmbed: 'Copy embed of selection',
+	copyQuote: 'Copy as quote',
+};
 
 export interface PDFPlusSettings {
 	alias: boolean;

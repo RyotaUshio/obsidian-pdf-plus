@@ -398,4 +398,9 @@ declare module "obsidian" {
         readonly parentSplit: WorkspaceSplit;
         openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
     }
+
+    interface Menu {
+        items: MenuItem[];
+        setParentElement(el: HTMLElement): Menu;
+    }
 }

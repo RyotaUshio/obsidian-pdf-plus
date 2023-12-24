@@ -2,8 +2,9 @@ import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
 import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, parseLinktext } from "obsidian";
-import { addColorPalette, highlightSubpath, onTextLayerReady } from "utils";
+import { highlightSubpath, onTextLayerReady } from "utils";
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
+import { ColorPalette } from "color-palette";
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
@@ -125,7 +126,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         reset(old) {
             return function () {
                 const self = this as PDFToolbar;
-                addColorPalette(plugin, self.toolbarLeftEl);
+                new ColorPalette(plugin, self.toolbarLeftEl);
                 old.call(this);
             }
         }

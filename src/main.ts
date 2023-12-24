@@ -2,13 +2,16 @@ import { Component, Notice, Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { patchPDF, patchPagePreview, patchWorkspace } from 'patch';
 import { PDFView, PDFViewerChild } from 'typings';
-import { addColorPalette, copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
+import { copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
 import { BacklinkManager } from 'backlinks';
+import { ColorPalette } from 'color-palette';
 
 
 export default class PDFPlus extends Plugin {
 	settings: PDFPlusSettings;
+	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object */
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
+	/** Manages DOMs and event handlers introduced by this plugin */
 	elementManager: Component;
 
 	async onload() {
@@ -20,11 +23,12 @@ export default class PDFPlus extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
-	
+		// Patch Obsidian internals
 		this.app.workspace.onLayoutReady(() => {
 			patchWorkspace(this);
 			patchPagePreview(this);
 
+			// try until it succeeds
 			const success = patchPDF(this);
 			if (!success) {
 				const notice = new Notice(`${this.manifest.name}: Open a PDF file to enable the plugin.`, 0);
@@ -40,7 +44,8 @@ export default class PDFPlus extends Plugin {
 				this.registerEvent(eventRef);
 			}
 		});
-
+		
+		// Make PDF embeds with a subpath unscrollable
 		this.registerDomEvent(document, 'wheel', (evt) => {
 			if (this.settings.embedUnscrollable
 				&& evt.target instanceof HTMLElement
@@ -49,8 +54,9 @@ export default class PDFPlus extends Plugin {
 			}
 		}, { passive: false });
 
+		// Click PDF embeds to open links
 		this.registerDomEvent(window, 'click', (evt) => {
-			if (evt.target instanceof HTMLElement) {
+			if (this.settings.clickEmbedToOpenLink && evt.target instanceof HTMLElement) {
 				const linktext = evt.target.closest('.pdf-embed[src]')?.getAttribute('src');
 				const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
 				if (linktext && viewerEl) {
@@ -60,12 +66,14 @@ export default class PDFPlus extends Plugin {
 			}
 		})
 
+		// keep this.pdfViewerChildren up-to-date
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
 			for (const viewerEl of this.pdfViwerChildren.keys()) {
 				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
 			}
 		}));
 
+		// inject components from this plugin into existing PDF views
 		this.app.workspace.onLayoutReady(() => {
 			iteratePDFViews(this.app, (view) => {
 				view.viewer.then((child) => {
@@ -78,7 +86,9 @@ export default class PDFPlus extends Plugin {
 					view.viewer.backlinkManager.file = view.file;
 					view.viewer.backlinkManager.highlightBacklinks();
 
-					if (child.toolbar) addColorPalette(this, child.toolbar.toolbarLeftEl);
+					if (child.toolbar) {
+						new ColorPalette(this, child.toolbar.toolbarLeftEl);
+					}
 				});
 			});
 		});
@@ -101,9 +111,12 @@ export default class PDFPlus extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	registerEl<HTMLElementType extends HTMLElement>(el: HTMLElementType, component?: Component) {
-		component = component ?? this.elementManager;
-		component.register(() => el.remove());
+	/** 
+	 * Registers an HTML element that will be refreshed when a style setting is updated
+	 * and will be removed when the plugin gets unloaded. 
+	 */
+	registerEl<HTMLElementType extends HTMLElement>(el: HTMLElementType) {
+		this.elementManager.register(() => el.remove());
 		return el;
 	}
 
@@ -114,7 +127,7 @@ export default class PDFPlus extends Plugin {
 		this.addChild(this.elementManager);
 
 		for (const child of this.pdfViwerChildren.values()) {
-			if (child.toolbar) addColorPalette(this, child.toolbar.toolbarLeftEl);
+			if (child.toolbar) new ColorPalette(this, child.toolbar.toolbarLeftEl);;
 		}
 
 		const styleEl = this.registerEl(createEl('style', { attr: { id: 'pdf-plus-style' } }));
@@ -142,7 +155,7 @@ export default class PDFPlus extends Plugin {
 		this.addCommand({
 			id: 'copy-link-to-selection',
 			name: 'Copy link to selection',
-			checkCallback: (checking: boolean) => copyLinkToSelection(this, checking)
+			checkCallback: (checking: boolean) => copyLinkToSelection(this, false, checking)
 		});
 	}
 
