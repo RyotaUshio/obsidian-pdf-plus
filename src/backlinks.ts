@@ -209,7 +209,8 @@ export class BacklinkManager extends Component implements HoverParent {
     clearTextHighlight() {
         for (const { page, index } of this.highlightedTexts) {
             const pageView = this.viewer.pdfViewer.getPageView(page - 1);
-            if (!pageView) return;
+            // pageView.textLayer can be null. I guess it can happen when the page is far away from the current viewport
+            if (!pageView?.textLayer) return;
             const { textDivs, textContentItems } = pageView.textLayer;
             const textDiv = textDivs[index];
             textDiv.textContent = textContentItems[index].str;
