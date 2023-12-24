@@ -41,5 +41,5 @@ if __name__ == '__main__':
     run(['git', 'add', '.'])
     run(['git', 'commit', '-m', f'release: {args.version}'])
     run(['git', 'push'])
-    run(['git', 'tag', '-a', f'{args.version}', '-m', '{args.version}'])
-    run(['git', 'push', 'origin', f'{args.version}'])
+    run(['git', 'tag', '-a', args.version, '-m', args.version])
+    run(['git', 'push', 'origin', args.version])
