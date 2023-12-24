@@ -1,9 +1,9 @@
 import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
-import { ColorComponent, EditableFileView, FileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceParent, WorkspaceSplit, parseLinktext } from "obsidian";
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, parseLinktext } from "obsidian";
+import { addColorPalette, highlightSubpath, onTextLayerReady } from "utils";
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
-import { addColorPalette, highlightSubpath, isHexString, onTextLayerReady } from "utils";
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
@@ -195,7 +195,7 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                     if (!markdownLeaf) {
                         markdownLeaf = markdownLeafParent
                             ? app.workspace.createLeafInParent(markdownLeafParent, -1)
-                            : app.workspace.getLeaf('tab');
+                            : app.workspace.getLeaf(plugin.settings.paneTypeForFirstMDLeaf || false);
                     }
                     markdownLeaf.openLinkText(linktext, sourcePath, { eState: { line: state.scroll } });
                     return;

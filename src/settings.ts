@@ -1,4 +1,4 @@
-import { DropdownComponent, HexString, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { DropdownComponent, HexString, Notice, PaneType, PluginSettingTab, Setting } from 'obsidian';
 import PDFPlus from 'main';
 import { getModifierNameInPlatform } from 'utils';
 
@@ -6,6 +6,15 @@ const HOVER_HIGHLIGHT_ACTIONS = {
 	'open': 'Open backlink',
 	'preview': 'Popover preview of backlink',
 } as const;
+
+type ExtendedPaneType = PaneType | '';
+
+const PANE_TYPE: Record<ExtendedPaneType, string> = {
+	'': 'Current tab',
+	'tab': 'New tab',
+	'split': 'Split right',
+	'window': 'New window',
+}
 
 export interface PDFPlusSettings {
 	alias: boolean;
@@ -26,6 +35,7 @@ export interface PDFPlusSettings {
 	highlightColorSpecifiedOnly: boolean;
 	doubleClickHighlightToOpenBacklink: boolean;
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
+	paneTypeForFirstMDLeaf: ExtendedPaneType;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -51,6 +61,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightColorSpecifiedOnly: false,
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'open',
+	paneTypeForFirstMDLeaf: 'split',
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -247,9 +258,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
-		this.addDropdowenSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS)
+		this.addDropdowenSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
 			.setName('Action when hovering over highlighted text')
 			.setDesc(`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`);
+		if (this.plugin.settings.hoverHighlightAction === 'open') {
+			this.addDropdowenSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
+				.setName(`How to open markdown file with ${getModifierNameInPlatform('Mod').toLowerCase()}+hover when there is no open markdown file`);
+		}
 		this.addSetting()
 			.setName(`Require ${getModifierNameInPlatform('Mod')} to the above action`)
 			.setDesc('You can toggle this on and off in the core Page Preview plugin settings > PDF++ hover action.')
