@@ -60,7 +60,6 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const self = this as PDFViewerChild;
                 const ret = old.call(this);
                 plugin.pdfViwerChildren.set(self.containerEl.find('.pdf-viewer'), self);
-                // (window as any).child = self;
                 return ret;
             }
         },
@@ -95,9 +94,9 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             return function (height?: number | "page" | "auto") {
                 const self = this as ObsidianViewer;
 
-                // (window as any).viewer = self;
-
-                if (plugin.settings.trimSelectionEmbed && self.isEmbed && self.dom && typeof self.page === 'number' && typeof height !== 'number') {
+                if (plugin.settings.trimSelectionEmbed
+                    && self.isEmbed && self.dom && typeof self.page === 'number' && typeof height !== 'number'
+                    && !(plugin.settings.ignoreHeightParamInPopoverPreview && self.dom.containerEl.parentElement?.matches('.hover-popover'))) {
                     setTimeout(() => {
                         const selected = self.dom!.viewerEl.querySelectorAll('.mod-focused');
                         if (selected.length) {
@@ -177,7 +176,8 @@ export const patchPagePreview = (plugin: PDFPlus) => {
     plugin.register(around(pagePreview.constructor.prototype, {
         onLinkHover(old) {
             return function (hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void {
-                const file = app.metadataCache.getFirstLinkpathDest(getLinkpath(linktext), sourcePath);
+                const { path: linkpath, subpath } = parseLinktext(linktext);
+                const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
                 if (plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkManager) {
                     // 1. If the target markdown file is already opened, open the link in the same leaf
@@ -199,22 +199,34 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                             ? app.workspace.createLeafInParent(markdownLeafParent, -1)
                             : app.workspace.getLeaf(plugin.settings.paneTypeForFirstMDLeaf || false);
                     }
-                    markdownLeaf.openLinkText(linktext, sourcePath, { 
-                        active: !plugin.settings.dontActivateAfterOpenMD, 
+                    markdownLeaf.openLinkText(linktext, sourcePath, {
+                        active: !plugin.settings.dontActivateAfterOpenMD,
                         eState: state?.scroll ? { line: state.scroll } : undefined
                     });
                     return;
                 }
 
-                if (plugin.settings.hoverPDFLinkToOpen && file?.extension === 'pdf') {
-                    const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
-                        return leaf.view instanceof EditableFileView && leaf.view.file === file;
-                    });
-                    if (leaf) {
-                        leaf.openLinkText(linktext, sourcePath, { 
-                            active: !plugin.settings.dontActivateAfterOpenPDF
+                if (file?.extension === 'pdf') {
+                    if (plugin.settings.hoverPDFLinkToOpen) {
+                        const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
+                            return leaf.view instanceof EditableFileView && leaf.view.file === file;
                         });
-                        return;
+                        if (leaf) {
+                            leaf.openLinkText(linktext, sourcePath, {
+                                active: !plugin.settings.dontActivateAfterOpenPDF
+                            });
+                            return;
+                        }
+                    }
+
+                    if (plugin.settings.ignoreHeightParamInPopoverPreview && subpath.contains('height=')) {
+                        const params = new URLSearchParams(subpath.slice(1));
+                        linktext = linkpath
+                            + '#'
+                            + Array.from(params.entries())
+                                .filter(([key]) => key !== 'height')
+                                .map(([key, value]) => `${key}=${value}`)
+                                .join('&');
                     }
                 }
 

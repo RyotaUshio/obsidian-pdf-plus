@@ -45,6 +45,7 @@ export interface PDFPlusSettings {
 	paneTypeForFirstMDLeaf: ExtendedPaneType;
 	defaultColorPaletteAction: keyof typeof COLOR_PALETTE_ACTIONS;
 	hoverPDFLinkToOpen: boolean;
+	ignoreHeightParamInPopoverPreview: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -73,7 +74,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	hoverHighlightAction: 'open',
 	paneTypeForFirstMDLeaf: 'split',
 	defaultColorPaletteAction: 'copyLink',
-	hoverPDFLinkToOpen: true,
+	hoverPDFLinkToOpen: false,
+	ignoreHeightParamInPopoverPreview: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -249,7 +251,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	/** Refresh the setting tab and then scroll back to the original position. */
 	redisplay() {
-		(window as any).tab = this;
 		const firstSettingEl = this.containerEl.querySelector('.setting-item:first-child');
 		if (firstSettingEl) {
 			const { top, left } = firstSettingEl.getBoundingClientRect();
@@ -365,6 +366,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addSliderSetting('highlightDuration', 0.1, 10, 0.1)
 				.setName('Highlight duration (sec)');
 		}
+		this.addToggleSetting('ignoreHeightParamInPopoverPreview')
+			.setName('Ignore "height" parameter in popover preview')
+			.setDesc('Obsidian lets you specify the height of a PDF embed by appending "&height=..." to a link, and this also applies to popover previews. Enable this option if you want to ignore the height parameter in popover previews.')
 
 		this.addHeading('Copying links to PDF files')
 		this.addToggleSetting('alias')

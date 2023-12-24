@@ -35,6 +35,7 @@ These features enrich Obsidian as a stand-alone PDF annotation tool. I recommend
 - **Open PDF link instead of showing popover preview when target PDF is already opened**: Press `Ctrl`/`Cmd` while hovering a PDF link to actually open it if the target PDF is already opened in another tab.
 - **Don\'t move focus to PDF viewer after opening a PDF link**
 - **Clear highlights after a certain amount of time**
+- **Ignore "height" parameter in popover preview**: Obsidian lets you specify the height of a PDF embed by appending `&height=...` to a link, and this also applies to popover previews. Enable this option if you want to ignore the height parameter in popover previews.
 
 ### Copying links to PDF files
 
