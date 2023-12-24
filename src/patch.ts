@@ -1,7 +1,7 @@
 import { BacklinkManager } from "backlinks";
 import PDFPlus from "main";
 import { around } from "monkey-around";
-import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, parseLinktext } from "obsidian";
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, getLinkpath, parseLinktext } from "obsidian";
 import { highlightSubpath, onTextLayerReady } from "utils";
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
 import { ColorPalette } from "color-palette";
@@ -177,10 +177,11 @@ export const patchPagePreview = (plugin: PDFPlus) => {
     plugin.register(around(pagePreview.constructor.prototype, {
         onLinkHover(old) {
             return function (hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void {
+                const file = app.metadataCache.getFirstLinkpathDest(getLinkpath(linktext), sourcePath);
+
                 if (plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkManager) {
                     // 1. If the target markdown file is already opened, open the link in the same leaf
                     // 2. If not, create a new leaf under the same parent split as the first existing markdown leaf
-                    const file = app.metadataCache.getFirstLinkpathDest(linktext, sourcePath);
                     let markdownLeaf: WorkspaceLeaf | null = null;
                     let markdownLeafParent: WorkspaceSplit | null = null;
                     app.workspace.iterateRootLeaves((leaf) => {
@@ -198,9 +199,26 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                             ? app.workspace.createLeafInParent(markdownLeafParent, -1)
                             : app.workspace.getLeaf(plugin.settings.paneTypeForFirstMDLeaf || false);
                     }
-                    markdownLeaf.openLinkText(linktext, sourcePath, { active: !plugin.settings.dontActivateAfterOpenMD, eState: { line: state.scroll } });
+                    markdownLeaf.openLinkText(linktext, sourcePath, { 
+                        active: !plugin.settings.dontActivateAfterOpenMD, 
+                        eState: state?.scroll ? { line: state.scroll } : undefined
+                    });
                     return;
                 }
+
+                if (plugin.settings.hoverPDFLinkToOpen && file?.extension === 'pdf') {
+                    const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
+                        console.log({targetFile: file, leafFile: (leaf.view as any).file})
+                        return leaf.view instanceof EditableFileView && leaf.view.file === file;
+                    });
+                    if (leaf) {
+                        leaf.openLinkText(linktext, sourcePath, { 
+                            active: !plugin.settings.dontActivateAfterOpenPDF
+                        });
+                        return;
+                    }
+                }
+
                 old.call(this, hoverParent, targetEl, linktext, sourcePath, state);
             }
         }

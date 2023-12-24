@@ -17,9 +17,9 @@ const PANE_TYPE: Record<ExtendedPaneType, string> = {
 };
 
 export const COLOR_PALETTE_ACTIONS = {
+	copyQuote: 'Copy as quote',
 	copyLink: 'Copy link to selection',
 	copyEmbed: 'Copy embed of selection',
-	copyQuote: 'Copy as quote',
 };
 
 export interface PDFPlusSettings {
@@ -44,6 +44,7 @@ export interface PDFPlusSettings {
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
 	paneTypeForFirstMDLeaf: ExtendedPaneType;
 	defaultColorPaletteAction: keyof typeof COLOR_PALETTE_ACTIONS;
+	hoverPDFLinkToOpen: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -72,6 +73,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	hoverHighlightAction: 'open',
 	paneTypeForFirstMDLeaf: 'split',
 	defaultColorPaletteAction: 'copyLink',
+	hoverPDFLinkToOpen: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -341,6 +343,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
 				.setName('Don\'t move focus to PDF viewer after opening a PDF link');
 		}
+		this.addToggleSetting('hoverPDFLinkToOpen')
+			.setName('Open PDF link instead of showing popover preview when target PDF is already opened')
+			.setDesc(`Press ${getModifierNameInPlatform('Mod').toLowerCase()} while hovering a PDF link to actually open it if the target PDF is already opened in another tab.`)
 
 		this.addSetting()
 			.setName('Clear highlights after a certain amount of time')
