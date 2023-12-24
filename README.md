@@ -3,6 +3,8 @@
 This is an [Obsidian.md](https://obsidian.md) plugin to enhance the built-in PDF viewer and PDF embeds.
 It isn't meant to replace them, but instead, it aims to add some quality-of-life improvements to them.
 
+See [here](#installation) for an installation guide.
+
 ## Features
 
 Each feature can be toggled on and off in the plugin settings.

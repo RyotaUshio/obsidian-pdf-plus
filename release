@@ -10,6 +10,8 @@ def run(cmd):
         exit(1)
 
 if __name__ == '__main__':
+    run(['git', 'switch', 'main'])
+
     parser = argparse.ArgumentParser()
     parser.add_argument('version')
     args = parser.parse_args()
@@ -24,7 +26,7 @@ if __name__ == '__main__':
 
     assert manifest['version'] == package['version']
 
-    ans = input(f'Update version from {manifest["version"]} to {args.version}? ([y]/n):')
+    ans = input(f'Update version from {manifest["version"]} to {args.version}? ([y]/n):').strip()
     if ans not in ('', 'y'):
         exit(1)
 
