@@ -25,7 +25,6 @@ export const COLOR_PALETTE_ACTIONS = {
 export interface PDFPlusSettings {
 	alias: boolean;
 	trimSelectionEmbed: boolean;
-	padding: number;
 	embedUnscrollable: boolean;
 	zoomInEmbed: number;
 	openLinkCleverly: boolean;
@@ -52,7 +51,6 @@ export interface PDFPlusSettings {
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	alias: true,
 	trimSelectionEmbed: true,
-	padding: 80,
 	embedUnscrollable: false,
 	zoomInEmbed: 0,
 	openLinkCleverly: true,
@@ -388,13 +386,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('clickEmbedToOpenLink')
 			.setName('Click PDF embeds to open links')
 			.setDesc('Clicking a PDF embed will open the embedded file.');
-		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())
+		this.addToggleSetting('trimSelectionEmbed')
 			.setName('Trim selection/annotation embeds')
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
-		if (this.plugin.settings.trimSelectionEmbed) {
-			this.addSliderSetting('padding', 0, 500, 1)
-				.setName('Padding for trimmed selection embeds (px)');
-		}
 		this.addToggleSetting('persistentHighlightsInEmbed')
 			.setName('Do not clear highlights in a selection/annotation embeds');
 		this.addToggleSetting('embedUnscrollable')

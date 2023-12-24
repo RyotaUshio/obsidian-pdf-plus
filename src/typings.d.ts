@@ -1,3 +1,4 @@
+import { EditorView } from '@codemirror/view';
 import { BacklinkManager } from 'backlinks';
 import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -402,5 +403,9 @@ declare module "obsidian" {
     interface Menu {
         items: MenuItem[];
         setParentElement(el: HTMLElement): Menu;
+    }
+
+    interface Editor {
+        cm: EditorView;
     }
 }

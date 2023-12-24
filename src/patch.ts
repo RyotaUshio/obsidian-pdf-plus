@@ -100,8 +100,11 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     setTimeout(() => {
                         const selected = self.dom!.viewerEl.querySelectorAll('.mod-focused');
                         if (selected.length) {
-                            height = selected[selected.length - 1].getBoundingClientRect().bottom - selected[0].getBoundingClientRect().top;
-                            height += plugin.settings.padding;
+                            const containerRect = self.dom!.viewerContainerEl.getBoundingClientRect();
+                            const firstRect = selected[0].getBoundingClientRect();
+                            const lastRect = selected[selected.length - 1].getBoundingClientRect();
+                            height = lastRect.bottom - firstRect.top;
+                            height += 2 * Math.abs(firstRect.top - containerRect.top);
                         }
                         old.call(this, height);
                     }, 200);
