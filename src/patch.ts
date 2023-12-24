@@ -125,7 +125,8 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         reset(old) {
             return function () {
                 const self = this as PDFToolbar;
-                new ColorPalette(plugin, self.toolbarLeftEl);
+                // without setTimeout, the colorPaletteInEmbedToolbar option doesn't work for newly opened notes with PDF embeds
+                setTimeout(() => new ColorPalette(plugin, self.toolbarLeftEl));
                 old.call(this);
             }
         }

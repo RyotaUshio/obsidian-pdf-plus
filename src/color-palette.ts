@@ -14,10 +14,14 @@ export class ColorPalette {
 
     constructor(public plugin: PDFPlus, toolbarLeftEl: HTMLElement) {
         this.app = plugin.app;
-        plugin.registerEl(toolbarLeftEl.createDiv('pdf-toolbar-spacer'));
-        this.paletteEl = plugin.registerEl(toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS }));
         this.itemEls = [];
         this.action = plugin.settings.defaultColorPaletteAction;
+
+        if (!plugin.settings.colorPaletteInEmbedToolbar && toolbarLeftEl.closest('.pdf-embed')) return;
+
+        plugin.registerEl(toolbarLeftEl.createDiv('pdf-toolbar-spacer'));
+        this.paletteEl = plugin.registerEl(toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS }));
+
 
         for (const [name, color] of Object.entries(plugin.settings.colors)) {
             if (!isHexString(color)) continue;
