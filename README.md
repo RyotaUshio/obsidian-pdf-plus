@@ -2,7 +2,7 @@
 
 This is an [Obsidian.md](https://obsidian.md) plugin for better PDF experience. Specifically:
 
-- It transforms a link to a PDF file into a highlighted annotation, establishing Obsidian as a stand-alone PDF annotation tool.
+- It transforms backlinks to PDF files into highlighted annotations, establishing Obsidian as a stand-alone PDF annotation tool.
 - It adds some quality-of-life improvements to the built-in PDF viewer and PDF embeds.
 
 See [here](#installation) for an installation guide.
