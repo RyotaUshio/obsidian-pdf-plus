@@ -48,6 +48,7 @@ export interface PDFPlusSettings {
 	defaultColorPaletteAction: keyof typeof COLOR_PALETTE_ACTIONS;
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
+	filterBacklinksByPageDefault: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -78,6 +79,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	defaultColorPaletteAction: 'copyLink',
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
+	filterBacklinksByPageDefault: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -296,6 +298,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('highlightBacklinksPane')
 			.setName('Highlight hovered backlinks in the backlinks pane')
 			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane. This feature is compatible with the Better Search Views plugin.');
+		this.addToggleSetting('filterBacklinksByPageDefault')
+			.setName('Filter backlinks by page by default')
+			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
 
 		this.addSetting()
 			.setName('Highlight colors')

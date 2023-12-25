@@ -1,8 +1,9 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent, SearchMatchPart } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent, SearchMatchPart, IconName, LinkCache, ReferenceCache } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
-import { BacklinkManager } from 'backlinks';
+import { BacklinkManager } from 'highlight';
+import { BacklinkPanePDFManager, BacklinkPanePDFPageTracker } from 'backlink';
 
 
 /** PDF-related */
@@ -157,7 +158,7 @@ interface BacklinkView extends FileView {
     backlink: BacklinkRenderer;
     update(): void;
     /** Added by this plugin */
-    pdfPageTracker?: Component;
+    pdfManager?: BacklinkPanePDFManager;
 }
 
 type TFileSortOrder = "alphabetical" | "alphabeticalReverse" | "byModifiedTime" | "byModifiedTimeReverse" | "byCreatedTime" | "byCreatedTimeReverse";
@@ -174,10 +175,10 @@ interface BacklinkRenderer extends Component {
     backlinkQueue: Queue | null;
     unlinkedFile: TFile | null;
     unlinkedCollapsed: boolean;
-    unlinkedAliases: "";
+    unlinkedAliases: string;
     unlinkedQueue: Queue | null;
     app: App;
-    headerDom: any;
+    headerDom: NavHeaderDom;
     collapseAllButtonEl: HTMLElement;
     extraContextButtonEl: HTMLElement;
     showSearchButtonEl: HTMLElement;
@@ -197,6 +198,13 @@ interface BacklinkRenderer extends Component {
 interface FileSearchResult {
     content: SearchMatches; // search result in the file content except frontmatter
     properties: { key: string, pos: SearchMatchPart, subkey: string[] }[]; // search result in the file frontmatter
+}
+
+interface NavHeaderDom {
+    app: App;
+    navHeaderEl: HTMLElement;
+    navButtonsEl: HTMLElement;
+    addNavButton(icon: IconName, tooltip: string, onClick: (evt: MouseEvent) => any, cls?: string): HTMLElement;
 }
 
 interface SearchResultDom {
@@ -243,7 +251,7 @@ interface SearchResultDom {
     setFocusedItem(item: SearchResultItemDom | null): void;
     changeFocusedItem(item: SearchResultItemDom | null): void;
     /** Added by this plugin */
-    filter?: (link: string) => boolean;
+    filter?: (file: TFile, linkCache: ReferenceCache) => boolean;
 }
 
 interface SearchResultFileDom {

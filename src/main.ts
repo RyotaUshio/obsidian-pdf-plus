@@ -4,8 +4,9 @@ import { patchPDF, patchBacklink, patchPagePreview, patchWorkspace } from 'patch
 import { BacklinkManager } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
+import { copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
 import { PDFView, PDFViewerChild } from 'typings';
+import { BacklinkPanePDFManager } from 'backlink';
 
 
 export default class PDFPlus extends Plugin {
@@ -77,6 +78,14 @@ export default class PDFPlus extends Plugin {
 						new ColorPalette(this, child.toolbar.toolbarLeftEl);
 					}
 				});
+			});
+
+			iterateBacklinkViews(this.app, (view) => {
+				if (view.file?.extension === 'pdf') {
+                    if (!view.pdfManager) {
+                        view.pdfManager = new BacklinkPanePDFManager(this, view, view.file).setParents(this, view);
+                    }
+                }
 			});
 		});
 

@@ -1,7 +1,7 @@
 import { App, Component, EditableFileView, Modifier, Platform, TFile, Workspace, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus } from 'typings';
+import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView } from 'typings';
 
 
 export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement | null {
@@ -68,6 +68,10 @@ export function onAnnotationLayerReady(viewer: ObsidianViewer, component: Compon
 
 export function iteratePDFViews(app: App, cb: (view: PDFView) => any) {
     app.workspace.getLeavesOfType('pdf').forEach((leaf) => cb(leaf.view as PDFView));
+}
+
+export function iterateBacklinkViews(app: App, cb: (view: BacklinkView) => any) {
+    app.workspace.getLeavesOfType('backlink').forEach((leaf) => cb(leaf.view as BacklinkView));
 }
 
 export function highlightSubpath(child: PDFViewerChild, subpath: string, duration: number) {
@@ -169,4 +173,21 @@ export function getExistingPDFLeafOfFile(app: App, file: TFile): WorkspaceLeaf |
 export function getExistingPDFViewOfFile(app: App, file: TFile): PDFView | undefined {
     const leaf = getExistingPDFLeafOfFile(app, file);
     if (leaf) return leaf.view as PDFView
+}
+
+export class MutationObservingChild extends Component {
+    observer: MutationObserver;
+
+    constructor(public targetEl: HTMLElement, public callback: MutationCallback, public options: MutationObserverInit) {
+        super();
+        this.observer = new MutationObserver(callback);
+    }
+
+    onload() {
+        this.observer.observe(this.targetEl, this.options);
+    }
+
+    onunload() {
+        this.observer.disconnect();
+    }
 }

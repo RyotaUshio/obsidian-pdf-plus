@@ -1,4 +1,4 @@
-import { Component, EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, getLinkpath, parseLinktext } from "obsidian";
+import { Component, EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, ReferenceCache, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, getLinkpath, parseLinktext } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
@@ -6,6 +6,7 @@ import { BacklinkManager } from "highlight";
 import { ColorPalette } from "color-palette";
 import { getExistingPDFLeafOfFile, getExistingPDFViewOfFile, highlightSubpath, onTextLayerReady, registerPDFEvent } from "utils";
 import { BacklinkRenderer, BacklinkView, FileSearchResult, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild, SearchResultDom, SearchResultFileDom } from "typings";
+import { BacklinkPanePDFManager, BacklinkPanePDFPageTracker } from "backlink";
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -278,62 +279,18 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
     plugin.register(around(Object.getPrototypeOf(backlinkView.constructor.prototype), {
         onLoadFile(old) {
             return async function (file: TFile) {
-                console.log('onLoadFile', file.path);
                 const self = this as BacklinkView;
                 await old.call(this, file);
                 if (self.getViewType() === 'backlink' && file.extension === 'pdf') {
-                    if (!self.pdfPageTracker) {
-                        self.pdfPageTracker = new Component();
-                        plugin.addChild(self.pdfPageTracker);
-                    }
-                    self.pdfPageTracker.load();
-
-                    const view = getExistingPDFViewOfFile(app, file);
-                    if (view) {
-                        view.viewer.then((child) => {
-                            registerPDFEvent('pagechanging', child.pdfViewer.eventBus, self.pdfPageTracker!, (data) => {
-                                console.log(data);
-                                if (typeof data.pageNumber === 'number') {
-                                    self.backlink.backlinkDom.filter = (link) => {
-                                        const ret = link.endsWith(`#page=${data.pageNumber}]]`) || link.contains(`#page=${data.pageNumber}&`)
-                                        ret && console.log({ link });
-                                        return ret;
-                                    };
-                                } else {
-                                    self.backlink.backlinkDom.filter = undefined;
-                                }
-
-                                // console.log('recomputeBacklink');
-                                self.backlink.backlinkDom.emptyResults();
-                                app.metadataCache.getBacklinksForFile(file).keys().forEach((path) => {
-                                    const file = app.vault.getAbstractFileByPath(path);
-                                    if (file instanceof TFile) {
-                                        self.backlink.recomputeBacklink(file);
-                                        // console.log(self.backlink.backlinkFile, self.backlink.backlinkDom.getFiles())
-                                        self.backlink.update();
-                                    }
-                                });
-                            });
-                            self.pdfPageTracker?.register(() => {
-                                self.backlink.backlinkDom.filter = undefined;
-                                app.metadataCache.getBacklinksForFile(file).keys().forEach((path) => {
-                                    const file = app.vault.getAbstractFileByPath(path);
-                                    if (file instanceof TFile) {
-                                        self.backlink.recomputeBacklink(file);
-                                        self.backlink.update();
-                                    }
-                                });
-                            });
-                        });
-                    }
+                    self.pdfManager = new BacklinkPanePDFManager(plugin, self, file).setParents(plugin, self);
                 }
             }
         },
         onUnloadFile(old) {
             return async function (file: TFile) {
                 const self = this as BacklinkView;
-                if (file.extension === 'pdf') {
-                    self.pdfPageTracker?.unload();
+                if (file.extension === 'pdf' && self.pdfManager) {
+                    self.pdfManager.unload();
                 }
                 await old.call(this, file);
             }
@@ -346,22 +303,33 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
                 const self = this as SearchResultDom;
 
                 if (self.filter) {
-                    const resultFromContent: SearchMatches = [];
-                    for (const [start, end] of result.content) {
-                        const link = content.slice(start, end);
-                        if (self.filter(link)) resultFromContent.push([start, end]);
-                    }
-                    result.content.length = 0;
-                    result.content.push(...resultFromContent);
+                    const cache = app.metadataCache.getFileCache(file);
+                    if (cache) {
+                        const findLinkCache = (start: number, end: number): ReferenceCache | undefined => {
+                            return cache.links?.find((link) => link.position.start.offset === start && link.position.end.offset === end)
+                                ?? cache.embeds?.find((embed) => embed.position.start.offset === start && embed.position.end.offset === end);
+                        };
 
-                    const resultFromProperties: { key: string, pos: SearchMatchPart, subkey: string[] }[] = [];
-                    for (const item of result.properties) {
-                        const [start, end] = item.pos;
-                        const link = content.slice(start, end);
-                        if (self.filter(link)) resultFromProperties.push(item);
+                        const resultFromContent: SearchMatches = [];
+
+                        for (const [start, end] of result.content) {
+                            const linkCache = findLinkCache(start, end);
+                            if (linkCache && self.filter(file, linkCache)) resultFromContent.push([start, end]);
+                        }
+
+                        result.content.length = 0;
+                        result.content.push(...resultFromContent);
+
+                        const resultFromProperties: { key: string, pos: SearchMatchPart, subkey: string[] }[] = [];
+
+                        for (const item of result.properties) {
+                            const [start, end] = item.pos;
+                            const linkCache = findLinkCache(start, end);
+                            if (linkCache && self.filter(file, linkCache)) resultFromProperties.push(item);
+                        }
+                        result.properties.length = 0;
+                        result.properties.push(...resultFromProperties);
                     }
-                    result.properties.length = 0;
-                    result.properties.push(...resultFromProperties);
                 }
 
                 return old.call(this, file, result, content, showTitle);
