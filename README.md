@@ -10,7 +10,7 @@ See [here](#installation) for an installation guide.
 > [!note]
 > - If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
 > - Some features require the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enalbed.
-> - Until a proper documentation is ready, you can see these threads on Discord:
+> - Until a proper documentation is ready, you can see these threads on Discord for more information:
 >   - https://discord.com/channels/686053708261228577/855181471643861002/1187099845501124689
 >   - https://discord.com/channels/686053708261228577/855181471643861002/1188855490566967409
 > - If something is not working, first try the following:
