@@ -1,13 +1,17 @@
 # Obsidian PDF++
 
-This is an [Obsidian.md](https://obsidian.md) plugin to enhance the built-in PDF viewer and PDF embeds.
-It isn't meant to replace them, but instead, it aims to add some quality-of-life improvements to them.
+This is an [Obsidian.md](https://obsidian.md) plugin for better PDF experience. Specifically:
+
+- It transforms a link to a PDF file into a highlighted annotation, and
+- It adds some quality-of-life improvements to the built-in PDF viewer and PDF embeds.
 
 See [here](#installation) for an installation guide.
 
 > [!note]
-> - This plugin is in the early phase of its development. Some parts are still clunky.
-> - If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
+> If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
+
+> [!warning]
+> This plugin uses relies on many private APIs of Obsidian, so I has a relatively high risk of breaking when Obsidian is updated.
 
 ## Features
 
@@ -15,17 +19,18 @@ Each feature can be toggled on and off in the plugin settings.
 
 ### Backlinks to PDF files
 
-Transform a link to a PDF file into a highlighted annotation.
-
 - **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification.
   - By default, all backlinks are highlighted. But there is an option that allows you to highlight only backlinks with colors specified in the link text (see below).
+- **Custom highlight colors**: Append `&color={{COLOR NAME}}` to a link text to highlight the selection with a specified color, where `{{COLOR NAME}}` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
+- **Show color palette in the toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
 - **Easily navigate to backlinks by pressing `Ctrl`/`Cmd` (by default) while hovering over a highlighted text in PDF viewer.**: you can choose what happens when you hover over a highlighted text between the followings:
   - Open backlink
   - Popover preview of backlink
 - **Double click a piece of highlighted text to open the corresponding backlink**
-- **Highlight hovered backlinks in the backlinks pane**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane]((https://help.obsidian.md/Plugins/Backlinks)). This feature is compatible with the [Better Search Views]((https://github.com/ivan-lednev/better-search-views)) plugin.
-- **Custom highlight colors**: Append `&color={{COLOR NAME}}` to a link text to highlight the selection with a specified color, where `{{COLOR NAME}}` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
-- **Show color palette in the toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
+
+#### [Backlink pane](https://help.obsidian.md/Plugins/Backlinks) improvements
+- **Filter backlinks by page**: Show only backlinks to the page that is currently opened in the PDF viewer.
+- **Highlight hovered backlinks in the backlinks pane**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks). This feature is compatible with the [Better Search Views](https://github.com/ivan-lednev/better-search-views) plugin.
 
 These features enrich Obsidian as a stand-alone PDF annotation tool. I recommend combining the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
 
