@@ -68,7 +68,6 @@ export class BacklinkPanePDFPageTracker extends Component {
     }
 
     onload() {
-        console.log('load');
         this.renderer.backlinkDom.filter = undefined;
 
         const view = getExistingPDFViewOfFile(this.app, this.file);
@@ -93,7 +92,6 @@ export class BacklinkPanePDFPageTracker extends Component {
     }
 
     onunload() {
-        console.log('unload');
         this.renderer.backlinkDom.filter = undefined;
         this.updateBacklinkDom();
     }
@@ -125,6 +123,6 @@ export class BacklinkPanePDFPageTracker extends Component {
             const page = +params.get('page')!
             return page === pageNumber;
         }
-        return true;
+        return false;
     }
 }
