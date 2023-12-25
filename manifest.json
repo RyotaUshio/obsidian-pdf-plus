@@ -1,11 +1,11 @@
 {
-	"id": "pdf-plus",
-	"name": "PDF++",
-	"version": "0.10.2",
-	"minAppVersion": "1.4.16",
-	"description": "Transform backlinks to PDF files into highlighted annotations, establishing Obsidian as a stand-alone PDF annotation tool. It also adds quality-of-life improvements to Obsidian's built-in PDF viewer and PDF embeds.",
-	"author": "Ryota Ushio",
-	"authorUrl": "https://github.com/RyotaUshio",
-	"fundingUrl": "https://www.buymeacoffee.com/ryotaushio",
-	"isDesktopOnly": false
+    "id": "pdf-plus",
+    "name": "PDF++",
+    "version": "0.10.3",
+    "minAppVersion": "1.4.16",
+    "description": "Transform backlinks to PDF files into highlighted annotations, establishing Obsidian as a stand-alone PDF annotation tool. It also adds quality-of-life improvements to Obsidian's built-in PDF viewer and PDF embeds.",
+    "author": "Ryota Ushio",
+    "authorUrl": "https://github.com/RyotaUshio",
+    "fundingUrl": "https://www.buymeacoffee.com/ryotaushio",
+    "isDesktopOnly": false
 }

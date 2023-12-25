@@ -76,7 +76,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'open',
 	paneTypeForFirstMDLeaf: 'split',
-	defaultColorPaletteAction: 'copyLink',
+	defaultColorPaletteAction: 'copyQuote',
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
 	filterBacklinksByPageDefault: true,
