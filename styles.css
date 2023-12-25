@@ -4,9 +4,19 @@ name: PDF++
 id: pdf-plus
 settings:
     -
-        id: pdf-plus-highlight-padding
-        title: Highlight padding (px)
-        description: Boldness of highlights
+        id: pdf-plus-highlight-padding-vertical
+        title: Highlight padding (top & bottom)
+        description: Boldness of highlights in pixels
+        type: variable-number-slider
+        min: 0
+        max: 20
+        step: 0.1
+        default: 4
+        format: px
+    -
+        id: pdf-plus-highlight-padding-horizontal
+        title: Highlight padding (left & right)
+        description: Boldness of highlights in pixels
         type: variable-number-slider
         min: 0
         max: 20
@@ -21,7 +31,7 @@ settings:
 */
 
 .textLayer .mod-focused.pdf-plus-backlink {
-	padding: var(--pdf-plus-highlight-padding, var(--size-4-1));
+	padding: var(--pdf-plus-highlight-padding-vertical, var(--size-4-1)) var(--pdf-plus-highlight-padding-horizontal, var(--size-4-1));
 }
 
 .hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar {
