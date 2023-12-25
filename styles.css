@@ -3,30 +3,29 @@
 name: PDF++
 id: pdf-plus
 settings:
+    -
+        id: pdf-plus-highlight-padding
+        title: Highlight padding (px)
+        description: Boldness of highlights
+        type: variable-number-slider
+        min: 0
+        max: 20
+        step: 0.1
+        default: 4
+        format: px
     - 
         id: hide-pdf-embed-toolbar
         title: Hide toolbar in PDF embeds with a page specified
         type: class-toggle
         default: true
-    -
-        id: pdf-embed-width
-        title: PDF embed width
-        type: variable-number-slider
-        min: 10
-        max: 200
-        step: 1
-        default: 100
 */
+
+.textLayer .mod-focused.pdf-plus-backlink {
+	padding: var(--pdf-plus-highlight-padding, var(--size-4-1));
+}
 
 .hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar {
     display: none;
-}
-
-.markdown-preview-view .pdf-embed,
-.markdown-source-view.mod-cm6 .cm-content .pdf-embed {
-    margin-left: auto !important;
-    margin-right: auto !important;
-    width: calc(var(--pdf-embed-width) / 100 * 100%) !important;
 }
 
 /* When hovering over a highlighted text in PDF viewer, highlight the corresponding item in backlink pane */
@@ -50,7 +49,6 @@ settings:
 .pdf-plus-color-palette {
     display: flex;
     flex-direction: row;
-    /* flex-wrap: wrap; */
     justify-content: center;
     align-items: center;
 
