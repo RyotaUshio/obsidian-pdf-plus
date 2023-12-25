@@ -86,6 +86,6 @@ The following plugin(s) alters Obsidian's internals in such a way that prevent s
 
 ## Support development
 
-If you find my plugins useful, please support my work by buying me a coffee!
+If you find [my plugins](https://ryotaushio.github.io/the-hobbyist-dev/) useful, please support my work by buying me a coffee!
 
 <a href="https://www.buymeacoffee.com/ryotaushio" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
