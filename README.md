@@ -9,7 +9,7 @@ See [here](#installation) for an installation guide.
 
 > [!note]
 > - If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
-> - Some features requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enalbed.
+> - Some features require the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enalbed.
 > - If something is not working, first try the following:
 >   1. Open a PDF file
 >   2. Enable this plugin
