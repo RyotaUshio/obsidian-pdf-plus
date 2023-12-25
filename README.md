@@ -8,10 +8,11 @@ This is an [Obsidian.md](https://obsidian.md) plugin for better PDF experience. 
 See [here](#installation) for an installation guide.
 
 > [!note]
-> If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
+> - If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
+> - Some features requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enalbed.
 
 > [!warning]
-> This plugin uses relies on many private APIs of Obsidian, so I has a relatively high risk of breaking when Obsidian is updated.
+> This plugin uses relies on many private APIs of Obsidian, so I has a relatively high risk of breaking when Obsidian is updated. For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
 
 ## Features
 
