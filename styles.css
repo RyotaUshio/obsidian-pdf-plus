@@ -35,6 +35,10 @@ settings:
     background-color: var(--text-selection);
 }
 
+.backlink-pane .tree-item.search-result:not(:has( .search-result-file-match)) {
+    display: none;
+}
+
 .setting-item.no-border {
     border-top: none;
 }

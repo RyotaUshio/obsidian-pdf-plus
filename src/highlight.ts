@@ -38,7 +38,7 @@ export class BacklinkManager extends Component implements HoverParent {
             this.highlightBacklinks();
             this.registerEvent(this.app.metadataCache.on('resolved', () => {
                 this.highlightBacklinks();
-            }));
+            }));0
         }
     }
 

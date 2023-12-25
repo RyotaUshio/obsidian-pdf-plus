@@ -1,7 +1,7 @@
 import { Component, Notice, Plugin } from 'obsidian';
 
-import { patchPDF, patchPagePreview, patchWorkspace } from 'patch';
-import { BacklinkManager } from 'backlinks';
+import { patchPDF, patchBacklink, patchPagePreview, patchWorkspace } from 'patch';
+import { BacklinkManager } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLinkToSelection, isHexString, iteratePDFViews } from 'utils';
@@ -28,23 +28,9 @@ export default class PDFPlus extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			patchWorkspace(this);
 			patchPagePreview(this);
-
-			// try until it succeeds
-			const success = patchPDF(this);
-			if (!success) {
-				const notice = new Notice(`${this.manifest.name}: Open a PDF file to enable the plugin.`, 0);
-
-				const eventRef = this.app.workspace.on('layout-change', () => {
-					const success = patchPDF(this);
-					if (success) {
-						this.app.workspace.offref(eventRef);
-						notice.hide();
-						new Notice(`${this.manifest.name}: You're ready!`, 1500);
-					}
-				});
-				this.registerEvent(eventRef);
-			}
 		});
+		this.tryPatchUntilSuccess(patchPDF, 'Open a PDF file to enable the plugin.');
+		this.tryPatchUntilSuccess(patchBacklink, 'Open a backlink pane to enable the plugin.');
 		
 		// Make PDF embeds with a subpath unscrollable
 		this.registerDomEvent(document, 'wheel', (evt) => {
@@ -110,6 +96,24 @@ export default class PDFPlus extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, messageOnFail: string) {
+		this.app.workspace.onLayoutReady(() => {
+			const success = patcher(this);
+			if (!success) {
+				const notice = new Notice(`${this.manifest.name}: ${messageOnFail}`, 0);
+	
+				const eventRef = this.app.workspace.on('layout-change', () => {
+					const success = patcher(this);
+					if (success) {
+						this.app.workspace.offref(eventRef);
+						notice.hide();
+					}
+				});
+				this.registerEvent(eventRef);
+			}
+		});
 	}
 
 	/** 

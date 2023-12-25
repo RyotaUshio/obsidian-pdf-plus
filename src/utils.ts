@@ -1,7 +1,7 @@
-import { App, Component, Modifier, Platform } from 'obsidian';
+import { App, Component, EditableFileView, Modifier, Platform, TFile, Workspace, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild } from 'typings';
+import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus } from 'typings';
 
 
 export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement | null {
@@ -19,6 +19,19 @@ export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement |
 }
 
 /** 
+ * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
+ */
+export function registerPDFEvent(name: string, eventBus: EventBus, component: Component | null, cb: (data: any) => any) {
+    const listener = async (data: any) => {
+        cb(data);
+        if (!component) eventBus.off(name, listener);
+    };
+    component?.register(() => eventBus.off(name, listener));
+    eventBus.on(name, listener);
+}
+
+
+/** 
  * Register a callback executed when the text layer for a page gets rendered. 
  * Note that PDF rendering is "lazy"; the text layer for a page is not rendered until the page is scrolled into view.
  * 
@@ -31,12 +44,9 @@ export function onTextLayerReady(viewer: ObsidianViewer, component: Component | 
                 cb(pageView, pageIndex + 1); // page number is 1-based
             }
         });
-    const listener = async (data: { source: PDFPageView, pageNumber: number, numTextDivs: number }) => {
-        await cb(data.source, data.pageNumber);
-        if (!component) viewer.eventBus.off("textlayerrendered", listener);
-    };
-    component?.register(() => viewer.eventBus.off("textlayerrendered", listener));
-    return viewer.eventBus.on("textlayerrendered", listener);
+    registerPDFEvent("textlayerrendered", viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
+        cb(data.source, data.pageNumber);
+    });
 }
 
 /** 
@@ -51,12 +61,9 @@ export function onAnnotationLayerReady(viewer: ObsidianViewer, component: Compon
                 cb(pageView, pageIndex + 1); // page number is 1-based
             }
         });
-    const listener = async (data: { source: PDFPageView, pageNumber: number }) => {
-        await cb(data.source, data.pageNumber);
-        if (!component) viewer.eventBus.off("annotationlayerrendered", listener);
-    };
-    component?.register(() => viewer.eventBus.off("annotationlayerrendered", listener));
-    return viewer.eventBus.on("annotationlayerrendered", listener);
+    registerPDFEvent("annotationlayerrendered", viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
+        cb(data.source, data.pageNumber);
+    });
 }
 
 export function iteratePDFViews(app: App, cb: (view: PDFView) => any) {
@@ -151,4 +158,15 @@ export function getModifierNameInPlatform(mod: Modifier): string {
         return Platform.isMacOS || Platform.isIosApp ? "Command" : Platform.isWin ? "Win" : "Meta";
     }
     return "Ctrl";
+}
+
+export function getExistingPDFLeafOfFile(app: App, file: TFile): WorkspaceLeaf | undefined {
+    return app.workspace.getLeavesOfType('pdf').find(leaf => {
+        return leaf.view instanceof EditableFileView && leaf.view.file === file;
+    });
+}
+
+export function getExistingPDFViewOfFile(app: App, file: TFile): PDFView | undefined {
+    const leaf = getExistingPDFLeafOfFile(app, file);
+    if (leaf) return leaf.view as PDFView
 }

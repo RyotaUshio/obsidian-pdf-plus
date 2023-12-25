@@ -303,6 +303,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.addExtraButton((button) => {
 				button
 					.setIcon('plus')
+					.setTooltip('Add a new color')
 					.onClick(() => {
 						this.plugin.settings.colors[''] = '#';
 						this.redisplay();

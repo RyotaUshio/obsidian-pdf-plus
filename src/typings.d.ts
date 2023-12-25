@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent, SearchMatchPart } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
@@ -78,7 +78,7 @@ interface ObsidianViewer {
     pagesCount: number;
     subpath: string | null;
     isEmbed: boolean;
-    eventBus: any;
+    eventBus: EventBus;
     pdfViewer: RawPDFViewer;
     pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
     toolbar?: PDFToolbar;
@@ -146,25 +146,33 @@ interface TextContentItem {
     hasEOL: boolean;
 }
 
+interface EventBus {
+    on(name: string, callback: Function): void;
+    off(name: string, callback: Function): void;
+}
+
 /** Backlink view */
 
 interface BacklinkView extends FileView {
     backlink: BacklinkRenderer;
     update(): void;
+    /** Added by this plugin */
+    pdfPageTracker?: Component;
 }
 
 type TFileSortOrder = "alphabetical" | "alphabeticalReverse" | "byModifiedTime" | "byModifiedTimeReverse" | "byCreatedTime" | "byCreatedTimeReverse";
 
-interface BacklinkRenderer {
+interface BacklinkRenderer extends Component {
     collapseAll: boolean;
     extraContext: boolean;
     sortOrder: TFileSortOrder;
     showSearch: boolean;
-    searchQuery: null;
-    backlinkFile: null;
+    searchQuery: any;
+    file: TFile | null;
+    backlinkFile: TFile | null;
     backlinkCollapsed: boolean;
     backlinkQueue: Queue | null;
-    unlinkedFile: null;
+    unlinkedFile: TFile | null;
     unlinkedCollapsed: boolean;
     unlinkedAliases: "";
     unlinkedQueue: Queue | null;
@@ -180,6 +188,15 @@ interface BacklinkRenderer {
     unlinkedCountEl: HTMLElement | null;
     unlinkedDom: SearchResultDom;
     searchComponent: SearchComponent;
+
+    recomputeBacklink(file: TFile): void;
+    recomputeUnlinked(file: TFile): void;
+    update(): void;
+}
+
+interface FileSearchResult {
+    content: SearchMatches; // search result in the file content except frontmatter
+    properties: { key: string, pos: SearchMatchPart, subkey: string[] }[]; // search result in the file frontmatter
 }
 
 interface SearchResultDom {
@@ -216,7 +233,7 @@ interface SearchResultDom {
     onChange(): void;
     emptyResults(): void;
     getResult(file: TFile): SearchResultFileDom | undefined;
-    addResult(file: TFile, result: any, content: string, showTitle: boolean): SearchResultFileDom;
+    addResult(file: TFile, result: FileSearchResult, content: string, showTitle: boolean): SearchResultFileDom;
     removeResult(file: TFile): void;
     setCollapseAll(collapseAll: boolean): void;
     setExtraContext(extraContext: boolean): void;
@@ -225,6 +242,8 @@ interface SearchResultDom {
     getMatchCount(): number;
     setFocusedItem(item: SearchResultItemDom | null): void;
     changeFocusedItem(item: SearchResultItemDom | null): void;
+    /** Added by this plugin */
+    filter?: (link: string) => boolean;
 }
 
 interface SearchResultFileDom {
@@ -415,5 +434,9 @@ declare module "obsidian" {
 
     interface Editor {
         cm: EditorView;
+    }
+
+    interface MarkdownView {
+        backlinks?: BacklinkRenderer;
     }
 }
