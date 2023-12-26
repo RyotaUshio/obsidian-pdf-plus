@@ -93,13 +93,13 @@ export default class PDFPlus extends Plugin {
 		this.app.embedRegistry.unregisterExtension('pdf');
 		this.app.embedRegistry.registerExtension('pdf', (info, file, subpath) => {
 			const embed = originalPDFEmbedCreator(info, file, subpath) as PDFEmbed;
-			embed.viewer.then((child) => {
-				if (this.settings.noSidebarInEmbed) {
+			if (this.settings.noSidebarInEmbed) {
+				embed.viewer.then((child) => {
 					child.pdfViewer.pdfSidebar.open = function () {
 						this.close();
 					};
-				}
-			});
+				});
+			}
 			return embed;
 		});
 
