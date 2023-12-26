@@ -358,7 +358,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.redisplay())
 			.setName('Open PDF links cleverly')
-			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."');
+			.setDesc(createFragment((el) => {
+				el.appendText(`When opening a link to a PDF file without pressing any `);
+				el.createEl('a', { text: `modifier keys`, attr: { href: 'https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link' } })
+				el.appendText(`, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."`);
+			}));
 		if (this.plugin.settings.openLinkCleverly) {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
 				.setName('Don\'t move focus to PDF viewer after opening a PDF link')

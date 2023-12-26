@@ -147,7 +147,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
     plugin.register(around(Workspace.prototype, {
         openLinkText(old) {
             return function (linktext: string, sourcePath: string, newLeaf?: PaneType | boolean, openViewState?: OpenViewState) {
-                if (plugin.settings.openLinkCleverly) {
+                if (plugin.settings.openLinkCleverly && !newLeaf) { // respect `newLeaf` when it's not `false`
                     const { path, subpath } = parseLinktext(linktext);
                     const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
 
