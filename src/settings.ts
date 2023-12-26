@@ -411,8 +411,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					MarkdownRenderer.render(
 						this.app,
 						'The template format that will be applied to the display text when copying a link to a selection or an annotation in PDF viewer. '
-						+ 'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below. '
-						+ 'For example, the default format is `{{file.basename}}, page {{page}}`. '
+						+ 'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.\n\n'
+						+ 'For example, the default format is `{{file.basename}}, page {{page}}`.\n\n'
 						+ 'Available variables are:\n\n'
 						+ '- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.\n'
 						+ '- `page`: The page number (`Number`).\n'
@@ -420,6 +420,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						+ '- `selection`: The selected text (`String`).\n'
 						+ '- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.\n'
 						+ '- `app`: The global Obsidian app object ([`App`](https://docs.obsidian.md/Reference/TypeScript+API/App)).\n'
+						+ '- and other global variables such as:\n'
+						+ '  - [`moment`](https://momentjs.com/docs/#/displaying/): For exampe, use `moment().format("YYYY-MM-DD")` to get the current date in the "YYYY-MM-DD" format.\n'
+						+ '  - `DataviewAPI`: Available if the [Dataview](https://blacksmithgu.github.io/obsidian-dataview/) plugin is enabled.\n'
 						+ '\n\n'
 						+ 'Additionally, the following variables are available when the PDF tab is linked to another tab:\n\n'
 						+ '- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)).\n'

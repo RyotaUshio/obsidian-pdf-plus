@@ -96,7 +96,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                                 'app', 'file', 'page', 'pageCount', 'linkedFile', 'selection', `
                                 const pdf = file;
                                 const folder = file.parent;
-                                const properties = app.metadataCache.getFileCache(linkedFile)?.frontmatter ?? {};
+                                const properties = (linkedFile && app.metadataCache.getFileCache(linkedFile)?.frontmatter) ?? {};
                                 return ${expr};
                             `)(app, this.file, page, self.pdfViewer.pagesCount, linkedFile, selection);
                             if (evaluated === undefined) {
@@ -108,7 +108,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         console.error(err);
                         new Notice(`${plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);
                     }
-                    return alias;
+                    return alias.trim();
                 }
                 return old.call(this, page);
             }
