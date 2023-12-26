@@ -81,13 +81,21 @@ interface ObsidianViewer {
     isEmbed: boolean;
     eventBus: EventBus;
     pdfViewer: RawPDFViewer;
-    pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
+    pdfSidebar: PDFSidebar;
     toolbar?: PDFToolbar;
+    pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
     /** Added by this plugin */
     _zoomedIn?: number;
+}
+
+interface PDFSidebar {
+    isOpen: boolean;
+    open(): void;
+    close(): void;
+    toggle(open: boolean): void;
 }
 
 interface PDFToolbar {
@@ -151,6 +159,17 @@ interface TextContentItem {
 interface EventBus {
     on(name: string, callback: Function): void;
     off(name: string, callback: Function): void;
+    dispatch(name: string, data: { source?: any }): void;
+    dispatch(name: 'togglesidebar', data: { open: boolean, source?: any }): void;
+}
+
+interface PDFEmbed extends Component {
+    app: App;
+    file: TFile;
+    subpath?: string;
+    containerEl: HTMLElement;
+    viewer: PDFViewer;
+    loadFile(file: TFile, subpath?: string): Promise<void>;
 }
 
 /** Backlink view */

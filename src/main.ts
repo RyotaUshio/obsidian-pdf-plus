@@ -5,7 +5,7 @@ import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
-import { PDFView, PDFViewerChild } from 'typings';
+import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 import { BacklinkPanePDFManager } from 'backlink';
 
 
@@ -89,6 +89,20 @@ export default class PDFPlus extends Plugin {
 			});
 		});
 
+		const originalPDFEmbedCreator = this.app.embedRegistry.embedByExtension['pdf'];
+		this.app.embedRegistry.unregisterExtension('pdf');
+		this.app.embedRegistry.registerExtension('pdf', (info, file, subpath) => {
+			const embed = originalPDFEmbedCreator(info, file, subpath) as PDFEmbed;
+			embed.viewer.then((child) => {
+				if (this.settings.noSidebarInEmbed) {
+					child.pdfViewer.pdfSidebar.open = function () {
+						this.close();
+					};
+				}
+			});
+			return embed;
+		});
+
 		this.registerHoverLinkSource('pdf-plus', {
 			defaultMod: true,
 			display: 'PDF++ hover action'
@@ -149,7 +163,7 @@ export default class PDFPlus extends Plugin {
 
 		styleEl.textContent = Object.entries(this.settings.colors).map(([name, color]) => {
 			return isHexString(color) ? (
-`.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="${name.toLowerCase()}"] {
+				`.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="${name.toLowerCase()}"] {
 	background-color: ${color};
 }`
 			) : '';

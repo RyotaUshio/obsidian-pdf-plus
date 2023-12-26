@@ -27,6 +27,7 @@ export const COLOR_PALETTE_ACTIONS = {
 export interface PDFPlusSettings {
 	alias: boolean;
 	trimSelectionEmbed: boolean;
+	noSidebarInEmbed: boolean;
 	embedUnscrollable: boolean;
 	zoomInEmbed: number;
 	openLinkCleverly: boolean;
@@ -49,11 +50,13 @@ export interface PDFPlusSettings {
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
 	filterBacklinksByPageDefault: boolean;
+
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	alias: true,
 	trimSelectionEmbed: true,
+	noSidebarInEmbed: true,
 	embedUnscrollable: false,
 	zoomInEmbed: 0,
 	openLinkCleverly: true,
@@ -399,6 +402,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('trimSelectionEmbed')
 			.setName('Trim selection/annotation embeds')
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
+		this.addToggleSetting('noSidebarInEmbed')
+			.setName('Never show sidebar in PDF embeds');
 		this.addToggleSetting('persistentHighlightsInEmbed')
 			.setName('Do not clear highlights in a selection/annotation embeds');
 		this.addToggleSetting('embedUnscrollable')

@@ -73,11 +73,11 @@ These features enrich Obsidian as a stand-alone PDF annotation tool.
 
 - **Click PDF embeds to open links**: Clicking a PDF embed will open the embedded file.
 - **Trim selection embeds**: When embedding a selection from a PDF file, only the selection and its surroundings are displayed rather than the entire page.
+- **Hide toolbar in PDF embeds with a page specified**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
+- **Never show sidebar in PDF embeds**
 - **Do not clear highlights in a selection/annotation embeds**
 - **Make PDF embeds unscrollable**
 - **Zoom in PDF embeds (experimental)**
-- **Hide toolbar in PDF embeds with a page specified**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
-- **PDF embed width**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
 
 ## Installation
 
