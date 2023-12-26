@@ -149,7 +149,7 @@ export default class PDFPlus extends Plugin {
 
 		styleEl.textContent = Object.entries(this.settings.colors).map(([name, color]) => {
 			return isHexString(color) ? (
-`.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="${name}"] {
+`.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="${name.toLowerCase()}"] {
 	background-color: ${color};
 }`
 			) : '';

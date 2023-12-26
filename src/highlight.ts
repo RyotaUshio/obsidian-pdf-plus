@@ -227,7 +227,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     const textNode = document.createTextNode(text);
                     if (className) {
                         const highlightWrapperEl = textDiv.createSpan(className + " appended");
-                        if (colorName) highlightWrapperEl.dataset.highlightColor = colorName;
+                        if (colorName) highlightWrapperEl.dataset.highlightColor = colorName.toLowerCase();
                         highlightWrapperEl.append(textNode);
                         onHighlight?.(highlightWrapperEl);
                     }
@@ -243,7 +243,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     for (let i = beginIndex + 1; i < endIndex; i++) {
                         this.highlightedTexts.push({ page: pageNumber, index: i });
                         textDivs[i].classList.add("mod-focused", "middle", "selected", cls);
-                        if (colorName) textDivs[i].dataset.highlightColor = colorName;
+                        if (colorName) textDivs[i].dataset.highlightColor = colorName.toLowerCase();
                         onHighlight?.(textDivs[i]);
                     }
                     s(endIndex, endOffset, "mod-focused endselected " + cls);

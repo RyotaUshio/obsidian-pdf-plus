@@ -198,7 +198,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		let previousColor = color;
 		return this.addSetting()
 			.addText((text) => {
-				text.setPlaceholder('Color name')
+				text.setPlaceholder('Color name (case-insensitive)')
 					.setValue(name)
 					.onChange(async (newName) => {
 						if (newName in colors) {
