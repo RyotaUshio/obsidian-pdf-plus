@@ -1,6 +1,6 @@
 {
     "name": "obsidian-pdf-plus",
-    "version": "0.10.7",
+    "version": "0.10.8",
     "description": "An Obsidian.md plugin to transform backlinks to PDF files into highlighted annotations, establishing Obsidian as a stand-alone PDF annotation tool. It also adds quality-of-life improvements to Obsidian's built-in PDF viewer and PDF embeds.",
     "scripts": {
         "dev": "node esbuild.config.mjs",
