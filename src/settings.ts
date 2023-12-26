@@ -1,4 +1,4 @@
-import { DropdownComponent, HexString, Notice, PaneType, PluginSettingTab, Setting } from 'obsidian';
+import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PaneType, PluginSettingTab, Setting } from 'obsidian';
 
 import PDFPlus from 'main';
 import { getModifierNameInPlatform } from 'utils';
@@ -25,7 +25,8 @@ export const COLOR_PALETTE_ACTIONS = {
 };
 
 export interface PDFPlusSettings {
-	alias: boolean;
+	alias: boolean; // the term "alias" is probably incorrect here. It should be "display text" instead.
+	aliasFormat: string;
 	trimSelectionEmbed: boolean;
 	noSidebarInEmbed: boolean;
 	embedUnscrollable: boolean;
@@ -50,11 +51,11 @@ export interface PDFPlusSettings {
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
 	filterBacklinksByPageDefault: boolean;
-
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	alias: true,
+	aliasFormat: '',
 	trimSelectionEmbed: true,
 	noSidebarInEmbed: true,
 	embedUnscrollable: false,
@@ -89,8 +90,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 export type KeysOfType<Obj, Type> = NonNullable<{ [k in keyof Obj]: Obj[k] extends Type ? k : never }[keyof Obj]>;
 
 export class PDFPlusSettingTab extends PluginSettingTab {
+	component: Component;
+	
 	constructor(public plugin: PDFPlus) {
 		super(plugin.app, plugin);
+		this.component = new Component();
 	}
 
 	addSetting() {
@@ -101,11 +105,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		return this.addSetting().setName(heading).setHeading();
 	}
 
-	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>) {
+	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string) {
 		return this.addSetting()
 			.addText((text) => {
 				text.setValue(this.plugin.settings[settingName])
-					.setPlaceholder(DEFAULT_SETTINGS[settingName])
+					.setPlaceholder(placeholder ?? DEFAULT_SETTINGS[settingName])
+					.then((text) => text.inputEl.size = text.inputEl.placeholder.length)
 					.onChange(async (value) => {
 						// @ts-ignore
 						this.plugin.settings[settingName] = value;
@@ -270,6 +275,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	display(): void {
 		this.containerEl.empty();
+		this.component.load();
 
 		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
 
@@ -395,9 +401,33 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Obsidian lets you specify the height of a PDF embed by appending "&height=..." to a link, and this also applies to popover previews. Enable this option if you want to ignore the height parameter in popover previews.')
 
 		this.addHeading('Copying links to PDF files')
-		this.addToggleSetting('alias')
-			.setName('Copy link with alias')
-			.setDesc('When copying a link to a selection or an annotation in a PDF file, Obsidian appends an alias "<pdf file title>, page <page number>" to the link text by default. Disable this option if you don\'t like it.');
+		this.addToggleSetting('alias', () => this.redisplay())
+			.setName('Copy link with display text')
+			.setDesc('When copying a link to a selection or an annotation in a PDF file, Obsidian appends "|<pdf file title>, page <page number>" to the link text by default. Disable this option if you don\'t like it.');
+		if (this.plugin.settings.alias) {
+			this.addTextSetting('aliasFormat', 'Leave blank to use default')
+				.setName('Display text format')
+				.then((setting) => {
+					MarkdownRenderer.render(
+						this.app,
+						'The template format that will be applied to the display text when copying a link to a selection or an annotation in PDF viewer. '
+						+ 'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below. '
+						+ 'For example, the default format is `{{file.basename}}, page {{page}}`. '
+						+ 'Available variables are:\n\n'
+						+ '- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.\n'
+						+ '- `page`: The page number (`Number`).\n'
+						+ '- `pageCount`: The total number of pages (`Number`).\n'
+						+ '- `selection`: The selected text (`String`).\n'
+						+ '- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.\n'
+						+ '- `app`: The global Obsidian app object ([`App`](https://docs.obsidian.md/Reference/TypeScript+API/App)).\n'
+						+ '\n\n'
+						+ 'Additionally, the following variables are available when the PDF tab is linked to another tab:\n\n'
+						+ '- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)).\n'
+						+ '- `properties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If `linkedFile` has no properties, this is an empty object `{}`.\n',
+						setting.descEl, '', this.component
+					);
+				});
+		}
 
 		this.addHeading('Embedding PDF files');
 		this.addToggleSetting('clickEmbedToOpenLink')
@@ -428,5 +458,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						}
 					});
 			});
+	}
+
+	hide() {
+		this.component.unload();
+		this.containerEl.empty();
 	}
 }

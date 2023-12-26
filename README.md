@@ -64,10 +64,16 @@ These features enrich Obsidian as a stand-alone PDF annotation tool.
 
 ### Copying links to PDF files
 
+#### Copy links with ease
+
+- **Color palette in PDF toolbar**: See above for the details.
 - **`Copy link to selection` command**: This is the same thing as the "Copy link to selection" in the right-click menu, but this command allows you to trigger it quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
   > Note: this command cannot be triggered from the Command Palette. Make sure that you set a custom hotkey for it. 
 
-- **Copy link with/without alias**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends an alias `<pdf file title>, page <page number>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
+#### Display text options
+
+- **Copy link with/without display text**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends `|<pdf file title>, page <page number>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
+- **Custom display text format**: You can customize the template format that will be applied the display text  when copying a link to a selection or an annotation in PDF viewer. Each `{{...}}` in the template will be evaluated as a JavaScript expression with many variables available. See the plugin settings for the details.
 
 ### Embedding PDF files
 

@@ -140,7 +140,10 @@ export const getLinkToSelection = (plugin: PDFPlus, params?: Record<string, stri
         selection: child.getTextSelectionRangeStr(pageEl),
         ...params ?? {}
     }
-    const linktext = child.getMarkdownLink('#' + Object.entries(params).map(([k, v]) => k && v ? `${k}=${v}` : '').join('&'), child.getPageLinkAlias(+page));
+    const linktext = child.getMarkdownLink(
+        '#' + Object.entries(params).map(([k, v]) => k && v ? `${k}=${v}` : '').join('&'),
+        child.getPageLinkAlias(+page)
+    );
     return linktext;
 }
 
@@ -220,4 +223,12 @@ export class MutationObservingChild extends Component {
 
 export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
     return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
+}
+
+export function getActiveGroupLeaves(app: App) {
+    // I belive using `activeLeaf` is inevitable here.
+    const activeGroup = app.workspace.activeLeaf?.group;
+    if (!activeGroup) return null;
+
+    return app.workspace.getGroupLeaves(activeGroup);
 }

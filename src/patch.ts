@@ -1,10 +1,10 @@
-import { HoverParent, MarkdownView, OpenViewState, PaneType, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from "obsidian";
+import { FileView, HoverParent, MarkdownView, Notice, OpenViewState, PaneType, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
 import { BacklinkHighlighter } from "highlight";
 import { ColorPalette } from "color-palette";
-import { findReferenceCache, getExistingPDFLeafOfFile, highlightSubpath, onTextLayerReady } from "utils";
+import { findReferenceCache, getActiveGroupLeaves, getExistingPDFLeafOfFile, highlightSubpath, onTextLayerReady } from "utils";
 import { BacklinkRenderer, BacklinkView, FileSearchResult, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild, SearchResultDom, SearchResultFileDom } from "typings";
 import { BacklinkPanePDFManager } from "backlink";
 
@@ -69,6 +69,48 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         getMarkdownLink(old) {
             return function (subpath?: string, alias?: string, embed?: boolean): string {
                 return old.call(this, subpath, plugin.settings.alias ? alias : undefined, embed);
+            }
+        },
+        getPageLinkAlias(old) {
+            return function (page: number): string {
+                if (plugin.settings.aliasFormat) {
+                    const self = this as PDFViewerChild;
+                    let alias = '';
+                    try {
+                        let linkedFile: TFile | undefined;
+                        const groupLeaves = getActiveGroupLeaves(app);
+                        if (groupLeaves) {
+                            for (const leaf of groupLeaves) {
+                                if (leaf.view instanceof FileView && leaf.view.file && leaf.view.file !== this.file) {
+                                    linkedFile = leaf.view.file;
+                                    break;
+                                }
+                            };
+                        }
+
+                        const selection = window.getSelection()?.toString().replace(/[\r\n]+/g, " ");
+
+                        alias = plugin.settings.aliasFormat.replace(/{{(.*?)}}/g, (match, expr) => {
+                            // avoid direct eval
+                            const evaluated = new Function(
+                                'app', 'file', 'page', 'pageCount', 'linkedFile', 'selection', `
+                                const pdf = file;
+                                const folder = file.parent;
+                                const properties = app.metadataCache.getFileCache(linkedFile)?.frontmatter ?? {};
+                                return ${expr};
+                            `)(app, this.file, page, self.pdfViewer.pagesCount, linkedFile, selection);
+                            if (evaluated === undefined) {
+                                throw Error(`The expression "${expr}" cannot be evaluated.`);
+                            }
+                            return evaluated;
+                        });
+                    } catch (err) {
+                        console.error(err);
+                        new Notice(`${plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);
+                    }
+                    return alias;
+                }
+                return old.call(this, page);
             }
         },
         clearTextHighlight(old) {
