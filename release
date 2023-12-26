@@ -11,6 +11,7 @@ def run(cmd):
 
 if __name__ == '__main__':
     run(['git', 'switch', 'main'])
+    run(['git', 'pull'])
 
     parser = argparse.ArgumentParser()
     parser.add_argument('version')
