@@ -1,7 +1,7 @@
-import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile, parseLinktext } from "obsidian";
+import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from "obsidian";
 
 import PDFPlus from "main";
-import { onTextLayerReady } from "utils";
+import { getSubpathWithoutHash, onTextLayerReady } from "utils";
 import { BacklinkView, ObsidianViewer } from "typings";
 
 
@@ -15,7 +15,7 @@ interface BacklinkInfo {
     colorName?: string;
 }
 
-export class BacklinkManager extends Component implements HoverParent {
+export class BacklinkHighlighter extends Component implements HoverParent {
     app: App;
     file: TFile | null;
     hoverPopover: HoverPopover | null;
@@ -52,8 +52,7 @@ export class BacklinkManager extends Component implements HoverParent {
         for (const sourcePath of backlinkDict.keys()) {
             for (const link of backlinkDict.get(sourcePath) ?? []) {
                 const linktext = link.link;
-                let { subpath } = parseLinktext(linktext);
-                if (subpath.startsWith('#')) subpath = subpath.slice(1);
+                const subpath = getSubpathWithoutHash(linktext);
                 const params = new URLSearchParams(subpath);
 
                 if (params.has('page') && params.has('selection')) {
@@ -184,6 +183,7 @@ export class BacklinkManager extends Component implements HoverParent {
 
                         this.eventManager.registerDomEvent(highlightedEl, 'mouseout', (event) => {
                             backlinkItemEl?.removeClass('hovered-backlink');
+                            backlinkItemEl = null;
                         });
 
                         this.eventManager.registerDomEvent(highlightedEl, 'dblclick', (event) => {

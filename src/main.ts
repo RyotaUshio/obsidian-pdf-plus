@@ -1,7 +1,7 @@
 import { Component, Keymap, Notice, Plugin } from 'obsidian';
 
 import { patchPDF, patchBacklink, patchPagePreview, patchWorkspace } from 'patch';
-import { BacklinkManager } from 'highlight';
+import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
@@ -66,7 +66,7 @@ export default class PDFPlus extends Plugin {
 			iteratePDFViews(this.app, (view) => {
 				view.viewer.then((child) => {
 					if (!view.viewer.backlinkManager) {
-						view.viewer.backlinkManager = view.viewer.addChild(new BacklinkManager(this, child.pdfViewer));
+						view.viewer.backlinkManager = view.viewer.addChild(new BacklinkHighlighter(this, child.pdfViewer));
 					}
 					if (!child.backlinkManager) {
 						child.backlinkManager = view.viewer.backlinkManager

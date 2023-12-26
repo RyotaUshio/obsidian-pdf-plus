@@ -46,10 +46,11 @@ Each feature can be toggled on and off in the plugin settings.
 - **Double click a piece of highlighted text to open the corresponding backlink**
 
 #### [Backlink pane](https://help.obsidian.md/Plugins/Backlinks) improvements
+
+These features enrich Obsidian as a stand-alone PDF annotation tool.
+
 - **Filter backlinks by page**: Show only backlinks to the page that is currently opened in the PDF viewer.
 - **Highlight hovered backlinks in the backlinks pane**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks). This feature is compatible with the [Better Search Views](https://github.com/ivan-lednev/better-search-views) plugin.
-
-These features enrich Obsidian as a stand-alone PDF annotation tool. I recommend combining the core [Backlinks](https://help.obsidian.md/Plugins/Backlinks) plugin & the [Better Search View](https://github.com/ivan-lednev/better-search-views) plugin together with this plugin.
 
 ### Opening links to PDF files
 

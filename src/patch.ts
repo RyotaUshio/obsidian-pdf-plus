@@ -1,10 +1,10 @@
-import { HoverParent, MarkdownView, OpenViewState, PaneType, ReferenceCache, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, getLinkpath, parseLinktext } from "obsidian";
+import { HoverParent, MarkdownView, OpenViewState, PaneType, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
-import { BacklinkManager } from "highlight";
+import { BacklinkHighlighter } from "highlight";
 import { ColorPalette } from "color-palette";
-import { getExistingPDFLeafOfFile, highlightSubpath, onTextLayerReady } from "utils";
+import { findReferenceCache, getExistingPDFLeafOfFile, highlightSubpath, onTextLayerReady } from "utils";
 import { BacklinkRenderer, BacklinkView, FileSearchResult, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild, SearchResultDom, SearchResultFileDom } from "typings";
 import { BacklinkPanePDFManager } from "backlink";
 
@@ -27,7 +27,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const self = this as PDFViewer;
                 self.then((child) => {
                     if (!self.backlinkManager) {
-                        self.backlinkManager = self.addChild(new BacklinkManager(plugin, child.pdfViewer));
+                        self.backlinkManager = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
                     }
                     if (!child.backlinkManager) {
                         child.backlinkManager = self.backlinkManager
@@ -42,7 +42,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const self = this as PDFViewer;
                 self.then((child) => {
                     if (!self.backlinkManager) {
-                        self.backlinkManager = self.addChild(new BacklinkManager(plugin, child.pdfViewer));
+                        self.backlinkManager = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
                     }
                     if (!child.backlinkManager) {
                         child.backlinkManager = self.backlinkManager
@@ -164,11 +164,10 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                             return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
                                 app.workspace.revealLeaf(leaf);
                                 const view = leaf.view as PDFView;
-                                const child = view.viewer.child;
-                                if (child) {
+                                view.viewer.then((child) => {
                                     const duration = plugin.settings.highlightDuration;
                                     highlightSubpath(child, subpath, duration);
-                                }
+                                });
                             })
                         }
                     }
@@ -190,7 +189,7 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                 const { path: linkpath, subpath } = parseLinktext(linktext);
                 const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
-                if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkManager) {
+                if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkHighlighter) {
                     // 1. If the target markdown file is already opened, open the link in the same leaf
                     // 2. If not, create a new leaf under the same parent split as the first existing markdown leaf
                     let markdownLeaf: WorkspaceLeaf | null = null;
@@ -315,15 +314,10 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
                 if (self.filter) {
                     const cache = app.metadataCache.getFileCache(file);
                     if (cache) {
-                        const findLinkCache = (start: number, end: number): ReferenceCache | undefined => {
-                            return cache.links?.find((link) => link.position.start.offset === start && link.position.end.offset === end)
-                                ?? cache.embeds?.find((embed) => embed.position.start.offset === start && embed.position.end.offset === end);
-                        };
-
                         const resultFromContent: SearchMatches = [];
 
                         for (const [start, end] of result.content) {
-                            const linkCache = findLinkCache(start, end);
+                            const linkCache = findReferenceCache(cache, start, end);
                             if (linkCache && self.filter(file, linkCache)) resultFromContent.push([start, end]);
                         }
 
@@ -334,7 +328,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
 
                         for (const item of result.properties) {
                             const [start, end] = item.pos;
-                            const linkCache = findLinkCache(start, end);
+                            const linkCache = findReferenceCache(cache, start, end);
                             if (linkCache && self.filter(file, linkCache)) resultFromProperties.push(item);
                         }
                         result.properties.length = 0;

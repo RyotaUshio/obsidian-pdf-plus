@@ -2,7 +2,7 @@ import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, 
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
-import { BacklinkManager } from 'highlight';
+import { BacklinkHighlighter } from 'highlight';
 import { BacklinkPanePDFManager } from 'backlink';
 
 
@@ -25,7 +25,7 @@ interface PDFViewer extends Component {
     then(cb: (child: PDFViewerChild) => void): void; // register a callback executed when the child gets ready
     loadFile(file: TFile, subpath?: string): Promise<void>;
     /** Added by this plugin */
-    backlinkManager?: BacklinkManager;
+    backlinkManager?: BacklinkHighlighter;
 }
 
 interface PDFViewerChild {
@@ -52,7 +52,7 @@ interface PDFViewerChild {
     clearAnnotationHighlight(): void;
     /** Added by this plugin */
     file?: TFile;
-    backlinkManager?: BacklinkManager;
+    backlinkManager?: BacklinkHighlighter;
 }
 
 interface PDFHighlight {
@@ -111,7 +111,8 @@ interface PDFToolbar {
 interface RawPDFViewer {
     pdfDocument: PDFDocumentProxy;
     pagesPromise: Promise<any> | null;
-    currentPageNumber: number; // accessor property; setter can be used to scroll to a page
+    /** 1-based page number. This is an accessor property; the setter can be used to scroll to a page and dispatches 'pagechanging' event */
+    currentPageNumber: number;
     _pages: PDFPageView[];
     getPageView(page: number): PDFPageView;
 }

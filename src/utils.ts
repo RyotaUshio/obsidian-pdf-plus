@@ -1,4 +1,5 @@
-import { App, Component, EditableFileView, FileView, Modifier, Platform, TFile, Workspace, WorkspaceLeaf } from 'obsidian';
+import { CachedMetadata, ReferenceCache, parseLinktext } from 'obsidian';
+import { App, Component, EditableFileView, Modifier, Platform, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView } from 'typings';
@@ -77,9 +78,14 @@ export function iterateBacklinkViews(app: App, cb: (view: BacklinkView) => any) 
 export function highlightSubpath(child: PDFViewerChild, subpath: string, duration: number) {
     child.applySubpath(subpath);
     if (child.subpathHighlight?.type === 'text') {
-        onTextLayerReady(child.pdfViewer, null, () => {
+        const component = new Component();
+        component.load();
+
+        onTextLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
             if (!child.subpathHighlight) return;
             const { page, range } = child.subpathHighlight as PDFTextHighlight;
+            if (page !== pageNumber) return;
+
             child.highlightText(page, range);
             if (duration > 0) {
                 setTimeout(() => {
@@ -87,13 +93,22 @@ export function highlightSubpath(child: PDFViewerChild, subpath: string, duratio
                     child.backlinkManager?.highlightBacklinks();
                 }, duration * 1000);
             }
+
+            component.unload();
         });
     } else if (child.subpathHighlight?.type === 'annotation') {
-        onAnnotationLayerReady(child.pdfViewer, null, () => {
+        const component = new Component();
+        component.load();
+
+        onAnnotationLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
             if (!child.subpathHighlight) return;
             const { page, id } = child.subpathHighlight as PDFAnnotationHighlight;
+            if (page !== pageNumber) return;
+
             child.highlightAnnotation(page, id);
             if (duration > 0) setTimeout(() => child.clearAnnotationHighlight(), duration * 1000);
+
+            component.unload();
         });
     }
 }
@@ -175,6 +190,17 @@ export function getExistingPDFViewOfFile(app: App, file: TFile): PDFView | undef
     if (leaf) return leaf.view as PDFView
 }
 
+export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
+    return cache.links?.find((link) => link.position.start.offset === start && link.position.end.offset === end)
+        ?? cache.embeds?.find((embed) => embed.position.start.offset === start && embed.position.end.offset === end);
+};
+
+export function getSubpathWithoutHash(linktext: string): string {
+    let { subpath } = parseLinktext(linktext);
+    if (subpath.startsWith('#')) subpath = subpath.slice(1);
+    return subpath;
+}
+
 export class MutationObservingChild extends Component {
     observer: MutationObserver;
 
@@ -190,4 +216,8 @@ export class MutationObservingChild extends Component {
     onunload() {
         this.observer.disconnect();
     }
+}
+
+export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
+    return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
 }
