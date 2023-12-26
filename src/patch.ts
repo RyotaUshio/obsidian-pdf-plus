@@ -1,12 +1,12 @@
-import { Component, EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, ReferenceCache, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, getLinkpath, parseLinktext } from "obsidian";
+import { HoverParent, MarkdownView, OpenViewState, PaneType, ReferenceCache, SearchMatchPart, SearchMatches, TFile, Workspace, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, getLinkpath, parseLinktext } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
 import { BacklinkManager } from "highlight";
 import { ColorPalette } from "color-palette";
-import { getExistingPDFLeafOfFile, getExistingPDFViewOfFile, highlightSubpath, onTextLayerReady, registerPDFEvent } from "utils";
+import { getExistingPDFLeafOfFile, highlightSubpath, onTextLayerReady } from "utils";
 import { BacklinkRenderer, BacklinkView, FileSearchResult, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild, SearchResultDom, SearchResultFileDom } from "typings";
-import { BacklinkPanePDFManager, BacklinkPanePDFPageTracker } from "backlink";
+import { BacklinkPanePDFManager } from "backlink";
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -154,9 +154,15 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                     if (file && file.extension === 'pdf') {
                         const leaf = getExistingPDFLeafOfFile(app, file);
                         if (leaf) {
-                            openViewState = openViewState ?? {};
-                            openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
+                            // Ignore the "dontActivateAfterOpenPDF" option when opening a link in a tab in the same split as the current tab
+                            // I believe using activeLeaf (which is deprecated) is inevitable here
+                            if (!(leaf.parentSplit instanceof WorkspaceTabs && leaf.parentSplit === app.workspace.activeLeaf?.parentSplit)) {
+                                openViewState = openViewState ?? {};
+                                openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
+                            }
+
                             return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
+                                app.workspace.revealLeaf(leaf);
                                 const view = leaf.view as PDFView;
                                 const child = view.viewer.child;
                                 if (child) {
@@ -219,19 +225,23 @@ export const patchPagePreview = (plugin: PDFPlus) => {
                             ? app.workspace.createLeafInParent(markdownLeafParent, -1)
                             : app.workspace.getLeaf(plugin.settings.paneTypeForFirstMDLeaf || false);
                     }
-                    markdownLeaf.openLinkText(linktext, sourcePath, {
-                        active: !plugin.settings.dontActivateAfterOpenMD,
+
+                    const openViewState: OpenViewState = {
                         eState: state?.scroll ? { line: state.scroll } : undefined
-                    });
+                    };
+                    // Ignore the "dontActivateAfterOpenMD" option when opening a link in a tab in the same split as the current tab
+                    // I believe using activeLeaf (which is deprecated) is inevitable here
+                    if (!(markdownLeaf.parentSplit instanceof WorkspaceTabs && markdownLeaf.parentSplit === app.workspace.activeLeaf?.parentSplit)) {
+                        openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
+                    }
+                    markdownLeaf.openLinkText(linktext, sourcePath, openViewState);
                     app.workspace.revealLeaf(markdownLeaf);
                     return;
                 }
 
                 if (file?.extension === 'pdf') {
                     if (plugin.settings.hoverPDFLinkToOpen) {
-                        const leaf = app.workspace.getLeavesOfType('pdf').find(leaf => {
-                            return leaf.view instanceof EditableFileView && leaf.view.file === file;
-                        });
+                        const leaf = getExistingPDFLeafOfFile(app, file);
                         if (leaf) {
                             leaf.openLinkText(linktext, sourcePath, {
                                 active: !plugin.settings.dontActivateAfterOpenPDF
@@ -282,7 +292,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
                 const self = this as BacklinkView;
                 await old.call(this, file);
                 if (self.getViewType() === 'backlink' && file.extension === 'pdf') {
-                    self.pdfManager = new BacklinkPanePDFManager(plugin, self, file).setParents(plugin, self);
+                    self.pdfManager = new BacklinkPanePDFManager(plugin, self.backlink, file).setParents(plugin, self);
                 }
             }
         },

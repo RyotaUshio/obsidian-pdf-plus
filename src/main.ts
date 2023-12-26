@@ -1,4 +1,4 @@
-import { Component, Notice, Plugin } from 'obsidian';
+import { Component, Keymap, Notice, Plugin } from 'obsidian';
 
 import { patchPDF, patchBacklink, patchPagePreview, patchWorkspace } from 'patch';
 import { BacklinkManager } from 'highlight';
@@ -32,7 +32,7 @@ export default class PDFPlus extends Plugin {
 		});
 		this.tryPatchUntilSuccess(patchPDF, 'Open a PDF file to enable the plugin.');
 		this.tryPatchUntilSuccess(patchBacklink, 'Open a backlink pane to enable the plugin.');
-		
+
 		// Make PDF embeds with a subpath unscrollable
 		this.registerDomEvent(document, 'wheel', (evt) => {
 			if (this.settings.embedUnscrollable
@@ -47,9 +47,9 @@ export default class PDFPlus extends Plugin {
 			if (this.settings.clickEmbedToOpenLink && evt.target instanceof HTMLElement) {
 				const linktext = evt.target.closest('.pdf-embed[src]')?.getAttribute('src');
 				const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
-				if (linktext && viewerEl) {
-					const sourcePath = this.pdfViwerChildren.get(viewerEl)?.file?.path ?? '';
-					this.app.workspace.openLinkText(linktext, sourcePath);
+				if (linktext) {
+					const sourcePath = viewerEl ? (this.pdfViwerChildren.get(viewerEl)?.file?.path ?? '') : '';
+					this.app.workspace.openLinkText(linktext, sourcePath, Keymap.isModEvent(evt));
 				}
 			}
 		})
@@ -82,10 +82,10 @@ export default class PDFPlus extends Plugin {
 
 			iterateBacklinkViews(this.app, (view) => {
 				if (view.file?.extension === 'pdf') {
-                    if (!view.pdfManager) {
-                        view.pdfManager = new BacklinkPanePDFManager(this, view, view.file).setParents(this, view);
-                    }
-                }
+					if (!view.pdfManager) {
+						view.pdfManager = new BacklinkPanePDFManager(this, view.backlink, view.file).setParents(this, view);
+					}
+				}
 			});
 		});
 
@@ -112,7 +112,7 @@ export default class PDFPlus extends Plugin {
 			const success = patcher(this);
 			if (!success) {
 				const notice = new Notice(`${this.manifest.name}: ${messageOnFail}`, 0);
-	
+
 				const eventRef = this.app.workspace.on('layout-change', () => {
 					const success = patcher(this);
 					if (success) {
@@ -156,7 +156,7 @@ export default class PDFPlus extends Plugin {
 		}).join('\n');
 		const defaultColor = this.settings.colors[this.settings.defaultColor];
 		if (defaultColor) {
-		styleEl.textContent += `
+			styleEl.textContent += `
 .textLayer .mod-focused.pdf-plus-backlink {
 	background-color: ${defaultColor};
 }

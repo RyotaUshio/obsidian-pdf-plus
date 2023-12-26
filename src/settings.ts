@@ -282,7 +282,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addDropdowenSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
 				.setName(`How to open markdown file with ${getModifierNameInPlatform('Mod').toLowerCase()}+hover when there is no open markdown file`);
 			this.addToggleSetting('dontActivateAfterOpenMD')
-				.setName('Don\'t move focus to markdown view after opening a backlink');
+				.setName('Don\'t move focus to markdown view after opening a backlink')
+				.setDesc('This option will be ignored when you open a link in a tab in the same split as the current tab.')
 		}
 		this.addSetting()
 			.setName(`Require ${getModifierNameInPlatform('Mod')} to the above action`)
@@ -357,7 +358,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('When opening a link to a PDF file, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."');
 		if (this.plugin.settings.openLinkCleverly) {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
-				.setName('Don\'t move focus to PDF viewer after opening a PDF link');
+				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
+				.setDesc('This option will be ignored when you open a PDF link in a tab in the same split as the PDF viewer.')
 		}
 		this.addToggleSetting('hoverPDFLinkToOpen')
 			.setName('Open PDF link instead of showing popover preview when target PDF is already opened')

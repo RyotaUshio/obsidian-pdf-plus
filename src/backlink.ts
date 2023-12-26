@@ -1,23 +1,20 @@
-import { ReferenceCache, parseLinktext } from 'obsidian';
-import { App, Component, TFile } from 'obsidian';
+import { App, Component, TFile, ReferenceCache, parseLinktext } from 'obsidian';
 
 import PDFPlus from 'main';
 import { MutationObservingChild, getExistingPDFViewOfFile, registerPDFEvent } from 'utils';
-import { BacklinkRenderer, BacklinkView } from 'typings';
+import { BacklinkRenderer } from 'typings';
 
 
 export class BacklinkPanePDFManager extends Component {
     app: App;
-    renderer: BacklinkRenderer;
     navButtonEl: HTMLElement | null = null;
     pageTracker: BacklinkPanePDFPageTracker;
     isTrackingPage: boolean;
 
-    constructor(public plugin: PDFPlus, public view: BacklinkView, public file: TFile) {
+    constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
         super();
         this.app = plugin.app;
-        this.renderer = view.backlink;
-        this.pageTracker = new BacklinkPanePDFPageTracker(plugin, view, file);
+        this.pageTracker = new BacklinkPanePDFPageTracker(plugin, renderer, file);
         this.isTrackingPage = plugin.settings.filterBacklinksByPageDefault;
     }
 
@@ -53,13 +50,11 @@ export class BacklinkPanePDFManager extends Component {
 
 export class BacklinkPanePDFPageTracker extends Component {
     app: App;
-    renderer: BacklinkRenderer;
     matchCountObserver: MutationObservingChild;
 
-    constructor(public plugin: PDFPlus, public view: BacklinkView, public file: TFile) {
+    constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
         super();
         this.app = plugin.app;
-        this.renderer = view.backlink;
         this.matchCountObserver = this.addChild(new MutationObservingChild(
             this.renderer.backlinkDom.el,
             () => this.updateBacklinkCountEl(),

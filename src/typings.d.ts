@@ -3,7 +3,7 @@ import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
 import { BacklinkManager } from 'highlight';
-import { BacklinkPanePDFManager, BacklinkPanePDFPageTracker } from 'backlink';
+import { BacklinkPanePDFManager } from 'backlink';
 
 
 /** PDF-related */
@@ -22,7 +22,7 @@ interface PDFViewer extends Component {
     app: App;
     containerEl: HTMLElement;
     opts: any;
-    then(cb: (child: PDFViewerChild) => void): void;
+    then(cb: (child: PDFViewerChild) => void): void; // register a callback executed when the child gets ready
     loadFile(file: TFile, subpath?: string): Promise<void>;
     /** Added by this plugin */
     backlinkManager?: BacklinkManager;
@@ -423,6 +423,10 @@ declare module "obsidian" {
         initialized: boolean;
         on(name: 'initialized', callback: () => void, ctx?: any): EventRef;
         getBacklinksForFile(file: TFile): CustomArrayDict<LinkCache>;
+    }
+
+    interface Workspace {
+        getActiveFileView(): FileView | null;
     }
 
     interface WorkspaceLeaf {

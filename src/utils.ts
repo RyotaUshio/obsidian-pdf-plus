@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, Modifier, Platform, TFile, Workspace, WorkspaceLeaf } from 'obsidian';
+import { App, Component, EditableFileView, FileView, Modifier, Platform, TFile, Workspace, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView } from 'typings';
