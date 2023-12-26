@@ -276,7 +276,7 @@ interface SearchResultFileDom {
     pusherEl: HTMLElement;
     app: App;
     parentDom: SearchResultDom;
-    childrenEl: HTMLElement;
+    childrenEl: HTMLElement; // div.search-result-file-matches
     result: {
         content: SearchMatches;
         properties: any[];

@@ -38,7 +38,7 @@ export class BacklinkManager extends Component implements HoverParent {
             this.highlightBacklinks();
             this.registerEvent(this.app.metadataCache.on('resolved', () => {
                 this.highlightBacklinks();
-            }));0
+            }));
         }
     }
 
@@ -141,28 +141,45 @@ export class BacklinkManager extends Component implements HoverParent {
                             const fileDom = backlinkDom.getResult(sourceFile);
                             if (!fileDom) return;
 
-                            // const itemDoms = fileDom?.vChildren.children; // better search view destroys this!! So we have to take a detour
+                            // reliable check than app.plugins.enabledPlugins.has('better-search-views')
+                            // because Better Search Views does not properly load or unload without reloading the app
+                            const isBetterSearchViewsEnabled = fileDom.childrenEl.querySelector('.better-search-views-tree');
 
-                            const cache = this.app.metadataCache.getFileCache(sourceFile);
-                            if (!cache?.sections) return;
+                            if (!isBetterSearchViewsEnabled) {
+                                const itemDoms = fileDom?.vChildren.children;
+                                if (!itemDoms) return;
 
-                            const sectionsContainingBacklinks = new Set<SectionCache>();
-                            for (const [start, end] of fileDom.result.content) {
-                                const sec = cache.sections.find(sec => sec.position.start.offset <= start && end <= sec.position.end.offset);
-                                if (sec) {
-                                    sectionsContainingBacklinks.add(sec);
-                                    if (start === linkCache.position.start.offset && end === linkCache.position.end.offset) {
-                                        break;
+                                const itemDom = itemDoms.find((itemDom) => {
+                                    return itemDom.start === linkCache.position.start.offset && itemDom.end === linkCache.position.end.offset;
+                                });
+
+                                if (itemDom) {
+                                    backlinkItemEl = itemDom.el;
+                                    backlinkItemEl.addClass('hovered-backlink');
+                                }
+                            } else {
+                                // Better Search Views destroys fileDom.vChildren!! So we have to take a detour.
+                                const cache = this.app.metadataCache.getFileCache(sourceFile);
+                                if (!cache?.sections) return;
+    
+                                const sectionsContainingBacklinks = new Set<SectionCache>();
+                                for (const [start, end] of fileDom.result.content) {
+                                    const sec = cache.sections.find(sec => sec.position.start.offset <= start && end <= sec.position.end.offset);
+                                    if (sec) {
+                                        sectionsContainingBacklinks.add(sec);
+                                        if (start === linkCache.position.start.offset && end === linkCache.position.end.offset) {
+                                            break;
+                                        }
                                     }
                                 }
+    
+                                const index = sectionsContainingBacklinks.size - 1;
+                                if (index === -1) return;
+    
+                                backlinkItemEl = fileDom?.childrenEl.querySelectorAll<HTMLElement>('.search-result-file-match')[index];
+    
+                                backlinkItemEl?.addClass('hovered-backlink');
                             }
-
-                            const index = sectionsContainingBacklinks.size - 1;
-                            if (index === -1) return;
-
-                            backlinkItemEl = fileDom?.childrenEl.querySelectorAll<HTMLElement>('.search-result-file-match')[index];
-
-                            backlinkItemEl?.addClass('hovered-backlink');
                         });
 
                         this.eventManager.registerDomEvent(highlightedEl, 'mouseout', (event) => {

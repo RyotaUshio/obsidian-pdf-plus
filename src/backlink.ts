@@ -24,10 +24,10 @@ export class BacklinkPanePDFManager extends Component {
             'Show only backlinks in the current page',
             () => {
                 this.isTrackingPage = !this.isTrackingPage;
-                this.update();
+                this.updatePageTracker();
             }
         );
-        this.update();
+        this.updatePageTracker();
     }
 
     onunload() {
@@ -41,7 +41,7 @@ export class BacklinkPanePDFManager extends Component {
         return this;
     }
 
-    update() {
+    updatePageTracker() {
         this.navButtonEl!.toggleClass("is-active", this.isTrackingPage);
         this.isTrackingPage ? this.pageTracker.load() : this.pageTracker.unload();;
     }
@@ -55,11 +55,11 @@ export class BacklinkPanePDFPageTracker extends Component {
     constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
         super();
         this.app = plugin.app;
-        this.matchCountObserver = this.addChild(new MutationObservingChild(
+        this.matchCountObserver = new MutationObservingChild(
             this.renderer.backlinkDom.el,
-            () => this.updateBacklinkCountEl(),
+            () => this.updateBacklinkCountEl((num) => `${num} in this page`),
             { childList: true, subtree: true }
-        ));
+        );
     }
 
     onload() {
@@ -84,6 +84,10 @@ export class BacklinkPanePDFPageTracker extends Component {
                 });
             });
         }
+
+        // `Component.prototype.unload` not only unloads children components, but also removes them from the parent.
+        // So `addChild` must be in `onload`, not the constructor.
+        this.addChild(this.matchCountObserver);
     }
 
     onunload() {
@@ -93,8 +97,8 @@ export class BacklinkPanePDFPageTracker extends Component {
 
     updateBacklinkDom() {
         this.renderer.backlinkDom.emptyResults();
-        this.app.metadataCache.getBacklinksForFile(this.file).keys().forEach((path) => {
-            const sourceFile = this.app.vault.getAbstractFileByPath(path);
+        this.app.metadataCache.getBacklinksForFile(this.file).keys().forEach((sourcePath) => {
+            const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
             if (sourceFile instanceof TFile) {
                 this.renderer.recomputeBacklink(sourceFile);
                 this.renderer.update();
@@ -102,12 +106,12 @@ export class BacklinkPanePDFPageTracker extends Component {
         });
     }
 
-    updateBacklinkCountEl() {
+    updateBacklinkCountEl(format?: (num: number) => string) {
         const num = Array.from(this.renderer.backlinkDom.el.querySelectorAll<HTMLElement>('div.search-result-file-title span.tree-item-flair'))
             .map((el) => +el.getText())
             .reduce((a, b) => a + b, 0);
 
-        this.renderer.backlinkCountEl?.setText(`${num}`);
+        this.renderer.backlinkCountEl?.setText(format ? format(num) : `${num}`);
     }
 
     filter(pageNumber: number, linkCache: ReferenceCache) {
