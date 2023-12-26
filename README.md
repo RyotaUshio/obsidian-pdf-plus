@@ -3,7 +3,7 @@
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
 - It transforms backlinks to PDF files into highlighted annotations, establishing Obsidian as a stand-alone PDF annotation tool.
-- It adds some quality-of-life improvements to the built-in PDF viewer and PDF embeds.
+- It also adds some quality-of-life improvements to the built-in PDF viewer and PDF embeds.
 
 PDF++ stands out among other PDF annotation tools for the following reasons:
 
