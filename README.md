@@ -8,7 +8,7 @@ This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience
 PDF++ stands out among other PDF annotation tools for the following reasons:
 
 - PDF++ acts as a complement to Obsidian's native PDF viewer rather than replacing it. Therefore, it will not leave behind a pile of unreadable JSON even if this plugin stops working in the future, unlike [Annotator](https://github.com/elias-sundqvist/obsidian-annotator).
-- PDF++ makes Obsidian work as a stand-alone PDF annotation tool. You can seamlessly annotate your PDFs using Obsidian's rich markdown editor without switching between an external app like Zotero or Marginnote.
+- PDF++ makes Obsidian work as a stand-alone PDF annotation tool. You can seamlessly annotate your PDFs using Obsidian's rich markdown editor without switching between Obsidian and an external app like Zotero or Marginnote.
 
 See [here](#installation) for an installation guide.
 
