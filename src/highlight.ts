@@ -1,7 +1,7 @@
 import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from "obsidian";
 
 import PDFPlus from "main";
-import { getSubpathWithoutHash, onTextLayerReady } from "utils";
+import { getSubpathWithoutHash, isMouseEventExternal, onTextLayerReady } from "utils";
 import { BacklinkView, ObsidianViewer } from "typings";
 
 
@@ -13,6 +13,8 @@ interface BacklinkInfo {
     endIndex: number;
     endOffset: number;
     colorName?: string;
+    highlightedEls?: HTMLElement[];
+    backlinkItemEl?: HTMLElement;
 }
 
 export class BacklinkHighlighter extends Component implements HoverParent {
@@ -109,10 +111,28 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     pageNumber, beginIndex, beginOffset, endIndex, endOffset, colorName,
                     // the callback called right after this backlink is highlighted
                     (highlightedEl) => {
-                        let backlinkItemEl: HTMLElement | null = null;
+                        if (!backlink.highlightedEls) backlink.highlightedEls = [];
+                        backlink.highlightedEls.push(highlightedEl);
+
+                        // When hovering over an item in the backlink pane, highlight the corresponding text selection in the PDF view
+                        if (this.plugin.settings.highlightOnHoverBacklinkPane) {
+                            this.updateBacklinkItemEl(backlink);
+                            if (backlink.backlinkItemEl) this.registerHoverOverBacklinkPane(backlink.backlinkItemEl, [highlightedEl]);
+                        }
 
                         this.eventManager.registerDomEvent(highlightedEl, 'mouseover', (event) => {
+                            // highlight the corresponding item in backlink pane
+                            if (this.plugin.settings.highlightBacklinksPane) {
+                                if (!backlink.highlightedEls?.contains(highlightedEl)) {
+                                    console.log({ 'highlightedEl': highlightedEl, 'backlink': backlink });
+                                    throw Error;
+                                }
+                                this.updateBacklinkItemEl(backlink);
+                                if (backlink.backlinkItemEl) backlink.backlinkItemEl.addClass('hovered-backlink');
+                            }
+                        });
 
+                        this.eventManager.registerDomEvent(highlightedEl, 'mouseover', (event) => {
                             this.app.workspace.trigger('hover-link', {
                                 event,
                                 source: 'pdf-plus',
@@ -122,68 +142,11 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                                 sourcePath: this.file?.path ?? '',
                                 state: { scroll: linkCache.position.start.line }
                             });
-
-                            // highlight the corresponding item in backlink pane
-
-                            if (!this.plugin.settings.highlightBacklinksPane) return;
-
-                            const backlinkLeaf = this.app.workspace.getLeavesOfType('backlink')[0];
-                            if (!backlinkLeaf) return;
-
-                            const backlinkView = backlinkLeaf.view as BacklinkView;
-                            if (!backlinkView.containerEl.isShown()) return;
-
-                            const backlinkDom = backlinkView.backlink.backlinkDom;
-                            const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
-                            if (!(sourceFile instanceof TFile)) return;
-
-                            const fileDom = backlinkDom.getResult(sourceFile);
-                            if (!fileDom) return;
-
-                            // reliable check than app.plugins.enabledPlugins.has('better-search-views')
-                            // because Better Search Views does not properly load or unload without reloading the app
-                            const isBetterSearchViewsEnabled = fileDom.childrenEl.querySelector('.better-search-views-tree');
-
-                            if (!isBetterSearchViewsEnabled) {
-                                const itemDoms = fileDom?.vChildren.children;
-                                if (!itemDoms) return;
-
-                                const itemDom = itemDoms.find((itemDom) => {
-                                    return itemDom.start === linkCache.position.start.offset && itemDom.end === linkCache.position.end.offset;
-                                });
-
-                                if (itemDom) {
-                                    backlinkItemEl = itemDom.el;
-                                    backlinkItemEl.addClass('hovered-backlink');
-                                }
-                            } else {
-                                // Better Search Views destroys fileDom.vChildren!! So we have to take a detour.
-                                const cache = this.app.metadataCache.getFileCache(sourceFile);
-                                if (!cache?.sections) return;
-    
-                                const sectionsContainingBacklinks = new Set<SectionCache>();
-                                for (const [start, end] of fileDom.result.content) {
-                                    const sec = cache.sections.find(sec => sec.position.start.offset <= start && end <= sec.position.end.offset);
-                                    if (sec) {
-                                        sectionsContainingBacklinks.add(sec);
-                                        if (start === linkCache.position.start.offset && end === linkCache.position.end.offset) {
-                                            break;
-                                        }
-                                    }
-                                }
-    
-                                const index = sectionsContainingBacklinks.size - 1;
-                                if (index === -1) return;
-    
-                                backlinkItemEl = fileDom?.childrenEl.querySelectorAll<HTMLElement>('.search-result-file-match')[index];
-    
-                                backlinkItemEl?.addClass('hovered-backlink');
-                            }
                         });
 
+                        // clear highlights in backlink pane
                         this.eventManager.registerDomEvent(highlightedEl, 'mouseout', (event) => {
-                            backlinkItemEl?.removeClass('hovered-backlink');
-                            backlinkItemEl = null;
+                            backlink.backlinkItemEl?.removeClass('hovered-backlink');
                         });
 
                         this.eventManager.registerDomEvent(highlightedEl, 'dblclick', (event) => {
@@ -265,5 +228,76 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             textDiv.className = textDiv.hasClass("textLayerNode") ? "textLayerNode" : "";
         }
         this.highlightedTexts = [];
+    }
+
+    findBacklinkItemEl(backlink: BacklinkInfo): HTMLElement | null {
+        const { linkCache, sourcePath } = backlink;
+
+        const backlinkLeaf = this.app.workspace.getLeavesOfType('backlink')[0];
+        if (!backlinkLeaf) return null;
+
+        const backlinkView = backlinkLeaf.view as BacklinkView;
+        if (!backlinkView.containerEl.isShown()) return null;
+
+        const backlinkDom = backlinkView.backlink.backlinkDom;
+        const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
+        if (!(sourceFile instanceof TFile)) return null;
+
+        const fileDom = backlinkDom.getResult(sourceFile);
+        if (!fileDom) return null;
+
+        // reliable check than app.plugins.enabledPlugins.has('better-search-views')
+        // because Better Search Views does not properly load or unload without reloading the app
+        const isBetterSearchViewsEnabled = fileDom.childrenEl.querySelector('.better-search-views-tree');
+
+        if (!isBetterSearchViewsEnabled) {
+            const itemDoms = fileDom?.vChildren.children;
+            if (!itemDoms) return null;
+
+            const itemDom = itemDoms.find((itemDom) => {
+                return itemDom.start <= linkCache.position.start.offset && linkCache.position.end.offset <= itemDom.end;
+            });
+
+            return itemDom?.el ?? null;
+        } else {
+            // Better Search Views destroys fileDom.vChildren!! So we have to take a detour.
+            const cache = this.app.metadataCache.getFileCache(sourceFile);
+            if (!cache?.sections) return null;
+
+            const sectionsContainingBacklinks = new Set<SectionCache>();
+            for (const [start, end] of fileDom.result.content) {
+                const sec = cache.sections.find(sec => sec.position.start.offset <= start && end <= sec.position.end.offset);
+                if (sec) {
+                    sectionsContainingBacklinks.add(sec);
+                    if (start === linkCache.position.start.offset && linkCache.position.end.offset === end) {
+                        break;
+                    }
+                }
+            }
+
+            const index = sectionsContainingBacklinks.size - 1;
+            if (index === -1) return null;
+
+            return fileDom?.childrenEl.querySelectorAll<HTMLElement>('.search-result-file-match')[index] ?? null;
+        }
+    }
+
+    registerHoverOverBacklinkPane(backlinkItemEl: HTMLElement, highlightedEls: HTMLElement[]) {
+        this.eventManager.registerDomEvent(backlinkItemEl, 'mouseover', (evt) => {
+            if (isMouseEventExternal(evt, backlinkItemEl)) {
+                for (const el of highlightedEls) el.addClass('hovered-highlight');
+            }
+        });
+        this.eventManager.registerDomEvent(backlinkItemEl, 'mouseout', (evt) => {
+            if (isMouseEventExternal(evt, backlinkItemEl)) {
+                for (const el of highlightedEls) el.removeClass('hovered-highlight');
+            }
+        });
+    }
+
+    /** `backlink.backlinkItemEl` must be updated after `BacklinkPanePDFPageTracker` re-draws the backlink DOM */
+    updateBacklinkItemEl(backlink: BacklinkInfo) {
+        const backlinkItemEl = this.findBacklinkItemEl(backlink)
+        if (backlinkItemEl) backlink.backlinkItemEl = backlinkItemEl;
     }
 }

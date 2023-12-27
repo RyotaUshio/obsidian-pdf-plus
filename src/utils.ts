@@ -5,20 +5,6 @@ import PDFPlus from 'main';
 import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView } from 'typings';
 
 
-export function getTextLayerNode(pageEl: HTMLElement, node: Node): HTMLElement | null {
-    if (!pageEl.contains(node))
-        return null;
-    if (node.instanceOf(HTMLElement) && node.hasClass("textLayerNode"))
-        return node;
-    for (let n: Node | null = node; n = n.parentNode;) {
-        if (n === pageEl)
-            return null;
-        if (n.instanceOf(HTMLElement) && n.hasClass("textLayerNode"))
-            return n;
-    }
-    return null
-}
-
 /** 
  * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
  */
@@ -194,8 +180,8 @@ export function getExistingPDFViewOfFile(app: App, file: TFile): PDFView | undef
 }
 
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
-    return cache.links?.find((link) => link.position.start.offset === start && link.position.end.offset === end)
-        ?? cache.embeds?.find((embed) => embed.position.start.offset === start && embed.position.end.offset === end);
+    return cache.links?.find((link) => start <= link.position.start.offset && link.position.end.offset <= end)
+        ?? cache.embeds?.find((embed) => start <= embed.position.start.offset && embed.position.end.offset <= end);
 };
 
 export function getSubpathWithoutHash(linktext: string): string {

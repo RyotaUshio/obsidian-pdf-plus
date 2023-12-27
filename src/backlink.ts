@@ -2,7 +2,7 @@ import { App, Component, TFile, ReferenceCache, parseLinktext } from 'obsidian';
 
 import PDFPlus from 'main';
 import { MutationObservingChild, findReferenceCache, getExistingPDFViewOfFile, getSubpathWithoutHash, highlightSubpath, isMouseEventExternal, registerPDFEvent } from 'utils';
-import { BacklinkRenderer } from 'typings';
+import { BacklinkRenderer, PDFViewerChild } from 'typings';
 
 
 /** A component that will be loaded as a child of the backlinks pane while the active file is PDF. */
@@ -11,7 +11,6 @@ export class BacklinkPanePDFManager extends Component {
     navButtonEl: HTMLElement | null = null;
     pageTracker: BacklinkPanePDFPageTracker;
     isTrackingPage: boolean;
-    // lastHoveredItemEl: HTMLElement | null = null;
 
     constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
         super();
@@ -30,36 +29,6 @@ export class BacklinkPanePDFManager extends Component {
             }
         );
         this.updatePageTracker();
-
-        // this.registerDomEvent(this.renderer.backlinkDom.el, 'mouseover', (evt) => {
-        //     if (evt.target instanceof HTMLElement && evt.target.classList.contains('search-result-file-match') && this.lastHoveredItemEl !== evt.target) {
-        //         const itemEl = evt.target;
-        //         this.lastHoveredItemEl = itemEl;
-        //         const viewer = getExistingPDFViewOfFile(this.app, this.file)?.viewer;
-        //         if (!viewer) return;
-        //         const subpath = this.getSubpathFromItemEl(itemEl);
-        //         if (!subpath) return;
-
-        //         viewer.then((child) => {
-        //             const params = new URLSearchParams(subpath.slice(1));
-        //             if (params.has('page')) {
-        //                 const page = +params.get('page')!;
-        //                 child.pdfViewer.pdfViewer.currentPageNumber = page;
-        //             }
-
-        //             highlightSubpath(child, subpath, 0);
-        //             const onMouseOut = (evt: MouseEvent) => {
-        //                 if (isMouseEventExternal(evt, itemEl)) {
-        //                     child.clearTextHighlight();
-        //                     child.backlinkHighlighter?.highlightBacklinks();
-        //                     itemEl.removeEventListener('mouseout', onMouseOut);
-        //                     this.lastHoveredItemEl = null;
-        //                 }
-        //             };
-        //             itemEl.addEventListener('mouseout', onMouseOut)
-        //         });
-        //     }
-        // });
     }
 
     onunload() {
@@ -117,7 +86,12 @@ export class BacklinkPanePDFPageTracker extends Component {
         this.app = plugin.app;
         this.matchCountObserver = new MutationObservingChild(
             this.renderer.backlinkDom.el,
-            () => this.updateBacklinkCountEl((num) => `${num} in this page`),
+            () => {
+                this.updateBacklinkCountEl((num) => `${num} in this page`);
+                for (const resultEl of this.renderer.backlinkDom.el.querySelectorAll('.tree-item.search-result:not(:has( .search-result-file-match))')) {
+                    resultEl.remove();
+                }
+            },
             { childList: true, subtree: true }
         );
     }
@@ -132,15 +106,14 @@ export class BacklinkPanePDFPageTracker extends Component {
                     return this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache);
                 }
                 this.updateBacklinkDom();
+                this.updateBacklinkItemDomHoverHandler(child, child.pdfViewer.pdfViewer.currentPageNumber);
 
                 registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
-                    if (typeof data.pageNumber === 'number') {
-                        this.renderer.backlinkDom.filter = (file, linkCache) => {
-                            if (typeof data.pageNumber !== 'number') return true;
-                            return this.filter(data.pageNumber, linkCache);
-                        }
-                    }
+                    const page = typeof data.pageNumber === 'number' ? (data.pageNumber as number) : child.pdfViewer.pdfViewer.currentPageNumber;
+                    this.renderer.backlinkDom.filter = (file, linkCache) => this.filter(page, linkCache);
+
                     this.updateBacklinkDom();
+                    this.updateBacklinkItemDomHoverHandler(child, page);
                 });
             });
         }
@@ -153,6 +126,10 @@ export class BacklinkPanePDFPageTracker extends Component {
     onunload() {
         this.renderer.backlinkDom.filter = undefined;
         this.updateBacklinkDom();
+        const view = getExistingPDFViewOfFile(this.app, this.file);
+        if (view) {
+            view.viewer.then((child) => this.updateBacklinkItemDomHoverHandler(child));
+        }
     }
 
     updateBacklinkDom() {
@@ -172,6 +149,29 @@ export class BacklinkPanePDFPageTracker extends Component {
             .reduce((a, b) => a + b, 0);
 
         this.renderer.backlinkCountEl?.setText(format ? format(num) : `${num}`);
+    }
+
+    updateBacklinkItemDomHoverHandler(child: PDFViewerChild, page?: number) {
+        // `updateBacklinkDom` re-draws the DOM and therefore removes the event handlers.
+        // we need to re-register new event handlers.
+        if (this.plugin.settings.highlightOnHoverBacklinkPane) {
+            setTimeout(() => {
+                const highlighter = child.backlinkHighlighter;
+                if (!highlighter) return;
+
+                const pages = page ? [page] : Object.keys(highlighter.backlinks).map((page) => +page);
+
+                for (const page of pages) {
+                    for (const backlink of highlighter.backlinks[page] ?? []) {
+                        highlighter.updateBacklinkItemEl(backlink);
+    
+                        if (backlink.backlinkItemEl && backlink.highlightedEls) {
+                            highlighter.registerHoverOverBacklinkPane(backlink.backlinkItemEl, backlink.highlightedEls);
+                        }
+                    }    
+                }
+            }, 500);
+        }
     }
 
     filter(pageNumber: number, linkCache: ReferenceCache) {

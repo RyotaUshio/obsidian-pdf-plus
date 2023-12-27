@@ -1,7 +1,7 @@
 import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PaneType, PluginSettingTab, Setting } from 'obsidian';
 
 import PDFPlus from 'main';
-import { getModifierNameInPlatform } from 'utils';
+import { getModifierNameInPlatform, isHexString } from 'utils';
 
 
 const HOVER_HIGHLIGHT_ACTIONS = {
@@ -24,6 +24,8 @@ export const COLOR_PALETTE_ACTIONS = {
 	copyEmbed: 'Copy embed of selection',
 };
 
+export const DEFAULT_BACKLINK_HOVER_COLOR = 'green';
+
 export interface PDFPlusSettings {
 	alias: boolean; // the term "alias" is probably incorrect here. It should be "display text" instead.
 	aliasFormat: string;
@@ -39,6 +41,8 @@ export interface PDFPlusSettings {
 	highlightBacklinks: boolean;
 	clickEmbedToOpenLink: boolean;
 	highlightBacklinksPane: boolean;
+	highlightOnHoverBacklinkPane: boolean;
+	backlinkHoverColor: HexString;
 	colors: Record<string, HexString>;
 	defaultColor: string;
 	colorPaletteInToolbar: boolean;
@@ -68,6 +72,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightBacklinks: true,
 	clickEmbedToOpenLink: true,
 	highlightBacklinksPane: true,
+	highlightOnHoverBacklinkPane: true,
+	backlinkHoverColor: '',
 	colors: {
 		'Yellow': '#ffd000',
 		'Red': '#EA5252',
@@ -169,13 +175,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 		return this.addSetting(settingName)
 			.addDropdown((dropdown) => {
-				const displayNames = new Set<string>();
+				// const displayNames = new Set<string>();
 				for (const option of options) {
 					const displayName = display(option) ?? option;
-					if (!displayNames.has(displayName)) {
-						dropdown.addOption(option, displayName);
-						displayNames.add(displayName);
-					}
+					// if (!displayNames.has(displayName)) {
+					dropdown.addOption(option, displayName);
+					// displayNames.add(displayName);
+					// }
 				};
 				dropdown.setValue(this.plugin.settings[settingName])
 					.onChange(async (value) => {
@@ -217,13 +223,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 	}
 
-	addColorSetting(name: string, color: HexString) {
+	addColorSetting(index: number) {
 		const colors = this.plugin.settings.colors;
+		let [name, color] = Object.entries(colors)[index];
 		const isDefault = this.plugin.settings.defaultColor === name;
 		let previousColor = color;
 		return this.addSetting()
 			.addText((text) => {
 				text.setPlaceholder('Color name (case-insensitive)')
+					.then((text) => text.inputEl.size = text.inputEl.placeholder.length)
 					.setValue(name)
 					.onChange(async (newName) => {
 						if (newName in colors) {
@@ -234,12 +242,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						text.inputEl.removeClass('error');
 						delete colors[name];
 
-						const defaultColorSetting = this.items.defaultColor;
-						if (defaultColorSetting) {
-							const optionEl = (defaultColorSetting.components[0] as DropdownComponent).selectEl.querySelector<HTMLOptionElement>(`:scope > option[value="${name}"]`);
-							if (optionEl) {
-								optionEl.value = newName;
-								optionEl.textContent = newName;
+						for (const key of ['defaultColor', 'backlinkHoverColor'] as const) {
+							const setting = this.items[key];
+							if (setting) {
+								const optionEl = (setting.components[0] as DropdownComponent).selectEl.querySelector<HTMLOptionElement>(`:scope > option:nth-child(${index + 2})`);
+								if (optionEl) {
+									optionEl.value = newName;
+									optionEl.textContent = newName;
+								}
 							}
 						}
 
@@ -345,8 +355,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						this.redisplay();
 					});
 			})
-		for (const [name, color] of Object.entries(this.plugin.settings.colors)) {
-			this.addColorSetting(name, color)
+		for (let i = 0; i < Object.keys(this.plugin.settings.colors).length; i++) {
+			this.addColorSetting(i)
 				.setClass('no-border');
 		}
 
@@ -383,12 +393,25 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				`Improve the built-in [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) for better PDF experience.`,
 				setting.descEl
 			));
-		this.addToggleSetting('highlightBacklinksPane')
-			.setName('Highlight hovered backlinks in the backlinks pane')
-			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane.');
 		this.addToggleSetting('filterBacklinksByPageDefault')
 			.setName('Filter backlinks by page by default')
 			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
+		this.addToggleSetting('highlightBacklinksPane')
+			.setName('Hover sync (PDF viewer → Backlinks pane)')
+			.setDesc('Hovering your mouse over highlighted backlinked text will also highlight the corresponding item in the backlink pane.');
+		this.addToggleSetting('highlightOnHoverBacklinkPane')
+			.setName('Hover sync (Backlinks pane → PDF viewer)')
+			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text in the PDF viewer.')
+		if (this.plugin.settings.highlightOnHoverBacklinkPane) {
+			this.addDropdowenSetting(
+				'backlinkHoverColor',
+				['', ...Object.keys(this.plugin.settings.colors)],
+				(option) => option || 'PDF++ default',
+				() => this.plugin.loadStyle()
+			)
+				.setName('Highlight color for hover sync (Backlinks pane → PDF viewer)')
+				.setDesc('To add a new color, click the "+" button in the "highlight colors" setting above.');
+		}
 
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.redisplay())
@@ -496,7 +519,17 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		await Promise.all(this.promises);
 	}
 
-	hide() {
+	async hide() {
+		this.plugin.settings.colors = Object.fromEntries(
+			Object.entries(this.plugin.settings.colors).filter(([name, color]) => name && isHexString(color))
+		);
+		if (this.plugin.settings.defaultColor && !(this.plugin.settings.defaultColor in this.plugin.settings.colors)) {
+			this.plugin.settings.defaultColor = '';
+		}
+		if (this.plugin.settings.backlinkHoverColor && !(this.plugin.settings.backlinkHoverColor in this.plugin.settings.colors)) {
+			this.plugin.settings.backlinkHoverColor = '';
+		}
+		await this.plugin.saveSettings();
 		this.promises = [];
 		this.component.unload();
 		this.containerEl.empty();

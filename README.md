@@ -52,10 +52,11 @@ Annotate PDF files with highlights just by linking to text selection.
 
 #### [Backlink pane](https://help.obsidian.md/Plugins/Backlinks) improvements
 
-These features enrich Obsidian as a stand-alone PDF annotation tool.
+These features make Obsidian a unique PDF annotation tool that tightly connects PDFs to your ideas stored as markdown files.
 
 - **Filter backlinks by page**: Show only backlinks to the page that is currently opened in the PDF viewer.
-- **Highlight hovered backlinks in the backlinks pane**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks). This feature is compatible with the [Better Search Views](https://github.com/ivan-lednev/better-search-views) plugin.
+- **Hover sync (PDF viewer → Backlinks pane)**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks).
+- **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text in the PDF viewer.
 
 ### Opening links to PDF files
 
@@ -88,6 +89,17 @@ These features enrich Obsidian as a stand-alone PDF annotation tool.
 - **Make PDF embeds unscrollable**
 - **Zoom in PDF embeds (experimental)**
 
+## CSS customization
+
+You can customize the styling of highlighted text using [CSS snippets](https://help.obsidian.md/Extending+Obsidian/CSS+snippets).
+
+Here is a list of CSS selectors to target:
+
+- `.textLayer .mod-focused`: All PDF selection/annotion highlights, including Obsidian's built-in ones shown when opening links to text selection in PDFs
+- `.textLayer .mod-focused.pdf-plus-backlink`: PDF text highlights that PDF++ generates from backlinks
+  - Use `.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="<COLOR NAME>"]` to target a specific color
+- `.textLayer .mod-focused.pdf-plus-backlink.hovered-highlight`: PDF text highlights that PDF++ generates when you hover over an item in the backlinks pane
+
 ## Installation
 
 Since this plugin is still in its alpha, it's not available in the community plugin browser yet.
@@ -99,11 +111,15 @@ But you can install the latest release using [BRAT](https://github.com/TfTHacker
 3. Open the following URL in the browser: `obsidian://brat?plugin=RyotaUshio/obsidian-pdf-plus`.
 4. Click the "Add Plugin" button.
 
-## Remarks
+## Compatibility
+
+I'm trying to keep PDF++ compatible with the following plugin(s) as much as possible:
+
+- [Better Search Views](https://github.com/ivan-lednev/better-search-views)
 
 The following plugin(s) alters Obsidian's internals in such a way that prevents some aspects of other plugins from working properly, so I don't recommend using it together with this plugin.
 
-- [Close similar tabs](https://github.com/1C0D/Obsidian-Close-Similar-Tabs)
+- [Close Similar Tabs](https://github.com/1C0D/Obsidian-Close-Similar-Tabs)
 
 ## Development principles
 

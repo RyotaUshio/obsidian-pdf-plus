@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, HoverParent, SearchMatchPart, IconName, LinkCache, ReferenceCache } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, ReferenceCache } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 
@@ -312,8 +312,10 @@ interface SearchResultItemDom {
     parentDom: SearchResultDom;
     content: string;
     cache: CachedMetadata;
-    start: number; // start position of a link (Loc.offset)
-    end: number; // end position of a link (Loc.offset)
+    /** The start position (Loc.offset) of the text range that is rendered into this item dom. Don't confuse it with the start position of a link! */
+    start: number;
+    /** The end position (Loc.offset) of the text range that is rendered into this item dom. Don't confuse it with the end position of a link! */
+    end: number;
     matches: SearchMatches;
     mutateEState: any;
     el: HTMLElement;

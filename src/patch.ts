@@ -4,9 +4,9 @@ import { around } from "monkey-around";
 import PDFPlus from "main";
 import { BacklinkHighlighter } from "highlight";
 import { ColorPalette } from "color-palette";
+import { BacklinkPanePDFManager } from "backlink";
 import { findReferenceCache, getActiveGroupLeaves, getExistingPDFLeafOfFile, highlightSubpath, onTextLayerReady } from "utils";
 import { BacklinkRenderer, BacklinkView, FileSearchResult, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild, SearchResultDom, SearchResultFileDom } from "typings";
-import { BacklinkPanePDFManager } from "backlink";
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {

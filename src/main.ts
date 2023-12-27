@@ -3,10 +3,10 @@ import { Component, Keymap, Notice, Plugin } from 'obsidian';
 import { patchPDF, patchBacklink, patchPagePreview, patchWorkspace } from 'patch';
 import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
-import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
+import { BacklinkPanePDFManager } from 'backlink';
+import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
-import { BacklinkPanePDFManager } from 'backlink';
 
 
 export default class PDFPlus extends Plugin {
@@ -162,20 +162,30 @@ export default class PDFPlus extends Plugin {
 		document.head.append(styleEl);
 
 		styleEl.textContent = Object.entries(this.settings.colors).map(([name, color]) => {
-			return isHexString(color) ? (
-				`.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="${name.toLowerCase()}"] {
-	background-color: ${color};
-}`
-			) : '';
+			return isHexString(color) ? [
+				`.textLayer .mod-focused.pdf-plus-backlink:not(.hovered-highlight)[data-highlight-color="${name.toLowerCase()}"] {`,
+				`    background-color: ${color};`,
+				`}`
+			].join('\n') : '';
 		}).join('\n');
+
 		const defaultColor = this.settings.colors[this.settings.defaultColor];
-		if (defaultColor) {
-			styleEl.textContent += `
-.textLayer .mod-focused.pdf-plus-backlink {
-	background-color: ${defaultColor};
-}
-`
+		if (defaultColor && isHexString(defaultColor)) {
+			styleEl.textContent += [
+				`\n.textLayer .mod-focused.pdf-plus-backlink:not(.hovered-highlight) {`,
+				`    background-color: ${defaultColor};`,
+				`}`
+			].join('\n');
 		}
+
+		let backlinkHoverColor = this.settings.colors[this.settings.backlinkHoverColor];
+		if (!backlinkHoverColor || !isHexString(backlinkHoverColor)) backlinkHoverColor = DEFAULT_BACKLINK_HOVER_COLOR;
+		styleEl.textContent += [
+			`\n.textLayer .mod-focused.pdf-plus-backlink.hovered-highlight {`,
+			`	background-color: ${backlinkHoverColor};`,
+			`}`
+		].join('\n');
+
 		this.app.workspace.trigger('css-change');
 	}
 
