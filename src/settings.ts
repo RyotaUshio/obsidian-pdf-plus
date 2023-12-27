@@ -92,11 +92,13 @@ export type KeysOfType<Obj, Type> = NonNullable<{ [k in keyof Obj]: Obj[k] exten
 export class PDFPlusSettingTab extends PluginSettingTab {
 	component: Component;
 	items: Partial<Record<keyof PDFPlusSettings, Setting>>;
+	promises: Promise<any>[];
 
 	constructor(public plugin: PDFPlus) {
 		super(plugin.app, plugin);
 		this.component = new Component();
 		this.items = {};
+		this.promises = [];
 	}
 
 	addSetting(settingName?: keyof PDFPlusSettings) {
@@ -205,6 +207,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	async renderMarkdown(lines: string[] | string, el: HTMLElement) {
+		this.promises.push(this._renderMarkdown(lines, el));
+	}
+
+	async _renderMarkdown(lines: string[] | string, el: HTMLElement) {
 		await MarkdownRenderer.render(this.app, Array.isArray(lines) ? lines.join('\n') : lines, el, '', this.component);
 		if (el.childNodes.length === 1 && el.firstChild instanceof HTMLParagraphElement) {
 			el.replaceChildren(...el.firstChild.childNodes);
@@ -234,7 +240,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 							if (optionEl) {
 								optionEl.value = newName;
 								optionEl.textContent = newName;
-							}	
+							}
 						}
 
 						name = newName;
@@ -281,20 +287,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	/** Refresh the setting tab and then scroll back to the original position. */
-	redisplay() {
-		const firstSettingEl = this.containerEl.querySelector('.setting-item:first-child');
-		if (firstSettingEl) {
-			const { top, left } = firstSettingEl.getBoundingClientRect();
-			this.display();
-			this.containerEl.querySelector('.setting-item:first-child')?.scroll({ top, left });
-		} else {
-			this.display();
-		}
+	async redisplay() {
+		const scrollTop = this.containerEl.scrollTop;
+		this.display();
+		this.containerEl.scroll({ top: scrollTop });
 	}
 
-	display(): void {
+	async display(): Promise<void> {
 		this.containerEl.empty();
 		this.containerEl.addClass('pdf-plus-settings');
+		this.promises = [];
 		this.component.load();
 
 		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
@@ -328,15 +330,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.addSetting('colors')
 			.setName('Highlight colors')
-			.then((setting) => {
-				this.renderMarkdown([
-					'You can optionally highlight the selection with **a specified color** by appending "&color=`<COLOR NAME>`" to a link text, where `<COLOR NAME>` is one of the colors that you register below. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]].` ',
-					'Color names are case-insensitive. ',
-					'',
-					'You can also opt not to use this plugin-dependent notation and apply a single color (the "default highlight color" setting) to all highlights.',
-				], setting.descEl
-				)
-			})
+			.then((setting) => this.renderMarkdown([
+				'You can optionally highlight the selection with **a specified color** by appending "&color=`<COLOR NAME>`" to a link text, where `<COLOR NAME>` is one of the colors that you register below. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]].` ',
+				'Color names are case-insensitive. ',
+				'',
+				'You can also opt not to use this plugin-dependent notation and apply a single color (the "default highlight color" setting) to all highlights.',
+			], setting.descEl))
 			.addButton((button) => {
 				button
 					.setIcon('plus')
@@ -380,12 +379,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 		this.addHeading('Backlinks pane for PDF files')
-			.then((setting) => {
-				this.renderMarkdown(
-					`Improve the built-in [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) for better PDF experience.`,
-					setting.descEl
-				);
-			})
+			.then((setting) => this.renderMarkdown(
+				`Improve the built-in [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) for better PDF experience.`,
+				setting.descEl
+			));
 		this.addToggleSetting('highlightBacklinksPane')
 			.setName('Highlight hovered backlinks in the backlinks pane')
 			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane.');
@@ -396,12 +393,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.redisplay())
 			.setName('Open PDF links cleverly')
-			.then((setting) => {
-				this.renderMarkdown(
-					`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
-					setting.descEl
-				);
-			});
+			.then((setting) => this.renderMarkdown(
+				`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
+				setting.descEl
+			));
 		if (this.plugin.settings.openLinkCleverly) {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
 				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
@@ -436,40 +431,36 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Copying links to PDF files')
 		this.addToggleSetting('alias', () => this.redisplay())
 			.setName('Copy link with display text')
-			.then((setting) => {
-				this.renderMarkdown(
-					'When copying a link to a selection or an annotation in a PDF file, Obsidian appends "|`<PDF FILE TITLE>`, page `<PAGE NUMBER>`" to the link text by default. Disable this option if you don\'t like it.',
-					setting.descEl
-				);
-			});
+			.then((setting) => this.renderMarkdown(
+				'When copying a link to a selection or an annotation in a PDF file, Obsidian appends "|`<PDF FILE TITLE>`, page `<PAGE NUMBER>`" to the link text by default. Disable this option if you don\'t like it.',
+				setting.descEl
+			));
 		if (this.plugin.settings.alias) {
 			this.addTextSetting('aliasFormat', 'Leave blank to use default')
 				.setName('Display text format')
-				.then((setting) => {
-					this.renderMarkdown([
-						'The template format that will be applied to the display text when copying a link to a selection or an annotation in PDF viewer. ',
-						'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.',
-						'',
-						'For example, the default format is `{{file.basename}}, page {{page}}`.',
-						'',
-						'Available variables are:',
-						'',
-						'- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.',
-						'- `page`: The page number (`Number`).',
-						'- `pageCount`: The total number of pages (`Number`).',
-						'- `selection`: The selected text (`String`).',
-						'- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.',
-						'- `app`: The global Obsidian app object ([`App`](https://docs.obsidian.md/Reference/TypeScript+API/App)).',
-						'- and other global variables such as:',
-						'  - [`moment`](https://momentjs.com/docs/#/displaying/): For exampe, use `moment().format("YYYY-MM-DD")` to get the current date in the "YYYY-MM-DD" format.',
-						'  - `DataviewAPI`: Available if the [Dataview](https://blacksmithgu.github.io/obsidian-dataview/) plugin is enabled.',
-						'',
-						'Additionally, the following variables are available when the PDF tab is linked to another tab:',
-						'',
-						'- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)).',
-						'- `properties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If `linkedFile` has no properties, this is an empty object `{}`.'
-					], setting.descEl);
-				});
+				.then((setting) => this.renderMarkdown([
+					'The template format that will be applied to the display text when copying a link to a selection or an annotation in PDF viewer. ',
+					'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.',
+					'',
+					'For example, the default format is `{{file.basename}}, page {{page}}`.',
+					'',
+					'Available variables are:',
+					'',
+					'- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.',
+					'- `page`: The page number (`Number`).',
+					'- `pageCount`: The total number of pages (`Number`).',
+					'- `selection`: The selected text (`String`).',
+					'- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.',
+					'- `app`: The global Obsidian app object ([`App`](https://docs.obsidian.md/Reference/TypeScript+API/App)).',
+					'- and other global variables such as:',
+					'  - [`moment`](https://momentjs.com/docs/#/displaying/): For exampe, use `moment().format("YYYY-MM-DD")` to get the current date in the "YYYY-MM-DD" format.',
+					'  - `DataviewAPI`: Available if the [Dataview](https://blacksmithgu.github.io/obsidian-dataview/) plugin is enabled.',
+					'',
+					'Additionally, the following variables are available when the PDF tab is linked to another tab:',
+					'',
+					'- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)).',
+					'- `properties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If `linkedFile` has no properties, this is an empty object `{}`.'
+				], setting.descEl));
 		}
 
 		this.addHeading('Embedding PDF files');
@@ -501,9 +492,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						}
 					});
 			});
+
+		await Promise.all(this.promises);
 	}
 
 	hide() {
+		this.promises = [];
 		this.component.unload();
 		this.containerEl.empty();
 	}
