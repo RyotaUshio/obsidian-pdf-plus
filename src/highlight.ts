@@ -13,8 +13,8 @@ interface BacklinkInfo {
     endIndex: number;
     endOffset: number;
     colorName?: string;
-    highlightedEls?: HTMLElement[];
-    backlinkItemEl?: HTMLElement;
+    highlightedEls: HTMLElement[] | null;
+    backlinkItemEl: HTMLElement | null;
 }
 
 export class BacklinkHighlighter extends Component implements HoverParent {
@@ -71,6 +71,8 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                             endIndex: selection[2],
                             endOffset: selection[3],
                             colorName: color,
+                            highlightedEls: null,
+                            backlinkItemEl: null
                         });
                     }
                 }
@@ -123,10 +125,6 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                         this.eventManager.registerDomEvent(highlightedEl, 'mouseover', (event) => {
                             // highlight the corresponding item in backlink pane
                             if (this.plugin.settings.highlightBacklinksPane) {
-                                if (!backlink.highlightedEls?.contains(highlightedEl)) {
-                                    console.log({ 'highlightedEl': highlightedEl, 'backlink': backlink });
-                                    throw Error;
-                                }
                                 this.updateBacklinkItemEl(backlink);
                                 if (backlink.backlinkItemEl) backlink.backlinkItemEl.addClass('hovered-backlink');
                             }
@@ -226,6 +224,10 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             const textDiv = textDivs[index];
             textDiv.textContent = textContentItems[index].str;
             textDiv.className = textDiv.hasClass("textLayerNode") ? "textLayerNode" : "";
+
+            this.backlinks[page]?.forEach((backlink) => {
+                backlink.highlightedEls = null;
+            });
         }
         this.highlightedTexts = [];
     }
