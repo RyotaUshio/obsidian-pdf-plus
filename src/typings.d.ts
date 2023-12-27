@@ -1,6 +1,7 @@
 import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, ReferenceCache } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
+import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_storage';
 
 import { BacklinkHighlighter } from 'highlight';
 import { BacklinkPanePDFManager } from 'backlink';
@@ -129,6 +130,7 @@ interface PDFPageView {
     pdfPage: PDFPageProxy;
     viewport: PageViewport;
     div: HTMLDivElement; // div.page[data-page-number][data-loaded]
+    canvas: HTMLCanvasElement;
     textLayer: TextLayerBuilder | null;
     annotationLayer: AnnotationLayerBuilder | null;
 }
@@ -143,7 +145,19 @@ interface TextLayerBuilder {
 interface AnnotationLayerBuilder {
     div: HTMLDivElement; // div.annotationLayer
     pageDiv: HTMLDivElement; // div.page
+    pdfPage: PDFPageProxy;
+    annotationLayer: AnnotationLayer;
+    annotationStorage: AnnotationStorage;
+    renderForms: boolean;
     render(): Promise<any>;
+}
+
+interface AnnotationElement {
+    parent: AnnotationLayer;
+    data: {
+        id: string;
+        rect: [number, number, number, number];
+    }
 }
 
 interface TextContentItem {
@@ -170,6 +184,12 @@ interface PDFEmbed extends Component {
     containerEl: HTMLElement;
     viewer: PDFViewer;
     loadFile(file: TFile, subpath?: string): Promise<void>;
+}
+
+interface AnnotationLayer {
+    getAnnotation(id: string): AnnotationElement;
+    page: PDFPageProxy;
+    viewport: PageViewport;
 }
 
 /** Backlink view */

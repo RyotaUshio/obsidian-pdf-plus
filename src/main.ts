@@ -1,4 +1,4 @@
-import { Component, Keymap, Notice, Plugin } from 'obsidian';
+import { Component, Keymap, Notice, Plugin, loadPdfJs } from 'obsidian';
 
 import { patchPDF, patchBacklink, patchPagePreview, patchWorkspace } from 'patch';
 import { BacklinkHighlighter } from 'highlight';
@@ -15,8 +15,11 @@ export default class PDFPlus extends Plugin {
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 	/** Manages DOMs and event handlers introduced by this plugin */
 	elementManager: Component;
+	pdfjsLib: typeof import('pdfjs-dist');
 
 	async onload() {
+		this.pdfjsLib = await loadPdfJs();
+
 		await this.loadSettings();
 		await this.saveSettings();
 		this.addSettingTab(new PDFPlusSettingTab(this));

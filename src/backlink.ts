@@ -162,13 +162,15 @@ export class BacklinkPanePDFPageTracker extends Component {
                 const pages = page ? [page] : Object.keys(highlighter.backlinks).map((page) => +page);
 
                 for (const page of pages) {
-                    for (const backlink of highlighter.backlinks[page] ?? []) {
-                        highlighter.updateBacklinkItemEl(backlink);
-    
-                        if (backlink.backlinkItemEl && backlink.highlightedEls) {
-                            highlighter.registerHoverOverBacklinkPane(backlink.backlinkItemEl, backlink.highlightedEls);
+                    for (const type of ['selection', 'annotation'] as const) {
+                        for (const backlink of highlighter.backlinks[page]?.[type] ?? []) {
+                            highlighter.updateBacklinkItemEl(backlink);
+
+                            if (backlink.backlinkItemEl && backlink.annotationEls) {
+                                highlighter.registerHoverOverBacklinkItem(backlink.type, page, backlink.backlinkItemEl, backlink.annotationEls);
+                            }
                         }
-                    }    
+                    }
                 }
             }, 500);
         }

@@ -398,10 +398,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
 		this.addToggleSetting('highlightBacklinksPane')
 			.setName('Hover sync (PDF viewer → Backlinks pane)')
-			.setDesc('Hovering your mouse over highlighted backlinked text will also highlight the corresponding item in the backlink pane.');
+			.setDesc('Hovering your mouse over highlighted text or annotation will also highlight the corresponding item in the backlink pane.');
 		this.addToggleSetting('highlightOnHoverBacklinkPane')
 			.setName('Hover sync (Backlinks pane → PDF viewer)')
-			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text in the PDF viewer.')
+			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.')
 		if (this.plugin.settings.highlightOnHoverBacklinkPane) {
 			this.addDropdowenSetting(
 				'backlinkHoverColor',

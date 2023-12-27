@@ -1,30 +1,44 @@
 import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from "obsidian";
 
 import PDFPlus from "main";
-import { getSubpathWithoutHash, isMouseEventExternal, onTextLayerReady } from "utils";
+import { getSubpathWithoutHash, isMouseEventExternal, onAnnotationLayerReady, onTextLayerReady } from "utils";
 import { BacklinkView, ObsidianViewer } from "typings";
 
 
 interface BacklinkInfo {
     sourcePath: string;
     linkCache: LinkCache;
+    pageNumber?: number;
+    backlinkItemEl: HTMLElement | null;
+    annotationEls: HTMLElement[] | null;
+}
+
+interface SelectionBacklinkInfo extends BacklinkInfo {
+    type: 'selection';
+    pageNumber: number;
     beginIndex: number;
     beginOffset: number;
     endIndex: number;
     endOffset: number;
     colorName?: string;
-    highlightedEls: HTMLElement[] | null;
-    backlinkItemEl: HTMLElement | null;
+}
+
+interface AnnotationBacklinkInfo extends BacklinkInfo {
+    type: 'annotation';
+    id: string;
+    pageNumber: number;
 }
 
 export class BacklinkHighlighter extends Component implements HoverParent {
     app: App;
     file: TFile | null;
     hoverPopover: HoverPopover | null;
-    highlightedTexts: { page: number, index: number }[] = [];
     eventManager: Component;
     /** Maps a page number to metadata of all backlinks contained in that page. */
-    backlinks: Record<number, BacklinkInfo[]> = {};
+    backlinks: Record<number, { selection: SelectionBacklinkInfo[], annotation: AnnotationBacklinkInfo[] }> = {};
+    highlightedTexts: { page: number, index: number }[] = [];
+    /** Maps an annotation ID to the corresponding rectangular highlight element. */
+    highlightedAnnotations: Map<string, HTMLElement> = new Map();
 
     constructor(public plugin: PDFPlus, public viewer: ObsidianViewer) {
         super();
@@ -61,20 +75,39 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     const page = parseInt(params.get('page')!);
                     const selection = params.get('selection')!.split(',').map((s) => parseInt(s));
                     const color = params.get('color') ?? undefined;
+
                     if (selection.length === 4) {
-                        if (!this.backlinks[page]) this.backlinks[page] = [];
-                        this.backlinks[page].push({
+                        if (!this.backlinks[page]) this.backlinks[page] = { selection: [], annotation: [] };
+
+                        this.backlinks[page].selection.push({
+                            type: 'selection',
                             sourcePath,
                             linkCache: link,
+                            pageNumber: page,
                             beginIndex: selection[0],
                             beginOffset: selection[1],
                             endIndex: selection[2],
                             endOffset: selection[3],
                             colorName: color,
-                            highlightedEls: null,
+                            annotationEls: null,
                             backlinkItemEl: null
                         });
                     }
+                } else if (params.has('page') && params.has('annotation')) {
+                    const page = parseInt(params.get('page')!);
+                    const annotation = params.get('annotation')!;
+
+                    if (!this.backlinks[page]) this.backlinks[page] = { selection: [], annotation: [] };
+
+                    this.backlinks[page].annotation.push({
+                        type: 'annotation',
+                        sourcePath,
+                        linkCache: link,
+                        pageNumber: page,
+                        id: annotation,
+                        backlinkItemEl: null,
+                        annotationEls: null
+                    });
                 }
             }
         }
@@ -104,8 +137,8 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
         // register a callback that highlights backlinks when the text layer for the page containing the linked text is ready
         onTextLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
-            for (const backlink of this.backlinks[pageNumber] ?? []) {
-                const { sourcePath, linkCache, beginIndex, beginOffset, endIndex, endOffset, colorName } = backlink;
+            for (const backlink of this.backlinks[pageNumber]?.selection ?? []) {
+                const { beginIndex, beginOffset, endIndex, endOffset, colorName } = backlink;
 
                 if (!backlink.colorName && this.plugin.settings.highlightColorSpecifiedOnly) continue;
 
@@ -113,51 +146,27 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     pageNumber, beginIndex, beginOffset, endIndex, endOffset, colorName,
                     // the callback called right after this backlink is highlighted
                     (highlightedEl) => {
-                        if (!backlink.highlightedEls) backlink.highlightedEls = [];
-                        backlink.highlightedEls.push(highlightedEl);
+                        if (!backlink.annotationEls) backlink.annotationEls = [];
+                        backlink.annotationEls.push(highlightedEl);
 
-                        // When hovering over an item in the backlink pane, highlight the corresponding text selection in the PDF view
-                        if (this.plugin.settings.highlightOnHoverBacklinkPane) {
-                            this.updateBacklinkItemEl(backlink);
-                            if (backlink.backlinkItemEl) this.registerHoverOverBacklinkPane(backlink.backlinkItemEl, [highlightedEl]);
-                        }
-
-                        this.eventManager.registerDomEvent(highlightedEl, 'mouseover', (event) => {
-                            // highlight the corresponding item in backlink pane
-                            if (this.plugin.settings.highlightBacklinksPane) {
-                                this.updateBacklinkItemEl(backlink);
-                                if (backlink.backlinkItemEl) backlink.backlinkItemEl.addClass('hovered-backlink');
-                            }
-                        });
-
-                        this.eventManager.registerDomEvent(highlightedEl, 'mouseover', (event) => {
-                            this.app.workspace.trigger('hover-link', {
-                                event,
-                                source: 'pdf-plus',
-                                hoverParent: this,
-                                targetEl: highlightedEl,
-                                linktext: sourcePath,
-                                sourcePath: this.file?.path ?? '',
-                                state: { scroll: linkCache.position.start.line }
-                            });
-                        });
-
-                        // clear highlights in backlink pane
-                        this.eventManager.registerDomEvent(highlightedEl, 'mouseout', (event) => {
-                            backlink.backlinkItemEl?.removeClass('hovered-backlink');
-                        });
-
-                        this.eventManager.registerDomEvent(highlightedEl, 'dblclick', (event) => {
-                            if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
-                                const paneType = Keymap.isModEvent(event) || 'tab'; // keep the PDF view open
-                                this.app.workspace.openLinkText(sourcePath, "", paneType, {
-                                    eState: {
-                                        line: linkCache.position.start.line
-                                    }
-                                });
-                            }
-                        });
+                        this.hookEventHandlers(backlink, highlightedEl);
                     });
+            }
+        });
+
+
+        onAnnotationLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
+            for (const backlink of this.backlinks[pageNumber]?.annotation ?? []) {
+                const { id } = backlink;
+
+                this.processAnnotation(
+                    pageNumber, id,
+                    // the callback called right after this backlink is highlighted
+                    (rectEl) => {
+                        backlink.annotationEls = [rectEl];
+                        this.hookEventHandlers(backlink, rectEl);
+                    }
+                );
             }
         });
     }
@@ -195,7 +204,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     else textDiv.append(textNode);
                 }
 
-                const cls = 'pdf-plus-backlink'
+                const cls = 'pdf-plus-backlink';
 
                 s(beginIndex, beginOffset);
                 if (beginIndex === endIndex) l(beginIndex, beginOffset, endOffset, "mod-focused selected " + cls);
@@ -225,11 +234,109 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             textDiv.textContent = textContentItems[index].str;
             textDiv.className = textDiv.hasClass("textLayerNode") ? "textLayerNode" : "";
 
-            this.backlinks[page]?.forEach((backlink) => {
-                backlink.highlightedEls = null;
+            this.backlinks[page]?.selection.forEach((backlink) => {
+                backlink.annotationEls = null;
             });
         }
         this.highlightedTexts = [];
+    }
+
+    // This is a modified version of PDFViewerChild.prototype.highlightAnnotation from Obsidian's app.js
+    highlightAnnotation(pageNumber: number, id: string): void {
+        const pdfjsLib = this.plugin.pdfjsLib;
+
+        if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
+            const pageView = this.viewer.pdfViewer.getPageView(pageNumber - 1);
+            if (pageView.annotationLayer && pageView.div.dataset.loaded) {
+                const elem = pageView.annotationLayer.annotationLayer.getAnnotation(id);
+                if (elem) {
+                    pageView.annotationLayer.div.createDiv("boundingRect mod-focused", (rectEl) => {
+                        const rect = elem.data.rect;
+                        const view = elem.parent.page.view;
+                        const dims = elem.parent.viewport.rawDims as any;
+                        const pageWidth = dims.pageWidth as number;
+                        const pageHeight = dims.pageHeight as number;
+                        const pageX = dims.pageX as number;
+                        const pageY = dims.pageY as number;
+                        const normalizedRect = pdfjsLib.Util.normalizeRect([rect[0], view[3] - rect[1] + view[1], rect[2], view[3] - rect[3] + view[1]]);
+                        rectEl.setCssStyles({
+                            left: (100 * (normalizedRect[0] - pageX) / pageWidth) + "%",
+                            top: (100 * (normalizedRect[1] - pageY) / pageHeight) + "%",
+                            width: (100 * (normalizedRect[2] - normalizedRect[0]) / pageWidth) + "%",
+                            height: (100 * (normalizedRect[3] - normalizedRect[1]) / pageHeight) + "%"
+                        });
+                        this.highlightedAnnotations.set(id, rectEl);
+                    })
+                }
+            }
+        }
+    }
+
+    // This is inspired by PDFViewerChild.prototype.clearAnnotationHighlight from Obsidian's app.js
+    clearAnnotationHighlight(id: string) {
+        if (this.highlightedAnnotations.has(id)) {
+            const el = this.highlightedAnnotations.get(id)!;
+            el.detach();
+            this.highlightedAnnotations.delete(id);
+        }
+    }
+
+    hookEventHandlers(backlink: SelectionBacklinkInfo | AnnotationBacklinkInfo, annotationEl: HTMLElement) {
+        const { sourcePath, linkCache } = backlink;
+
+        // When hovering over an item in the backlink pane, highlight the corresponding text selection in the PDF view
+        if (this.plugin.settings.highlightOnHoverBacklinkPane) {
+            this.updateBacklinkItemEl(backlink);
+            if (backlink.backlinkItemEl) {
+                this.registerHoverOverBacklinkItem(backlink.type, backlink.pageNumber, backlink.backlinkItemEl, [annotationEl]);
+            }
+        }
+
+        this.eventManager.registerDomEvent(annotationEl, 'mouseover', (event) => {
+            // highlight the corresponding item in backlink pane
+            if (this.plugin.settings.highlightBacklinksPane) {
+                this.updateBacklinkItemEl(backlink);
+                if (backlink.backlinkItemEl) backlink.backlinkItemEl.addClass('hovered-backlink');
+            }
+        });
+
+        // clear highlights in backlink pane
+        this.eventManager.registerDomEvent(annotationEl, 'mouseout', (event) => {
+            backlink.backlinkItemEl?.removeClass('hovered-backlink');
+        });
+
+        this.eventManager.registerDomEvent(annotationEl, 'mouseover', (event) => {
+            this.app.workspace.trigger('hover-link', {
+                event,
+                source: 'pdf-plus',
+                hoverParent: this,
+                targetEl: annotationEl,
+                linktext: sourcePath,
+                sourcePath: this.file?.path ?? '',
+                state: { scroll: linkCache.position.start.line }
+            });
+        });
+
+        this.eventManager.registerDomEvent(annotationEl, 'dblclick', (event) => {
+            if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
+                const paneType = Keymap.isModEvent(event) || 'tab'; // keep the PDF view open
+                this.app.workspace.openLinkText(sourcePath, "", paneType, {
+                    eState: {
+                        line: linkCache.position.start.line
+                    }
+                });
+            }
+        });
+    }
+
+    processAnnotation(pageNumber: number, id: string, callback?: (annotationEl: HTMLElement) => void) {
+        if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
+            const pageView = this.viewer.pdfViewer.getPageView(pageNumber - 1);
+            if (pageView.annotationLayer && pageView.div.dataset.loaded) {
+                const annotationEl = pageView.annotationLayer.div.querySelector<HTMLElement>(`[data-annotation-id="${id}"]`);
+                if (annotationEl) callback?.(annotationEl);
+            }
+        }
     }
 
     findBacklinkItemEl(backlink: BacklinkInfo): HTMLElement | null {
@@ -284,15 +391,43 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         }
     }
 
-    registerHoverOverBacklinkPane(backlinkItemEl: HTMLElement, highlightedEls: HTMLElement[]) {
+    registerHoverOverBacklinkItem(type: 'selection' | 'annotation', pageNumber: number, backlinkItemEl: HTMLElement, highlightedEls: HTMLElement[]) {
+        if (type === 'selection') this.registerHoverOverSelectionBacklinkItem(backlinkItemEl, highlightedEls);
+        else if (type === 'annotation') this.registerHoverOverAnnotationBacklinkItem(pageNumber, backlinkItemEl, highlightedEls);
+    }
+
+    registerHoverOverSelectionBacklinkItem(backlinkItemEl: HTMLElement, highlightedEls: HTMLElement[]) {
         this.eventManager.registerDomEvent(backlinkItemEl, 'mouseover', (evt) => {
             if (isMouseEventExternal(evt, backlinkItemEl)) {
                 for (const el of highlightedEls) el.addClass('hovered-highlight');
             }
         });
+
         this.eventManager.registerDomEvent(backlinkItemEl, 'mouseout', (evt) => {
             if (isMouseEventExternal(evt, backlinkItemEl)) {
                 for (const el of highlightedEls) el.removeClass('hovered-highlight');
+            }
+        });
+    }
+
+    registerHoverOverAnnotationBacklinkItem(pageNumber: number, backlinkItemEl: HTMLElement, annotationEls: HTMLElement[]) {
+        const elements = new Set(annotationEls);
+
+        this.eventManager.registerDomEvent(backlinkItemEl, 'mouseover', (evt) => {
+            if (isMouseEventExternal(evt, backlinkItemEl)) {
+                for (const el of elements) {
+                    const id = el.dataset.annotationId;
+                    if (id) this.highlightAnnotation(pageNumber, id);
+                }
+            }
+        });
+
+        this.eventManager.registerDomEvent(backlinkItemEl, 'mouseout', (evt) => {
+            if (isMouseEventExternal(evt, backlinkItemEl)) {
+                for (const el of elements) {
+                    const id = el.dataset.annotationId;
+                    if (id) this.clearAnnotationHighlight(id);
+                }
             }
         });
     }

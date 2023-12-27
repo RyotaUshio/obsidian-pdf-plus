@@ -55,8 +55,8 @@ Annotate PDF files with highlights just by linking to text selection.
 These features make Obsidian a unique PDF annotation tool that tightly connects PDFs to your ideas stored as markdown files.
 
 - **Filter backlinks by page**: Show only backlinks to the page that is currently opened in the PDF viewer.
-- **Hover sync (PDF viewer → Backlinks pane)**: Hovering over highlighted backlinked text will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks).
-- **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text in the PDF viewer.
+- **Hover sync (PDF viewer → Backlinks pane)**: Hovering over highlighted text or annotation will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks).
+- **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.
 
 ### Opening links to PDF files
 
