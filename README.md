@@ -95,14 +95,14 @@ You can customize the styling of highlighted text using [CSS snippets](https://h
 
 Here is a list of CSS selectors to target:
 
-- `.textLayer .mod-focused`: All PDF selection/annotion highlights, including Obsidian's built-in ones shown when opening links to text selection in PDFs
+- `.textLayer .mod-focused`: All PDF selection/annotation highlights, including Obsidian's built-in ones shown when opening links to text selection in PDFs
 - `.textLayer .mod-focused.pdf-plus-backlink`: PDF text highlights that PDF++ generates from backlinks
   - Use `.textLayer .mod-focused.pdf-plus-backlink[data-highlight-color="<COLOR NAME>"]` to target a specific color
 - `.textLayer .mod-focused.pdf-plus-backlink.hovered-highlight`: PDF text highlights that PDF++ generates when you hover over an item in the backlinks pane
 
 ## Installation
 
-Since this plugin is still in its alpha, it's not available in the community plugin browser yet.
+Since this plugin is still awaiting approval from the Obsidian team, it's not available in the community plugin browser yet.
 
 But you can install the latest release using [BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
