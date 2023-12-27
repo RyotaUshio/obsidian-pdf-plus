@@ -65,14 +65,14 @@ export default class PDFPlus extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			iteratePDFViews(this.app, (view) => {
 				view.viewer.then((child) => {
-					if (!view.viewer.backlinkManager) {
-						view.viewer.backlinkManager = view.viewer.addChild(new BacklinkHighlighter(this, child.pdfViewer));
+					if (!view.viewer.backlinkHighlighter) {
+						view.viewer.backlinkHighlighter = view.viewer.addChild(new BacklinkHighlighter(this, child.pdfViewer));
 					}
-					if (!child.backlinkManager) {
-						child.backlinkManager = view.viewer.backlinkManager
+					if (!child.backlinkHighlighter) {
+						child.backlinkHighlighter = view.viewer.backlinkHighlighter
 					}
-					view.viewer.backlinkManager.file = view.file;
-					view.viewer.backlinkManager.highlightBacklinks();
+					view.viewer.backlinkHighlighter.file = view.file;
+					view.viewer.backlinkHighlighter.highlightBacklinks();
 
 					if (child.toolbar) {
 						new ColorPalette(this, child.toolbar.toolbarLeftEl);

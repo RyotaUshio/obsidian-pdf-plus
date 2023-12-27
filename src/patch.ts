@@ -26,11 +26,11 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const ret = old.call(this);
                 const self = this as PDFViewer;
                 self.then((child) => {
-                    if (!self.backlinkManager) {
-                        self.backlinkManager = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
+                    if (!self.backlinkHighlighter) {
+                        self.backlinkHighlighter = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
                     }
-                    if (!child.backlinkManager) {
-                        child.backlinkManager = self.backlinkManager
+                    if (!child.backlinkHighlighter) {
+                        child.backlinkHighlighter = self.backlinkHighlighter
                     }
                 });
                 return ret;
@@ -41,14 +41,14 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const ret = await old.call(this, file, subpath);
                 const self = this as PDFViewer;
                 self.then((child) => {
-                    if (!self.backlinkManager) {
-                        self.backlinkManager = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
+                    if (!self.backlinkHighlighter) {
+                        self.backlinkHighlighter = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
                     }
-                    if (!child.backlinkManager) {
-                        child.backlinkManager = self.backlinkManager
+                    if (!child.backlinkHighlighter) {
+                        child.backlinkHighlighter = self.backlinkHighlighter
                     }
-                    self.backlinkManager.file = file;
-                    self.backlinkManager.highlightBacklinks();
+                    self.backlinkHighlighter.file = file;
+                    self.backlinkHighlighter.highlightBacklinks();
 
                     child.file = file;
                 });
@@ -129,7 +129,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     return;
                 }
                 old.call(this);
-                child.backlinkManager?.highlightBacklinks();
+                child.backlinkHighlighter?.highlightBacklinks();
             }
         }
     }));

@@ -51,7 +51,7 @@ export class BacklinkPanePDFManager extends Component {
         //             const onMouseOut = (evt: MouseEvent) => {
         //                 if (isMouseEventExternal(evt, itemEl)) {
         //                     child.clearTextHighlight();
-        //                     child.backlinkManager?.highlightBacklinks();
+        //                     child.backlinkHighlighter?.highlightBacklinks();
         //                     itemEl.removeEventListener('mouseout', onMouseOut);
         //                     this.lastHoveredItemEl = null;
         //                 }

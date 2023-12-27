@@ -25,7 +25,7 @@ interface PDFViewer extends Component {
     then(cb: (child: PDFViewerChild) => void): void; // register a callback executed when the child gets ready
     loadFile(file: TFile, subpath?: string): Promise<void>;
     /** Added by this plugin */
-    backlinkManager?: BacklinkHighlighter;
+    backlinkHighlighter?: BacklinkHighlighter;
 }
 
 interface PDFViewerChild {
@@ -52,7 +52,7 @@ interface PDFViewerChild {
     clearAnnotationHighlight(): void;
     /** Added by this plugin */
     file?: TFile;
-    backlinkManager?: BacklinkHighlighter;
+    backlinkHighlighter?: BacklinkHighlighter;
 }
 
 interface PDFHighlight {

@@ -91,14 +91,18 @@ export type KeysOfType<Obj, Type> = NonNullable<{ [k in keyof Obj]: Obj[k] exten
 
 export class PDFPlusSettingTab extends PluginSettingTab {
 	component: Component;
-	
+	items: Partial<Record<keyof PDFPlusSettings, Setting>>;
+
 	constructor(public plugin: PDFPlus) {
 		super(plugin.app, plugin);
 		this.component = new Component();
+		this.items = {};
 	}
 
-	addSetting() {
-		return new Setting(this.containerEl);
+	addSetting(settingName?: keyof PDFPlusSettings) {
+		const item = new Setting(this.containerEl);
+		if (settingName) this.items[settingName] = item;
+		return item;
 	}
 
 	addHeading(heading: string) {
@@ -106,7 +110,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string) {
-		return this.addSetting()
+		return this.addSetting(settingName)
 			.addText((text) => {
 				text.setValue(this.plugin.settings[settingName])
 					.setPlaceholder(placeholder ?? DEFAULT_SETTINGS[settingName])
@@ -120,7 +124,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addNumberSetting(settingName: KeysOfType<PDFPlusSettings, number>) {
-		return this.addSetting()
+		return this.addSetting(settingName)
 			.addText((text) => {
 				text.setValue('' + this.plugin.settings[settingName])
 					.setPlaceholder('' + DEFAULT_SETTINGS[settingName])
@@ -134,7 +138,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addToggleSetting(settingName: KeysOfType<PDFPlusSettings, boolean>, extraOnChange?: (value: boolean) => void) {
-		return this.addSetting()
+		return this.addSetting(settingName)
 			.addToggle((toggle) => {
 				toggle.setValue(this.plugin.settings[settingName])
 					.onChange(async (value) => {
@@ -161,7 +165,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			display = (optionValue: string) => args[0][optionValue];
 			if (typeof args[1] === 'function') extraOnChange = args[1];
 		}
-		return this.addSetting()
+		return this.addSetting(settingName)
 			.addDropdown((dropdown) => {
 				const displayNames = new Set<string>();
 				for (const option of options) {
@@ -182,7 +186,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addSliderSetting(settingName: KeysOfType<PDFPlusSettings, number>, min: number, max: number, step: number) {
-		return this.addSetting()
+		return this.addSetting(settingName)
 			.addSlider((slider) => {
 				slider.setLimits(min, max, step)
 					.setValue(this.plugin.settings[settingName])
@@ -198,6 +202,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addDesc(desc: string) {
 		return this.addSetting()
 			.setDesc(desc);
+	}
+
+	async renderMarkdown(lines: string[] | string, el: HTMLElement) {
+		await MarkdownRenderer.render(this.app, Array.isArray(lines) ? lines.join('\n') : lines, el, '', this.component);
+		if (el.childNodes.length === 1 && el.firstChild instanceof HTMLParagraphElement) {
+			el.replaceChildren(...el.firstChild.childNodes);
+		}
 	}
 
 	addColorSetting(name: string, color: HexString) {
@@ -216,11 +227,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						}
 						text.inputEl.removeClass('error');
 						delete colors[name];
-						const optionEl = this.containerEl.querySelector<HTMLOptionElement>(`#pdf-plus-default-color-dropdown > option[value="${name}"]`);
-						if (optionEl) {
-							optionEl.value = newName;
-							optionEl.textContent = newName;
+
+						const defaultColorSetting = this.items.defaultColor;
+						if (defaultColorSetting) {
+							const optionEl = (defaultColorSetting.components[0] as DropdownComponent).selectEl.querySelector<HTMLOptionElement>(`:scope > option[value="${name}"]`);
+							if (optionEl) {
+								optionEl.value = newName;
+								optionEl.textContent = newName;
+							}	
 						}
+
 						name = newName;
 						colors[name] = color;
 						if (isDefault) this.plugin.settings.defaultColor = name;
@@ -253,6 +269,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				button.setIcon('trash')
 					.setTooltip('Delete')
 					.onClick(async () => {
+						if (this.plugin.settings.defaultColor === name) {
+							this.plugin.settings.defaultColor = '';
+						}
 						delete colors[name];
 						await this.plugin.saveSettings();
 						this.plugin.loadStyle();
@@ -275,14 +294,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	display(): void {
 		this.containerEl.empty();
+		this.containerEl.addClass('pdf-plus-settings');
 		this.component.load();
 
 		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
 
-		this.addHeading('Backlinks to PDF files')
-			.setDesc('Transform a link to a PDF file into a highlighted annotation.');
+		this.addHeading('Annotating PDF files')
+			.setDesc('Annotate PDF files with highlights just by linking to text selection.');
 		this.addToggleSetting('highlightBacklinks')
-			.setName('Highlight backlinks')
+			.setName('Highlight backlinks in PDF viewer')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
 		this.addDropdowenSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
 			.setName('Action when hovering over highlighted text')
@@ -295,7 +315,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setDesc('This option will be ignored when you open a link in a tab in the same split as the current tab.')
 		}
 		this.addSetting()
-			.setName(`Require ${getModifierNameInPlatform('Mod')} to the above action`)
+			.setName(`Require ${getModifierNameInPlatform('Mod').toLowerCase()} key for the above action`)
 			.setDesc('You can toggle this on and off in the core Page Preview plugin settings > PDF++ hover action.')
 			.addButton((button) => {
 				button.setButtonText('Open')
@@ -305,17 +325,19 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
 			.setName('Double click a piece of highlighted text to open the corresponding backlink');
-		this.addToggleSetting('highlightBacklinksPane')
-			.setName('Highlight hovered backlinks in the backlinks pane')
-			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane. This feature is compatible with the Better Search Views plugin.');
-		this.addToggleSetting('filterBacklinksByPageDefault')
-			.setName('Filter backlinks by page by default')
-			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
 
-		this.addSetting()
+		this.addSetting('colors')
 			.setName('Highlight colors')
-			.setDesc('Append "&color={{COLOR NAME}}" to a link text to highlight the selection with a specified color, where {{COLOR NAME}} is one of the colors that you register below. e.g "[[file.pdf#page=1&selection=4,0,5,20&color=red]]"')
-			.addExtraButton((button) => {
+			.then((setting) => {
+				this.renderMarkdown([
+					'You can optionally highlight the selection with **a specified color** by appending "&color=`<COLOR NAME>`" to a link text, where `<COLOR NAME>` is one of the colors that you register below. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]].` ',
+					'Color names are case-insensitive. ',
+					'',
+					'You can also opt not to use this plugin-dependent notation and apply a single color (the "default highlight color" setting) to all highlights.',
+				], setting.descEl
+				)
+			})
+			.addButton((button) => {
 				button
 					.setIcon('plus')
 					.setTooltip('Add a new color')
@@ -330,7 +352,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 		this.addToggleSetting('highlightColorSpecifiedOnly', () => this.redisplay())
-			.setName('Only highlight a backlink when a color is specified')
+			.setName('Highlight a backlink only if a color is specified')
 			.setDesc('By default, all backlinks are highlighted. If this option is enabled, a backlink will be highlighted only when a color is specified in the link text.');
 
 		if (!this.plugin.settings.highlightColorSpecifiedOnly) {
@@ -341,11 +363,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				() => this.plugin.loadStyle()
 			)
 				.setName('Default highlight color')
-				.setDesc('If no color is specified in link text, this color will be used.')
-				.then((setting) => {
-					const dropdown = setting.components[0] as DropdownComponent;
-					dropdown.selectEl.id = 'pdf-plus-default-color-dropdown';
-				})
+				.setDesc('If no color is specified in link text, this color will be used.');
 		}
 		this.addToggleSetting('colorPaletteInToolbar', () => {
 			this.redisplay();
@@ -355,20 +373,35 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with "&color=..." appended.');
 		if (this.plugin.settings.colorPaletteInToolbar) {
 			this.addToggleSetting('colorPaletteInEmbedToolbar', () => this.plugin.loadStyle())
-				.setName('Show color palette for PDF embeds as well');
+				.setName('Show color palette in PDF embeds as well');
 			this.addDropdowenSetting('defaultColorPaletteAction', COLOR_PALETTE_ACTIONS)
 				.setName('Default action when clicking on a color palette item')
 				.setDesc('You can change it for each viewer with the dropdown menu in the color palette.')
 		}
 
+		this.addHeading('Backlinks pane for PDF files')
+			.then((setting) => {
+				this.renderMarkdown(
+					`Improve the built-in [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) for better PDF experience.`,
+					setting.descEl
+				);
+			})
+		this.addToggleSetting('highlightBacklinksPane')
+			.setName('Highlight hovered backlinks in the backlinks pane')
+			.setDesc('Hovering over highlighted backlinked text will also highlight the corresponding item in the backlink pane.');
+		this.addToggleSetting('filterBacklinksByPageDefault')
+			.setName('Filter backlinks by page by default')
+			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
+
 		this.addHeading('Opening links to PDF files');
 		this.addToggleSetting('openLinkCleverly', () => this.redisplay())
 			.setName('Open PDF links cleverly')
-			.setDesc(createFragment((el) => {
-				el.appendText(`When opening a link to a PDF file without pressing any `);
-				el.createEl('a', { text: `modifier keys`, attr: { href: 'https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link' } })
-				el.appendText(`, a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."`);
-			}));
+			.then((setting) => {
+				this.renderMarkdown(
+					`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
+					setting.descEl
+				);
+			});
 		if (this.plugin.settings.openLinkCleverly) {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
 				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
@@ -403,32 +436,39 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Copying links to PDF files')
 		this.addToggleSetting('alias', () => this.redisplay())
 			.setName('Copy link with display text')
-			.setDesc('When copying a link to a selection or an annotation in a PDF file, Obsidian appends "|<pdf file title>, page <page number>" to the link text by default. Disable this option if you don\'t like it.');
+			.then((setting) => {
+				this.renderMarkdown(
+					'When copying a link to a selection or an annotation in a PDF file, Obsidian appends "|`<PDF FILE TITLE>`, page `<PAGE NUMBER>`" to the link text by default. Disable this option if you don\'t like it.',
+					setting.descEl
+				);
+			});
 		if (this.plugin.settings.alias) {
 			this.addTextSetting('aliasFormat', 'Leave blank to use default')
 				.setName('Display text format')
 				.then((setting) => {
-					MarkdownRenderer.render(
-						this.app,
-						'The template format that will be applied to the display text when copying a link to a selection or an annotation in PDF viewer. '
-						+ 'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.\n\n'
-						+ 'For example, the default format is `{{file.basename}}, page {{page}}`.\n\n'
-						+ 'Available variables are:\n\n'
-						+ '- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.\n'
-						+ '- `page`: The page number (`Number`).\n'
-						+ '- `pageCount`: The total number of pages (`Number`).\n'
-						+ '- `selection`: The selected text (`String`).\n'
-						+ '- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.\n'
-						+ '- `app`: The global Obsidian app object ([`App`](https://docs.obsidian.md/Reference/TypeScript+API/App)).\n'
-						+ '- and other global variables such as:\n'
-						+ '  - [`moment`](https://momentjs.com/docs/#/displaying/): For exampe, use `moment().format("YYYY-MM-DD")` to get the current date in the "YYYY-MM-DD" format.\n'
-						+ '  - `DataviewAPI`: Available if the [Dataview](https://blacksmithgu.github.io/obsidian-dataview/) plugin is enabled.\n'
-						+ '\n\n'
-						+ 'Additionally, the following variables are available when the PDF tab is linked to another tab:\n\n'
-						+ '- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)).\n'
-						+ '- `properties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If `linkedFile` has no properties, this is an empty object `{}`.\n',
-						setting.descEl, '', this.component
-					);
+					this.renderMarkdown([
+						'The template format that will be applied to the display text when copying a link to a selection or an annotation in PDF viewer. ',
+						'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.',
+						'',
+						'For example, the default format is `{{file.basename}}, page {{page}}`.',
+						'',
+						'Available variables are:',
+						'',
+						'- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.',
+						'- `page`: The page number (`Number`).',
+						'- `pageCount`: The total number of pages (`Number`).',
+						'- `selection`: The selected text (`String`).',
+						'- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.',
+						'- `app`: The global Obsidian app object ([`App`](https://docs.obsidian.md/Reference/TypeScript+API/App)).',
+						'- and other global variables such as:',
+						'  - [`moment`](https://momentjs.com/docs/#/displaying/): For exampe, use `moment().format("YYYY-MM-DD")` to get the current date in the "YYYY-MM-DD" format.',
+						'  - `DataviewAPI`: Available if the [Dataview](https://blacksmithgu.github.io/obsidian-dataview/) plugin is enabled.',
+						'',
+						'Additionally, the following variables are available when the PDF tab is linked to another tab:',
+						'',
+						'- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)).',
+						'- `properties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If `linkedFile` has no properties, this is an empty object `{}`.'
+					], setting.descEl);
 				});
 		}
 

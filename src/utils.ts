@@ -90,7 +90,7 @@ export function highlightSubpath(child: PDFViewerChild, subpath: string, duratio
             if (duration > 0) {
                 setTimeout(() => {
                     child.clearTextHighlight();
-                    child.backlinkManager?.highlightBacklinks();
+                    child.backlinkHighlighter?.highlightBacklinks();
                 }, duration * 1000);
             }
 

@@ -66,3 +66,13 @@ settings:
         padding-right: var(--size-2-3);    
     }
 }
+
+.pdf-plus-settings .setting-item-description {
+    &> p:first-child {
+        margin-top: 0;
+    }
+
+    &> p:last-child {
+        margin-bottom: 0;
+    }
+}

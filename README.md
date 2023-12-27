@@ -2,13 +2,13 @@
 
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
-- It transforms backlinks to PDF files into highlighted annotations, establishing Obsidian as a stand-alone PDF annotation tool.
-- It also adds some quality-of-life improvements to the built-in PDF viewer and PDF embeds.
+- It transforms backlinks to PDF files into highlighted annotations, i.e. you can **annotate PDF files with highlights just by linking to text selection**.
+- It also adds many **quality-of-life improvements** to the built-in PDF viewer and PDF embeds.
 
 PDF++ stands out among other PDF annotation tools for the following reasons:
 
-- PDF++ acts as a complement to Obsidian's native PDF viewer rather than replacing it. Therefore, it will not leave behind a pile of unreadable JSON even if this plugin stops working in the future, unlike [Annotator](https://github.com/elias-sundqvist/obsidian-annotator).
-- PDF++ makes Obsidian work as a stand-alone PDF annotation tool. You can seamlessly annotate your PDFs using Obsidian's rich markdown editor without switching between Obsidian and an external app like Zotero or Marginnote.
+- PDF++ acts as **a complement to Obsidian's native PDF viewer rather than replacing it**. Therefore, it will not leave behind a pile of unreadable JSON even if this plugin stops working in the future, unlike [Annotator](https://github.com/elias-sundqvist/obsidian-annotator).
+- PDF++ makes Obsidian work as **a stand-alone PDF annotation tool**. You can seamlessly annotate your PDFs using Obsidian's rich markdown editor without switching between Obsidian and an external app like Zotero or Marginnote.
 
 See [here](#installation) for an installation guide.
 
@@ -33,14 +33,17 @@ See [here](#installation) for an installation guide.
 
 Each feature can be toggled on and off in the plugin settings.
 
-### Backlinks to PDF files
+### Annotating PDF files
 
-- **Highlight backlinks**: In the PDF viewer, any referenced text will be highlighted for easy identification.
+Annotate PDF files with highlights just by linking to text selection.
+
+- **Highlight backlinks in PDF viewer**: In the PDF viewer, any referenced text will be highlighted for easy identification.
   - By default, all backlinks are highlighted. However, there is an option that allows you to highlight only backlinks with colors specified in the link text (see below).
   - It does not modify the PDF file itself. It just changes how the file content is displayed in Obsidian. Exporting highlights into an actual PDF file is a planned feature, but it's not supported yet.
-- **Custom highlight colors**: Append `&color={{COLOR NAME}}` to a link text to highlight the selection with a specified color.
-  - `{{COLOR NAME}}` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
+- **Custom highlight colors**: Append `&color=<COLOR NAME>` to a link text to highlight the selection with a specified color.
+  - `<COLOR NAME>` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
   - Color names are case-insensitive, i.e. all of `&color=red`, `&color=RED` and even `&color=rEd` work the same.
+  - You can also opt not to use this plugin-dependent notation and apply a single color (the "default highlight color" setting) to all highlights.
 - **Show color palette in the toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
 - **Easily navigate to backlinks by pressing `Ctrl`/`Cmd` (by default) while hovering over a highlighted text in PDF viewer**: you can choose what happens when you hover over a highlighted text between the following:
   - Open backlink
@@ -56,7 +59,7 @@ These features enrich Obsidian as a stand-alone PDF annotation tool.
 
 ### Opening links to PDF files
 
-- **Open PDF links cleverly**: When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened. Useful for annotating PDFs using "Copy link to selection."
+- **Open PDF links cleverly**: When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab.  Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.
 - **Open PDF link instead of showing popover preview when target PDF is already opened**: Press `Ctrl`/`Cmd` while hovering a PDF link to actually open it if the target PDF is already opened in another tab.
 - **Don't move focus to PDF viewer after opening a PDF link**
 - **Clear highlights after a certain amount of time**
@@ -72,7 +75,7 @@ These features enrich Obsidian as a stand-alone PDF annotation tool.
 
 #### Display text options
 
-- **Copy link with/without display text**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends `|<pdf file title>, page <page number>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
+- **Copy link with/without display text**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends `|<PDF FILE TITLE>, page <PAGE NUMBER>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
 - **Custom display text format**: You can customize the template format that will be applied the display text  when copying a link to a selection or an annotation in PDF viewer. Each `{{...}}` in the template will be evaluated as a JavaScript expression with many variables available. See the plugin settings for the details.
 
 ### Embedding PDF files
