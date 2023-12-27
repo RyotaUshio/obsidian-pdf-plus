@@ -60,6 +60,9 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
     onunload() {
         this.clearTextHighlight();
+        for (const id of this.highlightedAnnotations.keys()) {
+            this.clearAnnotationHighlight(id);
+        }
     }
 
     setBacklinks(file: TFile) {
@@ -153,7 +156,6 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     });
             }
         });
-
 
         onAnnotationLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
             for (const backlink of this.backlinks[pageNumber]?.annotation ?? []) {
