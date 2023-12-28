@@ -71,7 +71,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		},
 		{
 			name: 'Copy embed of selection',
-			format: '!{{linkWithDisplay}}',
+			format: '!{{link}}',
 		}
 	],
 	trimSelectionEmbed: true,
@@ -588,6 +588,17 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Show color palette in PDF embeds as well');
 		}
 
+		this.addHeading('Copying links via hotkeys');
+		this.addSetting()
+			.setName('Set up hotkeys for copying links')
+			.setDesc('Press this hotkey while selecting a range of text to copy a link to the selection.')
+			.addButton((button) => {
+				button.setButtonText('Open')
+					.onClick(() => {
+						const tab = this.app.setting.openTabById('hotkeys') as any;
+						tab.setQuery(this.plugin.manifest.id);
+					});
+			});
 
 		this.addHeading('Link copy templates')
 			.then((setting) => this.renderMarkdown([

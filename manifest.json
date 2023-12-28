@@ -1,11 +1,14 @@
 {
     "id": "pdf-plus",
     "name": "PDF++",
-    "version": "0.15.2",
+    "version": "0.15.3",
     "minAppVersion": "1.4.16",
     "description": "Annotate PDF files with highlights just by linking to text selection. It also adds many quality-of-life improvements to Obsidian's built-in PDF viewer and PDF embeds.",
     "author": "Ryota Ushio",
     "authorUrl": "https://github.com/RyotaUshio",
-    "fundingUrl": "https://www.buymeacoffee.com/ryotaushio",
+    "fundingUrl": {
+        "GitHub Sponsor": "https://github.com/sponsors/RyotaUshio",
+        "Buy Me a Coffee": "https://www.buymeacoffee.com/ryotaushio"
+    },
     "isDesktopOnly": false
 }

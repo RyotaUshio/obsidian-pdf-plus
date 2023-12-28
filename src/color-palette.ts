@@ -34,15 +34,11 @@ export class ColorPalette {
             });
             this.itemEls.push(itemEl);
 
+            // Use input[type="color"] just to re-use Obsidian's rich css styling
             const pickerEl = itemEl.createEl("input", { type: "color" });
             pickerEl.value = color;
-
+            pickerEl.disabled = true;
             this.setTooltipToItem(itemEl, name);
-
-            // For mobile
-            plugin.elementManager.registerDomEvent(itemEl, 'touchstart', (evt) => {
-                evt.preventDefault();
-            });
 
             plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
                 const variables = this.getVariables({ color: name.toLowerCase() });
