@@ -56,7 +56,7 @@ https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/fb624769-4cc3-4d
 
 ### `Ctrl`/`Cmd`+hover over highlights to preview or open backlinks
 
-Depends on `Action when hovering over highlighted text`.
+Depends on the `Action when hovering over highlighted text` setting.
 
 #### Preview
 
