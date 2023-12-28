@@ -143,6 +143,9 @@ The following plugin(s) alters Obsidian's internals in such a way that prevents 
 
 ## Support development
 
-If you find [my plugins](https://ryotaushio.github.io/the-hobbyist-dev/) useful, please support my work by buying me a coffee!
+If you find [my plugins](https://ryotaushio.github.io/the-hobbyist-dev/) useful, please support my work to make sure it continues working!
 
-<a href="https://www.buymeacoffee.com/ryotaushio" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+<a href="https://github.com/sponsors/RyotaUshio" target="_blank"><img src="https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86" alt="GitHub Sponsors" style="width: 180px; height:auto;"></a>
+
+<a href="https://www.buymeacoffee.com/ryotaushio" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="width: 180px; height:auto;"></a>
+
