@@ -39,7 +39,7 @@ export class ColorPalette {
 
             this.setTooltipToItem(itemEl, name);
 
-            // 
+            // For mobile
             plugin.elementManager.registerDomEvent(itemEl, 'touchstart', (evt) => {
                 evt.preventDefault();
             });
