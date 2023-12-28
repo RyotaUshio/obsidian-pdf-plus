@@ -144,6 +144,8 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                             const selected = self.dom!.viewerEl.querySelectorAll('.mod-focused');
 
+                            console.log({type, source, selected})
+
                             if (selected.length) {
                                 const containerRect = self.dom!.viewerContainerEl.getBoundingClientRect();
                                 const firstRect = selected[0].getBoundingClientRect();
@@ -156,7 +158,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                                 //     source: self
                                 // });
                             }
-                        });
+                        }, 100);
 
                         plugin.offref(eventRef);
                     });
