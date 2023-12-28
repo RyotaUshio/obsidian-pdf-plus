@@ -66,13 +66,13 @@ https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/ea14d06a-70f6-45
 
 https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/5f3dded8-79ad-44cc-816f-dc697dc4a343
 
-### Filter backlinks by page
+### Filter [backlinks](https://help.obsidian.md/Plugins/Backlinks) by page
 
 Show only backlinks to the page that is currently opened in the PDF viewer.
 
 https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/4147e634-7864-40b4-b916-a6db40b85f31
 
-### "Hover sync" between PDF viewer & 
+### "Hover sync" between PDF viewer & backlinks pane
 
 https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/2285a837-0588-4a72-8193-da25a456bf84
 
