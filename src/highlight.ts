@@ -176,8 +176,8 @@ export class BacklinkHighlighter extends Component implements HoverParent {
     // This is a modified version of PDFViewerChild.prototype.hightlightText from Obsidian's app.js
     highlightText(pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number, colorName?: string, onHighlight?: (highlightedEl: HTMLElement) => void) {
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
-            const pageView = this.viewer.pdfViewer.getPageView(pageNumber - 1);
-            if (pageView.textLayer && pageView.div.dataset.loaded) {
+            const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
+            if (pageView?.textLayer && pageView.div.dataset.loaded) {
                 const { textDivs, textContentItems } = pageView.textLayer;
                 const s = (index: number, offset: number, className?: string): void => {
                     textDivs[index].textContent = "";
@@ -228,7 +228,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
     // This is a modified version of PDFViewerChild.prototype.clearTextHighlight from Obsidian's app.js
     clearTextHighlight() {
         for (const { page, index } of this.highlightedTexts) {
-            const pageView = this.viewer.pdfViewer.getPageView(page - 1);
+            const pageView = this.viewer.pdfViewer?.getPageView(page - 1);
             // pageView.textLayer can be null when the page is far away from the current viewport
             if (!pageView?.textLayer) return;
             const { textDivs, textContentItems } = pageView.textLayer;
@@ -248,8 +248,8 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         const pdfjsLib = this.plugin.pdfjsLib;
 
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
-            const pageView = this.viewer.pdfViewer.getPageView(pageNumber - 1);
-            if (pageView.annotationLayer && pageView.div.dataset.loaded) {
+            const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
+            if (pageView?.annotationLayer && pageView.div.dataset.loaded) {
                 const elem = pageView.annotationLayer.annotationLayer.getAnnotation(id);
                 if (elem) {
                     pageView.annotationLayer.div.createDiv("boundingRect mod-focused", (rectEl) => {
@@ -333,8 +333,8 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
     processAnnotation(pageNumber: number, id: string, callback?: (annotationEl: HTMLElement) => void) {
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
-            const pageView = this.viewer.pdfViewer.getPageView(pageNumber - 1);
-            if (pageView.annotationLayer && pageView.div.dataset.loaded) {
+            const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
+            if (pageView?.annotationLayer && pageView.div.dataset.loaded) {
                 const annotationEl = pageView.annotationLayer.div.querySelector<HTMLElement>(`[data-annotation-id="${id}"]`);
                 if (annotationEl) callback?.(annotationEl);
             }

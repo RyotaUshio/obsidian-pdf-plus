@@ -25,7 +25,7 @@ export function registerPDFEvent(name: string, eventBus: EventBus, component: Co
  * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
  */
 export function onTextLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageView: PDFPageView, pageNumber: number) => any) {
-    viewer.pdfViewer._pages
+    viewer.pdfViewer?._pages
         .forEach((pageView, pageIndex) => {
             if (pageView.textLayer) {
                 cb(pageView, pageIndex + 1); // page number is 1-based
@@ -42,7 +42,7 @@ export function onTextLayerReady(viewer: ObsidianViewer, component: Component | 
  * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
  */
 export function onAnnotationLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageView: PDFPageView, pageNumber: number) => any) {
-    viewer.pdfViewer._pages
+    viewer.pdfViewer?._pages
         .forEach((pageView, pageIndex) => {
             if (pageView.annotationLayer) {
                 cb(pageView, pageIndex + 1); // page number is 1-based

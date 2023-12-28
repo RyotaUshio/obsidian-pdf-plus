@@ -103,14 +103,14 @@ export class BacklinkPanePDFPageTracker extends Component {
         if (view) {
             view.viewer.then((child) => {
                 this.renderer.backlinkDom.filter = (file, linkCache) => {
-                    return this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache);
+                    return child.pdfViewer.pdfViewer ? this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache) : true;
                 }
                 this.updateBacklinkDom();
-                this.updateBacklinkItemDomHoverHandler(child, child.pdfViewer.pdfViewer.currentPageNumber);
+                this.updateBacklinkItemDomHoverHandler(child, child.pdfViewer.pdfViewer?.currentPageNumber);
 
                 registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
-                    const page = typeof data.pageNumber === 'number' ? (data.pageNumber as number) : child.pdfViewer.pdfViewer.currentPageNumber;
-                    this.renderer.backlinkDom.filter = (file, linkCache) => this.filter(page, linkCache);
+                    const page = typeof data.pageNumber === 'number' ? (data.pageNumber as number) : child.pdfViewer.pdfViewer?.currentPageNumber;
+                    if (page) this.renderer.backlinkDom.filter = (file, linkCache) => this.filter(page, linkCache);
 
                     this.updateBacklinkDom();
                     this.updateBacklinkItemDomHoverHandler(child, page);

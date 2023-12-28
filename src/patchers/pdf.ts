@@ -5,7 +5,7 @@ import PDFPlus from "main";
 import { ColorPalette } from "color-palette";
 import { BacklinkHighlighter } from "highlight";
 import { PDFPlusTemplateProcessor } from "template";
-import { onTextLayerReady } from "utils";
+import { onTextLayerReady, registerPDFEvent } from "utils";
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
 
 
@@ -88,6 +88,20 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 return old.call(this, page);
             }
         },
+        highlightText(old) {
+            return function (page: number, ...args: any[]) {
+                const ret = old.call(this, page, ...args);
+                plugin.trigger('highlighted', { type: 'selection', source: 'obsidian', pageNumber: page });
+                return ret;
+            }
+        },
+        highlightAnnotation(old) {
+            return function (page: number, ...args: any[]) {
+                const ret = old.call(this, page, ...args);
+                plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page });
+                return ret;
+            }
+        },
         clearTextHighlight(old) {
             return function () {
                 const self = this as PDFViewerChild;
@@ -109,39 +123,46 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         }
     }));
 
-    plugin.register(around(viewer.constructor.prototype, {
-        setHeight(old) {
-            return function (height?: number | "page" | "auto") {
+    plugin.register(around(Object.getPrototypeOf(viewer.constructor.prototype), {
+        initialize(old) {
+            return function () {
                 const self = this as ObsidianViewer;
+                const ret = old.call(this);
 
-                if (plugin.settings.noSpreadModeInEmbed && self.isEmbed) self.eventBus.dispatch('switchspreadmode', { mode: 0 })
-
-                if (plugin.settings.trimSelectionEmbed
-                    && self.isEmbed && self.dom && typeof self.page === 'number' && typeof height !== 'number'
-                    && !(plugin.settings.ignoreHeightParamInPopoverPreview && self.dom.containerEl.parentElement?.matches('.hover-popover'))) {
-                    setTimeout(() => {
-                        const selected = self.dom!.viewerEl.querySelectorAll('.mod-focused');
-                        if (selected.length) {
-                            const containerRect = self.dom!.viewerContainerEl.getBoundingClientRect();
-                            const firstRect = selected[0].getBoundingClientRect();
-                            const lastRect = selected[selected.length - 1].getBoundingClientRect();
-                            height = lastRect.bottom - firstRect.top;
-                            height += 2 * Math.abs(firstRect.top - containerRect.top);
-                        }
-                        old.call(this, height);
-                    }, 200);
-                } else {
-                    old.call(this, height);
-                }
-
-                if (self.isEmbed && plugin.settings.zoomInEmbed) {
-                    onTextLayerReady(self, null, async () => {
-                        for (self._zoomedIn ??= 0; self._zoomedIn < plugin.settings.zoomInEmbed; self._zoomedIn++) {
-                            self.zoomIn();
-                            await sleep(50);
-                        }
+                if (plugin.settings.noSpreadModeInEmbed && self.isEmbed) {
+                    registerPDFEvent('pagerendered', self.eventBus, null, () => {
+                        self.eventBus.dispatch('switchspreadmode', { mode: 0 });
                     });
                 }
+
+                if (plugin.settings.trimSelectionEmbed && self.isEmbed) {
+                    const eventRef = plugin.on('highlighted', ({ type, source, pageNumber }) => {
+                        setTimeout(() => {
+                            if (source !== 'obsidian') return;
+                            if (!self.dom) return;
+                            if ((plugin.settings.ignoreHeightParamInPopoverPreview && self.dom.containerEl.parentElement?.matches('.hover-popover'))) return;
+
+                            const selected = self.dom!.viewerEl.querySelectorAll('.mod-focused');
+
+                            if (selected.length) {
+                                const containerRect = self.dom!.viewerContainerEl.getBoundingClientRect();
+                                const firstRect = selected[0].getBoundingClientRect();
+                                const lastRect = selected[selected.length - 1].getBoundingClientRect();
+                                const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
+                                self.setHeight(height);
+
+                                // seems to have no effect
+                                // self.eventBus.dispatch("resize", {
+                                //     source: self
+                                // });
+                            }
+                        });
+
+                        plugin.offref(eventRef);
+                    });
+                }
+
+                return ret;
             }
         }
     }));

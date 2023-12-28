@@ -33,7 +33,6 @@ export interface PDFPlusSettings {
 	noSidebarInEmbed: boolean;
 	noSpreadModeInEmbed: boolean;
 	embedUnscrollable: boolean;
-	zoomInEmbed: number;
 	openLinkCleverly: boolean;
 	dontActivateAfterOpenPDF: boolean;
 	dontActivateAfterOpenMD: boolean;
@@ -79,7 +78,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	noSidebarInEmbed: true,
 	noSpreadModeInEmbed: true,
 	embedUnscrollable: false,
-	zoomInEmbed: 0,
 	openLinkCleverly: true,
 	dontActivateAfterOpenPDF: true,
 	dontActivateAfterOpenMD: true,
@@ -562,8 +560,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Do not clear highlights in a selection/annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
 			.setName('Make PDF embeds with a page specified unscrollable');
-		this.addSliderSetting('zoomInEmbed', 0, 5, 1)
-			.setName('Zoom level for PDF embeds (experimental)');
 
 
 		this.addHeading('Right-click menu in PDF viewer')

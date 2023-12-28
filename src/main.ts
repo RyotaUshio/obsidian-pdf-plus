@@ -1,4 +1,4 @@
-import { Component, Keymap, Notice, Plugin, loadPdfJs } from 'obsidian';
+import { Component, EventRef, Events, Keymap, Notice, Plugin, loadPdfJs } from 'obsidian';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
@@ -19,6 +19,7 @@ export default class PDFPlus extends Plugin {
 	/** Manages DOMs and event handlers introduced by this plugin */
 	elementManager: Component;
 	pdfjsLib: typeof import('pdfjs-dist');
+	events: Events = new Events();
 
 	async onload() {
 		this.pdfjsLib = await loadPdfJs();
@@ -204,6 +205,26 @@ export default class PDFPlus extends Plugin {
 			name: 'Copy link to selection',
 			checkCallback: (checking: boolean) => copyLinkToSelection(this, false, checking)
 		});
+	}
+
+	on(evt: "highlighted", callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number }) => any, context?: any): EventRef;
+
+	on(evt: string, callback: (...data: any) => any, context?: any): EventRef {
+		return this.events.on(evt, callback, context);
+	}
+
+	off(evt: string, callback: (...data: any) => any) {
+		this.events.off(evt, callback);
+	}
+
+	offref(ref: EventRef) {
+		this.events.offref(ref);
+	}
+
+	trigger(evt: "highlighted", data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number }): void;
+
+	trigger(evt: string, ...args: any[]): void {
+		this.events.trigger(evt, ...args);
 	}
 
 	// console utilities

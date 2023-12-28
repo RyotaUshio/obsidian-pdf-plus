@@ -81,15 +81,13 @@ interface ObsidianViewer {
     subpath: string | null;
     isEmbed: boolean;
     eventBus: EventBus;
-    pdfViewer: RawPDFViewer;
+    pdfViewer: RawPDFViewer | null;
     pdfSidebar: PDFSidebar;
     toolbar?: PDFToolbar;
     pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
     setHeight(height?: number | "page" | "auto"): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
-    /** Added by this plugin */
-    _zoomedIn?: number;
 }
 
 interface PDFSidebar {
