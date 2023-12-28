@@ -5,7 +5,7 @@ import PDFPlus from "main";
 import { ColorPalette } from "color-palette";
 import { BacklinkHighlighter } from "highlight";
 import { PDFPlusTemplateProcessor } from "template";
-import { onTextLayerReady, registerPDFEvent } from "utils";
+import { registerPDFEvent } from "utils";
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
 
 

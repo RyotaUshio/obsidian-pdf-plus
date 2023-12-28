@@ -1,8 +1,8 @@
-import { App, Menu, Notice, setIcon, setTooltip } from 'obsidian';
+import { App, Menu, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { isHexString, paramsToSubpath } from 'utils';
 import { PDFPlusTemplateProcessor } from 'template';
+import { isHexString, paramsToSubpath } from 'utils';
 
 
 export class ColorPalette {

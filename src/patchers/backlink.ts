@@ -3,7 +3,7 @@ import { SearchMatchPart, SearchMatches, TFile } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
-import { BacklinkPanePDFManager } from 'backlink';
+import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { findReferenceCache } from 'utils';
 import { BacklinkRenderer, BacklinkView, FileSearchResult, SearchResultDom, SearchResultFileDom } from 'typings';
 

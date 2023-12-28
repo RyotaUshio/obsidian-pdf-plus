@@ -4,7 +4,7 @@ import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_storage';
 
 import { BacklinkHighlighter } from 'highlight';
-import { BacklinkPanePDFManager } from 'backlink';
+import { BacklinkPanePDFManager } from 'pdf-backlink';
 
 
 /** PDF-related */

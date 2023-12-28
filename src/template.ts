@@ -1,6 +1,8 @@
-import PDFPlus from "main";
 import { FileView, TFile } from "obsidian";
+
+import PDFPlus from "main";
 import { getActiveGroupLeaves } from "utils";
+
 
 export class TemplateProcessor {
     constructor(public plugin: PDFPlus, public variables: Record<string, any>) { }

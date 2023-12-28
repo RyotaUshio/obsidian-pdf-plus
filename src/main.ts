@@ -6,7 +6,7 @@ import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
 import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
-import { BacklinkPanePDFManager } from 'backlink';
+import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';

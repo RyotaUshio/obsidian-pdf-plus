@@ -1,7 +1,7 @@
 import { App, Component, TFile, ReferenceCache, parseLinktext } from 'obsidian';
 
 import PDFPlus from 'main';
-import { MutationObservingChild, findReferenceCache, getExistingPDFViewOfFile, getSubpathWithoutHash, highlightSubpath, isMouseEventExternal, registerPDFEvent } from 'utils';
+import { MutationObservingChild, findReferenceCache, getExistingPDFViewOfFile, getSubpathWithoutHash, registerPDFEvent } from 'utils';
 import { BacklinkRenderer, PDFViewerChild } from 'typings';
 
 
