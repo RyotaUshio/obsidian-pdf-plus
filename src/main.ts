@@ -36,8 +36,11 @@ export default class PDFPlus extends Plugin {
 			patchWorkspace(this);
 			patchPagePreview(this);
 		});
-		this.tryPatchUntilSuccess(patchPDF, 'Open a PDF file to enable the plugin.');
-		this.tryPatchUntilSuccess(patchBacklink, 'Open a backlink pane to enable the plugin.');
+		this.tryPatchUntilSuccess(patchPDF, {
+			message: 'Some features for PDF embeds will not be activated until a PDF file is opened in a viewer.',
+			duration: 7000
+		});
+		this.tryPatchUntilSuccess(patchBacklink);
 
 		// Make PDF embeds with a subpath unscrollable
 		this.registerDomEvent(document, 'wheel', (evt) => {
@@ -127,17 +130,17 @@ export default class PDFPlus extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, messageOnFail: string) {
+	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, noticeOnFail?: { message: string, duration?: number }) {
 		this.app.workspace.onLayoutReady(() => {
 			const success = patcher(this);
 			if (!success) {
-				const notice = new Notice(`${this.manifest.name}: ${messageOnFail}`, 0);
+				const notice = noticeOnFail ? new Notice(`${this.manifest.name}: ${noticeOnFail.message}`, noticeOnFail.duration) : null;
 
 				const eventRef = this.app.workspace.on('layout-change', () => {
 					const success = patcher(this);
 					if (success) {
 						this.app.workspace.offref(eventRef);
-						notice.hide();
+						notice?.hide();
 					}
 				});
 				this.registerEvent(eventRef);
