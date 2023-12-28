@@ -1,6 +1,9 @@
 import { Component, Keymap, Notice, Plugin, loadPdfJs } from 'obsidian';
 
-import { patchPDF, patchBacklink, patchPagePreview, patchWorkspace } from 'patch';
+import { patchPDF } from 'patchers/pdf';
+import { patchBacklink } from 'patchers/backlink';
+import { patchWorkspace } from 'patchers/workspace';
+import { patchPagePreview } from 'patchers/page-preview';
 import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { BacklinkPanePDFManager } from 'backlink';

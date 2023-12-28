@@ -107,7 +107,7 @@ export function isHexString(color: string) {
     return color.length === 7 && color.startsWith('#');
 }
 
-export const getLinkToSelection = (plugin: PDFPlus, params?: Record<string, string>): string | null => {
+export const getLinkToSelection = (plugin: PDFPlus, params?: Record<string, string>, alias: boolean = true): string | null => {
     const selection = window.getSelection();
     if (!selection) return null;
     const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
@@ -128,14 +128,14 @@ export const getLinkToSelection = (plugin: PDFPlus, params?: Record<string, stri
     }
     const linktext = child.getMarkdownLink(
         '#' + Object.entries(params).map(([k, v]) => k && v ? `${k}=${v}` : '').join('&'),
-        child.getPageLinkAlias(+page)
+        alias ? child.getPageLinkAlias(+page) : undefined
     );
     return linktext;
 }
 
 
 export const copyLinkToSelection = (plugin: PDFPlus, embed: boolean = false, checking: boolean = false, params?: Record<string, string>): boolean => {
-    let linktext = getLinkToSelection(plugin, params);
+    let linktext = getLinkToSelection(plugin, params, true);
     if (embed) linktext = '!' + linktext;
     if (linktext === null) return false;
     if (!checking) navigator.clipboard.writeText(linktext);
@@ -143,7 +143,7 @@ export const copyLinkToSelection = (plugin: PDFPlus, embed: boolean = false, che
 }
 
 export const copyAsQuote = (plugin: PDFPlus, checking: boolean = false, params?: Record<string, string>): boolean => {
-    const linktext = getLinkToSelection(plugin, params);
+    const linktext = getLinkToSelection(plugin, params, true);
     const selection = window.getSelection()?.toString().replace(/[\r\n]+/g, " ");
     if (!linktext || !selection) return false;
     if (!checking) {
@@ -188,6 +188,10 @@ export function getSubpathWithoutHash(linktext: string): string {
     let { subpath } = parseLinktext(linktext);
     if (subpath.startsWith('#')) subpath = subpath.slice(1);
     return subpath;
+}
+
+export function paramsToSubpath(params: Record<string, any>) {
+    return '#' + Object.entries(params).map(([k, v]) => k && v ? `${k}=${v}` : '').join('&');
 }
 
 export class MutationObservingChild extends Component {
