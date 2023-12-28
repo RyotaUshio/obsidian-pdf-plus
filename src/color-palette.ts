@@ -39,6 +39,11 @@ export class ColorPalette {
 
             this.setTooltipToItem(itemEl, name);
 
+            // 
+            plugin.elementManager.registerDomEvent(itemEl, 'touchstart', (evt) => {
+                evt.preventDefault();
+            });
+
             plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
                 const variables = this.getVariables({ color: name.toLowerCase() });
 
