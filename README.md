@@ -30,6 +30,52 @@ See [here](#installation) for an installation guide.
 > - For now, PDF++ does not modify PDF files themselves. The backlink highlight feature just changes how file contents are displayed in Obsidian. Exporting highlights into an actual PDF file is a planned feature, but it's not supported yet.
 > - Although this plugin is almost mobile-compatible, some features, including copying links with color palette, might not work well on mobile.
 
+## Getting started
+
+Here I'm just scratching the surface of what PDF++ can do. See [below](#features) and the plugin settings in Obsidian for more details.
+
+### Link to PDF files to annotate them with highlights
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/0a9c267d-b74a-4568-821b-a659e29fdac0
+
+### Color palette for easily copying links & specifying highlight colors
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/72072345-3537-42e7-ad06-5e4a166f83f4
+
+### Copy links quickly via a hotkey
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/8ef3bc62-70d7-449a-b6a7-0370a2b4a8d8
+
+### Highly customizable copy formats
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/fb624769-4cc3-4d4e-9898-b17d0a5591e3
+
+### PDF Embeds are automatically trimmed
+
+<img width="954" alt="image" src="https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/a2f93579-4126-4437-93d0-2b90d3ee49a3">
+
+### `Ctrl`/`Cmd`+hover over highlights to preview or open backlinks
+
+Depends on `Action when hovering over highlighted text`.
+
+#### Preview
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/ea14d06a-70f6-45cf-a142-0213adb9749b
+
+#### Open
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/5f3dded8-79ad-44cc-816f-dc697dc4a343
+
+### Filter backlinks by page
+
+Show only backlinks to the page that is currently opened in the PDF viewer.
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/4147e634-7864-40b4-b916-a6db40b85f31
+
+### "Hover sync" between PDF viewer & 
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/2285a837-0588-4a72-8193-da25a456bf84
+
 ## Features
 
 Each feature can be toggled on and off in the plugin settings.
