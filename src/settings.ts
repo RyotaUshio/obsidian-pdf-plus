@@ -190,14 +190,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 		return this.addSetting(settingName)
 			.addDropdown((dropdown) => {
-				// const displayNames = new Set<string>();
 				for (const option of options) {
 					const displayName = display(option) ?? option;
-					// if (!displayNames.has(displayName)) {
 					dropdown.addOption(option, displayName);
-					// displayNames.add(displayName);
-					// }
-				};
+				}
 				dropdown.setValue(this.plugin.settings[settingName])
 					.onChange(async (value) => {
 						// @ts-ignore
@@ -214,7 +210,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				for (const option of options) {
 					const displayName = display?.(option) ?? option;
 					dropdown.addOption(option, displayName);
-				};
+				}
 				const index = this.plugin.settings[settingName];
 				const option = options[index];
 				dropdown.setValue(option)

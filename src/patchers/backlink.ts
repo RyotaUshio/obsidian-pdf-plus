@@ -5,16 +5,15 @@ import { around } from 'monkey-around';
 import PDFPlus from 'main';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { findReferenceCache } from 'utils';
-import { BacklinkRenderer, BacklinkView, FileSearchResult, SearchResultDom, SearchResultFileDom } from 'typings';
+import { BacklinkView, FileSearchResult, SearchResultDom, SearchResultFileDom } from 'typings';
 
 
 export const patchBacklink = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
 
     // 1. Try to access a BacklinkRenderer instance from a backlinks view
-    let backlink: BacklinkRenderer | undefined;
     const backlinkView = app.workspace.getLeavesOfType('backlink')[0]?.view as BacklinkView | undefined;
-    backlink = backlinkView?.backlink;
+    const backlinkRenderer = backlinkView?.backlink;
 
     // The below is commented out because this feature is irrerevant to "backlink in document"
 
@@ -25,7 +24,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
     //     backlink = mdView.backlinks;
     // }
 
-    if (!backlinkView || !backlink) return false;
+    if (!backlinkView || !backlinkRenderer) return false;
 
     plugin.register(around(Object.getPrototypeOf(backlinkView.constructor.prototype), {
         onLoadFile(old) {
@@ -48,7 +47,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
         }
     }));
 
-    plugin.register(around(backlink.backlinkDom.constructor.prototype, {
+    plugin.register(around(backlinkRenderer.backlinkDom.constructor.prototype, {
         addResult(old) {
             return function (file: TFile, result: FileSearchResult, content: string, showTitle: boolean): SearchResultFileDom {
                 const self = this as SearchResultDom;

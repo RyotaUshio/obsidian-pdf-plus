@@ -172,8 +172,8 @@ interface TextContentItem {
 }
 
 interface EventBus {
-    on(name: string, callback: Function): void;
-    off(name: string, callback: Function): void;
+    on(name: string, callback: (...args: any[]) => any): void;
+    off(name: string, callback: (...args: any[]) => any): void;
     dispatch(name: string, data: { source?: any }): void;
     dispatch(name: 'togglesidebar', data: { open: boolean, source?: any }): void;
     dispatch(name: 'switchspreadmode', data: { mode: number, source?: any }): void;
@@ -297,7 +297,7 @@ interface SearchResultDom {
 }
 
 interface SearchResultFileDom {
-    onMatchRender: Function | null;
+    onMatchRender: (...args: any[]) => any | null;
     collapsible: boolean;
     collapsed: boolean;
     extraContext: boolean;
@@ -354,7 +354,7 @@ interface SearchResultItemDom {
         hidden: boolean;
         next: boolean;
     };
-    onMatchRender: Function | null;
+    onMatchRender: (...args: any[]) => any | null;
     parent?: SearchResultFileDom; // same as parentDom
 
     onResultClick(evt: Event): void;

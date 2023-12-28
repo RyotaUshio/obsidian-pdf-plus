@@ -17,7 +17,6 @@ export function registerPDFEvent(name: string, eventBus: EventBus, component: Co
     eventBus.on(name, listener);
 }
 
-
 /** 
  * Register a callback executed when the text layer for a page gets rendered. 
  * Note that PDF rendering is "lazy"; the text layer for a page is not rendered until the page is scrolled into view.
@@ -99,57 +98,8 @@ export function highlightSubpath(child: PDFViewerChild, subpath: string, duratio
     }
 }
 
-export async function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 export function isHexString(color: string) {
     return color.length === 7 && color.startsWith('#');
-}
-
-export const getLinkToSelection = (plugin: PDFPlus, params?: Record<string, string>, alias: boolean = true): string | null => {
-    const selection = window.getSelection();
-    if (!selection) return null;
-    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-    const pageEl = range?.startContainer.parentElement?.closest('.page');
-    if (!pageEl || !(pageEl.instanceOf(HTMLElement)) || pageEl.dataset.pageNumber === undefined) return null;
-
-    const viewerEl = pageEl.closest<HTMLElement>('.pdf-viewer');
-    if (!viewerEl) return null;
-
-    const child = plugin.pdfViwerChildren.get(viewerEl);
-    if (!child) return null;
-
-    const page = pageEl.dataset.pageNumber;
-    params = {
-        page,
-        selection: child.getTextSelectionRangeStr(pageEl),
-        ...params ?? {}
-    }
-    const linktext = child.getMarkdownLink(
-        '#' + Object.entries(params).map(([k, v]) => k && v ? `${k}=${v}` : '').join('&'),
-        alias ? child.getPageLinkAlias(+page) : undefined
-    );
-    return linktext;
-}
-
-
-export const copyLinkToSelection = (plugin: PDFPlus, embed: boolean = false, checking: boolean = false, params?: Record<string, string>): boolean => {
-    let linktext = getLinkToSelection(plugin, params, true);
-    if (embed) linktext = '!' + linktext;
-    if (linktext === null) return false;
-    if (!checking) navigator.clipboard.writeText(linktext);
-    return true;
-}
-
-export const copyAsQuote = (plugin: PDFPlus, checking: boolean = false, params?: Record<string, string>): boolean => {
-    const linktext = getLinkToSelection(plugin, params, true);
-    const selection = window.getSelection()?.toString().replace(/[\r\n]+/g, " ");
-    if (!linktext || !selection) return false;
-    if (!checking) {
-        navigator.clipboard.writeText("> ".concat(selection, "\n\n").concat(linktext));
-    }
-    return true;
 }
 
 export function getModifierNameInPlatform(mod: Modifier): string {
@@ -182,7 +132,7 @@ export function getExistingPDFViewOfFile(app: App, file: TFile): PDFView | undef
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
     return cache.links?.find((link) => start <= link.position.start.offset && link.position.end.offset <= end)
         ?? cache.embeds?.find((embed) => start <= embed.position.start.offset && embed.position.end.offset <= end);
-};
+}
 
 export function getSubpathWithoutHash(linktext: string): string {
     let { subpath } = parseLinktext(linktext);

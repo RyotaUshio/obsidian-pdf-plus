@@ -8,7 +8,7 @@ import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLink, copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
+import { copyLink, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 
 
@@ -165,7 +165,7 @@ export default class PDFPlus extends Plugin {
 		this.addChild(this.elementManager);
 
 		for (const child of this.pdfViwerChildren.values()) {
-			if (child.toolbar) new ColorPalette(this, child.toolbar.toolbarLeftEl);;
+			if (child.toolbar) new ColorPalette(this, child.toolbar.toolbarLeftEl);
 		}
 
 		const styleEl = this.registerEl(createEl('style', { attr: { id: 'pdf-plus-style' } }));

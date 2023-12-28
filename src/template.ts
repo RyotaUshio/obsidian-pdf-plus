@@ -32,7 +32,7 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
                     linkedFile = leaf.view.file;
                     break;
                 }
-            };
+            }
         }
 
         super(plugin, {
