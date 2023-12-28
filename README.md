@@ -35,7 +35,7 @@ Each feature can be toggled on and off in the plugin settings.
 
 ### Annotating PDF files
 
-Annotate PDF files with highlights just by linking to text selection.
+Annotate PDF files with highlights just by linking to text selection. You can easily copy links to selections using color palette in the toolbar. See the "Color palette" section for the details.
 
 - **Highlight backlinks in PDF viewer**: In the PDF viewer, any referenced text will be highlighted for easy identification.
   - By default, all backlinks are highlighted. However, there is an option that allows you to highlight only backlinks with colors specified in the link text (see below).
@@ -43,8 +43,8 @@ Annotate PDF files with highlights just by linking to text selection.
 - **Custom highlight colors**: Append `&color=<COLOR NAME>` to a link text to highlight the selection with a specified color.
   - `<COLOR NAME>` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
   - Color names are case-insensitive, i.e. all of `&color=red`, `&color=RED` and even `&color=rEd` work the same.
+  - You can ues the color palette in PDF toolbars to easily copy links with `&color=...` appended automatically. See the "Color palette" section for the details.
   - You can also opt not to use this plugin-dependent notation and apply a single color (the "default highlight color" setting) to all highlights.
-- **Show color palette in the toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
 - **Easily navigate to backlinks by pressing `Ctrl`/`Cmd` (by default) while hovering over a highlighted text in PDF viewer**: you can choose what happens when you hover over a highlighted text between the following:
   - Open backlink
   - Popover preview of backlink
@@ -70,14 +70,29 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 
 #### Copy links with ease
 
-- **Color palette in PDF toolbar**: See above for the details.
+- **Color palette in PDF toolbar**: See below for the details.
 - **`Copy link to selection` command**: This is the same thing as the "Copy link to selection" in the right-click menu, but this command allows you to trigger it quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
   > Note: this command cannot be triggered from the Command Palette. Make sure that you set a custom hotkey for it. 
 
-#### Display text options
+#### Right-click menu options
+
+Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 
 - **Copy link with/without display text**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends `|<PDF FILE TITLE>, page <PAGE NUMBER>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
-- **Custom display text format**: You can customize the template format that will be applied the display text  when copying a link to a selection or an annotation in PDF viewer. Each `{{...}}` in the template will be evaluated as a JavaScript expression with many variables available. See the plugin settings for the details.
+- **Display text format**: You can customize the display text format.
+
+#### Color palette
+
+Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
+
+- **Show color palette in the toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
+
+#### Link copy templates
+
+You can customize the template format that will used when copying a link to a selection or an annotation in PDF viewer. Each `{{...}}` in the template will be evaluated as a JavaScript expression with many variables available. See the plugin settings for the details.
+
+- **Custom display text format**
+- **Custom color palette actions**: Customize the commands that you can trigger by clicking a color palette item while selecting a range of text in PDF viewer.
 
 ### Embedding PDF files
 
@@ -85,6 +100,7 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 - **Trim selection embeds**: When embedding a selection from a PDF file, only the selection and its surroundings are displayed rather than the entire page.
 - **Hide toolbar in PDF embeds with a page specified**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
 - **Never show sidebar in PDF embeds**
+- **Do not display PDF embeds or PDF popover previews in "two page" layout**: Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.
 - **Do not clear highlights in a selection/annotation embeds**
 - **Make PDF embeds unscrollable**
 - **Zoom in PDF embeds (experimental)**

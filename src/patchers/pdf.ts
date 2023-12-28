@@ -114,6 +114,8 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             return function (height?: number | "page" | "auto") {
                 const self = this as ObsidianViewer;
 
+                if (plugin.settings.noSpreadModeInEmbed && self.isEmbed) self.eventBus.dispatch('switchspreadmode', { mode: 0 })
+
                 if (plugin.settings.trimSelectionEmbed
                     && self.isEmbed && self.dom && typeof self.page === 'number' && typeof height !== 'number'
                     && !(plugin.settings.ignoreHeightParamInPopoverPreview && self.dom.containerEl.parentElement?.matches('.hover-popover'))) {

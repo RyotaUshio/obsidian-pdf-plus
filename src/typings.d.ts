@@ -123,6 +123,9 @@ interface RawPDFViewer {
     /** 1-based page number. This is an accessor property; the setter can be used to scroll to a page and dispatches 'pagechanging' event */
     currentPageNumber: number;
     _pages: PDFPageView[];
+    /** Accessor property. 0 for "single page", 1 for "two page (odd)", 2 for "two page (even)" */
+    spreadMode: number;
+    viewer: HTMLElement; // div.pdf-viewer
     getPageView(page: number): PDFPageView;
 }
 
@@ -175,6 +178,7 @@ interface EventBus {
     off(name: string, callback: Function): void;
     dispatch(name: string, data: { source?: any }): void;
     dispatch(name: 'togglesidebar', data: { open: boolean, source?: any }): void;
+    dispatch(name: 'switchspreadmode', data: { mode: number, source?: any }): void;
 }
 
 interface PDFEmbed extends Component {

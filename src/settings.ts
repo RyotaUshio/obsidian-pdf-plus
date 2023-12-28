@@ -31,6 +31,7 @@ export interface PDFPlusSettings {
 	copyCommands: CopyCommand[];
 	trimSelectionEmbed: boolean;
 	noSidebarInEmbed: boolean;
+	noSpreadModeInEmbed: boolean;
 	embedUnscrollable: boolean;
 	zoomInEmbed: number;
 	openLinkCleverly: boolean;
@@ -76,6 +77,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	],
 	trimSelectionEmbed: true,
 	noSidebarInEmbed: true,
+	noSpreadModeInEmbed: true,
 	embedUnscrollable: false,
 	zoomInEmbed: 0,
 	openLinkCleverly: true,
@@ -553,6 +555,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
 		this.addToggleSetting('noSidebarInEmbed')
 			.setName('Never show sidebar in PDF embeds');
+		this.addToggleSetting('noSpreadModeInEmbed')
+			.setName('Do not display PDF embeds or PDF popover previews in "two page" layout')
+			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.')
 		this.addToggleSetting('persistentHighlightsInEmbed')
 			.setName('Do not clear highlights in a selection/annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
