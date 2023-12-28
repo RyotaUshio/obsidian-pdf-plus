@@ -70,22 +70,10 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 
 #### Copy links with ease
 
-- **Color palette in PDF toolbar**: See below for the details.
+- **Color palette in PDF toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
+  - You can customize the format of copied text using a powerful templating system (see [below](#link-copy-templates)).
 - **`Copy link to selection` command**: This is the same thing as the "Copy link to selection" in the right-click menu, but this command allows you to trigger it quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
   > Note: this command cannot be triggered from the Command Palette. Make sure that you set a custom hotkey for it. 
-
-#### Right-click menu options
-
-Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
-
-- **Copy link with/without display text**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends `|<PDF FILE TITLE>, page <PAGE NUMBER>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
-- **Display text format**: You can customize the display text format.
-
-#### Color palette
-
-Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
-
-- **Show color palette in the toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
 
 #### Link copy templates
 
@@ -93,6 +81,13 @@ You can customize the template format that will used when copying a link to a se
 
 - **Custom display text format**
 - **Custom color palette actions**: Customize the commands that you can trigger by clicking a color palette item while selecting a range of text in PDF viewer.
+
+#### Right-click menu options
+
+Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
+
+- **Copy link with/without display text**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends `|<PDF FILE TITLE>, page <PAGE NUMBER>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
+- **Display text format**: You can customize the display text format.
 
 ### Embedding PDF files
 
