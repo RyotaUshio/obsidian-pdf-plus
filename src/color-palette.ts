@@ -1,8 +1,7 @@
 import { App, Menu, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusTemplateProcessor } from 'template';
-import { isHexString, paramsToSubpath } from 'utils';
+import { copyLink, isHexString } from 'utils';
 
 
 export class ColorPalette {
@@ -23,45 +22,39 @@ export class ColorPalette {
         plugin.registerEl(toolbarLeftEl.createDiv('pdf-toolbar-spacer'));
         this.paletteEl = plugin.registerEl(toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS }));
 
-        for (const [name, color] of Object.entries(plugin.settings.colors)) {
-            if (!isHexString(color)) continue;
-
-            const itemEl = this.paletteEl.createDiv({
-                cls: ColorPalette.CLS + '-item',
-                attr: {
-                    'data-highlight-color': name,
-                }
-            });
-            this.itemEls.push(itemEl);
-
-            // Use input[type="color"] just to re-use Obsidian's rich css styling
-            const pickerEl = itemEl.createEl("input", { type: "color" });
-            pickerEl.value = color;
-            pickerEl.disabled = true;
-            this.setTooltipToItem(itemEl, name);
-
-            plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
-                const variables = this.getVariables({ color: name.toLowerCase() });
-
-                if (variables) {
-                    const { child, file, subpath, page, pageCount, selection } = variables;
-                    const link = this.app.fileManager.generateMarkdownLink(file, "").slice(1);
-                    const display = child.getPageLinkAlias(page);
-                    const linkWithDisplay = this.app.fileManager.generateMarkdownLink(file, "", subpath, display).slice(1);
-
-                    const processor = new PDFPlusTemplateProcessor(plugin, { link, display, linkWithDisplay }, file, page, pageCount, selection);
-                    const format = this.plugin.settings.copyCommands[this.actionIndex].format;
-                    const evaluated = processor.evalTemplate(format);
-                    navigator.clipboard.writeText(evaluated);
-                }
-
-                evt.preventDefault();
-            });
+        if (this.plugin.settings.colorPaletteInToolbar) {
+            for (const [name, color] of Object.entries(plugin.settings.colors)) {
+                if (!isHexString(color)) continue;
+    
+                const itemEl = this.paletteEl.createDiv({
+                    cls: ColorPalette.CLS + '-item',
+                    attr: {
+                        'data-highlight-color': name,
+                    }
+                });
+                this.itemEls.push(itemEl);
+    
+                // Use input[type="color"] just to re-use Obsidian's rich css styling
+                const pickerEl = itemEl.createEl("input", { type: "color" });
+                pickerEl.value = color;
+                pickerEl.disabled = true;
+                this.setTooltipToItem(itemEl, name);
+    
+                plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
+                    copyLink(this.plugin, this.plugin.settings.copyCommands[this.actionIndex].format, false, name);
+                    evt.preventDefault();
+                });
+            }
         }
 
-        this.paletteEl.createDiv("clickable-icon", (buttonEl) => {
+        this.paletteEl.createDiv("clickable-icon pdf-plus-action-menu", (buttonEl) => {
             setIcon(buttonEl, "lucide-chevron-down");
-            setTooltip(buttonEl, 'Color palette action options');
+            let tooltip = 'Color palette action options';
+            if (!this.plugin.settings.colorPaletteInToolbar) {
+                tooltip = `${this.plugin.manifest.name}: link copy options (trigger via hotkeys)`
+            }
+            setTooltip(buttonEl, tooltip);
+            buttonEl.dataset.checkedIndex = '' + this.actionIndex;
 
             buttonEl.addEventListener("click", () => {
                 const menu = new Menu();
@@ -76,6 +69,7 @@ export class ColorPalette {
                             .setChecked(this.actionIndex === i)
                             .onClick(() => {
                                 this.actionIndex = i;
+                                buttonEl.dataset.checkedIndex = '' + i;
                                 menu.items.forEach((item) => item.setChecked(this.actionIndex === i));
                                 this.itemEls.forEach((itemEl) => {
                                     this.setTooltipToItem(itemEl, itemEl.dataset.highlightColor!);
@@ -98,39 +92,7 @@ export class ColorPalette {
 
     setTooltipToItem(itemEl: HTMLElement, name: string) {
         const pickerEl = itemEl.querySelector<HTMLInputElement>(':scope > input[type="color"]')!;
-        setTooltip(pickerEl, this.plugin.settings.copyCommands[this.actionIndex] + ` and add ${name.toLowerCase()} highlight`);
-    }
-
-    getVariables(subpathParams: Record<string, any>) {
-        const selection = window.getSelection();
-        if (!selection) return null;
-        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-        const pageEl = range?.startContainer.parentElement?.closest('.page');
-        if (!pageEl || !(pageEl.instanceOf(HTMLElement)) || pageEl.dataset.pageNumber === undefined) return null;
-
-        const viewerEl = pageEl.closest<HTMLElement>('.pdf-viewer');
-        if (!viewerEl) return null;
-
-        const child = this.plugin.pdfViwerChildren.get(viewerEl);
-        const file = child?.file;
-        if (!file) return null;
-
-        const page = +pageEl.dataset.pageNumber;
-
-        const subpath = paramsToSubpath({
-            page,
-            selection: child.getTextSelectionRangeStr(pageEl),
-            ...subpathParams
-        });
-
-        return {
-            child,
-            file,
-            subpath,
-            page,
-            pageCount: child.pdfViewer.pagesCount,
-            selection: selection.toString().replace(/[\r\n]+/g, " ")
-        };
+        setTooltip(pickerEl, this.plugin.settings.copyCommands[this.actionIndex].name + ` and add ${name.toLowerCase()} highlight`);
     }
 }
 

@@ -8,7 +8,7 @@ import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
+import { copyLink, copyLinkToSelection, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 
 
@@ -202,8 +202,21 @@ export default class PDFPlus extends Plugin {
 	registerCommands() {
 		this.addCommand({
 			id: 'copy-link-to-selection',
-			name: 'Copy link to selection',
-			checkCallback: (checking: boolean) => copyLinkToSelection(this, false, checking)
+			name: 'Copy link to selection with format specified in toolbar',
+			checkCallback: (checking: boolean) => {
+				// get the toolbar in the active PDF viewer, if any
+				const toolbar = this.getToolbar();
+				if (!toolbar) return false;
+
+				const buttonEl = toolbar.toolbarEl.querySelector<HTMLElement>(`.pdf-plus-action-menu[data-checked-index]`);
+				if (!buttonEl) return false;
+
+				// get the index of the checked item in the action dropdown menu
+				if (buttonEl.dataset.checkedIndex === undefined) return false;
+				const index = +buttonEl.dataset.checkedIndex;
+
+				copyLink(this, this.settings.copyCommands[index].format, checking);
+			}
 		});
 	}
 

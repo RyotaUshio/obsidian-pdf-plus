@@ -2,6 +2,7 @@ import { App, Component, EditableFileView, Modifier, Platform, TFile, WorkspaceL
 
 import PDFPlus from 'main';
 import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView } from 'typings';
+import { PDFPlusTemplateProcessor } from 'template';
 
 
 /** 
@@ -190,7 +191,7 @@ export function getSubpathWithoutHash(linktext: string): string {
 }
 
 export function paramsToSubpath(params: Record<string, any>) {
-    return '#' + Object.entries(params).map(([k, v]) => k && v ? `${k}=${v}` : '').join('&');
+    return '#' + Object.entries(params).map(([k, v]) => k && (v || v === 0) ? `${k}=${v}` : '').join('&');
 }
 
 export class MutationObservingChild extends Component {
@@ -220,4 +221,58 @@ export function getActiveGroupLeaves(app: App) {
     if (!activeGroup) return null;
 
     return app.workspace.getGroupLeaves(activeGroup);
+}
+
+export function getTemplateVariables(plugin: PDFPlus, subpathParams: Record<string, any>) {
+    const selection = window.getSelection();
+    if (!selection) return null;
+    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    const pageEl = range?.startContainer.parentElement?.closest('.page');
+    if (!pageEl || !(pageEl.instanceOf(HTMLElement)) || pageEl.dataset.pageNumber === undefined) return null;
+
+    const viewerEl = pageEl.closest<HTMLElement>('.pdf-viewer');
+    if (!viewerEl) return null;
+
+    const child = plugin.pdfViwerChildren.get(viewerEl);
+    const file = child?.file;
+    if (!file) return null;
+
+    const page = +pageEl.dataset.pageNumber;
+
+    const subpath = paramsToSubpath({
+        page,
+        selection: child.getTextSelectionRangeStr(pageEl),
+        ...subpathParams
+    });
+
+    return {
+        child,
+        file,
+        subpath,
+        page,
+        pageCount: child.pdfViewer.pagesCount,
+        selection: selection.toString().replace(/[\r\n]+/g, " ")
+    };
+}
+
+export function copyLink(plugin: PDFPlus, template: string, checking: boolean, colorName?: string): boolean {
+    const app = plugin.app;
+    const variables = getTemplateVariables(plugin, colorName ? { color: colorName.toLowerCase() } : {});
+
+    if (variables) {
+        if (!checking) {
+            const { child, file, subpath, page, pageCount, selection } = variables;
+            const link = app.fileManager.generateMarkdownLink(file, "").slice(1);
+            const display = child.getPageLinkAlias(page);
+            const linkWithDisplay = app.fileManager.generateMarkdownLink(file, "", subpath, display).slice(1);
+    
+            const processor = new PDFPlusTemplateProcessor(plugin, { link, display, linkWithDisplay }, file, page, pageCount, selection);
+            const evaluated = processor.evalTemplate(template);
+            navigator.clipboard.writeText(evaluated);    
+        }
+
+        return true;
+    }
+
+    return false;
 }

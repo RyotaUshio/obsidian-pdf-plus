@@ -18,7 +18,7 @@ const PANE_TYPE: Record<ExtendedPaneType, string> = {
 	'window': 'New window',
 };
 
-interface CopyCommand {
+export interface CopyCommand {
 	name: string;
 	format: string;
 }
@@ -591,9 +591,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Copying links via hotkeys');
 		this.addSetting()
 			.setName('Set up hotkeys for copying links')
-			.setDesc('Press this hotkey while selecting a range of text to copy a link to the selection.')
+			.setDesc('Press this hotkey while selecting a range of text to copy a link to the selection with the format specified in a dropdown menu in the PDF toolbar.')
 			.addButton((button) => {
-				button.setButtonText('Open')
+				button.setButtonText('Open hotkeys settings')
 					.onClick(() => {
 						const tab = this.app.setting.openTabById('hotkeys') as any;
 						tab.setQuery(this.plugin.manifest.id);
