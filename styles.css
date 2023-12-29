@@ -58,8 +58,12 @@ settings:
     justify-content: center;
     align-items: center;
 
-    .pdf-plus-color-palette-item {
-        padding-right: var(--size-2-3);    
+    .pdf-plus-color-palette-item-inner {
+        /* draw circle */
+        width: var(--swatch-width);
+        height: var(--swatch-height);
+        border-radius: 50%;
+        border: none;
     }
 }
 

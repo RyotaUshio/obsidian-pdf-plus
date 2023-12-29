@@ -202,7 +202,7 @@ export default class PDFPlus extends Plugin {
 	registerCommands() {
 		this.addCommand({
 			id: 'copy-link-to-selection',
-			name: 'Copy link to selection with format specified in toolbar',
+			name: 'Copy link to selection with color & format specified in toolbar',
 			checkCallback: (checking: boolean) => {
 				// get the toolbar in the active PDF viewer, if any
 				const toolbar = this.getToolbar();
@@ -215,7 +215,11 @@ export default class PDFPlus extends Plugin {
 				if (buttonEl.dataset.checkedIndex === undefined) return false;
 				const index = +buttonEl.dataset.checkedIndex;
 
-				copyLink(this, this.settings.copyCommands[index].format, checking);
+				// get the currently selected color name
+				const selectedItemEl = toolbar.toolbarEl.querySelector<HTMLElement>('.pdf-plus-color-palette-item.is-active[data-highlight-color]');
+				const colorName = selectedItemEl?.dataset.highlightColor;
+
+				copyLink(this, this.settings.copyCommands[index].format, checking, colorName);
 			}
 		});
 	}

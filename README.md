@@ -116,7 +116,7 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 
 - **Color palette in PDF toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
   - You can customize the format of copied text using a powerful templating system (see [below](#link-copy-templates)).
-- **`Copy link to selection with format specified in toolbar` command**: This command allows you to trigger the copy-link action specified in a dropdown menu in the PDF toolbar quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
+- **`Copy link to selection with color & format specified in toolbar` command**: This command allows you to trigger the copy-link action specified in a dropdown menu in the PDF toolbar quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
   > Note: this command cannot be triggered from the Command Palette. Make sure that you set a custom hotkey for it. 
 
 #### Link copy templates
