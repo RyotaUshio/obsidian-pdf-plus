@@ -8,7 +8,7 @@ import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLink, isHexString, iterateBacklinkViews, iteratePDFViews } from 'utils';
+import { copyLink, isHexString, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 
 
@@ -97,6 +97,12 @@ export default class PDFPlus extends Plugin {
 					};
 				}
 			});
+			const params = subpathToParams(subpath);
+			if (params.has('color')) {
+				embed.containerEl.dataset.highlightColor = params.get('color')!.toLowerCase();
+			} else if (this.settings.defaultColor) {
+				embed.containerEl.dataset.highlightColor = this.settings.defaultColor.toLowerCase();
+			}
 			return embed;
 		});
 
@@ -162,7 +168,8 @@ export default class PDFPlus extends Plugin {
 
 		styleEl.textContent = Object.entries(this.settings.colors).map(([name, color]) => {
 			return isHexString(color) ? [
-				`.textLayer .mod-focused.pdf-plus-backlink:not(.hovered-highlight)[data-highlight-color="${name.toLowerCase()}"] {`,
+				`.textLayer .mod-focused.pdf-plus-backlink:not(.hovered-highlight)[data-highlight-color="${name.toLowerCase()}"],`,
+				`.pdf-embed[data-highlight-color="${name.toLowerCase()}"] .textLayer .mod-focused {`,
 				`    background-color: ${color};`,
 				`}`
 			].join('\n') : '';

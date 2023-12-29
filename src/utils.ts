@@ -140,6 +140,11 @@ export function getSubpathWithoutHash(linktext: string): string {
     return subpath;
 }
 
+export function subpathToParams(subpath: string): URLSearchParams {
+    if (subpath.startsWith('#')) subpath = subpath.slice(1);
+    return new URLSearchParams(subpath);
+}
+
 export function paramsToSubpath(params: Record<string, any>) {
     return '#' + Object.entries(params).map(([k, v]) => k && (v || v === 0) ? `${k}=${v}` : '').join('&');
 }

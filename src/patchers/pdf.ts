@@ -165,7 +165,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                                     }
                                 }
                             }
-                        }, 100);
+                        }, 150);
 
                         plugin.offref(eventRef);
                     });
