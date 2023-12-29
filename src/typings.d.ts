@@ -38,6 +38,8 @@ interface PDFViewerChild {
     pdfViewer: ObsidianViewer;
     subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight | null;
     toolbar?: PDFToolbar;
+    highlightedText: [number, number][]; // [page, textContentItemindex][]
+    annotationHighlight: HTMLElement | null;
     load(): void;
     getPage(page: number): PDFPageView;
     getTextByRect(pageView: any, rect: number[]): any;

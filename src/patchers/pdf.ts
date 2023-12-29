@@ -89,18 +89,100 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             }
         },
         highlightText(old) {
-            return function (page: number, ...args: any[]) {
-                const ret = old.call(this, page, ...args);
-                // respect the color specified in the linktext
+            return function (page: number, range: [[number, number], [number, number]]) {
+                const self = this as PDFViewerChild;
 
-                plugin.trigger('highlighted', { type: 'selection', source: 'obsidian', pageNumber: page, child: this });
+                const indexFirst = range[0][0];
+                const pageViewFirst = self.getPage(page);
+                const textDivFirst = pageViewFirst.textLayer?.textDivs[indexFirst];
+
+                if (plugin.settings.trimSelectionEmbed
+                    && self.pdfViewer.isEmbed
+                    && self.pdfViewer.dom
+                    && !(plugin.settings.ignoreHeightParamInPopoverPreview
+                        && self.pdfViewer.dom.containerEl.parentElement?.matches('.hover-popover'))
+                ) {
+                    const indexLast = range[1][0];
+                    const pageViewLast = self.getPage(page);
+                    const textDivLast = pageViewLast.textLayer?.textDivs[indexLast];
+
+                    if (textDivFirst && textDivLast) {
+                        setTimeout(() => {
+                            const containerRect = self.pdfViewer.dom!.viewerContainerEl.getBoundingClientRect();
+                            const firstRect = textDivFirst.getBoundingClientRect();
+                            const lastRect = textDivLast.getBoundingClientRect();
+                            const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
+                            self.pdfViewer.setHeight(height)
+                        }, 100);
+                    }
+                }
+
+                if (plugin.settings.noTextHighlightsInEmbed && self.pdfViewer.isEmbed) {
+                    (window as any).pdfjsViewer.scrollIntoView(textDivFirst, {
+                        top: - plugin.settings.embedMargin
+                    }, true);
+                    return;
+                }
+
+                const ret = old.call(this, page, range);
+
+                (window as any).pdfjsViewer.scrollIntoView(textDivFirst, {
+                    top: - plugin.settings.embedMargin
+                }, true);
+
+                plugin.trigger('highlighted', { type: 'selection', source: 'obsidian', pageNumber: page, child: self });
+
                 return ret;
             }
         },
         highlightAnnotation(old) {
-            return function (page: number, ...args: any[]) {                
-                const ret = old.call(this, page, ...args);
-                plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page, child: this });
+            return function (page: number, id: string) {
+                const self = this as PDFViewerChild;
+
+                const getAnnotationEl = () => {
+                    if (self.annotationHighlight) return self.annotationHighlight;
+                    const pageView = self.getPage(page);
+                    return pageView.annotationLayer?.div.querySelector<HTMLElement>(`[data-annotation-id="${id}"]`);
+                }
+
+                if (plugin.settings.trimSelectionEmbed
+                    && self.pdfViewer.isEmbed
+                    && self.pdfViewer.dom
+                    && !(plugin.settings.ignoreHeightParamInPopoverPreview
+                        && self.pdfViewer.dom.containerEl.parentElement?.matches('.hover-popover'))
+                ) {
+                    setTimeout(() => {
+                        const el = getAnnotationEl();
+                        if (el) {
+                            const containerRect = self.pdfViewer.dom!.viewerContainerEl.getBoundingClientRect();
+                            const annotationRect = el.getBoundingClientRect();
+                            const height = annotationRect.bottom - annotationRect.top + 2 * Math.abs(annotationRect.top - containerRect.top);
+                            self.pdfViewer.setHeight(height)
+                        }
+                    }, 100);
+                }
+
+                const el = getAnnotationEl();
+
+                if (plugin.settings.noTextHighlightsInEmbed && self.pdfViewer.isEmbed && el) {
+                    activeWindow.setTimeout(() => {
+                        (window as any).pdfjsViewer.scrollIntoView(el, {
+                            top: - plugin.settings.embedMargin
+                        }, true)
+                    });
+                    return;
+                }
+
+                const ret = old.call(this, page, id);
+
+                activeWindow.setTimeout(() => {
+                    (window as any).pdfjsViewer.scrollIntoView(el, {
+                        top: - plugin.settings.embedMargin
+                    }, true)
+                });
+
+                plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page, child: self });
+
                 return ret;
             }
         },
@@ -133,41 +215,6 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 if (plugin.settings.noSpreadModeInEmbed && self.isEmbed) {
                     registerPDFEvent('pagerendered', self.eventBus, null, () => {
                         self.eventBus.dispatch('switchspreadmode', { mode: 0 });
-                    });
-                }
-
-                if (plugin.settings.trimSelectionEmbed && self.isEmbed) {
-                    const eventRef = plugin.on('highlighted', ({ source, type, child }) => {
-                        setTimeout(() => {
-                            if (source !== 'obsidian') return;
-                            if (!self.dom) return;
-                            if ((plugin.settings.ignoreHeightParamInPopoverPreview && self.dom.containerEl.parentElement?.matches('.hover-popover'))) return;
-
-                            const selected = self.dom!.viewerEl.querySelectorAll('.mod-focused');
-
-                            if (selected.length) {
-                                const containerRect = self.dom!.viewerContainerEl.getBoundingClientRect();
-                                const firstRect = selected[0].getBoundingClientRect();
-                                const lastRect = selected[selected.length - 1].getBoundingClientRect();
-                                const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
-                                self.setHeight(height);
-
-                                // seems to have no effect
-                                // self.eventBus.dispatch("resize", {
-                                //     source: self
-                                // });
-
-                                if (self.isEmbed) {
-                                    if (type === 'selection' && plugin.settings.noTextHighlightsInEmbed) {
-                                        child.clearTextHighlight();
-                                    } else if (type === 'annotation' && plugin.settings.noAnnotationHighlightsInEmbed) {
-                                        child.clearAnnotationHighlight();
-                                    }
-                                }
-                            }
-                        }, 150);
-
-                        plugin.offref(eventRef);
                     });
                 }
 

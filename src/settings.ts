@@ -30,6 +30,7 @@ export interface PDFPlusSettings {
 	aliasFormat: string;
 	copyCommands: CopyCommand[];
 	trimSelectionEmbed: boolean;
+	embedMargin: number;
 	noSidebarInEmbed: boolean;
 	noSpreadModeInEmbed: boolean;
 	embedUnscrollable: boolean;
@@ -78,6 +79,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		}
 	],
 	trimSelectionEmbed: true,
+	embedMargin: 50,
 	noSidebarInEmbed: true,
 	noSpreadModeInEmbed: true,
 	embedUnscrollable: false,
@@ -550,9 +552,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('clickEmbedToOpenLink')
 			.setName('Click PDF embeds to open links')
 			.setDesc('Clicking a PDF embed will open the embedded file.');
-		this.addToggleSetting('trimSelectionEmbed')
+		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())
 			.setName('Trim selection/annotation embeds')
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
+		if (this.plugin.settings.trimSelectionEmbed) {
+			this.addSliderSetting('embedMargin', 0, 200, 1)
+				.setName('Selection/annotation embeds margin (px)');
+		}
 		this.addToggleSetting('noSidebarInEmbed')
 			.setName('Never show sidebar in PDF embeds');
 		this.addToggleSetting('noSpreadModeInEmbed')

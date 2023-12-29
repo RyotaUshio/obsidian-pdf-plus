@@ -137,6 +137,7 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 
 - **Click PDF embeds to open links**: Clicking a PDF embed will open the embedded file.
 - **Trim selection embeds**: When embedding a selection from a PDF file, only the selection and its surroundings are displayed rather than the entire page.
+  - You can specify the margin as well.
 - **Hide toolbar in PDF embeds with a page specified**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
 - **Never show sidebar in PDF embeds**
 - **Do not display PDF embeds or PDF popover previews in "two page" layout**: Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.
