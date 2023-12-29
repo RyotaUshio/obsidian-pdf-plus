@@ -4,7 +4,6 @@ import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
-import { BacklinkHighlighter } from 'highlight';
 import { ColorPalette } from 'color-palette';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
@@ -49,7 +48,7 @@ export default class PDFPlus extends Plugin {
 		});
 		this.tryPatchUntilSuccess(patchBacklink, () => {
 			iterateBacklinkViews(this.app, (view) => {
-				 // reflect the patch to existing backlink views
+				// reflect the patch to existing backlink views
 				if (view.file?.extension === 'pdf') {
 					if (!view.pdfManager) {
 						view.pdfManager = new BacklinkPanePDFManager(this, view.backlink, view.file).setParents(this, view);

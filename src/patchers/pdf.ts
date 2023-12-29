@@ -92,9 +92,9 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             return function (page: number, range: [[number, number], [number, number]]) {
                 const self = this as PDFViewerChild;
 
+                const pageView = self.getPage(page);
                 const indexFirst = range[0][0];
-                const pageViewFirst = self.getPage(page);
-                const textDivFirst = pageViewFirst.textLayer?.textDivs[indexFirst];
+                const textDivFirst = pageView.textLayer?.textDivs[indexFirst];
 
                 if (plugin.settings.trimSelectionEmbed
                     && self.pdfViewer.isEmbed
@@ -103,8 +103,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         && self.pdfViewer.dom.containerEl.parentElement?.matches('.hover-popover'))
                 ) {
                     const indexLast = range[1][0];
-                    const pageViewLast = self.getPage(page);
-                    const textDivLast = pageViewLast.textLayer?.textDivs[indexLast];
+                    const textDivLast = pageView.textLayer?.textDivs[indexLast];
 
                     if (textDivFirst && textDivLast) {
                         setTimeout(() => {
@@ -112,7 +111,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             const firstRect = textDivFirst.getBoundingClientRect();
                             const lastRect = textDivLast.getBoundingClientRect();
                             const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
-                            self.pdfViewer.setHeight(height)
+                            self.pdfViewer.setHeight(height);
                         }, 100);
                     }
                 }
@@ -157,7 +156,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             const containerRect = self.pdfViewer.dom!.viewerContainerEl.getBoundingClientRect();
                             const annotationRect = el.getBoundingClientRect();
                             const height = annotationRect.bottom - annotationRect.top + 2 * Math.abs(annotationRect.top - containerRect.top);
-                            self.pdfViewer.setHeight(height)
+                            self.pdfViewer.setHeight(height);
                         }
                     }, 100);
                 }
@@ -175,11 +174,13 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                 const ret = old.call(this, page, id);
 
-                activeWindow.setTimeout(() => {
-                    (window as any).pdfjsViewer.scrollIntoView(el, {
-                        top: - plugin.settings.embedMargin
-                    }, true)
-                });
+                if (el) {
+                    activeWindow.setTimeout(() => {
+                        (window as any).pdfjsViewer.scrollIntoView(el, {
+                            top: - plugin.settings.embedMargin
+                        }, true)
+                    });    
+                }
 
                 plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page, child: self });
 
