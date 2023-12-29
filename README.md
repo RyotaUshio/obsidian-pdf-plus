@@ -186,7 +186,7 @@ The following plugin(s) alters Obsidian's internals in such a way that prevents 
 
 ## Support development
 
-If you find [my plugins](https://ryotaushio.github.io/the-hobbyist-dev/) useful, please support my work to ensure it continues to work!
+If you find [my plugins](https://ryotaushio.github.io/the-hobbyist-dev/) useful, please support my work to ensure they continue to work!
 
 <a href="https://github.com/sponsors/RyotaUshio" target="_blank"><img src="https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86" alt="GitHub Sponsors" style="width: 180px; height:auto;"></a>
 
