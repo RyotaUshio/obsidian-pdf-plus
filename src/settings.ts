@@ -587,7 +587,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Copying links via hotkeys');
 		this.addSetting()
 			.setName('Set up hotkeys for copying links')
-			.setDesc('Press this hotkey while selecting a range of text to copy a link to the selection with the format specified in a dropdown menu in the PDF toolbar.')
+			.setDesc('Press this hotkey while selecting a range of text to copy a link to the selection with the color & format specified in a dropdown menu in the PDF toolbar.')
 			.addButton((button) => {
 				button.setButtonText('Open hotkeys settings')
 					.onClick(() => {
