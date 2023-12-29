@@ -37,11 +37,26 @@ export default class PDFPlus extends Plugin {
 			patchWorkspace(this);
 			patchPagePreview(this);
 		});
-		this.tryPatchUntilSuccess(patchPDF, {
+		this.tryPatchUntilSuccess(patchPDF, () => {
+			iteratePDFViews(this.app, async (view) => {
+				// reflect the patch to existing PDF views
+				const file = view.file;
+				if (file) view.onLoadFile(file);
+			});
+		}, {
 			message: 'Some features for PDF embeds will not be activated until a PDF file is opened in a viewer.',
 			duration: 7000
 		});
-		this.tryPatchUntilSuccess(patchBacklink);
+		this.tryPatchUntilSuccess(patchBacklink, () => {
+			iterateBacklinkViews(this.app, (view) => {
+				 // reflect the patch to existing backlink views
+				if (view.file?.extension === 'pdf') {
+					if (!view.pdfManager) {
+						view.pdfManager = new BacklinkPanePDFManager(this, view.backlink, view.file).setParents(this, view);
+					}
+				}
+			});
+		});
 
 		// Make PDF embeds with a subpath unscrollable
 		this.registerDomEvent(document, 'wheel', (evt) => {
@@ -70,34 +85,6 @@ export default class PDFPlus extends Plugin {
 				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
 			}
 		}));
-
-		// inject components from this plugin into existing PDF views
-		this.app.workspace.onLayoutReady(() => {
-			iteratePDFViews(this.app, (view) => {
-				view.viewer.then((child) => {
-					if (!view.viewer.backlinkHighlighter) {
-						view.viewer.backlinkHighlighter = view.viewer.addChild(new BacklinkHighlighter(this, child.pdfViewer));
-					}
-					if (!child.backlinkHighlighter) {
-						child.backlinkHighlighter = view.viewer.backlinkHighlighter
-					}
-					view.viewer.backlinkHighlighter.file = view.file;
-					view.viewer.backlinkHighlighter.highlightBacklinks();
-
-					if (child.toolbar) {
-						new ColorPalette(this, child.toolbar.toolbarLeftEl);
-					}
-				});
-			});
-
-			iterateBacklinkViews(this.app, (view) => {
-				if (view.file?.extension === 'pdf') {
-					if (!view.pdfManager) {
-						view.pdfManager = new BacklinkPanePDFManager(this, view.backlink, view.file).setParents(this, view);
-					}
-				}
-			});
-		});
 
 		const originalPDFEmbedCreator = this.app.embedRegistry.embedByExtension['pdf'];
 		this.app.embedRegistry.unregisterExtension('pdf');
@@ -131,10 +118,11 @@ export default class PDFPlus extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, noticeOnFail?: { message: string, duration?: number }) {
+	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, onSuccess?: () => any, noticeOnFail?: { message: string, duration?: number }) {
 		this.app.workspace.onLayoutReady(() => {
 			const success = patcher(this);
-			if (!success) {
+			if (success) onSuccess?.();
+			else {
 				const notice = noticeOnFail ? new Notice(`${this.manifest.name}: ${noticeOnFail.message}`, noticeOnFail.duration) : null;
 
 				const eventRef = this.app.workspace.on('layout-change', () => {
@@ -142,6 +130,7 @@ export default class PDFPlus extends Plugin {
 					if (success) {
 						this.app.workspace.offref(eventRef);
 						notice?.hide();
+						onSuccess?.();
 					}
 				});
 				this.registerEvent(eventRef);

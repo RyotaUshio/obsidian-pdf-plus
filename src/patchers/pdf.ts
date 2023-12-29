@@ -118,7 +118,6 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     return;
                 }
                 old.call(this);
-                child.backlinkHighlighter?.highlightBacklinks();
             }
         }
     }));
