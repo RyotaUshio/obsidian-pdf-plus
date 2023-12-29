@@ -213,7 +213,7 @@ export default class PDFPlus extends Plugin {
 		});
 	}
 
-	on(evt: "highlighted", callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number }) => any, context?: any): EventRef;
+	on(evt: "highlighted", callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
 
 	on(evt: string, callback: (...data: any) => any, context?: any): EventRef {
 		return this.events.on(evt, callback, context);
@@ -227,7 +227,7 @@ export default class PDFPlus extends Plugin {
 		this.events.offref(ref);
 	}
 
-	trigger(evt: "highlighted", data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number }): void;
+	trigger(evt: "highlighted", data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }): void;
 
 	trigger(evt: string, ...args: any[]): void {
 		this.events.trigger(evt, ...args);

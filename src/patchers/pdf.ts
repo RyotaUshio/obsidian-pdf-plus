@@ -91,21 +91,23 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         highlightText(old) {
             return function (page: number, ...args: any[]) {
                 const ret = old.call(this, page, ...args);
-                plugin.trigger('highlighted', { type: 'selection', source: 'obsidian', pageNumber: page });
+                // respect the color specified in the linktext
+
+                plugin.trigger('highlighted', { type: 'selection', source: 'obsidian', pageNumber: page, child: this });
                 return ret;
             }
         },
         highlightAnnotation(old) {
-            return function (page: number, ...args: any[]) {
+            return function (page: number, ...args: any[]) {                
                 const ret = old.call(this, page, ...args);
-                plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page });
+                plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page, child: this });
                 return ret;
             }
         },
         clearTextHighlight(old) {
             return function () {
                 const self = this as PDFViewerChild;
-                if (plugin.settings.persistentHighlightsInEmbed && self.pdfViewer.isEmbed) {
+                if (plugin.settings.persistentTextHighlightsInEmbed && self.pdfViewer.isEmbed) {
                     return;
                 }
                 old.call(this);
@@ -114,7 +116,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         clearAnnotationHighlight(old) {
             return function () {
                 const self = this as PDFViewerChild;
-                if (plugin.settings.persistentHighlightsInEmbed && self.pdfViewer.isEmbed) {
+                if (plugin.settings.persistentAnnotationHighlightsInEmbed && self.pdfViewer.isEmbed) {
                     return;
                 }
                 old.call(this);
@@ -135,7 +137,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 }
 
                 if (plugin.settings.trimSelectionEmbed && self.isEmbed) {
-                    const eventRef = plugin.on('highlighted', ({ type, source, pageNumber }) => {
+                    const eventRef = plugin.on('highlighted', ({ source, type, child }) => {
                         setTimeout(() => {
                             if (source !== 'obsidian') return;
                             if (!self.dom) return;
@@ -154,6 +156,14 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                                 // self.eventBus.dispatch("resize", {
                                 //     source: self
                                 // });
+
+                                if (self.isEmbed) {
+                                    if (type === 'selection' && plugin.settings.noTextHighlightsInEmbed) {
+                                        child.clearTextHighlight();
+                                    } else if (type === 'annotation' && plugin.settings.noAnnotationHighlightsInEmbed) {
+                                        child.clearAnnotationHighlight();
+                                    }
+                                }
                             }
                         }, 100);
 

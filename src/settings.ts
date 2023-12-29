@@ -37,7 +37,10 @@ export interface PDFPlusSettings {
 	dontActivateAfterOpenPDF: boolean;
 	dontActivateAfterOpenMD: boolean;
 	highlightDuration: number;
-	persistentHighlightsInEmbed: boolean;
+	noTextHighlightsInEmbed: boolean;
+	noAnnotationHighlightsInEmbed: boolean;
+	persistentTextHighlightsInEmbed: boolean;
+	persistentAnnotationHighlightsInEmbed: boolean;
 	highlightBacklinks: boolean;
 	clickEmbedToOpenLink: boolean;
 	highlightBacklinksPane: boolean;
@@ -82,7 +85,10 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	dontActivateAfterOpenPDF: true,
 	dontActivateAfterOpenMD: true,
 	highlightDuration: 0,
-	persistentHighlightsInEmbed: true,
+	noTextHighlightsInEmbed: false,
+	noAnnotationHighlightsInEmbed: true,
+	persistentTextHighlightsInEmbed: true,
+	persistentAnnotationHighlightsInEmbed: false,
 	highlightBacklinks: true,
 	clickEmbedToOpenLink: true,
 	highlightBacklinksPane: true,
@@ -552,8 +558,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('noSpreadModeInEmbed')
 			.setName('Do not display PDF embeds or PDF popover previews in "two page" layout')
 			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.')
-		this.addToggleSetting('persistentHighlightsInEmbed')
-			.setName('Do not clear highlights in a selection/annotation embeds');
+		this.addToggleSetting('noTextHighlightsInEmbed')
+			.setName('Do not highlight text in a text selection embeds');
+		this.addToggleSetting('noAnnotationHighlightsInEmbed')
+			.setName('Do not highlight annotations in an annotation embeds');
+		this.addToggleSetting('persistentTextHighlightsInEmbed')
+			.setName('Do not clear highlights in a text selection embeds');
+		this.addToggleSetting('persistentAnnotationHighlightsInEmbed')
+			.setName('Do not clear highlights in an annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
 			.setName('Make PDF embeds with a page specified unscrollable');
 
