@@ -34,7 +34,8 @@ export interface PDFPlusSettings {
 	noSidebarInEmbed: boolean;
 	noSpreadModeInEmbed: boolean;
 	embedUnscrollable: boolean;
-	openLinkCleverly: boolean;
+	singleTabForSinglePDF: boolean;
+	openLinkNextToExistingPDFTab: boolean;
 	dontActivateAfterOpenPDF: boolean;
 	dontActivateAfterOpenMD: boolean;
 	highlightDuration: number;
@@ -84,7 +85,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	noSidebarInEmbed: true,
 	noSpreadModeInEmbed: true,
 	embedUnscrollable: false,
-	openLinkCleverly: true,
+	singleTabForSinglePDF: true,
+	openLinkNextToExistingPDFTab: true,
 	dontActivateAfterOpenPDF: true,
 	dontActivateAfterOpenMD: true,
 	highlightDuration: 0,
@@ -512,17 +514,23 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Opening links to PDF files');
-		this.addToggleSetting('openLinkCleverly', () => this.redisplay())
-			.setName('Open PDF links cleverly')
+		this.addToggleSetting('singleTabForSinglePDF', () => this.redisplay())
+			.setName('Don\'t open a single PDF file in multiple tabs')
 			.then((setting) => this.renderMarkdown(
 				`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
 				setting.descEl
 			));
-		if (this.plugin.settings.openLinkCleverly) {
+		if (this.plugin.settings.singleTabForSinglePDF) {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
 				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
 				.setDesc('This option will be ignored when you open a PDF link in a tab in the same split as the PDF viewer.')
 		}
+		this.addToggleSetting('openLinkNextToExistingPDFTab')
+			.setName('Open PDF links next to the existing PDF tab')
+			.then((setting) => this.renderMarkdown(
+				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then opens the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
+				setting.descEl
+			));
 		this.addToggleSetting('hoverPDFLinkToOpen')
 			.setName('Open PDF link instead of showing popover preview when target PDF is already opened')
 			.setDesc(`Press ${getModifierNameInPlatform('Mod').toLowerCase()} while hovering a PDF link to actually open it if the target PDF is already opened in another tab.`)
@@ -564,16 +572,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('noSidebarInEmbed')
 			.setName('Never show sidebar in PDF embeds');
 		this.addToggleSetting('noSpreadModeInEmbed')
-			.setName('Do not display PDF embeds or PDF popover previews in "two page" layout')
+			.setName('Don\'t display PDF embeds or PDF popover previews in "two page" layout')
 			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.')
 		this.addToggleSetting('noTextHighlightsInEmbed')
-			.setName('Do not highlight text in a text selection embeds');
+			.setName('Don\'t highlight text in a text selection embeds');
 		this.addToggleSetting('noAnnotationHighlightsInEmbed')
-			.setName('Do not highlight annotations in an annotation embeds');
+			.setName('Don\'t highlight annotations in an annotation embeds');
 		this.addToggleSetting('persistentTextHighlightsInEmbed')
-			.setName('Do not clear highlights in a text selection embeds');
+			.setName('Don\'t clear highlights in a text selection embeds');
 		this.addToggleSetting('persistentAnnotationHighlightsInEmbed')
-			.setName('Do not clear highlights in an annotation embeds');
+			.setName('Don\'t clear highlights in an annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
 			.setName('Make PDF embeds with a page specified unscrollable');
 

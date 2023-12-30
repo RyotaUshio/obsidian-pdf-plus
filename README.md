@@ -105,9 +105,15 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 
 ### Opening links to PDF files
 
-- **Open PDF links cleverly**: When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab.  Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.
-- **Open PDF link instead of showing popover preview when target PDF is already opened**: Press `Ctrl`/`Cmd` while hovering a PDF link to actually open it if the target PDF is already opened in another tab.
+#### Open PDF links cleverly
+
+- **Don\'t open a single PDF file in multiple tabs**: When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab.  Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.
+- **Open PDF links next to the existing PDF tab**: If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then opens the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side.
 - **Don't move focus to PDF viewer after opening a PDF link**
+
+#### Other options
+
+- **Open PDF link instead of showing popover preview when target PDF is already opened**: Press `Ctrl`/`Cmd` while hovering a PDF link to actually open it if the target PDF is already opened in another tab.
 - **Clear highlights after a certain amount of time**
 - **Ignore the `height` parameter in popover preview**: Obsidian lets you specify the height of a PDF embed by appending `&height=...` to a link, and this also applies to popover previews. Enable this option if you want to ignore the height parameter in popover previews.
 
@@ -141,9 +147,9 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
   - You can specify the margin as well.
 - **Hide toolbar in PDF embeds with a page specified**: Requires the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin.
 - **Never show sidebar in PDF embeds**
-- **Do not display PDF embeds or PDF popover previews in "two page" layout**: Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.
-- **Do not highlight text in a text selection embeds/do not highlight annotations in an annotation embeds**
-- **Do not clear highlights in a selection/annotation embeds**
+- **Don't display PDF embeds or PDF popover previews in "two page" layout**: Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.
+- **Don't highlight text in a text selection embeds/don't highlight annotations in an annotation embeds**
+- **Don't clear highlights in a selection/annotation embeds**
 - **Make PDF embeds unscrollable**
 - **Zoom in PDF embeds (experimental)**
 
