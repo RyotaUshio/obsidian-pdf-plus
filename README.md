@@ -30,6 +30,7 @@ See [here](#installation) for an installation guide.
 ## Getting started
 
 Here I'm just scratching the surface of what PDF++ can do. See [below](#features) and the plugin settings in Obsidian for more details.
+Also note that each feature can be toggled on and off in the plugin settings, which lets you customize this plugin to best fit into your use case.
 
 ### Link to PDF files to annotate them with highlights
 
