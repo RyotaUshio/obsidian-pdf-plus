@@ -125,6 +125,7 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
   - You can customize the format of copied text using a powerful templating system (see [below](#link-copy-templates)).
 - **`Copy link to selection with color & format specified in toolbar` command**: This command allows you to trigger the copy-link action specified in a dropdown menu in the PDF toolbar quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
   > Note: this command cannot be triggered from the Command Palette. Make sure that you set a custom hotkey for it. 
+- **`Toggle "select text to copy" mode` icon in the left ribbon menu**: While it's turned on, the `Copy link to selection with color & format specified in toolbar` command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don't even have to press a hotkey to copy a link.
 
 #### Link copy templates
 

@@ -17,6 +17,8 @@ export default class PDFPlus extends Plugin {
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 	/** Manages DOMs and event handlers introduced by this plugin */
 	elementManager: Component;
+	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
+	selectToCopyMode: Component;
 	pdfjsLib: typeof import('pdfjs-dist');
 	events: Events = new Events();
 
@@ -28,6 +30,20 @@ export default class PDFPlus extends Plugin {
 		this.addSettingTab(new PDFPlusSettingTab(this));
 
 		this.elementManager = this.addChild(new Component());
+
+		this.selectToCopyMode = this.addChild(new Component());
+		this.selectToCopyMode.unload(); // disabled by default
+		const iconEl = this.addRibbonIcon('lucide-highlighter', `${this.manifest.name}: Toggle "select text to copy" mode`, () => {
+			if (!iconEl.hasClass('is-active')) {
+				this.selectToCopyMode.registerDomEvent(window, 'pointerup', (evt) => {
+					if (window.getSelection()?.toString()) this.copyLinkToSelection(false);
+				});
+				this.selectToCopyMode.load();
+			} else {
+				this.selectToCopyMode.unload();
+			}
+			iconEl.toggleClass('is-active', this.selectToCopyMode._loaded);
+		});
 
 		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
@@ -198,25 +214,27 @@ export default class PDFPlus extends Plugin {
 		this.addCommand({
 			id: 'copy-link-to-selection',
 			name: 'Copy link to selection with color & format specified in toolbar',
-			checkCallback: (checking: boolean) => {
-				// get the toolbar in the active PDF viewer, if any
-				const toolbar = this.getToolbar();
-				if (!toolbar) return false;
-
-				const buttonEl = toolbar.toolbarEl.querySelector<HTMLElement>(`.pdf-plus-action-menu[data-checked-index]`);
-				if (!buttonEl) return false;
-
-				// get the index of the checked item in the action dropdown menu
-				if (buttonEl.dataset.checkedIndex === undefined) return false;
-				const index = +buttonEl.dataset.checkedIndex;
-
-				// get the currently selected color name
-				const selectedItemEl = toolbar.toolbarEl.querySelector<HTMLElement>('.pdf-plus-color-palette-item.is-active[data-highlight-color]');
-				const colorName = selectedItemEl?.dataset.highlightColor;
-
-				copyLink(this, this.settings.copyCommands[index].format, checking, colorName);
-			}
+			checkCallback: (checking) => this.copyLinkToSelection(checking)
 		});
+	}
+
+	copyLinkToSelection(checking: boolean) {
+		// get the toolbar in the active PDF viewer, if any
+		const toolbar = this.getToolbar(true);
+		if (!toolbar) return false;
+
+		const buttonEl = toolbar.toolbarEl.querySelector<HTMLElement>(`.pdf-plus-action-menu[data-checked-index]`);
+		if (!buttonEl) return false;
+
+		// get the index of the checked item in the action dropdown menu
+		if (buttonEl.dataset.checkedIndex === undefined) return false;
+		const index = +buttonEl.dataset.checkedIndex;
+
+		// get the currently selected color name
+		const selectedItemEl = toolbar.toolbarEl.querySelector<HTMLElement>('.pdf-plus-color-palette-item.is-active[data-highlight-color]');
+		const colorName = selectedItemEl?.dataset.highlightColor;
+
+		copyLink(this, this.settings.copyCommands[index].format, checking, colorName);
 	}
 
 	on(evt: "highlighted", callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
@@ -241,29 +259,29 @@ export default class PDFPlus extends Plugin {
 
 	// console utilities
 
-	getPDFView(): PDFView | undefined {
+	getPDFView(activeOnly: boolean = false): PDFView | undefined {
 		const leaf = this.app.workspace.activeLeaf;
 		if (leaf?.view.getViewType() === 'pdf') return leaf.view as PDFView;
-		return this.app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
+		if (!activeOnly) return this.app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
 	}
 
-	getPDFViewer() {
-		return this.getPDFView()?.viewer;
+	getPDFViewer(activeOnly: boolean = false) {
+		return this.getPDFView(activeOnly)?.viewer;
 	}
 
-	getPDFViewerChild() {
-		return this.getPDFViewer()?.child;
+	getPDFViewerChild(activeOnly: boolean = false) {
+		return this.getPDFViewer(activeOnly)?.child;
 	}
 
-	getObsidianViewer() {
-		return this.getPDFViewerChild()?.pdfViewer;
+	getObsidianViewer(activeOnly: boolean = false) {
+		return this.getPDFViewerChild(activeOnly)?.pdfViewer;
 	}
 
-	getRawPDFViewer() {
-		return this.getObsidianViewer()?.pdfViewer;
+	getRawPDFViewer(activeOnly: boolean = false) {
+		return this.getObsidianViewer(activeOnly)?.pdfViewer;
 	}
 
-	getToolbar() {
-		return this.getPDFViewerChild()?.toolbar;
+	getToolbar(activeOnly: boolean = false) {
+		return this.getPDFViewerChild(activeOnly)?.toolbar;
 	}
 }

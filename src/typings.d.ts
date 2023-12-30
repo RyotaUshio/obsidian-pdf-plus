@@ -497,4 +497,8 @@ declare module "obsidian" {
     interface MarkdownView {
         backlinks?: BacklinkRenderer;
     }
+
+    interface Component {
+        readonly _loaded: boolean; // it's not actually readonly, but here I mark it as readonly for safety
+    }
 }
