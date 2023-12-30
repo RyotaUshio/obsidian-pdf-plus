@@ -50,6 +50,7 @@ export interface PDFPlusSettings {
 	colors: Record<string, HexString>;
 	defaultColor: string;
 	colorPaletteInToolbar: boolean;
+	noColorButtonInColorPalette: boolean;
 	colorPaletteInEmbedToolbar: boolean;
 	highlightColorSpecifiedOnly: boolean;
 	doubleClickHighlightToOpenBacklink: boolean;
@@ -104,6 +105,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	},
 	defaultColor: '',
 	colorPaletteInToolbar: true,
+	noColorButtonInColorPalette: true,
 	colorPaletteInEmbedToolbar: false,
 	highlightColorSpecifiedOnly: false,
 	doubleClickHighlightToOpenBacklink: true,
@@ -598,6 +600,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Show color palette in the toolbar')
 			.setDesc('A color palette will be added to the toolbar of the PDF viewer.');
 		if (this.plugin.settings.colorPaletteInToolbar) {
+			this.addToggleSetting('noColorButtonInColorPalette', () => this.plugin.loadStyle())
+				.setName('Show "without specifying color" button in the color palette');
 			this.addToggleSetting('colorPaletteInEmbedToolbar', () => this.plugin.loadStyle())
 				.setName('Show color palette in PDF embeds as well');
 		}

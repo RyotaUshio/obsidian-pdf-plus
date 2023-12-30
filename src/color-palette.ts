@@ -25,34 +25,28 @@ export class ColorPalette {
         this.paletteEl = plugin.registerEl(toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS }));
 
         if (this.plugin.settings.colorPaletteInToolbar) {
-            for (const [name, color] of Object.entries(plugin.settings.colors)) {
-                if (!isHexString(color)) continue;
+            for (const [name, color] of [[null, 'transparent'], ...Object.entries(plugin.settings.colors)] as [string | null, string][]) {
+                if (name && !isHexString(color)) continue;
+
+                if (name === null && !this.plugin.settings.noColorButtonInColorPalette) continue;
 
                 const itemEl = this.paletteEl.createDiv({
                     cls: [ColorPalette.CLS + '-item', 'clickable-icon'],
-                    attr: {
-                        'data-highlight-color': name,
-                    }
+                    attr: name ? { 'data-highlight-color': name } : undefined
                 });
                 this.itemEls.push(itemEl);
 
-                // Use input[type="color"] just to re-use Obsidian's rich css styling
-                // const pickerEl = itemEl.createEl("input", { cls: ColorPalette.CLS + '-item-inner', type: "color" });
                 const pickerEl = itemEl.createDiv(ColorPalette.CLS + '-item-inner');
                 pickerEl.style.backgroundColor = color;
-                // pickerEl.value = color;
-                // pickerEl.disabled = true;
                 this.setTooltipToItem(itemEl, name);
 
                 plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
-                    // set selected color; if already selected, deselect
-                    if (this.selectedColorName !== name) this.selectedColorName = name;
-                    else this.selectedColorName = null;
+                    this.selectedColorName = name;
                     this.itemEls.forEach((el) => {
-                        el.toggleClass('is-active', this.selectedColorName === el.dataset.highlightColor);
+                        el.toggleClass('is-active', this.selectedColorName === el.dataset.highlightColor || (this.selectedColorName === null && el.dataset.highlightColor === undefined));
                     });
 
-                    copyLink(this.plugin, this.plugin.settings.copyCommands[this.actionIndex].format, false, name);
+                    copyLink(this.plugin, this.plugin.settings.copyCommands[this.actionIndex].format, false, name ?? undefined);
                     evt.preventDefault();
                 });
             }
@@ -83,7 +77,7 @@ export class ColorPalette {
                                 buttonEl.dataset.checkedIndex = '' + i;
                                 menu.items.forEach((item) => item.setChecked(this.actionIndex === i));
                                 this.itemEls.forEach((itemEl) => {
-                                    this.setTooltipToItem(itemEl, itemEl.dataset.highlightColor!);
+                                    this.setTooltipToItem(itemEl, itemEl.dataset.highlightColor ?? null);
                                 });
                             });
                     });
@@ -101,9 +95,11 @@ export class ColorPalette {
         });
     }
 
-    setTooltipToItem(itemEl: HTMLElement, name: string) {
+    setTooltipToItem(itemEl: HTMLElement, name: string | null) {
         const pickerEl = itemEl.querySelector<HTMLInputElement>(':scope > .' + ColorPalette.CLS + '-item-inner')!;
-        setTooltip(pickerEl, this.plugin.settings.copyCommands[this.actionIndex].name + ` and add ${name.toLowerCase()} highlight`);
+        const commandName = this.plugin.settings.copyCommands[this.actionIndex].name;
+        const tooltip = name !== null ? `${commandName} and add ${name.toLowerCase()} highlight` : `${commandName} without specifying color`;
+        setTooltip(pickerEl,  tooltip);
     }
 }
 

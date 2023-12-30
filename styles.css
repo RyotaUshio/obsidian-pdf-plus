@@ -4,6 +4,14 @@ name: PDF++
 id: pdf-plus
 settings:
     -
+        id: pdf-plus-highlight-opacity
+        title: Highlight opacity
+        type: variable-number-slider
+        min: 0
+        max: 1
+        step: 0.01
+        default: 0.2
+    -
         id: pdf-plus-highlight-padding-vertical
         title: Highlight padding (top & bottom)
         description: Boldness of highlights in pixels
@@ -31,8 +39,13 @@ settings:
 */
 
 .textLayer .mod-focused.pdf-plus-backlink {
-	padding: var(--pdf-plus-highlight-padding-vertical, var(--size-4-1)) var(--pdf-plus-highlight-padding-horizontal, var(--size-4-1));
+    padding: var(--pdf-plus-highlight-padding-vertical, var(--size-4-1)) var(--pdf-plus-highlight-padding-horizontal, var(--size-4-1));
 }
+
+.textLayer:not(::selection) {
+    opacity: var(--pdf-plus-highlight-opacity, 0.2);
+}
+
 
 .hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar {
     display: none;
@@ -63,16 +76,16 @@ settings:
         width: var(--swatch-width);
         height: var(--swatch-height);
         border-radius: 50%;
-        border: none;
+        border: var(--input-border-width) solid var(--background-modifier-border);
     }
 }
 
 .pdf-plus-settings .setting-item-description {
-    &> p:first-child {
+    &>p:first-child {
         margin-top: 0;
     }
 
-    &> p:last-child {
+    &>p:last-child {
         margin-bottom: 0;
     }
 }
