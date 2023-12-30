@@ -517,7 +517,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('singleTabForSinglePDF', () => this.redisplay())
 			.setName('Don\'t open a single PDF file in multiple tabs')
 			.then((setting) => this.renderMarkdown(
-				`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the file is already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
+				`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the same file has been already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
 				setting.descEl
 			));
 		if (this.plugin.settings.singleTabForSinglePDF) {
