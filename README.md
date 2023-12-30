@@ -108,7 +108,7 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 #### Open PDF links cleverly
 
 - **Don\'t open a single PDF file in multiple tabs**: When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the same file has already been opened in another tab.  Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.
-- **Open PDF links next to the existing PDF tab**: If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then opens the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side.
+- **Open PDF links next to the existing PDF tab**: If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side.
 - **Don't move focus to PDF viewer after opening a PDF link**
 
 #### Other options

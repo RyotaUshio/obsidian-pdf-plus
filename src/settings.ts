@@ -528,7 +528,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('openLinkNextToExistingPDFTab')
 			.setName('Open PDF links next to the existing PDF tab')
 			.then((setting) => this.renderMarkdown(
-				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then opens the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
+				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
 				setting.descEl
 			));
 		this.addToggleSetting('hoverPDFLinkToOpen')
