@@ -21,6 +21,8 @@ export class ColorPalette {
 
         if (!plugin.settings.colorPaletteInEmbedToolbar && toolbarLeftEl.closest('.pdf-embed')) return;
 
+        if (toolbarLeftEl.querySelector('.' + ColorPalette.CLS)) return;
+
         plugin.registerEl(toolbarLeftEl.createDiv('pdf-toolbar-spacer'));
         this.paletteEl = plugin.registerEl(toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS }));
 
