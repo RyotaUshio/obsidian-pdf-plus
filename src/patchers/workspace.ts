@@ -11,15 +11,18 @@ export const patchWorkspace = (plugin: PDFPlus) => {
 
     plugin.register(around(Workspace.prototype, {
         openLinkText(old) {
-            return function (linktext: string, sourcePath: string, newLeaf?: PaneType| boolean, openViewState?: OpenViewState) {
+            return function (linktext: string, sourcePath: string, newLeaf?: PaneType | boolean, openViewState?: OpenViewState) {
                 if ((plugin.settings.openPDFWithDefaultApp || plugin.settings.singleTabForSinglePDF || plugin.settings.openLinkNextToExistingPDFTab) && !newLeaf) { // respect `newLeaf` when it's not `false`
                     const { path, subpath } = parseLinktext(linktext);
                     const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
 
                     if (file && file.extension === 'pdf') {
 
-                        if (plugin.settings.openPDFWithDefaultApp) {
-                            return app.openWithDefaultApp(file.path);
+                        if (plugin.settings.openPDFWithDefaultApp) {                        
+                            const promise = app.openWithDefaultApp(file.path)
+                            if (!plugin.settings.openPDFWithDefaultAppAndObsidian) {
+                                return promise;
+                            }
                         }
 
                         if (plugin.settings.singleTabForSinglePDF) {
@@ -31,7 +34,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                                     openViewState = openViewState ?? {};
                                     openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
                                 }
-    
+
                                 return sameFileFeaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
                                     app.workspace.revealLeaf(sameFileFeaf);
                                     const view = sameFileFeaf.view as PDFView;
@@ -40,7 +43,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                                         highlightSubpath(child, subpath, duration);
                                     });
                                 })
-                            }    
+                            }
                         }
 
                         if (plugin.settings.openLinkNextToExistingPDFTab) {
