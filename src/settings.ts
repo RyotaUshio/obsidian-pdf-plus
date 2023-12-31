@@ -36,6 +36,7 @@ export interface PDFPlusSettings {
 	embedUnscrollable: boolean;
 	singleTabForSinglePDF: boolean;
 	openLinkNextToExistingPDFTab: boolean;
+	openPDFWithDefaultApp: boolean;
 	dontActivateAfterOpenPDF: boolean;
 	dontActivateAfterOpenMD: boolean;
 	highlightDuration: number;
@@ -87,6 +88,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	embedUnscrollable: false,
 	singleTabForSinglePDF: true,
 	openLinkNextToExistingPDFTab: true,
+	openPDFWithDefaultApp: false,
 	dontActivateAfterOpenPDF: true,
 	dontActivateAfterOpenMD: true,
 	highlightDuration: 0,
@@ -531,6 +533,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
 				setting.descEl
 			));
+		this.addToggleSetting('openPDFWithDefaultApp')
+			.setName('Open PDF links with an external app')
+			.setDesc('Open PDF links with the OS-defined default application for PDF files.')
 		this.addToggleSetting('hoverPDFLinkToOpen')
 			.setName('Open PDF link instead of showing popover preview when target PDF is already opened')
 			.setDesc(`Press ${getModifierNameInPlatform('Mod').toLowerCase()} while hovering a PDF link to actually open it if the target PDF is already opened in another tab.`)

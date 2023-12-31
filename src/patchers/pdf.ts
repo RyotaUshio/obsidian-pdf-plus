@@ -161,19 +161,22 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     }, 100);
                 }
 
-                const el = getAnnotationEl();
-
-                if (plugin.settings.noTextHighlightsInEmbed && self.pdfViewer.isEmbed && el) {
-                    activeWindow.setTimeout(() => {
-                        (window as any).pdfjsViewer.scrollIntoView(el, {
-                            top: - plugin.settings.embedMargin
-                        }, true)
-                    });
-                    return;
+                if (plugin.settings.noTextHighlightsInEmbed && self.pdfViewer.isEmbed) {
+                    const el = getAnnotationEl();
+                    if (el) {
+                        activeWindow.setTimeout(() => {
+                            (window as any).pdfjsViewer.scrollIntoView(el, {
+                                top: - plugin.settings.embedMargin
+                            }, true)
+                        });
+                        return;    
+                    }
                 }
 
                 const ret = old.call(this, page, id);
 
+                const el = getAnnotationEl();
+                
                 if (el) {
                     activeWindow.setTimeout(() => {
                         (window as any).pdfjsViewer.scrollIntoView(el, {

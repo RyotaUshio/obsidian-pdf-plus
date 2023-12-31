@@ -459,6 +459,7 @@ declare module "obsidian" {
             }
         }
         embedRegistry: EmbedRegistry;
+        openWithDefaultApp(path: string): Promise<void>;
     }
 
     interface PluginSettingTab {

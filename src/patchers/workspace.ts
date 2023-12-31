@@ -12,11 +12,15 @@ export const patchWorkspace = (plugin: PDFPlus) => {
     plugin.register(around(Workspace.prototype, {
         openLinkText(old) {
             return function (linktext: string, sourcePath: string, newLeaf?: PaneType| boolean, openViewState?: OpenViewState) {
-                if ((plugin.settings.singleTabForSinglePDF || plugin.settings.openLinkNextToExistingPDFTab) && !newLeaf) { // respect `newLeaf` when it's not `false`
+                if ((plugin.settings.openPDFWithDefaultApp || plugin.settings.singleTabForSinglePDF || plugin.settings.openLinkNextToExistingPDFTab) && !newLeaf) { // respect `newLeaf` when it's not `false`
                     const { path, subpath } = parseLinktext(linktext);
                     const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
 
                     if (file && file.extension === 'pdf') {
+
+                        if (plugin.settings.openPDFWithDefaultApp) {
+                            return app.openWithDefaultApp(file.path);
+                        }
 
                         if (plugin.settings.singleTabForSinglePDF) {
                             const sameFileFeaf = getExistingPDFLeafOfFile(app, file);
