@@ -116,22 +116,15 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     }
                 }
 
-                if (plugin.settings.noTextHighlightsInEmbed && self.pdfViewer.isEmbed) {
-                    (window as any).pdfjsViewer.scrollIntoView(textDivFirst, {
-                        top: - plugin.settings.embedMargin
-                    }, true);
-                    return;
+                if (!(plugin.settings.noTextHighlightsInEmbed && self.pdfViewer.isEmbed && !self.pdfViewer.dom?.containerEl.parentElement?.matches('.hover-popover'))) {
+                    old.call(this, page, range);
                 }
-
-                const ret = old.call(this, page, range);
 
                 (window as any).pdfjsViewer.scrollIntoView(textDivFirst, {
                     top: - plugin.settings.embedMargin
                 }, true);
 
                 plugin.trigger('highlighted', { type: 'selection', source: 'obsidian', pageNumber: page, child: self });
-
-                return ret;
             }
         },
         highlightAnnotation(old) {
@@ -161,33 +154,21 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     }, 100);
                 }
 
-                if (plugin.settings.noTextHighlightsInEmbed && self.pdfViewer.isEmbed) {
-                    const el = getAnnotationEl();
-                    if (el) {
-                        activeWindow.setTimeout(() => {
-                            (window as any).pdfjsViewer.scrollIntoView(el, {
-                                top: - plugin.settings.embedMargin
-                            }, true)
-                        });
-                        return;    
-                    }
+                if (!(plugin.settings.noAnnotationHighlightsInEmbed && self.pdfViewer.isEmbed && !self.pdfViewer.dom?.containerEl.parentElement?.matches('.hover-popover'))) {
+                    old.call(this, page, id);
                 }
 
-                const ret = old.call(this, page, id);
-
                 const el = getAnnotationEl();
-                
+
                 if (el) {
                     activeWindow.setTimeout(() => {
                         (window as any).pdfjsViewer.scrollIntoView(el, {
                             top: - plugin.settings.embedMargin
                         }, true)
-                    });    
+                    });
                 }
 
                 plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page, child: self });
-
-                return ret;
             }
         },
         clearTextHighlight(old) {
