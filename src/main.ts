@@ -35,7 +35,7 @@ export default class PDFPlus extends Plugin {
 		this.selectToCopyMode.unload(); // disabled by default
 		const iconEl = this.addRibbonIcon('lucide-highlighter', `${this.manifest.name}: Toggle "select text to copy" mode`, () => {
 			if (!iconEl.hasClass('is-active')) {
-				this.selectToCopyMode.registerDomEvent(window, 'pointerup', (evt) => {
+				this.selectToCopyMode.registerDomEvent(document, 'pointerup', (evt) => {
 					if (window.getSelection()?.toString()) this.copyLinkToSelection(false);
 				});
 				this.selectToCopyMode.load();
@@ -83,13 +83,15 @@ export default class PDFPlus extends Plugin {
 		}, { passive: false });
 
 		// Click PDF embeds to open links
-		this.registerDomEvent(window, 'click', (evt) => {
-			if (this.settings.clickEmbedToOpenLink && evt.target instanceof HTMLElement) {
-				const linktext = evt.target.closest('.pdf-embed[src]')?.getAttribute('src');
-				const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
+		this.registerDomEvent(document, 'click', (evt) => {
+			if (this.settings.clickEmbedToOpenLink && evt.target instanceof HTMLElement) { 
+				// .pdf-container is necessary to avoid opening links when clicking on the toolbar
+				const linktext = evt.target.closest('.pdf-embed[src] > .pdf-container')?.parentElement!.getAttribute('src');
 				if (linktext) {
+					const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
 					const sourcePath = viewerEl ? (this.pdfViwerChildren.get(viewerEl)?.file?.path ?? '') : '';
 					this.app.workspace.openLinkText(linktext, sourcePath, Keymap.isModEvent(evt));
+					evt.preventDefault();
 				}
 			}
 		})
@@ -206,6 +208,8 @@ export default class PDFPlus extends Plugin {
 			`	background-color: ${backlinkHoverColor};`,
 			`}`
 		].join('\n');
+
+		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.settings.clickEmbedToOpenLink);
 
 		this.app.workspace.trigger('css-change');
 	}

@@ -571,7 +571,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Embedding PDF files');
-		this.addToggleSetting('clickEmbedToOpenLink')
+		this.addToggleSetting('clickEmbedToOpenLink', () => this.plugin.loadStyle())
 			.setName('Click PDF embeds to open links')
 			.setDesc('Clicking a PDF embed will open the embedded file.');
 		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())

@@ -89,3 +89,7 @@ settings:
         margin-bottom: 0;
     }
 }
+
+.pdf-plus-click-embed-to-open-link .pdf-embed .pdf-container {
+    cursor: pointer;
+}
