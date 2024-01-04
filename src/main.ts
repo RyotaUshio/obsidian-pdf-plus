@@ -130,7 +130,7 @@ export default class PDFPlus extends Plugin {
 
 		this.registerCommands();
 
-		(window as any).pdfPlus = this;
+		window.pdfPlus = this;
 	}
 
 	async loadSettings() {
