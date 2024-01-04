@@ -209,6 +209,22 @@ export default class PDFPlus extends Plugin {
 			`}`
 		].join('\n');
 
+		for (const [name, color] of Object.entries(this.settings.colors)) {
+			if (!isHexString(color)) continue;
+
+			styleEl.textContent += [
+				`\n.${ColorPalette.CLS}-item[data-highlight-color="${name.toLowerCase()}"] > .${ColorPalette.CLS}-item-inner {`,
+				`    background-color: ${color};`,
+				`}`
+			].join('\n');
+		}
+		
+		styleEl.textContent += [
+			`\n.${ColorPalette.CLS}-item:not([data-highlight-color]) > .${ColorPalette.CLS}-item-inner {`,
+			`    background-color: transparent;`,
+			`}`
+		].join('\n');
+
 		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.settings.clickEmbedToOpenLink);
 
 		this.app.workspace.trigger('css-change');

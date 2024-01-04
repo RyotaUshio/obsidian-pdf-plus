@@ -3,9 +3,16 @@ import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_storage';
 
+import PDFPlus from 'main';
 import { BacklinkHighlighter } from 'highlight';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 
+declare global {
+    interface Window {
+        pdfPlus: PDFPlus;
+        pdfjsViewer: any;
+    }
+}
 
 /** PDF-related */
 

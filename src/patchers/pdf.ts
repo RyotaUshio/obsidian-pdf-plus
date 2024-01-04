@@ -120,7 +120,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     old.call(this, page, range);
                 }
 
-                (window as any).pdfjsViewer.scrollIntoView(textDivFirst, {
+                window.pdfjsViewer.scrollIntoView(textDivFirst, {
                     top: - plugin.settings.embedMargin
                 }, true);
 
@@ -162,7 +162,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                 if (el) {
                     activeWindow.setTimeout(() => {
-                        (window as any).pdfjsViewer.scrollIntoView(el, {
+                        window.pdfjsViewer.scrollIntoView(el, {
                             top: - plugin.settings.embedMargin
                         }, true)
                     });

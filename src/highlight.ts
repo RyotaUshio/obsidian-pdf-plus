@@ -179,12 +179,12 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
                 const { textDivs, textContentItems } = pageView.textLayer;
-                const s = (index: number, offset: number, className?: string): void => {
+                const divideAndWrapTextStart = (index: number, offset: number, className?: string): void => {
                     textDivs[index].textContent = "";
-                    l(index, 0, offset, className);
+                    divideAndWrapText(index, 0, offset, className);
                 };
                 // out of a text div, wrap the selected range with span, and add a class to highlight it if className is given
-                const l = (index: number, from: number, to?: number, className?: string): void => {
+                const divideAndWrapText = (index: number, from: number, to?: number, className?: string): void => {
                     this.highlightedTexts.push({ page: pageNumber, index });
                     let textDiv = textDivs[index];
                     // if text node, wrap it with span
@@ -208,19 +208,19 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
                 const cls = 'pdf-plus-backlink';
 
-                s(beginIndex, beginOffset);
-                if (beginIndex === endIndex) l(beginIndex, beginOffset, endOffset, "mod-focused selected " + cls);
+                divideAndWrapTextStart(beginIndex, beginOffset);
+                if (beginIndex === endIndex) divideAndWrapText(beginIndex, beginOffset, endOffset, "mod-focused selected " + cls);
                 else {
-                    l(beginIndex, beginOffset, undefined, "mod-focused begin selected " + cls);
+                    divideAndWrapText(beginIndex, beginOffset, undefined, "mod-focused begin selected " + cls);
                     for (let i = beginIndex + 1; i < endIndex; i++) {
                         this.highlightedTexts.push({ page: pageNumber, index: i });
                         textDivs[i].classList.add("mod-focused", "middle", "selected", cls);
                         if (colorName) textDivs[i].dataset.highlightColor = colorName.toLowerCase();
                         onHighlight?.(textDivs[i]);
                     }
-                    s(endIndex, endOffset, "mod-focused endselected " + cls);
+                    divideAndWrapTextStart(endIndex, endOffset, "mod-focused endselected " + cls);
                 }
-                l(endIndex, endOffset, void 0);
+                divideAndWrapText(endIndex, endOffset, void 0);
             }
         }
     }
@@ -255,11 +255,11 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     pageView.annotationLayer.div.createDiv("boundingRect mod-focused", (rectEl) => {
                         const rect = elem.data.rect;
                         const view = elem.parent.page.view;
-                        const dims = elem.parent.viewport.rawDims as any;
-                        const pageWidth = dims.pageWidth as number;
-                        const pageHeight = dims.pageHeight as number;
-                        const pageX = dims.pageX as number;
-                        const pageY = dims.pageY as number;
+                        const dims = elem.parent.viewport.rawDims as { pageWidth: number, pageHeight: number, pageX: number, pageY: number };
+                        const pageWidth = dims.pageWidth;
+                        const pageHeight = dims.pageHeight;
+                        const pageX = dims.pageX;
+                        const pageY = dims.pageY;
                         const normalizedRect = pdfjsLib.Util.normalizeRect([rect[0], view[3] - rect[1] + view[1], rect[2], view[3] - rect[3] + view[1]]);
                         rectEl.setCssStyles({
                             left: (100 * (normalizedRect[0] - pageX) / pageWidth) + "%",

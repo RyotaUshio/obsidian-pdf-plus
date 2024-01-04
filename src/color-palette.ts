@@ -34,12 +34,11 @@ export class ColorPalette {
 
                 const itemEl = this.paletteEl.createDiv({
                     cls: [ColorPalette.CLS + '-item', 'clickable-icon'],
-                    attr: name ? { 'data-highlight-color': name } : undefined
+                    attr: name ? { 'data-highlight-color': name.toLowerCase() } : undefined
                 });
                 this.itemEls.push(itemEl);
 
-                const pickerEl = itemEl.createDiv(ColorPalette.CLS + '-item-inner');
-                pickerEl.style.backgroundColor = color;
+                itemEl.createDiv(ColorPalette.CLS + '-item-inner');
                 this.setTooltipToItem(itemEl, name);
 
                 plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
