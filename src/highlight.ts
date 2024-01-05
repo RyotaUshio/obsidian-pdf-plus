@@ -220,7 +220,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     }
                     divideAndWrapTextStart(endIndex, endOffset, "mod-focused endselected " + cls);
                 }
-                divideAndWrapText(endIndex, endOffset, void 0);
+                divideAndWrapText(endIndex, endOffset);
             }
         }
     }
