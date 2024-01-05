@@ -245,8 +245,6 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
     // This is a modified version of PDFViewerChild.prototype.highlightAnnotation from Obsidian's app.js
     highlightAnnotation(pageNumber: number, id: string): void {
-        const pdfjsLib = this.plugin.pdfjsLib;
-
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
             const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
             if (pageView?.annotationLayer && pageView.div.dataset.loaded) {
@@ -260,7 +258,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                         const pageHeight = dims.pageHeight;
                         const pageX = dims.pageX;
                         const pageY = dims.pageY;
-                        const normalizedRect = pdfjsLib.Util.normalizeRect([rect[0], view[3] - rect[1] + view[1], rect[2], view[3] - rect[3] + view[1]]);
+                        const normalizedRect = window.pdfjsLib.Util.normalizeRect([rect[0], view[3] - rect[1] + view[1], rect[2], view[3] - rect[3] + view[1]]);
                         rectEl.setCssStyles({
                             left: (100 * (normalizedRect[0] - pageX) / pageWidth) + "%",
                             top: (100 * (normalizedRect[1] - pageY) / pageHeight) + "%",

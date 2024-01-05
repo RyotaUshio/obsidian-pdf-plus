@@ -19,11 +19,10 @@ export default class PDFPlus extends Plugin {
 	elementManager: Component;
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
 	selectToCopyMode: Component;
-	pdfjsLib: typeof import('pdfjs-dist');
 	events: Events = new Events();
 
 	async onload() {
-		this.pdfjsLib = await loadPdfJs();
+		await loadPdfJs();
 
 		await this.loadSettings();
 		await this.saveSettings();

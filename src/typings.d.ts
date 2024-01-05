@@ -10,6 +10,7 @@ import { BacklinkPanePDFManager } from 'pdf-backlink';
 declare global {
     interface Window {
         pdfPlus?: PDFPlus;
+        pdfjsLib: typeof import('pdfjs-dist');
         pdfjsViewer: any;
     }
 }
