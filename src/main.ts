@@ -131,6 +131,7 @@ export default class PDFPlus extends Plugin {
 		this.registerCommands();
 
 		window.pdfPlus = this;
+		this.register(() => delete window.pdfPlus);
 	}
 
 	async loadSettings() {
@@ -218,7 +219,7 @@ export default class PDFPlus extends Plugin {
 				`}`
 			].join('\n');
 		}
-		
+
 		styleEl.textContent += [
 			`\n.${ColorPalette.CLS}-item:not([data-highlight-color]) > .${ColorPalette.CLS}-item-inner {`,
 			`    background-color: transparent;`,

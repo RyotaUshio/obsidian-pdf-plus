@@ -9,7 +9,7 @@ import { BacklinkPanePDFManager } from 'pdf-backlink';
 
 declare global {
     interface Window {
-        pdfPlus: PDFPlus;
+        pdfPlus?: PDFPlus;
         pdfjsViewer: any;
     }
 }
