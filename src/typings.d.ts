@@ -462,7 +462,9 @@ declare module "obsidian" {
         setting: AppSetting;
         plugins: {
             manifests: Record<string, PluginManifest>;
-        },
+            plugins: Record<string, Plugin>;
+            enabledPlugins: Set<string>;
+        };
         internalPlugins: {
             plugins: {
                 'page-preview': {
@@ -471,6 +473,9 @@ declare module "obsidian" {
                     }
                 }
             }
+        };
+        commands: {
+            executeCommandById(id: string): boolean;
         }
         embedRegistry: EmbedRegistry;
         openWithDefaultApp(path: string): Promise<void>;

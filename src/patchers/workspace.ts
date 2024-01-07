@@ -67,4 +67,6 @@ export const patchWorkspace = (plugin: PDFPlus) => {
             }
         }
     }));
+
+    plugin.patchStatus.workspace = true;
 };

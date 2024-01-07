@@ -82,5 +82,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
         }
     }));
 
+    plugin.patchStatus.backlink = true;
+
     return true;
 };

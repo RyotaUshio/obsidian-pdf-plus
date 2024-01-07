@@ -270,5 +270,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         }
     }));
 
+    plugin.patchStatus.pdf = true;
+
     return true;
 }

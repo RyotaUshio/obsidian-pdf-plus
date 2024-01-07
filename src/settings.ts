@@ -433,7 +433,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
 		this.addDropdowenSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
 			.setName('Action when hovering over highlighted text')
-			.setDesc(`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`);
+			.then((setting) => {
+				this.renderMarkdown([
+					`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`,
+					'',
+					'**Note**: When Hover Editor is enabled, "Open backlink" might not work as expected. Reload the app to fix it.'
+				], setting.descEl);
+			});
 		if (this.plugin.settings.hoverHighlightAction === 'open') {
 			this.addDropdowenSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
 				.setName(`How to open markdown file with ${getModifierNameInPlatform('Mod').toLowerCase()}+hover when there is no open markdown file`);
@@ -451,7 +457,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					});
 			});
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
-			.setName('Double click a piece of highlighted text to open the corresponding backlink');
+			.setName('Double click highlighted text to open the corresponding backlink');
 
 		this.addSetting('colors')
 			.setName('Highlight colors')
@@ -532,7 +538,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setDesc('This option will be ignored when you open a PDF link in a tab in the same split as the PDF viewer.')
 		}
 		this.addToggleSetting('openLinkNextToExistingPDFTab')
-			.setName('Open PDF links next to the existing PDF tab')
+			.setName('Open PDF links next to an existing PDF tab')
 			.then((setting) => this.renderMarkdown(
 				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
 				setting.descEl

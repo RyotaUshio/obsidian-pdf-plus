@@ -185,6 +185,7 @@ But you can install the latest release using [BRAT](https://github.com/TfTHacker
 
 I'm trying to keep PDF++ compatible with the following plugin(s) as much as possible:
 
+- [Hover Editor](https://github.com/nothingislost/obsidian-hover-editor)
 - [Better Search Views](https://github.com/ivan-lednev/better-search-views)
 
 The following plugin(s) alters Obsidian's internals in such a way that prevents some aspects of other plugins from working properly, so I don't recommend using it together with this plugin.

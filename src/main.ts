@@ -20,6 +20,12 @@ export default class PDFPlus extends Plugin {
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
 	selectToCopyMode: Component;
 	events: Events = new Events();
+	patchStatus = {
+		workspace: false,
+		pagePreview: false,
+		pdf: false,
+		backlink: false
+	};
 
 	async onload() {
 		await loadPdfJs();
@@ -47,10 +53,8 @@ export default class PDFPlus extends Plugin {
 		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
 		// Patch Obsidian internals
-		this.app.workspace.onLayoutReady(() => {
-			patchWorkspace(this);
-			patchPagePreview(this);
-		});
+		this.app.workspace.onLayoutReady(() => patchWorkspace(this));
+		this.tryPatchPeriodcallyUntilSuccess(patchPagePreview, 300);
 		this.tryPatchUntilSuccess(patchPDF, () => {
 			iteratePDFViews(this.app, async (view) => {
 				// reflect the patch to existing PDF views
@@ -157,6 +161,21 @@ export default class PDFPlus extends Plugin {
 					}
 				});
 				this.registerEvent(eventRef);
+			}
+		});
+	}
+
+	tryPatchPeriodcallyUntilSuccess(patcher: (plugin: PDFPlus) => boolean, periodMs?: number) {
+		this.app.workspace.onLayoutReady(() => {
+			const success = patcher(this);
+			if (!success) {
+				const timer = window.setInterval(() => {
+					const success = patcher(this);
+					if (success) {
+						window.clearInterval(timer);
+					}
+				}, periodMs);
+				this.registerInterval(timer);
 			}
 		});
 	}

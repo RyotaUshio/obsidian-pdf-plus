@@ -7,9 +7,15 @@ import { getExistingPDFLeafOfFile } from "utils";
 import { PDFView } from "typings";
 
 
-export const patchPagePreview = (plugin: PDFPlus) => {
+export const patchPagePreview = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
     const pagePreview = app.internalPlugins.plugins['page-preview'].instance;
+    
+    // Make sure this plugin gets loaded after Hover Editor, because it completely overrides the `onLinkHover` method
+    if (app.plugins.enabledPlugins.has('obsidian-hover-editor')) {
+        const hoverEditor = app.plugins.plugins['obsidian-hover-editor']; // this is set after loading Hover Editor
+        if (!hoverEditor) return false;
+    }
 
     plugin.register(around(pagePreview.constructor.prototype, {
         onLinkHover(old) {
@@ -92,4 +98,8 @@ export const patchPagePreview = (plugin: PDFPlus) => {
             }
         }
     }));
+
+    plugin.patchStatus.pagePreview = true;
+
+    return true;
 }
