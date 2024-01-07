@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, Notice, TFile } from "obsidian";
+import { Component, Keymap, MarkdownRenderer, Notice, TFile } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
@@ -194,7 +194,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const ret = old.call(this, ...args);
                 const self = this as PDFViewerChild;
                 if (plugin.settings.renderMarkdownInStickyNote) {
-                    const contentEl = this.activeAnnotationPopupEl.querySelector('.popupContent');
+                    const contentEl = self.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupContent');
                     if (contentEl && contentEl.textContent) {
                         const markdown = contentEl.textContent;
                         contentEl.textContent = '';
@@ -202,7 +202,32 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             self.component = new Component();
                         }
                         self.component.load();
-                        MarkdownRenderer.render(app, markdown, contentEl, '', self.component);
+                        MarkdownRenderer.render(app, markdown, contentEl, '', self.component)
+                            .then(() => {
+                                contentEl.querySelectorAll('a.internal-link').forEach((el) => {
+                                    el.addEventListener('click', (evt: MouseEvent) => {
+                                        evt.preventDefault();
+                                        const linktext = el.getAttribute('href');
+                                        if (linktext) {
+                                            app.workspace.openLinkText(linktext, '', Keymap.isModEvent(evt));
+                                        }
+                                    });
+                                    el.addEventListener('mouseover', (event: MouseEvent) => {
+                                        event.preventDefault();
+                                        const linktext = el.getAttribute('href');
+                                        if (linktext) {
+                                            app.workspace.trigger('hover-link', {
+                                                event,
+                                                source: 'pdf-plus',
+                                                hoverParent: self.component,
+                                                targetEl: event.currentTarget,
+                                                linktext,
+                                                sourcePath: self.file?.path ?? ''
+                                            });
+                                        }
+                                    });
+                                });
+                            });
                     }
                 }
                 return ret;
