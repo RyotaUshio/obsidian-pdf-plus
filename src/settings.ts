@@ -445,7 +445,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName(`Require ${getModifierNameInPlatform('Mod').toLowerCase()} key for the above action`)
 			.setDesc('You can toggle this on and off in the core Page Preview plugin settings > PDF++ hover action.')
 			.addButton((button) => {
-				button.setButtonText('Open')
+				button.setButtonText('Open page preview settings')
 					.onClick(() => {
 						this.app.setting.openTabById('page-preview')
 					});
@@ -714,7 +714,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Style settings')
 			.setDesc('You can find more options in Style Settings > PDF++.')
 			.addButton((button) => {
-				button.setButtonText('Open')
+				button.setButtonText('Open style settings')
 					.onClick(() => {
 						const styleSettingsTab = this.app.setting.pluginTabs.find((tab) => tab.id === 'obsidian-style-settings');
 						if (styleSettingsTab) {

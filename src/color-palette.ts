@@ -42,7 +42,7 @@ export class ColorPalette {
                 this.setTooltipToItem(itemEl, name);
 
                 plugin.elementManager.registerDomEvent(itemEl, 'click', (evt) => {
-                    this.selectedColorName = name;
+                    this.selectedColorName = name ? name.toLowerCase() : null;
                     this.itemEls.forEach((el) => {
                         el.toggleClass('is-active', this.selectedColorName === el.dataset.highlightColor || (this.selectedColorName === null && el.dataset.highlightColor === undefined));
                     });
