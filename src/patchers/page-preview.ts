@@ -1,10 +1,9 @@
-import { HoverParent, MarkdownView, OpenViewState, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from "obsidian";
+import { HoverParent, parseLinktext } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
 import { BacklinkHighlighter } from "highlight";
-import { getExistingPDFLeafOfFile } from "utils";
-import { PDFView } from "typings";
+import { getExistingPDFLeafOfFile, openMarkdownLink } from "utils";
 
 
 export const patchPagePreview = (plugin: PDFPlus): boolean => {
@@ -24,51 +23,7 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
                 const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
                 if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkHighlighter) {
-                    // 1. If the target markdown file is already opened, open the link in the same leaf
-                    // 2. If not, create a new leaf under the same parent split as the first existing markdown leaf
-                    let markdownLeaf: WorkspaceLeaf | null = null;
-                    let markdownLeafParent: WorkspaceSplit | null = null;
-                    app.workspace.iterateRootLeaves((leaf) => {
-                        if (markdownLeaf) return;
-
-                        let createInSameParent = true;
-
-                        if (leaf.view instanceof MarkdownView) {
-                            if (leaf.parentSplit instanceof WorkspaceTabs) {
-                                const sharesSameTabParentWithThePDF = leaf.parentSplit.children.some((item) => {
-                                    if (item instanceof WorkspaceLeaf && item.view.getViewType() === 'pdf') {
-                                        const view = item.view as PDFView;
-                                        return view.file?.path === sourcePath;
-                                    }
-                                });
-                                if (sharesSameTabParentWithThePDF) {
-                                    createInSameParent = false;
-                                }
-                            }
-
-                            if (createInSameParent) markdownLeafParent = leaf.parentSplit;
-
-                            if (leaf.view.file === file) {
-                                markdownLeaf = leaf;
-                            }
-                        }
-                    });
-                    if (!markdownLeaf) {
-                        markdownLeaf = markdownLeafParent
-                            ? app.workspace.createLeafInParent(markdownLeafParent, -1)
-                            : app.workspace.getLeaf(plugin.settings.paneTypeForFirstMDLeaf || false);
-                    }
-
-                    const openViewState: OpenViewState = {
-                        eState: state?.scroll ? { line: state.scroll } : undefined
-                    };
-                    // Ignore the "dontActivateAfterOpenMD" option when opening a link in a tab in the same split as the current tab
-                    // I believe using activeLeaf (which is deprecated) is inevitable here
-                    if (!(markdownLeaf.parentSplit instanceof WorkspaceTabs && markdownLeaf.parentSplit === app.workspace.activeLeaf?.parentSplit)) {
-                        openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
-                    }
-                    markdownLeaf.openLinkText(linktext, sourcePath, openViewState);
-                    app.workspace.revealLeaf(markdownLeaf);
+                    openMarkdownLink(plugin, linktext, sourcePath, state.scroll);
                     return;
                 }
 

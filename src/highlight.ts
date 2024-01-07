@@ -1,7 +1,7 @@
 import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from "obsidian";
 
 import PDFPlus from "main";
-import { getSubpathWithoutHash, isMouseEventExternal, onAnnotationLayerReady, onTextLayerReady } from "utils";
+import { getSubpathWithoutHash, isMouseEventExternal, onAnnotationLayerReady, onTextLayerReady, openMarkdownLink } from "utils";
 import { BacklinkView, ObsidianViewer } from "typings";
 
 
@@ -319,12 +319,15 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
         this.eventManager.registerDomEvent(annotationEl, 'dblclick', (event) => {
             if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
-                const paneType = Keymap.isModEvent(event) || 'tab'; // keep the PDF view open
-                this.app.workspace.openLinkText(sourcePath, "", paneType, {
-                    eState: {
-                        line: linkCache.position.start.line
-                    }
-                });
+                const paneType = Keymap.isModEvent(event);
+                const line = linkCache.position.start.line;
+                if (paneType) {
+                    this.app.workspace.openLinkText(sourcePath, this.file?.path ?? '', paneType, {
+                        eState: { line }
+                    });
+                    return;
+                }
+                openMarkdownLink(this.plugin, sourcePath, this.file?.path ?? '', line);
             }
         });
     }
