@@ -1,4 +1,4 @@
-import { Notice, TFile } from "obsidian";
+import { Component, MarkdownRenderer, Notice, TFile } from "obsidian";
 import { around } from "monkey-around";
 
 import PDFPlus from "main";
@@ -187,6 +187,32 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     return;
                 }
                 old.call(this);
+            }
+        },
+        renderAnnotationPopup(old) {
+            return function (...args: any[]) {
+                const ret = old.call(this, ...args);
+                const self = this as PDFViewerChild;
+                if (plugin.settings.renderMarkdownInStickyNote) {
+                    const contentEl = this.activeAnnotationPopupEl.querySelector('.popupContent');
+                    if (contentEl && contentEl.textContent) {
+                        const markdown = contentEl.textContent;
+                        contentEl.textContent = '';
+                        if (!self.component) {
+                            self.component = new Component();
+                        }
+                        self.component.load();
+                        MarkdownRenderer.render(app, markdown, contentEl, '', self.component);
+                    }
+                }
+                return ret;
+            }
+        },
+        destroyAnnotationPopup(old) {
+            return function () {
+                const self = this as PDFViewerChild;
+                self.component?.unload();
+                return old.call(this);
             }
         }
     }));

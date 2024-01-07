@@ -7,6 +7,7 @@ import PDFPlus from 'main';
 import { BacklinkHighlighter } from 'highlight';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 
+
 declare global {
     interface Window {
         pdfPlus?: PDFPlus;
@@ -48,6 +49,7 @@ interface PDFViewerChild {
     toolbar?: PDFToolbar;
     highlightedText: [number, number][]; // [page, textContentItemindex][]
     annotationHighlight: HTMLElement | null;
+    activeAnnotationPopupEl: HTMLElement | null;
     load(): void;
     getPage(page: number): PDFPageView;
     getTextByRect(pageView: any, rect: number[]): any;
@@ -61,9 +63,13 @@ interface PDFViewerChild {
     highlightAnnotation(page: number, id: string): void;
     clearTextHighlight(): void;
     clearAnnotationHighlight(): void;
+    renderAnnotationPopup(annotationElement: any): void;
+    destroyAnnotationPopup(): void;
+    getAnnotatedText(pageView: PDFPageView, id: string): string;
     /** Added by this plugin */
     file?: TFile;
     backlinkHighlighter?: BacklinkHighlighter;
+    component?: Component;
 }
 
 interface PDFHighlight {

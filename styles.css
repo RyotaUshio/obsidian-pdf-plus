@@ -93,3 +93,13 @@ settings:
 .pdf-plus-click-embed-to-open-link .pdf-embed .pdf-container {
     cursor: pointer;
 }
+
+.annotationLayer .popupContent {
+    &>p:first-child {
+        margin-top: 0;
+    }
+
+    &>p:last-child {
+        margin-bottom: 0;
+    }
+}

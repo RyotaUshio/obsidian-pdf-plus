@@ -63,6 +63,7 @@ export interface PDFPlusSettings {
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
 	filterBacklinksByPageDefault: boolean;
+	renderMarkdownInStickyNote: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -121,6 +122,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
 	filterBacklinksByPageDefault: true,
+	renderMarkdownInStickyNote: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -703,6 +705,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		})
 			.setName('Default action when clicking on a color palette item')
 			.setDesc('You can change it for each viewer with the dropdown menu in the color palette.')
+
+		this.addHeading('Others');
+		this.addToggleSetting('renderMarkdownInStickyNote')
+			.setName('Render markdown in sticky notes');
 
 
 		this.addHeading('Style settings')
