@@ -155,6 +155,10 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 - **Make PDF embeds unscrollable**
 - **Zoom in PDF embeds (experimental)**
 
+### Others
+
+- **Render markdown in sticky notes**
+
 ## CSS customization
 
 You can customize the styling of highlighted text using [CSS snippets](https://help.obsidian.md/Extending+Obsidian/CSS+snippets).
