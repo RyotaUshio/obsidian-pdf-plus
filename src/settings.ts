@@ -46,7 +46,7 @@ export interface PDFPlusSettings {
 	persistentTextHighlightsInEmbed: boolean;
 	persistentAnnotationHighlightsInEmbed: boolean;
 	highlightBacklinks: boolean;
-	clickEmbedToOpenLink: boolean;
+	dblclickEmbedToOpenLink: boolean;
 	highlightBacklinksPane: boolean;
 	highlightOnHoverBacklinkPane: boolean;
 	backlinkHoverColor: HexString;
@@ -100,7 +100,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	persistentTextHighlightsInEmbed: true,
 	persistentAnnotationHighlightsInEmbed: false,
 	highlightBacklinks: true,
-	clickEmbedToOpenLink: true,
+	dblclickEmbedToOpenLink: true,
 	highlightBacklinksPane: true,
 	highlightOnHoverBacklinkPane: true,
 	backlinkHoverColor: '',
@@ -579,9 +579,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Embedding PDF files');
-		this.addToggleSetting('clickEmbedToOpenLink', () => this.plugin.loadStyle())
-			.setName('Click PDF embeds to open links')
-			.setDesc('Clicking a PDF embed will open the embedded file.');
+		this.addToggleSetting('dblclickEmbedToOpenLink', () => this.plugin.loadStyle())
+			.setName('Double click PDF embeds to open links')
+			.setDesc('Double-clicking a PDF embed will open the embedded file.');
 		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())
 			.setName('Trim selection/annotation embeds')
 			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');

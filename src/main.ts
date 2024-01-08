@@ -85,10 +85,10 @@ export default class PDFPlus extends Plugin {
 			}
 		}, { passive: false });
 
-		// Click PDF embeds to open links
-		this.registerDomEvent(document, 'click', (evt) => {
-			if (this.settings.clickEmbedToOpenLink && evt.target instanceof HTMLElement) { 
-				// .pdf-container is necessary to avoid opening links when clicking on the toolbar
+		// Double-lick PDF embeds to open links
+		this.registerDomEvent(document, 'dblclick', (evt) => {
+			if (this.settings.dblclickEmbedToOpenLink && evt.target instanceof HTMLElement) { 
+				// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
 				const linktext = evt.target.closest('.pdf-embed[src] > .pdf-container')?.parentElement!.getAttribute('src');
 				if (linktext) {
 					const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
@@ -244,7 +244,7 @@ export default class PDFPlus extends Plugin {
 			`}`
 		].join('\n');
 
-		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.settings.clickEmbedToOpenLink);
+		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.settings.dblclickEmbedToOpenLink);
 
 		this.app.workspace.trigger('css-change');
 	}
