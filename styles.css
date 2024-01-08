@@ -47,7 +47,8 @@ settings:
 }
 
 
-.hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar {
+.hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar,
+.hide-pdf-embed-toolbar .popover.hover-popover.hover-editor .pdf-embed[src*="#"] .pdf-toolbar {
     display: none;
 }
 
