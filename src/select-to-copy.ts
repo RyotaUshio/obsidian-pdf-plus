@@ -1,6 +1,7 @@
 import PDFPlus from "main";
 import { Component } from "obsidian"
 
+
 export class SelectToCopyMode extends Component {
     iconEl: HTMLElement;
 
