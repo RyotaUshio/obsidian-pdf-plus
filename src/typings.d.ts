@@ -195,13 +195,12 @@ interface EventBus {
     dispatch(name: 'switchspreadmode', data: { mode: number, source?: any }): void;
 }
 
-interface PDFEmbed extends Component {
+interface PDFEmbed extends Embed {
     app: App;
     file: TFile;
     subpath?: string;
     containerEl: HTMLElement;
     viewer: PDFViewer;
-    loadFile(): Promise<void>;
 }
 
 interface AnnotationLayer {
