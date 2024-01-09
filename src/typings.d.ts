@@ -498,7 +498,11 @@ declare module "obsidian" {
     interface WorkspaceLeaf {
         group: string | null;
         readonly parentSplit: WorkspaceSplit;
+        containerEl: HTMLElement;
         openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
+        highlight(): void;
+        unhighlight(): void;
+        isVisible(): boolean;
     }
 
     interface WorkspaceTabs {

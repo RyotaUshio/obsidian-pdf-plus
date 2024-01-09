@@ -35,6 +35,8 @@ export interface PDFPlusSettings {
 	noSpreadModeInEmbed: boolean;
 	embedUnscrollable: boolean;
 	singleTabForSinglePDF: boolean;
+	existingTabHighlightOpacity: number;
+	existingTabHighlightDuration: number;
 	openLinkNextToExistingPDFTab: boolean;
 	openPDFWithDefaultApp: boolean;
 	openPDFWithDefaultAppAndObsidian: boolean;
@@ -89,6 +91,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	noSpreadModeInEmbed: true,
 	embedUnscrollable: false,
 	singleTabForSinglePDF: true,
+	existingTabHighlightOpacity: 0.5,
+	existingTabHighlightDuration: 1,
 	openLinkNextToExistingPDFTab: true,
 	openPDFWithDefaultApp: false,
 	openPDFWithDefaultAppAndObsidian: true,
@@ -536,6 +540,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
 				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
 				.setDesc('This option will be ignored when you open a PDF link in a tab in the same split as the PDF viewer.')
+			this.addSliderSetting('existingTabHighlightOpacity', 0, 1, 0.01)
+				.setName('Highlight opacity of an existing tab')
+			this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.1)
+				.setName('Highlight duration of an existing tab (sec)')
 		}
 		this.addToggleSetting('openLinkNextToExistingPDFTab')
 			.setName('Open PDF links next to an existing PDF tab')
@@ -748,6 +756,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.plugin.settings.copyCommands = this.plugin.settings.copyCommands.filter((command) => command.name && command.format);
 
 		await this.plugin.saveSettings();
+		this.plugin.loadStyle();
 
 		this.promises = [];
 		this.component.unload();

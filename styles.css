@@ -3,6 +3,11 @@
 name: PDF++
 id: pdf-plus
 settings:
+    - 
+        id: pdf-highlight
+        title: Highlights
+        type: heading
+        level: 2
     -
         id: pdf-plus-highlight-opacity
         title: Highlight opacity
@@ -31,6 +36,11 @@ settings:
         step: 0.1
         default: 4
         format: px
+    - 
+        id: pdf-toolbar
+        title: PDF toolbars
+        type: heading
+        level: 2
     - 
         id: hide-pdf-embed-toolbar
         title: Hide toolbar in PDF embeds with a page specified

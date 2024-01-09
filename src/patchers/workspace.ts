@@ -35,6 +35,11 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                                     openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
                                 }
 
+                                if (sameFileFeaf.isVisible()) {
+                                    sameFileFeaf.containerEl.addClass('pdf-plus-link-opened', 'is-highlighted');
+                                    setTimeout(() => sameFileFeaf.containerEl.removeClass('pdf-plus-link-opened', 'is-highlighted'), plugin.settings.existingTabHighlightDuration * 1000);
+                                }
+
                                 return sameFileFeaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
                                     app.workspace.revealLeaf(sameFileFeaf);
                                     const view = sameFileFeaf.view as PDFView;

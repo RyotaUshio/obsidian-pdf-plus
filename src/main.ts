@@ -244,6 +244,12 @@ export default class PDFPlus extends Plugin {
 			`}`
 		].join('\n');
 
+		styleEl.textContent += [
+			`.workspace-leaf.pdf-plus-link-opened.is-highlighted::before {`,
+			`	opacity: ${this.settings.existingTabHighlightOpacity};`,
+			`}`
+		].join('\n');
+
 		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.settings.dblclickEmbedToOpenLink);
 
 		this.app.workspace.trigger('css-change');
