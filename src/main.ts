@@ -107,6 +107,12 @@ export default class PDFPlus extends Plugin {
 		}));
 
 		const originalPDFEmbedCreator = this.app.embedRegistry.embedByExtension['pdf'];
+
+		this.register(() => {
+			this.app.embedRegistry.unregisterExtension('pdf');
+			this.app.embedRegistry.registerExtension('pdf', originalPDFEmbedCreator);
+		});
+
 		this.app.embedRegistry.unregisterExtension('pdf');
 		this.app.embedRegistry.registerExtension('pdf', (info, file, subpath) => {
 			const embed = originalPDFEmbedCreator(info, file, subpath) as PDFEmbed;
