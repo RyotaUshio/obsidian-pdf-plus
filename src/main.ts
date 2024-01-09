@@ -5,6 +5,7 @@ import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
 import { ColorPalette } from 'color-palette';
+import { SelectToCopyMode } from 'select-to-copy';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLink, isHexString, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
@@ -18,7 +19,7 @@ export default class PDFPlus extends Plugin {
 	/** Manages DOMs and event handlers introduced by this plugin */
 	elementManager: Component;
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
-	selectToCopyMode: Component;
+	selectToCopyMode: SelectToCopyMode;
 	events: Events = new Events();
 	patchStatus = {
 		workspace: false,
@@ -36,20 +37,9 @@ export default class PDFPlus extends Plugin {
 
 		this.elementManager = this.addChild(new Component());
 
-		this.selectToCopyMode = this.addChild(new Component());
+		this.selectToCopyMode = this.addChild(new SelectToCopyMode(this));
 		this.selectToCopyMode.unload(); // disabled by default
-		const iconEl = this.addRibbonIcon('lucide-highlighter', `${this.manifest.name}: Toggle "select text to copy" mode`, () => {
-			if (!iconEl.hasClass('is-active')) {
-				this.selectToCopyMode.registerDomEvent(document, 'pointerup', (evt) => {
-					if (window.getSelection()?.toString()) this.copyLinkToSelection(false);
-				});
-				this.selectToCopyMode.load();
-			} else {
-				this.selectToCopyMode.unload();
-			}
-			iconEl.toggleClass('is-active', this.selectToCopyMode._loaded);
-		});
-
+		
 		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
 		this.patchObsidian();
