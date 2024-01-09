@@ -444,7 +444,22 @@ interface CustomArrayDict<T> {
     count: () => number;
 }
 
-type EmbedCreator = (info: any, file: TFile, subpath: string) => Component;
+interface Embed extends Component {
+    loadFile(): Promise<void>;
+}
+
+type EmbedCreator = (ctx: EmbedContext, file: TFile, subpath: string) => Embed;
+
+interface EmbedContext {
+    app: App;
+    linktext: string;
+    sourcePath: string;
+    containerEl: HTMLElement;
+    depth: number;
+    displayMode?: boolean;
+    showInline?: boolean;
+    state?: any;
+}
 
 interface EmbedRegistry {
     embedByExtension: Record<string, EmbedCreator>;
