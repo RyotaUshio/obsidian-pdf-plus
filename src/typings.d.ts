@@ -201,7 +201,7 @@ interface PDFEmbed extends Component {
     subpath?: string;
     containerEl: HTMLElement;
     viewer: PDFViewer;
-    loadFile(file: TFile, subpath?: string): Promise<void>;
+    loadFile(): Promise<void>;
 }
 
 interface AnnotationLayer {
