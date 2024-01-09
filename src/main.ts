@@ -52,29 +52,18 @@ export default class PDFPlus extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
-		// Patch Obsidian internals
-		this.app.workspace.onLayoutReady(() => patchWorkspace(this));
-		this.tryPatchPeriodcallyUntilSuccess(patchPagePreview, 300);
-		this.tryPatchUntilSuccess(patchPDF, () => {
-			iteratePDFViews(this.app, async (view) => {
-				// reflect the patch to existing PDF views
-				const file = view.file;
-				if (file) view.onLoadFile(file);
-			});
-		}, {
-			message: 'Some features for PDF embeds will not be activated until a PDF file is opened in a viewer.',
-			duration: 7000
+		this.patchObsidian();
+
+		this.registerPDFEmbedCreator();
+
+		this.registerHoverLinkSource('pdf-plus', {
+			defaultMod: true,
+			display: 'PDF++ hover action'
 		});
-		this.tryPatchUntilSuccess(patchBacklink, () => {
-			iterateBacklinkViews(this.app, (view) => {
-				// reflect the patch to existing backlink views
-				if (view.file?.extension === 'pdf') {
-					if (!view.pdfManager) {
-						view.pdfManager = new BacklinkPanePDFManager(this, view.backlink, view.file).setParents(this, view);
-					}
-				}
-			});
-		});
+
+		this.registerCommands();
+
+		this.registerGlobalVariables();
 
 		// Make PDF embeds with a subpath unscrollable
 		this.registerDomEvent(document, 'wheel', (evt) => {
@@ -105,42 +94,6 @@ export default class PDFPlus extends Plugin {
 				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
 			}
 		}));
-
-		const originalPDFEmbedCreator = this.app.embedRegistry.embedByExtension['pdf'];
-
-		this.register(() => {
-			this.app.embedRegistry.unregisterExtension('pdf');
-			this.app.embedRegistry.registerExtension('pdf', originalPDFEmbedCreator);
-		});
-
-		this.app.embedRegistry.unregisterExtension('pdf');
-		this.app.embedRegistry.registerExtension('pdf', (info, file, subpath) => {
-			const embed = originalPDFEmbedCreator(info, file, subpath) as PDFEmbed;
-			embed.viewer.then((child) => {
-				if (this.settings.noSidebarInEmbed) {
-					child.pdfViewer.pdfSidebar.open = function () {
-						this.close();
-					};
-				}
-			});
-			const params = subpathToParams(subpath);
-			if (params.has('color')) {
-				embed.containerEl.dataset.highlightColor = params.get('color')!.toLowerCase();
-			} else if (this.settings.defaultColor) {
-				embed.containerEl.dataset.highlightColor = this.settings.defaultColor.toLowerCase();
-			}
-			return embed;
-		});
-
-		this.registerHoverLinkSource('pdf-plus', {
-			defaultMod: true,
-			display: 'PDF++ hover action'
-		});
-
-		this.registerCommands();
-
-		window.pdfPlus = this;
-		this.register(() => delete window.pdfPlus);
 	}
 
 	async loadSettings() {
@@ -149,6 +102,31 @@ export default class PDFPlus extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	patchObsidian() {
+		this.app.workspace.onLayoutReady(() => patchWorkspace(this));
+		this.tryPatchPeriodcallyUntilSuccess(patchPagePreview, 300);
+		this.tryPatchUntilSuccess(patchPDF, () => {
+			iteratePDFViews(this.app, async (view) => {
+				// reflect the patch to existing PDF views
+				const file = view.file;
+				if (file) view.onLoadFile(file);
+			});
+		}, {
+			message: 'Some features for PDF embeds will not be activated until a PDF file is opened in a viewer.',
+			duration: 7000
+		});
+		this.tryPatchUntilSuccess(patchBacklink, () => {
+			iterateBacklinkViews(this.app, (view) => {
+				// reflect the patch to existing backlink views
+				if (view.file?.extension === 'pdf') {
+					if (!view.pdfManager) {
+						view.pdfManager = new BacklinkPanePDFManager(this, view.backlink, view.file).setParents(this, view);
+					}
+				}
+			});
+		});
 	}
 
 	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, onSuccess?: () => any, noticeOnFail?: { message: string, duration?: number }) {
@@ -261,12 +239,45 @@ export default class PDFPlus extends Plugin {
 		this.app.workspace.trigger('css-change');
 	}
 
+	registerPDFEmbedCreator() {
+		const originalPDFEmbedCreator = this.app.embedRegistry.embedByExtension['pdf'];
+
+		this.register(() => {
+			this.app.embedRegistry.unregisterExtension('pdf');
+			this.app.embedRegistry.registerExtension('pdf', originalPDFEmbedCreator);
+		});
+
+		this.app.embedRegistry.unregisterExtension('pdf');
+		this.app.embedRegistry.registerExtension('pdf', (info, file, subpath) => {
+			const embed = originalPDFEmbedCreator(info, file, subpath) as PDFEmbed;
+			embed.viewer.then((child) => {
+				if (this.settings.noSidebarInEmbed) {
+					child.pdfViewer.pdfSidebar.open = function () {
+						this.close();
+					};
+				}
+			});
+			const params = subpathToParams(subpath);
+			if (params.has('color')) {
+				embed.containerEl.dataset.highlightColor = params.get('color')!.toLowerCase();
+			} else if (this.settings.defaultColor) {
+				embed.containerEl.dataset.highlightColor = this.settings.defaultColor.toLowerCase();
+			}
+			return embed;
+		});
+	}
+
 	registerCommands() {
 		this.addCommand({
 			id: 'copy-link-to-selection',
 			name: 'Copy link to selection with color & format specified in toolbar',
 			checkCallback: (checking) => this.copyLinkToSelection(checking)
 		});
+	}
+
+	registerGlobalVariables() {
+		window.pdfPlus = this;
+		this.register(() => delete window.pdfPlus);
 	}
 
 	copyLinkToSelection(checking: boolean) {
