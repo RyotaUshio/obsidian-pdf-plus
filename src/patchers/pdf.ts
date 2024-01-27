@@ -5,7 +5,7 @@ import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
 import { PDFPlusTemplateProcessor } from 'template';
-import { registerPDFEvent } from 'utils';
+import { registerPDFEvent, toSingleLine } from 'utils';
 import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
 
 
@@ -77,8 +77,9 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     const self = this as PDFViewerChild;
                     let alias = '';
                     try {
-                        const selection = window.getSelection()?.toString().replace(/[\r\n]+/g, ' ');
-                        alias = new PDFPlusTemplateProcessor(plugin, {}, this.file, page, self.pdfViewer.pagesCount, selection).evalTemplate(plugin.settings.aliasFormat);
+                        const selection = window.getSelection();
+                        const selectionText = selection ? toSingleLine(selection.toString()) : undefined;
+                        alias = new PDFPlusTemplateProcessor(plugin, {}, this.file, page, self.pdfViewer.pagesCount, selectionText).evalTemplate(plugin.settings.aliasFormat);
                     } catch (err) {
                         console.error(err);
                         new Notice(`${plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);

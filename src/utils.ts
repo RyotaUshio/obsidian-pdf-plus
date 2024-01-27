@@ -171,6 +171,50 @@ export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
     return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
 }
 
+export function getCJKRegexp() {
+    let pattern = ''
+
+    // CJK Unified Ideographs
+    pattern += '\\u4e00-\\u9fff';
+    // CJK Unified Ideographs Extension A
+    pattern += '\\u3400-\\u4dbf';
+
+    // Hiragana
+    pattern += '\\u3040-\\u309F';
+    // Katakana
+    pattern += '\\u30A0-\\u30FF';
+    // Half-width Katakana
+    pattern += '\\uFF65-\\uFF9F';
+    // Katakana Phonetic Extensions
+    pattern += '\\u31F0-\\u31FF';
+    // Japanese Punctuation
+    pattern += '\\u3000-\\u303F';
+
+    // Hangul Jamo
+    pattern += '\\u1100-\\u11FF';
+    // Hangul Jamo Extended-A
+    pattern += '\\uA960-\\uA97F';
+    // Hangul Jamo Extended-B
+    pattern += '\\uD7B0-\\uD7FF';
+    // Hangul Compatibility Jamo
+    pattern += '\\u3130-\\u318F';
+    // Hangul Syllables
+    pattern += '\\uAC00-\\uD7AF';
+
+    const regexp = new RegExp(`[${pattern}]`);
+    return regexp;
+}
+
+/** Process (possibly) multiline strings cleverly to convert it into a single line string. */
+export function toSingleLine(str: string) {
+    return str.replace(/(.?)([\r\n]+)(.?)/g, (match, prev, br, next) => {
+        const regexp = getCJKRegexp();
+        if (regexp.test(prev) && regexp.test(next)) return prev + next;
+        if (prev === '-' && next.match(/[a-zA-Z]/)) return next;
+        return prev + ' ' + next;
+    });
+}
+
 export function getActiveGroupLeaves(app: App) {
     // I belive using `activeLeaf` is inevitable here.
     const activeGroup = app.workspace.activeLeaf?.group;
@@ -207,7 +251,7 @@ export function getTemplateVariables(plugin: PDFPlus, subpathParams: Record<stri
         subpath,
         page,
         pageCount: child.pdfViewer.pagesCount,
-        selection: selection.toString().replace(/[\r\n]+/g, ' ')
+        selection: toSingleLine(selection.toString()),
     };
 }
 
