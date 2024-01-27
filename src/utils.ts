@@ -1,8 +1,9 @@
-import { App, Component, EditableFileView, Modifier, Platform, TFile, WorkspaceLeaf, CachedMetadata, ReferenceCache, parseLinktext, WorkspaceSplit, MarkdownView, WorkspaceTabs, OpenViewState } from 'obsidian';
+import { App, Component, EditableFileView, Modifier, Platform, TFile, WorkspaceLeaf, CachedMetadata, ReferenceCache, parseLinktext, WorkspaceSplit, MarkdownView, WorkspaceTabs, OpenViewState, PaneType } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView, Rect } from 'typings';
 import { PDFPlusTemplateProcessor } from 'template';
+import { ExtendedPaneType, FineGrainedSplitDirection } from 'settings';
 
 
 export type PropRequired<T, Prop extends keyof T> = T & Pick<Required<T>, Prop>;
@@ -315,7 +316,7 @@ export async function openMarkdownLink(plugin: PDFPlus, linktext: string, source
     if (!markdownLeaf) {
         markdownLeaf = markdownLeafParent
             ? app.workspace.createLeafInParent(markdownLeafParent, -1)
-            : app.workspace.getLeaf(plugin.settings.paneTypeForFirstMDLeaf || false);
+            : getLeaf(app, plugin.settings.paneTypeForFirstMDLeaf);
     }
 
     const openViewState: OpenViewState = typeof line === 'number' ? { eState: { line } } : {};
@@ -351,7 +352,7 @@ export function getToolbarAssociatedWithSelection() {
  */
 export function getPDFPlusBacklinkHighlightLayer(pageDiv: HTMLElement): HTMLElement {
     return pageDiv.querySelector<HTMLElement>('div.pdf-plus-backlink-highlight-layer')
-    ?? pageDiv.createDiv('pdf-plus-backlink-highlight-layer');    
+        ?? pageDiv.createDiv('pdf-plus-backlink-highlight-layer');
 }
 
 export function highlightRectInPage(rect: [number, number, number, number], page: PDFPageView) {
@@ -404,4 +405,37 @@ export function mergeRectangles(rect1: Rect, rect2: Rect): Rect {
     const bottom = Math.min(bottom1, bottom2);
     const top = Math.max(top1, top2);
     return [left, bottom, right, top];
+}
+
+export function getLeaf(app: App, paneType: ExtendedPaneType | boolean) {
+    if (paneType === '') paneType = false;
+    if (typeof paneType === 'boolean' || ['tab', 'split', 'window'].contains(paneType)) {
+        return app.workspace.getLeaf(paneType as PaneType | boolean);
+    }
+    return getLeafBySplit(app, paneType as FineGrainedSplitDirection);
+}
+
+export function getLeafBySplit(app: App, direction: FineGrainedSplitDirection) {
+    const leaf = app.workspace.getMostRecentLeaf();
+    if (leaf) {
+        if (['right', 'left'].contains(direction)) {
+            return app.workspace.createLeafBySplit(leaf, 'vertical', direction === 'left');
+        } else if (['down', 'up'].contains(direction)) {
+            return app.workspace.createLeafBySplit(leaf, 'horizontal', direction === 'up');
+        }
+    }
+    return app.workspace.createLeafInParent(this.rootSplit, 0)
+}
+
+export function openPDFLinkTextInLeaf(plugin: PDFPlus, leaf: WorkspaceLeaf, linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void> {
+    const app = plugin.app;
+    return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
+        app.workspace.revealLeaf(leaf);
+        const view = leaf.view as PDFView;
+        view.viewer.then((child) => {
+            const duration = plugin.settings.highlightDuration;
+            const { subpath } = parseLinktext(linktext);
+            highlightSubpath(child, subpath, duration);
+        });                                    
+    });
 }

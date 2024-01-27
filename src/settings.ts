@@ -9,12 +9,16 @@ const HOVER_HIGHLIGHT_ACTIONS = {
 	'preview': 'Popover preview of backlink',
 } as const;
 
-type ExtendedPaneType = PaneType | '';
+export type FineGrainedSplitDirection = 'right' | 'left' | 'down' | 'up';
+export type ExtendedPaneType = Exclude<PaneType, 'split'> | '' | FineGrainedSplitDirection;
 
 const PANE_TYPE: Record<ExtendedPaneType, string> = {
 	'': 'Current tab',
 	'tab': 'New tab',
-	'split': 'Split right',
+	'right': 'Split right',
+	'left': 'Split left',
+	'down': 'Split down',
+	'up': 'Split up',
 	'window': 'New window',
 };
 
@@ -35,8 +39,10 @@ export interface PDFPlusSettings {
 	noSpreadModeInEmbed: boolean;
 	embedUnscrollable: boolean;
 	singleTabForSinglePDF: boolean;
+	highlightExistingTab: boolean;
 	existingTabHighlightOpacity: number;
 	existingTabHighlightDuration: number;
+	paneTypeForFirstPDFLeaf: ExtendedPaneType;
 	openLinkNextToExistingPDFTab: boolean;
 	openPDFWithDefaultApp: boolean;
 	openPDFWithDefaultAppAndObsidian: boolean;
@@ -91,8 +97,10 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	noSpreadModeInEmbed: true,
 	embedUnscrollable: false,
 	singleTabForSinglePDF: true,
+	highlightExistingTab: false,
 	existingTabHighlightOpacity: 0.5,
 	existingTabHighlightDuration: 1,
+	paneTypeForFirstPDFLeaf: '',
 	openLinkNextToExistingPDFTab: true,
 	openPDFWithDefaultApp: false,
 	openPDFWithDefaultAppAndObsidian: true,
@@ -121,7 +129,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightColorSpecifiedOnly: false,
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'preview',
-	paneTypeForFirstMDLeaf: 'split',
+	paneTypeForFirstMDLeaf: 'right',
 	defaultColorPaletteActionIndex: 0,
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
@@ -195,9 +203,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 	}
 
-	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: readonly string[], display?: (option: string) => string, extraOnChange?: (value: string) => void): Setting;
-	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: Record<string, string>, extraOnChange?: (value: string) => void): Setting;
-	addDropdowenSetting(settingName: KeysOfType<PDFPlusSettings, string>, ...args: any[]) {
+	addDropdownSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: readonly string[], display?: (option: string) => string, extraOnChange?: (value: string) => void): Setting;
+	addDropdownSetting(settingName: KeysOfType<PDFPlusSettings, string>, options: Record<string, string>, extraOnChange?: (value: string) => void): Setting;
+	addDropdownSetting(settingName: KeysOfType<PDFPlusSettings, string>, ...args: any[]) {
 		let options: string[] = [];
 		let display = (optionValue: string) => optionValue;
 		let extraOnChange = (value: string) => { };
@@ -435,7 +443,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks in PDF viewer')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
-		this.addDropdowenSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
+		this.addDropdownSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
 			.setName('Action when hovering over highlighted text')
 			.then((setting) => {
 				this.renderMarkdown([
@@ -445,7 +453,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				], setting.descEl);
 			});
 		if (this.plugin.settings.hoverHighlightAction === 'open') {
-			this.addDropdowenSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
+			this.addDropdownSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
 				.setName(`How to open markdown file with ${getModifierNameInPlatform('Mod').toLowerCase()}+hover when there is no open markdown file`);
 			this.addToggleSetting('dontActivateAfterOpenMD')
 				.setName('Don\'t move focus to markdown view after opening a backlink')
@@ -492,7 +500,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('By default, all backlinks are highlighted. If this option is enabled, a backlink will be highlighted only when a color is specified in the link text.');
 
 		if (!this.plugin.settings.highlightColorSpecifiedOnly) {
-			this.addDropdowenSetting(
+			this.addDropdownSetting(
 				'defaultColor',
 				['', ...Object.keys(this.plugin.settings.colors)],
 				(option) => option || 'Obsidian default',
@@ -518,7 +526,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Hover sync (Backlinks pane → PDF viewer)')
 			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.')
 		if (this.plugin.settings.highlightOnHoverBacklinkPane) {
-			this.addDropdowenSetting(
+			this.addDropdownSetting(
 				'backlinkHoverColor',
 				['', ...Object.keys(this.plugin.settings.colors)],
 				(option) => option || 'PDF++ default',
@@ -540,11 +548,23 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addToggleSetting('dontActivateAfterOpenPDF')
 				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
 				.setDesc('This option will be ignored when you open a PDF link in a tab in the same split as the PDF viewer.')
-			this.addSliderSetting('existingTabHighlightOpacity', 0, 1, 0.01)
-				.setName('Highlight opacity of an existing tab')
-			this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.1)
-				.setName('Highlight duration of an existing tab (sec)')
+			this.addToggleSetting('highlightExistingTab', () => this.redisplay())
+				.setName('When opening a link to an already opened PDF file, highlight the tab');
+			if (this.plugin.settings.highlightExistingTab) {
+				this.addSliderSetting('existingTabHighlightOpacity', 0, 1, 0.01)
+					.setName('Highlight opacity of an existing tab')
+				this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.1)
+					.setName('Highlight duration of an existing tab (sec)')
+			}
 		}
+		this.addDropdownSetting('paneTypeForFirstPDFLeaf', PANE_TYPE)
+			.setName(`How to open PDF links when there is no open PDF file`)
+			.then((setting) => {
+				this.renderMarkdown(
+					'This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
+					setting.descEl
+				);
+			});
 		this.addToggleSetting('openLinkNextToExistingPDFTab')
 			.setName('Open PDF links next to an existing PDF tab')
 			.then((setting) => this.renderMarkdown(

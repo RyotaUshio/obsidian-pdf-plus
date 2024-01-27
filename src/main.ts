@@ -1,4 +1,4 @@
-import { EventRef, Events, Keymap, Notice, Plugin, loadPdfJs } from 'obsidian';
+import { EventRef, Events, Keymap, Notice, PaneType, Plugin, loadPdfJs } from 'obsidian';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
@@ -86,6 +86,10 @@ export default class PDFPlus extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		// migration from legacy settings
+		if (this.settings.paneTypeForFirstMDLeaf as PaneType | '' === 'split') {
+			this.settings.paneTypeForFirstMDLeaf = 'right';
+		}
 	}
 
 	async saveSettings() {
