@@ -63,7 +63,7 @@ interface PDFViewerChild {
     highlightAnnotation(page: number, id: string): void;
     clearTextHighlight(): void;
     clearAnnotationHighlight(): void;
-    renderAnnotationPopup(annotationElement: any): void;
+    renderAnnotationPopup(annotationElement: AnnotationElement): void;
     destroyAnnotationPopup(): void;
     getAnnotatedText(pageView: PDFPageView, id: string): string;
     /** Added by this plugin */
@@ -77,12 +77,12 @@ interface PDFHighlight {
 }
 
 interface PDFTextHighlight extends PDFHighlight {
-    type: "text";
+    type: 'text';
     range: [[number, number], [number, number]];
 }
 
 interface PDFAnnotationHighlight extends PDFHighlight {
-    type: "annotation";
+    type: 'annotation';
     id: string;
 }
 
@@ -101,7 +101,7 @@ interface ObsidianViewer {
     pdfSidebar: PDFSidebar;
     toolbar?: PDFToolbar;
     pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
-    setHeight(height?: number | "page" | "auto"): void;
+    setHeight(height?: number | 'page' | 'auto'): void;
     applySubpath(subpath: string): void;
     zoomIn(): void;
 }
@@ -131,6 +131,7 @@ interface PDFToolbar {
     reset(): void;
 }
 
+/** Originally named "PDFViewer" */
 interface RawPDFViewer {
     pdfDocument: PDFDocumentProxy;
     pagesPromise: Promise<any> | null;
@@ -169,16 +170,28 @@ interface AnnotationLayerBuilder {
     render(): Promise<any>;
 }
 
+/**
+ * [x1, y1, x2, y2], where [x1, y1] is the bottom-left corner and [x2, y2] is the top-right corner
+ */
+type Rect = [number, number, number, number];
+
 interface AnnotationElement {
+    annotationStorage: AnnotationStorage;
+    layer: HTMLElement; // div.annotationLayer
     parent: AnnotationLayer;
     data: {
         id: string;
-        rect: [number, number, number, number];
+        rect: Rect;
     }
 }
 
 interface TextContentItem {
     str: string;
+    chars?: {
+        c: string;
+        u: string;
+        r: Rect; // bounding rect
+    }[];
     dir: string;
     width: number;
     height: number;
@@ -218,7 +231,7 @@ interface BacklinkView extends FileView {
     pdfManager?: BacklinkPanePDFManager;
 }
 
-type TFileSortOrder = "alphabetical" | "alphabeticalReverse" | "byModifiedTime" | "byModifiedTimeReverse" | "byCreatedTime" | "byCreatedTimeReverse";
+type TFileSortOrder = 'alphabetical' | 'alphabeticalReverse' | 'byModifiedTime' | 'byModifiedTimeReverse' | 'byCreatedTime' | 'byCreatedTimeReverse';
 
 interface BacklinkRenderer extends Component {
     collapseAll: boolean;
@@ -471,7 +484,7 @@ interface EmbedRegistry {
     getEmbedCreator(file: TFile): EmbedCreator | null;
 }
 
-declare module "obsidian" {
+declare module 'obsidian' {
     interface App {
         setting: AppSetting;
         plugins: {
@@ -534,9 +547,5 @@ declare module "obsidian" {
 
     interface MarkdownView {
         backlinks?: BacklinkRenderer;
-    }
-
-    interface Component {
-        readonly _loaded: boolean; // it's not actually readonly, but here I mark it as readonly for safety
     }
 }

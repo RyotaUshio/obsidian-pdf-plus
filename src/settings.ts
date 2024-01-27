@@ -120,7 +120,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	colorPaletteInEmbedToolbar: false,
 	highlightColorSpecifiedOnly: false,
 	doubleClickHighlightToOpenBacklink: true,
-	hoverHighlightAction: 'open',
+	hoverHighlightAction: 'preview',
 	paneTypeForFirstMDLeaf: 'split',
 	defaultColorPaletteActionIndex: 0,
 	hoverPDFLinkToOpen: false,

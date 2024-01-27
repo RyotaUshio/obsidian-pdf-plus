@@ -1,9 +1,9 @@
-import { HoverParent, parseLinktext } from "obsidian";
-import { around } from "monkey-around";
+import { HoverParent, parseLinktext } from 'obsidian';
+import { around } from 'monkey-around';
 
-import PDFPlus from "main";
-import { BacklinkHighlighter } from "highlight";
-import { getExistingPDFLeafOfFile, openMarkdownLink } from "utils";
+import PDFPlus from 'main';
+import { BacklinkHighlighter } from 'highlight';
+import { getExistingPDFLeafOfFile, openMarkdownLink } from 'utils';
 
 
 export const patchPagePreview = (plugin: PDFPlus): boolean => {

@@ -1,14 +1,13 @@
-import { Component, EventRef, Events, Keymap, Notice, Plugin, loadPdfJs } from 'obsidian';
+import { EventRef, Events, Keymap, Notice, Plugin, loadPdfJs } from 'obsidian';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
-import { ColorPalette } from 'color-palette';
 import { SelectToCopyMode } from 'select-to-copy';
-import { BacklinkPanePDFManager } from 'pdf-backlink';
-import { DEFAULT_BACKLINK_HOVER_COLOR, DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLink, isHexString, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
+import { DomManager } from 'dom-manager';
+import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
+import { copyLink, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 
 
@@ -17,7 +16,7 @@ export default class PDFPlus extends Plugin {
 	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object */
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 	/** Manages DOMs and event handlers introduced by this plugin */
-	elementManager: Component;
+	domManager: DomManager;
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
 	selectToCopyMode: SelectToCopyMode;
 	events: Events = new Events();
@@ -35,12 +34,11 @@ export default class PDFPlus extends Plugin {
 		await this.saveSettings();
 		this.addSettingTab(new PDFPlusSettingTab(this));
 
-		this.elementManager = this.addChild(new Component());
+		this.domManager = this.addChild(new DomManager(this));
+		// this.app.workspace.onLayoutReady(() => this.loadStyle());
 
 		this.selectToCopyMode = this.addChild(new SelectToCopyMode(this));
 		this.selectToCopyMode.unload(); // disabled by default
-		
-		this.app.workspace.onLayoutReady(() => this.loadStyle());
 
 		this.patchObsidian();
 
@@ -56,7 +54,7 @@ export default class PDFPlus extends Plugin {
 		this.registerGlobalVariables();
 
 		// Make PDF embeds with a subpath unscrollable
-		this.registerDomEvent(document, 'wheel', (evt) => {
+		this.registerGlobalDomEvent('wheel', (evt) => {
 			if (this.settings.embedUnscrollable
 				&& evt.target instanceof HTMLElement
 				&& evt.target.closest('.pdf-embed[src*="#"] .pdf-viewer-container')) {
@@ -65,8 +63,8 @@ export default class PDFPlus extends Plugin {
 		}, { passive: false });
 
 		// Double-lick PDF embeds to open links
-		this.registerDomEvent(document, 'dblclick', (evt) => {
-			if (this.settings.dblclickEmbedToOpenLink && evt.target instanceof HTMLElement) { 
+		this.registerGlobalDomEvent('dblclick', (evt) => {
+			if (this.settings.dblclickEmbedToOpenLink && evt.target instanceof HTMLElement) {
 				// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
 				const linktext = evt.target.closest('.pdf-embed[src] > .pdf-container')?.parentElement!.getAttribute('src');
 				if (linktext) {
@@ -111,9 +109,7 @@ export default class PDFPlus extends Plugin {
 			iterateBacklinkViews(this.app, (view) => {
 				// reflect the patch to existing backlink views
 				if (view.file?.extension === 'pdf') {
-					if (!view.pdfManager) {
-						view.pdfManager = new BacklinkPanePDFManager(this, view.backlink, view.file).setParents(this, view);
-					}
+					view.onLoadFile(view.file);
 				}
 			});
 		});
@@ -159,74 +155,12 @@ export default class PDFPlus extends Plugin {
 	 * and will be removed when the plugin gets unloaded. 
 	 */
 	registerEl<HTMLElementType extends HTMLElement>(el: HTMLElementType) {
-		this.elementManager.register(() => el.remove());
+		this.register(() => el.remove());
 		return el;
 	}
 
 	loadStyle() {
-		this.elementManager.unload();
-		// reload only if parent is loaded
-		this.removeChild(this.elementManager);
-		this.addChild(this.elementManager);
-
-		for (const child of this.pdfViwerChildren.values()) {
-			if (child.toolbar) new ColorPalette(this, child.toolbar.toolbarLeftEl);
-		}
-
-		const styleEl = this.registerEl(createEl('style', { attr: { id: 'pdf-plus-style' } }));
-		document.head.append(styleEl);
-
-		styleEl.textContent = Object.entries(this.settings.colors).map(([name, color]) => {
-			return isHexString(color) ? [
-				`.textLayer .mod-focused.pdf-plus-backlink:not(.hovered-highlight)[data-highlight-color="${name.toLowerCase()}"],`,
-				`.pdf-embed[data-highlight-color="${name.toLowerCase()}"] .textLayer .mod-focused {`,
-				`    background-color: ${color};`,
-				`}`
-			].join('\n') : '';
-		}).join('\n');
-
-		const defaultColor = this.settings.colors[this.settings.defaultColor];
-		if (defaultColor && isHexString(defaultColor)) {
-			styleEl.textContent += [
-				`\n.textLayer .mod-focused.pdf-plus-backlink:not(.hovered-highlight) {`,
-				`    background-color: ${defaultColor};`,
-				`}`
-			].join('\n');
-		}
-
-		let backlinkHoverColor = this.settings.colors[this.settings.backlinkHoverColor];
-		if (!backlinkHoverColor || !isHexString(backlinkHoverColor)) backlinkHoverColor = DEFAULT_BACKLINK_HOVER_COLOR;
-		styleEl.textContent += [
-			`\n.textLayer .mod-focused.pdf-plus-backlink.hovered-highlight {`,
-			`	background-color: ${backlinkHoverColor};`,
-			`}`
-		].join('\n');
-
-		for (const [name, color] of Object.entries(this.settings.colors)) {
-			if (!isHexString(color)) continue;
-
-			styleEl.textContent += [
-				`\n.${ColorPalette.CLS}-item[data-highlight-color="${name.toLowerCase()}"] > .${ColorPalette.CLS}-item-inner {`,
-				`    background-color: ${color};`,
-				`}`
-			].join('\n');
-		}
-
-		styleEl.textContent += [
-			`\n.${ColorPalette.CLS}-item:not([data-highlight-color]) > .${ColorPalette.CLS}-item-inner {`,
-			`    background-color: transparent;`,
-			`}`
-		].join('\n');
-
-		styleEl.textContent += [
-			`.workspace-leaf.pdf-plus-link-opened.is-highlighted::before {`,
-			`	opacity: ${this.settings.existingTabHighlightOpacity};`,
-			`}`
-		].join('\n');
-
-		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.settings.dblclickEmbedToOpenLink);
-
-		this.app.workspace.trigger('css-change');
+		this.domManager.update();
 	}
 
 	registerPDFEmbedCreator() {
@@ -238,8 +172,8 @@ export default class PDFPlus extends Plugin {
 		});
 
 		this.app.embedRegistry.unregisterExtension('pdf');
-		this.app.embedRegistry.registerExtension('pdf', (info, file, subpath) => {
-			const embed = originalPDFEmbedCreator(info, file, subpath) as PDFEmbed;
+		this.app.embedRegistry.registerExtension('pdf', (ctx, file, subpath) => {
+			const embed = originalPDFEmbedCreator(ctx, file, subpath) as PDFEmbed;
 			embed.viewer.then((child) => {
 				if (this.settings.noSidebarInEmbed) {
 					child.pdfViewer.pdfSidebar.open = function () {
@@ -270,12 +204,19 @@ export default class PDFPlus extends Plugin {
 		this.register(() => delete window.pdfPlus);
 	}
 
-	copyLinkToSelection(checking: boolean) {
-		// get the toolbar in the active PDF viewer, if any
-		const toolbar = this.getToolbar(true);
-		if (!toolbar) return false;
+	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
+		this.registerDomEvent(document, type, callback, options);
+		this.registerEvent(this.app.workspace.on('window-open', (win, window) => {
+			this.registerDomEvent(window.document, type, callback, options);
+		}));
+	}
 
-		const buttonEl = toolbar.toolbarEl.querySelector<HTMLElement>(`.pdf-plus-action-menu[data-checked-index]`);
+	copyLinkToSelection(checking: boolean) {
+		// get the toolbar in the PDF viewer (a PDF view or a PDF embed) containing the selected text
+		const toolbarEl = getToolbarAssociatedWithSelection();
+		if (!toolbarEl) return false;
+
+		const buttonEl = toolbarEl.querySelector<HTMLElement>(`.pdf-plus-action-menu[data-checked-index]`);
 		if (!buttonEl) return false;
 
 		// get the index of the checked item in the action dropdown menu
@@ -283,13 +224,13 @@ export default class PDFPlus extends Plugin {
 		const index = +buttonEl.dataset.checkedIndex;
 
 		// get the currently selected color name
-		const selectedItemEl = toolbar.toolbarEl.querySelector<HTMLElement>('.pdf-plus-color-palette-item.is-active[data-highlight-color]');
+		const selectedItemEl = toolbarEl.querySelector<HTMLElement>('.pdf-plus-color-palette-item.is-active[data-highlight-color]');
 		const colorName = selectedItemEl?.dataset.highlightColor;
 
 		copyLink(this, this.settings.copyCommands[index].format, checking, colorName);
 	}
 
-	on(evt: "highlighted", callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
+	on(evt: 'highlighted', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
 
 	on(evt: string, callback: (...data: any) => any, context?: any): EventRef {
 		return this.events.on(evt, callback, context);
@@ -303,7 +244,7 @@ export default class PDFPlus extends Plugin {
 		this.events.offref(ref);
 	}
 
-	trigger(evt: "highlighted", data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }): void;
+	trigger(evt: 'highlighted', data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }): void;
 
 	trigger(evt: string, ...args: any[]): void {
 		this.events.trigger(evt, ...args);
@@ -335,5 +276,13 @@ export default class PDFPlus extends Plugin {
 
 	getToolbar(activeOnly: boolean = false) {
 		return this.getPDFViewerChild(activeOnly)?.toolbar;
+	}
+
+	getPage(activeOnly: boolean = false) {
+		const viewer = this.getRawPDFViewer(activeOnly);
+		if (viewer) {
+			return viewer.getPageView(viewer.currentPageNumber - 1);
+		}
+		return null;
 	}
 }

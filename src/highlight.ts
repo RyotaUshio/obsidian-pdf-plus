@@ -1,8 +1,8 @@
-import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from "obsidian";
+import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from 'obsidian';
 
-import PDFPlus from "main";
-import { getSubpathWithoutHash, isMouseEventExternal, onAnnotationLayerReady, onTextLayerReady, openMarkdownLink } from "utils";
-import { BacklinkView, ObsidianViewer } from "typings";
+import PDFPlus from 'main';
+import { PropRequired, areRectanglesMergeableHorizontally, areRectanglesMergeableVertically, getPDFPlusBacklinkHighlightLayer, getSubpathWithoutHash, highlightRectInPage, isMouseEventExternal, mergeRectangles, onAnnotationLayerReady, onTextLayerReady, openMarkdownLink } from 'utils';
+import { BacklinkView, ObsidianViewer, Rect, TextContentItem, TextLayerBuilder } from 'typings';
 
 
 interface BacklinkInfo {
@@ -36,7 +36,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
     eventManager: Component;
     /** Maps a page number to metadata of all backlinks contained in that page. */
     backlinks: Record<number, { selection: SelectionBacklinkInfo[], annotation: AnnotationBacklinkInfo[] }> = {};
-    highlightedTexts: { page: number, index: number }[] = [];
+    highlightedTexts: { page: number }[] = [];
     /** Maps an annotation ID to the corresponding rectangular highlight element. */
     highlightedAnnotations: Map<string, HTMLElement> = new Map();
 
@@ -132,14 +132,17 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
         this.setBacklinks(this.file);
 
-        this.clearTextHighlight();
         this.eventManager.unload();
         // reload only if parent (=this) is loaded
         this.removeChild(this.eventManager);
         this.addChild(this.eventManager);
 
-        // register a callback that highlights backlinks when the text layer for the page containing the linked text is ready
+        this.clearTextHighlight();
+
+        // register a callback that highlights backlinks when the text layer for the page is ready
         onTextLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
+            this.clearTextHighlightOnPage(pageNumber);
+            
             for (const backlink of this.backlinks[pageNumber]?.selection ?? []) {
                 const { beginIndex, beginOffset, endIndex, endOffset, colorName } = backlink;
 
@@ -153,7 +156,8 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                         backlink.annotationEls.push(highlightedEl);
 
                         this.hookEventHandlers(backlink, highlightedEl);
-                    });
+                    }
+                );
             }
         });
 
@@ -173,78 +177,186 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         });
     }
 
-    // This is a modified version of PDFViewerChild.prototype.hightlightText from Obsidian's app.js
     highlightText(pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number, colorName?: string, onHighlight?: (highlightedEl: HTMLElement) => void) {
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
             const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
-                const { textDivs, textContentItems } = pageView.textLayer;
-                const divideAndWrapTextStart = (index: number, offset: number, className?: string): void => {
-                    textDivs[index].textContent = "";
-                    divideAndWrapText(index, 0, offset, className);
-                };
-                // out of a text div, wrap the selected range with span, and add a class to highlight it if className is given
-                const divideAndWrapText = (index: number, from: number, to?: number, className?: string): void => {
-                    this.highlightedTexts.push({ page: pageNumber, index });
-                    let textDiv = textDivs[index];
-                    // if text node, wrap it with span
-                    if (textDiv.nodeType === Node.TEXT_NODE) {
-                        const span = createSpan();
-                        textDiv.before(span);
-                        span.append(textDiv);
-                        textDivs[index] = span;
-                        textDiv = span;
-                    }
-                    const text = textContentItems[index].str.substring(from, to);
-                    const textNode = document.createTextNode(text);
-                    if (className) {
-                        const highlightWrapperEl = textDiv.createSpan(className + " appended");
-                        if (colorName) highlightWrapperEl.dataset.highlightColor = colorName.toLowerCase();
-                        highlightWrapperEl.append(textNode);
-                        onHighlight?.(highlightWrapperEl);
-                    }
-                    else textDiv.append(textNode);
+                const { textDivs } = pageView.textLayer;
+
+                const results = this.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
+
+                for (const { rect, indices } of results) {
+                    const highlightedEl = highlightRectInPage(rect, pageView);
+
+                    // font-size is used to set the padding of this highlight in em unit
+                    const textDiv = textDivs[indices[0]];
+                    highlightedEl.setCssStyles({
+                        fontSize: textDiv.style.fontSize
+                    });
+
+                    // indices of the text content items contained in this highlight (merged rectangle)
+                    highlightedEl.dataset.textIndices = indices.join(',');
+
+                    if (colorName) highlightedEl.dataset.highlightColor = colorName.toLowerCase();
+                    onHighlight?.(highlightedEl);
                 }
 
-                const cls = 'pdf-plus-backlink';
-
-                divideAndWrapTextStart(beginIndex, beginOffset);
-                if (beginIndex === endIndex) divideAndWrapText(beginIndex, beginOffset, endOffset, "mod-focused selected " + cls);
-                else {
-                    divideAndWrapText(beginIndex, beginOffset, undefined, "mod-focused begin selected " + cls);
-                    for (let i = beginIndex + 1; i < endIndex; i++) {
-                        this.highlightedTexts.push({ page: pageNumber, index: i });
-                        textDivs[i].classList.add("mod-focused", "middle", "selected", cls);
-                        if (colorName) textDivs[i].dataset.highlightColor = colorName.toLowerCase();
-                        onHighlight?.(textDivs[i]);
-                    }
-                    divideAndWrapTextStart(endIndex, endOffset, "mod-focused endselected " + cls);
-                }
-                divideAndWrapText(endIndex, endOffset);
+                this.highlightedTexts.push({ page: pageNumber });
             }
         }
     }
 
-    // This is a modified version of PDFViewerChild.prototype.clearTextHighlight from Obsidian's app.js
-    clearTextHighlight() {
-        for (const { page, index } of this.highlightedTexts) {
-            const pageView = this.viewer.pdfViewer?.getPageView(page - 1);
-            // pageView.textLayer can be null when the page is far away from the current viewport
-            if (!pageView?.textLayer) return;
-            const { textDivs, textContentItems } = pageView.textLayer;
-            const textDiv = textDivs[index];
-            textDiv.textContent = textContentItems[index].str;
-            textDiv.className = textDiv.hasClass("textLayerNode") ? "textLayerNode" : "";
+    computeHighlightRectForItem(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
+        // If the item has the `chars` property filled, use it to get the bounding rectangle of each character in the item.
+        if (item.chars && item.chars.length >= item.str.length) {
+            return this.computeHighlightRectForItemFromChars(item as PropRequired<TextContentItem, 'chars'>, index, beginIndex, beginOffset, endIndex, endOffset);
+        }
+        // Otherwise, use the text layer divs to get the bounding rectangle of the text selection.
+        return this.computeHighlightRectForItemFromTextLayer(textLayerDiv, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
+    }
 
-            this.backlinks[page]?.selection.forEach((backlink) => {
-                backlink.annotationEls = null;
+    computeHighlightRectForItemFromChars(item: PropRequired<TextContentItem, 'chars'>, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
+        // trim `item.chars` so that it will match `item.str`, which is already trimmed
+        const trimmedChars = item.chars.slice(
+            item.chars.findIndex((char) => char.c === item.str.charAt(0)),
+            item.chars.findLastIndex((char) => char.c === item.str.charAt(item.str.length - 1)) + 1
+        );
+
+        const offsetFrom = index === beginIndex ? beginOffset : 0;
+        // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
+        // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
+        // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
+        const offsetTo = (index === endIndex ? endOffset : trimmedChars.length) - 1;
+
+        if (offsetFrom > trimmedChars.length - 1 || offsetTo < 0) return null;
+
+        const charFrom = trimmedChars[offsetFrom];
+        const charTo = trimmedChars[offsetTo];
+        // the minimum rectangle that contains all the chars of this text content item
+        return [
+            Math.min(charFrom.r[0], charTo.r[0]), Math.min(charFrom.r[1], charTo.r[1]),
+            Math.max(charFrom.r[2], charTo.r[2]), Math.max(charFrom.r[3], charTo.r[3]),
+        ];
+    }
+
+    // Inspired by PDFViewerChild.prototype.hightlightText from Obsidian's app.js
+    computeHighlightRectForItemFromTextLayer(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
+        const offsetFrom = index === beginIndex ? beginOffset : 0;
+        // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
+        // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
+        // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
+        const offsetTo = index === endIndex ? endOffset : undefined;
+
+        // the bounding box of the whole text content item
+        const x1 = item.transform[4];
+        const y1 = item.transform[5];
+        const x2 = item.transform[4] + item.width;
+        const y2 = item.transform[5] + item.height;
+
+        const textDivCopied = textDiv.cloneNode() as HTMLElement;
+        textLayerDiv.appendChild(textDivCopied);
+
+        const textBefore = item.str.substring(0, offsetFrom);
+        textDivCopied.appendText(textBefore);
+
+        const text = item.str.substring(offsetFrom, offsetTo);
+        const boundingEl = textDivCopied.createSpan();
+        boundingEl.appendText(text);
+
+        if (offsetTo !== undefined) {
+            const textAfter = item.str.substring(offsetTo);
+            textDivCopied.appendText(textAfter);
+        }
+
+        const rect = boundingEl.getBoundingClientRect();
+        const parentRect = textDiv.getBoundingClientRect();
+
+        textDivCopied.remove();
+
+        return [
+            x1 + (rect.left - parentRect.left) / parentRect.width * item.width,
+            y1 + (rect.bottom - parentRect.bottom) / parentRect.height * item.height,
+            x2 - (parentRect.right - rect.right) / parentRect.width * item.width,
+            y2 - (parentRect.top - rect.top) / parentRect.height * item.height,
+        ];
+    }
+
+    /**
+     * Returns an array of rectangles that cover the background of the text selection speficied by the given parameters.
+     * Each rectangle is obtained by merging the rectangles of the text content items contained in the selection, when possible (typically when the text selection is within a single line).
+     * Each rectangle is associated with an array of indices of the text content items contained in the rectangle.
+     */
+    computeMergedHighlightRects(textLayer: TextLayerBuilder, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): { rect: Rect, indices: number[] }[] {
+        const { textContentItems, textDivs, div } = textLayer;
+
+        const results: { rect: Rect, indices: number[] }[] = [];
+
+        let mergedRect: Rect | null = null;
+        let mergedIndices: number[] = [];
+
+        // If the selection ends at the beginning of a text content item, 
+        // replace the end point with the end of the previous text content item.
+        if (endOffset === 0) {
+            endIndex--;
+            endOffset = textContentItems[endIndex].str.length;
+        }
+
+        for (let index = beginIndex; index <= endIndex; index++) {
+            const item = textContentItems[index];
+            const textDiv = textDivs[index];
+
+            if (!item.str) continue;
+
+            // the minimum rectangle that contains all the chars of this text content item
+            const rect = this.computeHighlightRectForItem(div, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
+            if (!rect) continue;
+
+            if (!mergedRect) {
+                mergedRect = rect;
+                mergedIndices = [index];
+            } else {
+                const mergeable = areRectanglesMergeableHorizontally(mergedRect, rect)
+                    || areRectanglesMergeableVertically(mergedRect, rect);
+                if (mergeable) {
+                    mergedRect = mergeRectangles(mergedRect, rect);
+                    mergedIndices.push(index);
+                } else {
+                    results.push({ rect: mergedRect, indices: mergedIndices });
+
+                    mergedRect = rect;
+                    mergedIndices = [index];
+                }
+            }
+        }
+
+        if (mergedRect) results.push({ rect: mergedRect, indices: mergedIndices });
+
+        return results;
+    }
+
+    clearTextHighlightOnPage(pageNumber: number) {
+        const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
+        if (pageView?.textLayer) {
+            pageView.div.querySelectorAll<HTMLElement>(`.pdf-plus-backlink-highlight-layer`).forEach((el) => {
+                el.remove();
             });
+        }
+        for (const backlink of this.backlinks[pageNumber]?.selection ?? []) {
+            backlink.annotationEls = null;
+        }
+    }
+
+    clearTextHighlight() {
+        for (const { page } of this.highlightedTexts) {
+            this.clearTextHighlightOnPage(page);
         }
         this.highlightedTexts = [];
     }
 
     // This is a modified version of PDFViewerChild.prototype.highlightAnnotation from Obsidian's app.js
     highlightAnnotation(pageNumber: number, id: string): void {
+        if (this.highlightedAnnotations.has(id)) return;
+
         if (!(pageNumber < 1 || pageNumber > this.viewer.pagesCount)) {
             const pageView = this.viewer.pdfViewer?.getPageView(pageNumber - 1);
             if (pageView?.annotationLayer && pageView.div.dataset.loaded) {
@@ -260,10 +372,10 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                         const pageY = dims.pageY;
                         const normalizedRect = window.pdfjsLib.Util.normalizeRect([rect[0], view[3] - rect[1] + view[1], rect[2], view[3] - rect[3] + view[1]]);
                         rectEl.setCssStyles({
-                            left: (100 * (normalizedRect[0] - pageX) / pageWidth) + "%",
-                            top: (100 * (normalizedRect[1] - pageY) / pageHeight) + "%",
-                            width: (100 * (normalizedRect[2] - normalizedRect[0]) / pageWidth) + "%",
-                            height: (100 * (normalizedRect[3] - normalizedRect[1]) / pageHeight) + "%"
+                            left: (100 * (normalizedRect[0] - pageX) / pageWidth) + '%',
+                            top: (100 * (normalizedRect[1] - pageY) / pageHeight) + '%',
+                            width: (100 * (normalizedRect[2] - normalizedRect[0]) / pageWidth) + '%',
+                            height: (100 * (normalizedRect[3] - normalizedRect[1]) / pageHeight) + '%'
                         });
                         this.highlightedAnnotations.set(id, rectEl);
                     })

@@ -17,25 +17,25 @@ settings:
         step: 0.01
         default: 0.2
     -
-        id: pdf-plus-highlight-padding-vertical
+        id: pdf-plus-highlight-padding-vertical-em
         title: Highlight padding (top & bottom)
-        description: Boldness of highlights in pixels
+        description: Boldness of highlights (em)
         type: variable-number-slider
         min: 0
-        max: 20
-        step: 0.1
-        default: 4
-        format: px
+        max: 1
+        step: 0.01
+        default: 0.05
+        format: em
     -
-        id: pdf-plus-highlight-padding-horizontal
+        id: pdf-plus-highlight-padding-horizontal-em
         title: Highlight padding (left & right)
-        description: Boldness of highlights in pixels
+        description: Boldness of highlights (em)
         type: variable-number-slider
         min: 0
-        max: 20
-        step: 0.1
-        default: 4
-        format: px
+        max: 1
+        step: 0.01
+        default: 0.05
+        format: em
     - 
         id: pdf-toolbar
         title: PDF toolbars
@@ -48,14 +48,9 @@ settings:
         default: true
 */
 
-.textLayer .mod-focused.pdf-plus-backlink {
-    padding: var(--pdf-plus-highlight-padding-vertical, var(--size-4-1)) var(--pdf-plus-highlight-padding-horizontal, var(--size-4-1));
+:root {
+    --pdf-plus-highlight-padding-default-em: 0.05em;
 }
-
-.textLayer:not(::selection) {
-    opacity: var(--pdf-plus-highlight-opacity, 0.2);
-}
-
 
 .hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar,
 .hide-pdf-embed-toolbar .popover.hover-popover.hover-editor .pdf-embed[src*="#"] .pdf-toolbar {
@@ -101,10 +96,6 @@ settings:
     }
 }
 
-.pdf-plus-click-embed-to-open-link .pdf-embed .pdf-container {
-    cursor: pointer;
-}
-
 .annotationLayer .popupContent {
     &>p:first-child {
         margin-top: 0;
@@ -113,4 +104,29 @@ settings:
     &>p:last-child {
         margin-bottom: 0;
     }
+}
+
+.pdf-plus-color-palette {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.pdf-plus-backlink-highlight-layer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.pdf-plus-backlink-highlight-layer .pdf-plus-backlink {
+    position: absolute;
+    box-sizing: content-box;
+    opacity: var(--pdf-plus-highlight-opacity, 0.2);
+    padding: var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em));
+    margin: calc(var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) * -1) calc(var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em)) * -1);
+    border-radius: var(--radius-s);
+    pointer-events: auto;
 }

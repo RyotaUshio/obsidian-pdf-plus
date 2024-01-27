@@ -1,9 +1,9 @@
-import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext } from "obsidian";
-import { around } from "monkey-around";
+import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { around } from 'monkey-around';
 
-import PDFPlus from "main";
-import { getExistingPDFLeafOfFile, highlightSubpath } from "utils";
-import { PDFView } from "typings";
+import PDFPlus from 'main';
+import { getExistingPDFLeafOfFile, highlightSubpath } from 'utils';
+import { PDFView } from 'typings';
 
 
 export const patchWorkspace = (plugin: PDFPlus) => {

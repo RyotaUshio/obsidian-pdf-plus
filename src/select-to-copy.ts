@@ -1,5 +1,6 @@
-import PDFPlus from "main";
-import { Component } from "obsidian"
+import { Component } from 'obsidian';
+
+import PDFPlus from 'main';
 
 
 export class SelectToCopyMode extends Component {

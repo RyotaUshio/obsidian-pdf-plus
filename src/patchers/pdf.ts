@@ -1,17 +1,17 @@
-import { Component, Keymap, MarkdownRenderer, Notice, TFile } from "obsidian";
-import { around } from "monkey-around";
+import { Component, Keymap, MarkdownRenderer, Notice, TFile } from 'obsidian';
+import { around } from 'monkey-around';
 
-import PDFPlus from "main";
-import { ColorPalette } from "color-palette";
-import { BacklinkHighlighter } from "highlight";
-import { PDFPlusTemplateProcessor } from "template";
-import { registerPDFEvent } from "utils";
-import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from "typings";
+import PDFPlus from 'main';
+import { ColorPalette } from 'color-palette';
+import { BacklinkHighlighter } from 'highlight';
+import { PDFPlusTemplateProcessor } from 'template';
+import { registerPDFEvent } from 'utils';
+import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
-    const pdfView = app.workspace.getLeavesOfType("pdf")[0]?.view as PDFView | undefined;
+    const pdfView = app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
     if (!pdfView) return false;
     const child = pdfView.viewer.child;
     if (!child) return false;
@@ -77,7 +77,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     const self = this as PDFViewerChild;
                     let alias = '';
                     try {
-                        const selection = window.getSelection()?.toString().replace(/[\r\n]+/g, " ");
+                        const selection = window.getSelection()?.toString().replace(/[\r\n]+/g, ' ');
                         alias = new PDFPlusTemplateProcessor(plugin, {}, this.file, page, self.pdfViewer.pagesCount, selection).evalTemplate(plugin.settings.aliasFormat);
                     } catch (err) {
                         console.error(err);
@@ -264,7 +264,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             return function () {
                 const self = this as PDFToolbar;
                 // without setTimeout, the colorPaletteInEmbedToolbar option doesn't work for newly opened notes with PDF embeds
-                setTimeout(() => new ColorPalette(plugin, self.toolbarLeftEl));
+                setTimeout(() => plugin.domManager.addChild(new ColorPalette(plugin, self.toolbarLeftEl)));
                 old.call(this);
             }
         }

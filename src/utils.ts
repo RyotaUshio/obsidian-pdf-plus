@@ -1,9 +1,11 @@
 import { App, Component, EditableFileView, Modifier, Platform, TFile, WorkspaceLeaf, CachedMetadata, ReferenceCache, parseLinktext, WorkspaceSplit, MarkdownView, WorkspaceTabs, OpenViewState } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView } from 'typings';
+import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView, Rect } from 'typings';
 import { PDFPlusTemplateProcessor } from 'template';
 
+
+export type PropRequired<T, Prop extends keyof T> = T & Pick<Required<T>, Prop>;
 
 /** 
  * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
@@ -30,7 +32,7 @@ export function onTextLayerReady(viewer: ObsidianViewer, component: Component | 
                 cb(pageView, pageIndex + 1); // page number is 1-based
             }
         });
-    registerPDFEvent("textlayerrendered", viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
+    registerPDFEvent('textlayerrendered', viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
         cb(data.source, data.pageNumber);
     });
 }
@@ -47,7 +49,7 @@ export function onAnnotationLayerReady(viewer: ObsidianViewer, component: Compon
                 cb(pageView, pageIndex + 1); // page number is 1-based
             }
         });
-    registerPDFEvent("annotationlayerrendered", viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
+    registerPDFEvent('annotationlayerrendered', viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
         cb(data.source, data.pageNumber);
     });
 }
@@ -75,7 +77,6 @@ export function highlightSubpath(child: PDFViewerChild, subpath: string, duratio
             if (duration > 0) {
                 setTimeout(() => {
                     child.clearTextHighlight();
-                    child.backlinkHighlighter?.highlightBacklinks();
                 }, duration * 1000);
             }
 
@@ -103,19 +104,19 @@ export function isHexString(color: string) {
 }
 
 export function getModifierNameInPlatform(mod: Modifier): string {
-    if (mod === "Mod") {
-        return Platform.isMacOS || Platform.isIosApp ? "Command" : "Ctrl";
+    if (mod === 'Mod') {
+        return Platform.isMacOS || Platform.isIosApp ? 'Command' : 'Ctrl';
     }
-    if (mod === "Shift") {
-        return "Shift";
+    if (mod === 'Shift') {
+        return 'Shift';
     }
-    if (mod === "Alt") {
-        return Platform.isMacOS || Platform.isIosApp ? "Option" : "Alt";
+    if (mod === 'Alt') {
+        return Platform.isMacOS || Platform.isIosApp ? 'Option' : 'Alt';
     }
-    if (mod === "Meta") {
-        return Platform.isMacOS || Platform.isIosApp ? "Command" : Platform.isWin ? "Win" : "Meta";
+    if (mod === 'Meta') {
+        return Platform.isMacOS || Platform.isIosApp ? 'Command' : Platform.isWin ? 'Win' : 'Meta';
     }
-    return "Ctrl";
+    return 'Ctrl';
 }
 
 export function getExistingPDFLeafOfFile(app: App, file: TFile): WorkspaceLeaf | undefined {
@@ -206,7 +207,7 @@ export function getTemplateVariables(plugin: PDFPlus, subpathParams: Record<stri
         subpath,
         page,
         pageCount: child.pdfViewer.pagesCount,
-        selection: selection.toString().replace(/[\r\n]+/g, " ")
+        selection: selection.toString().replace(/[\r\n]+/g, ' ')
     };
 }
 
@@ -217,9 +218,9 @@ export function copyLink(plugin: PDFPlus, template: string, checking: boolean, c
     if (variables) {
         if (!checking) {
             const { child, file, subpath, page, pageCount, selection } = variables;
-            const link = app.fileManager.generateMarkdownLink(file, "").slice(1);
+            const link = app.fileManager.generateMarkdownLink(file, '').slice(1);
             const display = child.getPageLinkAlias(page);
-            const linkWithDisplay = app.fileManager.generateMarkdownLink(file, "", subpath, display).slice(1);
+            const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
 
             const processor = new PDFPlusTemplateProcessor(plugin, { link, display, linkWithDisplay }, file, page, pageCount, selection);
             const evaluated = processor.evalTemplate(template);
@@ -284,4 +285,79 @@ export async function openMarkdownLink(plugin: PDFPlus, linktext: string, source
     app.workspace.revealLeaf(markdownLeaf);
 
     return;
+}
+
+export function getToolbarAssociatedWithSelection() {
+    const selection = window.getSelection();
+
+    if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const containerEl = range.startContainer.parentElement?.closest('.pdf-container');
+        const toolbarEl = containerEl?.previousElementSibling;
+        if (toolbarEl?.hasClass('pdf-toolbar')) {
+            return toolbarEl;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * @param pageDiv div.page
+ */
+export function getPDFPlusBacklinkHighlightLayer(pageDiv: HTMLElement): HTMLElement {
+    return pageDiv.querySelector<HTMLElement>('div.pdf-plus-backlink-highlight-layer')
+    ?? pageDiv.createDiv('pdf-plus-backlink-highlight-layer');    
+}
+
+export function highlightRectInPage(rect: [number, number, number, number], page: PDFPageView) {
+    const viewBox = page.pdfPage.view;
+    const pageX = viewBox[0];
+    const pageY = viewBox[1];
+    const pageWidth = viewBox[2] - viewBox[0];
+    const pageHeight = viewBox[3] - viewBox[1];
+
+    const mirroredRect = window.pdfjsLib.Util.normalizeRect([rect[0], viewBox[3] - rect[1] + viewBox[1], rect[2], viewBox[3] - rect[3] + viewBox[1]]) as [number, number, number, number];
+    const layerEl = getPDFPlusBacklinkHighlightLayer(page.div);
+    const rectEl = layerEl.createDiv('pdf-plus-backlink');
+    rectEl.setCssStyles({
+        left: `${100 * (mirroredRect[0] - pageX) / pageWidth}%`,
+        top: `${100 * (mirroredRect[1] - pageY) / pageHeight}%`,
+        width: `${100 * (mirroredRect[2] - mirroredRect[0]) / pageWidth}%`,
+        height: `${100 * (mirroredRect[3] - mirroredRect[1]) / pageHeight}%`
+    });
+
+    return rectEl;
+}
+
+export function areRectanglesMergeableHorizontally(rect1: Rect, rect2: Rect): boolean {
+    const [left1, bottom1, right1, top1] = rect1;
+    const [left2, bottom2, right2, top2] = rect2;
+    const y1 = (bottom1 + top1) / 2;
+    const y2 = (bottom2 + top2) / 2;
+    const height1 = Math.abs(top1 - bottom1);
+    const height2 = Math.abs(top2 - bottom2);
+    const threshold = Math.max(height1, height2) * 0.5;
+    return Math.abs(y1 - y2) < threshold;
+}
+
+export function areRectanglesMergeableVertically(rect1: Rect, rect2: Rect): boolean {
+    const [left1, bottom1, right1, top1] = rect1;
+    const [left2, bottom2, right2, top2] = rect2;
+    const x1 = (left1 + right1) / 2;
+    const x2 = (left2 + right2) / 2;
+    const width1 = Math.abs(right1 - left1);
+    const width2 = Math.abs(right2 - left2);
+    const threshold = Math.max(width1, width2) * 0.1;
+    return Math.abs(left1 - left2) < threshold && Math.abs(right1 - right2) < threshold;
+}
+
+export function mergeRectangles(rect1: Rect, rect2: Rect): Rect {
+    const [left1, bottom1, right1, top1] = rect1;
+    const [left2, bottom2, right2, top2] = rect2;
+    const left = Math.min(left1, left2);
+    const right = Math.max(right1, right2);
+    const bottom = Math.min(bottom1, bottom2);
+    const top = Math.max(top1, top2);
+    return [left, bottom, right, top];
 }

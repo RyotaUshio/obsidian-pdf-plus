@@ -43,7 +43,7 @@ export class BacklinkPanePDFManager extends Component {
     }
 
     updatePageTracker() {
-        this.navButtonEl!.toggleClass("is-active", this.isTrackingPage);
+        this.navButtonEl!.toggleClass('is-active', this.isTrackingPage);
         this.isTrackingPage ? this.pageTracker.load() : this.pageTracker.unload();
     }
 

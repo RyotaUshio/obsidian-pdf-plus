@@ -1,7 +1,7 @@
-import { FileView, TFile } from "obsidian";
+import { FileView, TFile } from 'obsidian';
 
-import PDFPlus from "main";
-import { getActiveGroupLeaves } from "utils";
+import PDFPlus from 'main';
+import { getActiveGroupLeaves } from 'utils';
 
 
 export class TemplateProcessor {
