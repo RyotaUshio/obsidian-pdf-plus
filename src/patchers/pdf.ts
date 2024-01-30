@@ -1,4 +1,4 @@
-import { Component, Keymap, MarkdownRenderer, Notice, TFile } from 'obsidian';
+import { Component, Keymap, MarkdownRenderer, Notice, TFile, ViewStateResult } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -19,6 +19,33 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
     if (!viewer) return false;
     const toolbar = child.toolbar;
     if (!toolbar) return false;
+
+    plugin.register(around(pdfView.constructor.prototype, {
+        getState(old) {
+            return function () {
+                const ret = old.call(this);
+                const self = this as PDFView;
+                const pdfViewer = self.viewer.child?.pdfViewer.pdfViewer;
+                if (pdfViewer) {
+                    ret.page = pdfViewer.currentPageNumber;
+                }
+                return ret;
+            }
+        },
+        setState(old) {
+            return function (state: any, result: ViewStateResult): Promise<void> {
+                return old.call(this, state, result).then(() => {
+                    if (typeof state.page === 'number') {
+                        const self = this as PDFView;
+                        const pdfViewer = self.viewer.child?.pdfViewer.pdfViewer;
+                        if (pdfViewer) {
+                            pdfViewer.currentPageNumber = state.page;
+                        }
+                    }
+                });
+            }
+        }
+    }));
 
     plugin.register(around(pdfView.viewer.constructor.prototype, {
         onload(old) {
