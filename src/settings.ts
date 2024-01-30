@@ -418,7 +418,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 	}
 
-	addNameValuePairListSetting<Item>(items: Item[], index: number, accesors: {
+	addNameValuePairListSetting<Item>(items: Item[], index: number, defaultIndexKey: KeysOfType<PDFPlusSettings, number>, accesors: {
 		getName: (item: Item) => string,
 		setName: (item: Item, value: string) => void,
 		getValue: (item: Item) => string,
@@ -442,7 +442,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const item = items[index];
 		const name = getName(item);
 		const value = getValue(item);
-
+		
 		return this.addSetting()
 			.addText((text) => {
 				text.setPlaceholder(configs.name.placeholder)
@@ -511,6 +511,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 							return;
 						}
 						items.splice(index, 1);
+						if (this.plugin.settings[defaultIndexKey] >= index) {
+							this.plugin.settings[defaultIndexKey]--;
+						}
 						await this.plugin.saveSettings();
 						this.redisplay();
 					});
@@ -518,10 +521,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setClass('no-border');
 	}
 
-	addNamedTemplatesSetting(items: namedTemplate[], index: number, configs: Parameters<PDFPlusSettingTab['addNameValuePairListSetting']>[3]) {
+	addNamedTemplatesSetting(items: namedTemplate[], index: number, defaultIndexKey: KeysOfType<PDFPlusSettings, number>, configs: Parameters<PDFPlusSettingTab['addNameValuePairListSetting']>[4]) {
 		return this.addNameValuePairListSetting(
 			items,
-			index, {
+			index, 
+			defaultIndexKey, {
 			getName: (item) => item.name,
 			setName: (item, value) => { item.name = value },
 			getValue: (item) => item.template,
@@ -532,7 +536,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addDisplayTextSetting(index: number) {
 		return this.addNamedTemplatesSetting(
 			this.plugin.settings.displayTextFormats,
-			index, {
+			index, 
+			'defaultDisplayTextFormatIndex', {
 			name: {
 				placeholder: 'Format name',
 				formSize: 30,
@@ -551,7 +556,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addCopyCommandSetting(index: number) {
 		return this.addNamedTemplatesSetting(
 			this.plugin.settings.copyCommands,
-			index, {
+			index, 
+			'defaultColorPaletteActionIndex', {
 			name: {
 				placeholder: 'Action name',
 				formSize: 30,
