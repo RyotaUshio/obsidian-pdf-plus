@@ -272,9 +272,13 @@ export function copyLink(plugin: PDFPlus, template: string, checking: boolean, c
             const link = app.fileManager.generateMarkdownLink(file, '').slice(1);
             const linktext = app.metadataCache.fileToLinktext(file, '') + subpath;
             const display = child.getPageLinkAlias(page);
-            const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
+            // https://github.com/obsidianmd/obsidian-api/issues/154
+            // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
+            const linkWithDisplay = generateMarkdownLink(app, file, '', subpath, display).slice(1);
             const linkToPage = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`).slice(1);
-            const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);
+            // https://github.com/obsidianmd/obsidian-api/issues/154
+            // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);
+            const linkToPageWithDisplay = generateMarkdownLink(app, file, '', `#page=${page}`, display).slice(1);
 
             const processor = new PDFPlusTemplateProcessor(plugin, {
                 file,
@@ -487,7 +491,36 @@ export async function destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
         top = dest[2];
     }
 
-    const subpath = `#page=${pageNumber + 1}&offset=${left},${top},${zoom}`;    
+    const subpath = `#page=${pageNumber + 1}&offset=${left},${top},${zoom}`;
 
     return subpath;
+}
+
+// the same as app.fileManager.generateMarkdownLink(), but respects the "alias" parameter for non-markdown files as well
+// See https://github.com/obsidianmd/obsidian-api/issues/154
+export function generateMarkdownLink(app: App, file: TFile, sourcePath: string, subpath?: string, alias?: string) {
+    const useMarkdownLinks = app.vault.getConfig("useMarkdownLinks");
+    const useWikilinks = !useMarkdownLinks;
+    const linkpath = app.metadataCache.fileToLinktext(file, sourcePath, useWikilinks);
+    let linktext = linkpath + (subpath || '');
+    if (file.path === sourcePath && subpath) linktext = subpath;
+    let nonEmbedLink;
+
+    if (useMarkdownLinks) {
+        nonEmbedLink = "[".concat(alias || file.basename, "](").concat(encodeLinktext(linktext), ")");
+    } else {
+        if (alias && alias.toLowerCase() === linktext.toLowerCase()) {
+            linktext = alias;
+            alias = undefined;
+        }
+        nonEmbedLink = alias
+            ? "[[".concat(linktext, "|").concat(alias, "]]")
+            : "[[".concat(linktext, "]]");
+    }
+
+    return "md" !== file.extension ? "!" + nonEmbedLink : nonEmbedLink;
+}
+
+export function encodeLinktext(linktext: string) {
+    return linktext.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (component) => encodeURIComponent(component));
 }

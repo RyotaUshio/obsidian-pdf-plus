@@ -578,4 +578,9 @@ declare module 'obsidian' {
     interface MarkdownView {
         backlinks?: BacklinkRenderer;
     }
+
+    interface Vault {
+        getConfig(name: string): any;
+        getConfig(name: 'useMarkdownLinks'): boolean;
+    }
 }
