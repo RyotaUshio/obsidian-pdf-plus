@@ -1,4 +1,5 @@
 import { App, Component, EditableFileView, Modifier, Platform, TFile, WorkspaceLeaf, CachedMetadata, ReferenceCache, parseLinktext, WorkspaceSplit, MarkdownView, WorkspaceTabs, OpenViewState, PaneType } from 'obsidian';
+import { PDFDocumentProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
 import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView, Rect } from 'typings';
@@ -463,4 +464,30 @@ export function openPDFLinkTextInLeaf(plugin: PDFPlus, leaf: WorkspaceLeaf, link
             highlightSubpath(child, subpath, duration);
         });
     });
+}
+
+export async function destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
+    const dest = await doc.getDestination(destId);
+    if (!dest) return null;
+
+    const pageRef = dest[0];
+    const pageNumber = await doc.getPageIndex(pageRef);
+
+    let top = '';
+    let left = '';
+    let zoom = '';
+
+    if (dest[1].name === 'XYZ') {
+        left = '' + dest[2];
+        top = '' + dest[3];
+        // Obsidian recognizes the `offset` parameter as "FitHB" if the third parameter is omitted.
+        // from the PDF spec: "A zoom value of 0 has the same meaning as a null value."
+        zoom = '' + (dest[4] ?? 0);
+    } else if (dest[1].name === 'FitBH') {
+        top = dest[2];
+    }
+
+    const subpath = `#page=${pageNumber + 1}&offset=${left},${top},${zoom}`;    
+
+    return subpath;
 }

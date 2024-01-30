@@ -5,11 +5,12 @@ import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
 import { SelectToCopyMode } from 'select-to-copy';
+import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLink, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
+import { copyLink, destIdToSubpath, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
-import { ColorPalette } from 'color-palette';
+import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
 
 
 export default class PDFPlus extends Plugin {
@@ -38,7 +39,6 @@ export default class PDFPlus extends Plugin {
 		this.addSettingTab(new PDFPlusSettingTab(this));
 
 		this.domManager = this.addChild(new DomManager(this));
-		// this.app.workspace.onLayoutReady(() => this.loadStyle());
 
 		this.selectToCopyMode = this.addChild(new SelectToCopyMode(this));
 		this.selectToCopyMode.unload(); // disabled by default
@@ -56,47 +56,9 @@ export default class PDFPlus extends Plugin {
 
 		this.registerGlobalVariables();
 
-		// Make PDF embeds with a subpath unscrollable
-		this.registerGlobalDomEvent('wheel', (evt) => {
-			if (this.settings.embedUnscrollable
-				&& evt.target instanceof HTMLElement
-				&& evt.target.closest('.pdf-embed[src*="#"] .pdf-viewer-container')) {
-				evt.preventDefault();
-			}
-		}, { passive: false });
+		this.registerGlobalDomEvents();
 
-		// Double-lick PDF embeds to open links
-		this.registerGlobalDomEvent('dblclick', (evt) => {
-			if (this.settings.dblclickEmbedToOpenLink && evt.target instanceof HTMLElement) {
-				// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
-				const linktext = evt.target.closest('.pdf-embed[src] > .pdf-container')?.parentElement!.getAttribute('src');
-				if (linktext) {
-					const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
-					const sourcePath = viewerEl ? (this.pdfViwerChildren.get(viewerEl)?.file?.path ?? '') : '';
-					this.app.workspace.openLinkText(linktext, sourcePath, Keymap.isModEvent(evt));
-					evt.preventDefault();
-				}
-			}
-		})
-
-		// keep this.pdfViewerChildren up-to-date
-		this.registerEvent(this.app.workspace.on('layout-change', () => {
-			for (const viewerEl of this.pdfViwerChildren.keys()) {
-				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
-			}
-		}));
-
-		if (Platform.isDesktopApp) {
-			this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-				if (this.settings.syncWithDefaultApp && leaf && leaf.view instanceof EditableFileView && leaf.view.file?.extension === 'pdf') {
-					const file = leaf.view.file;
-					this.app.openWithDefaultApp(file.path);
-					if (this.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
-						open('obsidian://'); // move focus back to Obsidian
-					}
-				}
-			}));	
-		}
+		this.registerEvents();
 	}
 
 	checkVersion() {
@@ -260,6 +222,105 @@ export default class PDFPlus extends Plugin {
 		}));
 	}
 
+	registerGlobalDomEvents() {
+		this.enhancePDFInternalLinks();
+
+		// Make PDF embeds with a subpath unscrollable
+		this.registerGlobalDomEvent('wheel', (evt) => {
+			if (this.settings.embedUnscrollable
+				&& evt.target instanceof HTMLElement
+				&& evt.target.closest('.pdf-embed[src*="#"] .pdf-viewer-container')) {
+				evt.preventDefault();
+			}
+		}, { passive: false });
+
+		// Double-lick PDF embeds to open links
+		this.registerGlobalDomEvent('dblclick', (evt) => {
+			if (this.settings.dblclickEmbedToOpenLink && evt.target instanceof HTMLElement) {
+				// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
+				const linktext = evt.target.closest('.pdf-embed[src] > .pdf-container')?.parentElement!.getAttribute('src');
+				if (linktext) {
+					const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
+					const sourcePath = viewerEl ? (this.pdfViwerChildren.get(viewerEl)?.file?.path ?? '') : '';
+					this.app.workspace.openLinkText(linktext, sourcePath, Keymap.isModEvent(evt));
+					evt.preventDefault();
+				}
+			}
+		});
+	}
+
+	enhancePDFInternalLinks() {
+		// record history when clicking an internal link IN a PDF file
+		this.registerGlobalDomEvent('click', (evt) => {
+			if (this.settings.recordPDFInternalLinkHistory
+				&& evt.target instanceof HTMLElement
+				&& evt.target.closest('section.linkAnnotation[data-internal-link]')) {
+				const targetEl = evt.target;
+				this.app.workspace.iterateAllLeaves((leaf) => {
+					if (leaf.view.getViewType() === 'pdf' && leaf.containerEl.contains(targetEl)) {
+						leaf.recordHistory(leaf.getHistoryState());
+					}
+				});
+			}
+		});
+
+		// Hover+Mod to show popover preview of PDF internal links
+		this.registerGlobalDomEvent('mouseover', (event) => {
+			if (this.settings.enableHoverPDFInternalLink
+				&& event.target instanceof HTMLElement
+				&& event.target.matches('section.linkAnnotation[data-internal-link] > a[href^="#"]')) {
+				const targetEl = event.target as HTMLAnchorElement;
+				const destId = targetEl.getAttribute('href')!.slice(1);
+
+				this.app.workspace.iterateAllLeaves((leaf) => {
+					if (leaf.view.getViewType() === 'pdf' && leaf.containerEl.contains(targetEl)) {
+						const view = leaf.view as PDFView;
+						if (!view.file) return;
+
+						view.viewer.then(async (child) => {
+							const doc = child.pdfViewer.pdfViewer?.pdfDocument;
+							if (!doc) return;
+
+							const subpath = await destIdToSubpath(destId, doc);
+							if (subpath === null) return;
+							const linktext = view.file!.path + subpath;
+
+							this.app.workspace.trigger('hover-link', {
+								event,
+								source: 'pdf-plus',
+								hoverParent: new PDFInternalLinkHoverParent(this, destId),
+								targetEl,
+								linktext
+							});
+						});
+					}
+				});
+			}
+		});
+	}
+
+	registerEvents() {
+		// keep this.pdfViewerChildren up-to-date
+		this.registerEvent(this.app.workspace.on('layout-change', () => {
+			for (const viewerEl of this.pdfViwerChildren.keys()) {
+				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
+			}
+		}));
+
+		// Sync the external app with Obsidian
+		if (Platform.isDesktopApp) {
+			this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
+				if (this.settings.syncWithDefaultApp && leaf && leaf.view instanceof EditableFileView && leaf.view.file?.extension === 'pdf') {
+					const file = leaf.view.file;
+					this.app.openWithDefaultApp(file.path);
+					if (this.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
+						open('obsidian://'); // move focus back to Obsidian
+					}
+				}
+			}));
+		}
+	}
+
 	copyLinkToSelection(checking: boolean) {
 		// get the toolbar in the PDF viewer (a PDF view or a PDF embed) containing the selected text
 		const toolbarEl = getToolbarAssociatedWithSelection();
@@ -335,5 +396,9 @@ export default class PDFPlus extends Plugin {
 			return viewer.getPageView(viewer.currentPageNumber - 1);
 		}
 		return null;
+	}
+
+	getPDFDocument(activeOnly: boolean = false) {
+		return this.getRawPDFViewer(activeOnly)?.pdfDocument;
 	}
 }
