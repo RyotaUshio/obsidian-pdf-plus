@@ -136,12 +136,14 @@ interface PDFToolbar {
 interface RawPDFViewer {
     pdfDocument: PDFDocumentProxy;
     pagesPromise: Promise<any> | null;
+    pagesCount: number;
     /** 1-based page number. This is an accessor property; the setter can be used to scroll to a page and dispatches 'pagechanging' event */
     currentPageNumber: number;
     _pages: PDFPageView[];
     /** Accessor property. 0 for "single page", 1 for "two page (odd)", 2 for "two page (even)" */
     spreadMode: number;
     viewer: HTMLElement; // div.pdf-viewer
+    eventBus: EventBus;
     getPageView(page: number): PDFPageView;
 }
 
@@ -487,6 +489,13 @@ interface EmbedRegistry {
     getEmbedCreator(file: TFile): EmbedCreator | null;
 }
 
+interface HistoryState {
+    title: string;
+    icon: string;
+    state: any;
+    eState: any;
+}
+
 declare module 'obsidian' {
     interface App {
         setting: AppSetting;
@@ -523,6 +532,16 @@ declare module 'obsidian' {
 
     interface Workspace {
         getActiveFileView(): FileView | null;
+        trigger(name: string, ...data: any[]): void;
+        trigger(name: 'hover-link', ctx: {
+            event: MouseEvent;
+            source: string;
+            hoverParent: HoverParent;
+            targetEl?: HTMLElement;
+            linktext: string;
+            sourcePath?: string;
+            state?: any;
+        }): void;
     }
 
     interface WorkspaceLeaf {
@@ -533,6 +552,8 @@ declare module 'obsidian' {
         highlight(): void;
         unhighlight(): void;
         isVisible(): boolean;
+        getHistoryState(): HistoryState,
+        recordHistory(historyState: HistoryState): void;
     }
 
     interface WorkspaceTabs {

@@ -166,6 +166,7 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 
 ### Misc
 
+- **Enable history navigation for PDF internal links**: When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.
 - **Render markdown in sticky notes**
 
 ## CSS customization

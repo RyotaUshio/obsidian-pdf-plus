@@ -82,6 +82,8 @@ export interface PDFPlusSettings {
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
 	filterBacklinksByPageDefault: boolean;
+	enableHoverPDFInternalLink: boolean;
+	recordPDFInternalLinkHistory: boolean;
 	renderMarkdownInStickyNote: boolean;
 }
 
@@ -169,6 +171,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
 	filterBacklinksByPageDefault: true,
+	enableHoverPDFInternalLink: true,
+	recordPDFInternalLinkHistory: true,
 	renderMarkdownInStickyNote: true,
 };
 
@@ -662,6 +666,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Highlight color for hover sync (Backlinks pane → PDF viewer)')
 				.setDesc('To add a new color, click the "+" button in the "highlight colors" setting above.');
 		}
+
+
+		this.addHeading('PDF internal links enhancement')
+			.setDesc('Make it easier to work with internal links embedded in PDF files.');
+		this.addToggleSetting('enableHoverPDFInternalLink')
+			.setName(`Hover+${getModifierNameInPlatform('Mod').toLowerCase()} to show popover preview of PDF internal links`)
+		this.addToggleSetting('recordPDFInternalLinkHistory')
+			.setName('Enable history navigation for PDF internal links')
+			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.')
 
 
 		this.addHeading('Opening links to PDF files');

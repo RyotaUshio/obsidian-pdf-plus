@@ -20,6 +20,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
     const toolbar = child.toolbar;
     if (!toolbar) return false;
 
+    // TODO: Add color palette state handling to getState/setState
     plugin.register(around(pdfView.constructor.prototype, {
         getState(old) {
             return function () {
@@ -39,7 +40,13 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         const self = this as PDFView;
                         const pdfViewer = self.viewer.child?.pdfViewer.pdfViewer;
                         if (pdfViewer) {
-                            pdfViewer.currentPageNumber = state.page;
+                            if (pdfViewer.pagesCount) { // pages are already loaded
+                                pdfViewer.currentPageNumber = state.page;
+                            } else { // pages are not loaded yet (this is the case typically when opening a different file)
+                                registerPDFEvent('pagesloaded', pdfViewer.eventBus, null, () => {
+                                    pdfViewer.currentPageNumber = state.page;
+                                });
+                            }
                         }
                     }
                 });
