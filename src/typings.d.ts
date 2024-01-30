@@ -142,7 +142,14 @@ interface RawPDFViewer {
     _pages: PDFPageView[];
     /** Accessor property. 0 for "single page", 1 for "two page (odd)", 2 for "two page (even)" */
     spreadMode: number;
+    scroll: {
+        right: boolean;
+        down: boolean;
+        lastX: number;
+        lastY: number;
+    };
     viewer: HTMLElement; // div.pdf-viewer
+    container: HTMLElement; // div.pdf-viewer-container
     eventBus: EventBus;
     getPageView(page: number): PDFPageView;
 }
