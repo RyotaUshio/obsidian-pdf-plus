@@ -10,6 +10,7 @@ import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLink, destIdToSubpath, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
+import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
 
 
 export default class PDFPlus extends Plugin {
@@ -287,8 +288,7 @@ export default class PDFPlus extends Plugin {
 							this.app.workspace.trigger('hover-link', {
 								event,
 								source: 'pdf-plus',
-								// @ts-ignore
-								hoverParent: view,
+								hoverParent: new PDFInternalLinkHoverParent(this, destId),
 								targetEl,
 								linktext
 							});
@@ -396,5 +396,9 @@ export default class PDFPlus extends Plugin {
 			return viewer.getPageView(viewer.currentPageNumber - 1);
 		}
 		return null;
+	}
+
+	getPDFDocument(activeOnly: boolean = false) {
+		return this.getRawPDFViewer(activeOnly)?.pdfDocument;
 	}
 }

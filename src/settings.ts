@@ -218,6 +218,20 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 	}
 
+	addTextAreaSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlur?: () => any) {
+		return this.addSetting(settingName)
+			.addTextArea((text) => {
+				text.setValue(this.plugin.settings[settingName])
+					.setPlaceholder(placeholder ?? '')
+					.onChange(async (value) => {
+						// @ts-ignore
+						this.plugin.settings[settingName] = value;
+						await this.plugin.saveSettings();
+					});
+				if (onBlur) this.component.registerDomEvent(text.inputEl, 'blur', onBlur);
+			});
+	}
+
 	addNumberSetting(settingName: KeysOfType<PDFPlusSettings, number>) {
 		return this.addSetting(settingName)
 			.addText((text) => {
@@ -670,11 +684,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.addHeading('PDF internal links enhancement')
 			.setDesc('Make it easier to work with internal links embedded in PDF files.');
-		this.addToggleSetting('enableHoverPDFInternalLink')
-			.setName(`Hover+${getModifierNameInPlatform('Mod').toLowerCase()} to show popover preview of PDF internal links`)
 		this.addToggleSetting('recordPDFInternalLinkHistory')
 			.setName('Enable history navigation for PDF internal links')
-			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.')
+			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.');
+		this.addToggleSetting('enableHoverPDFInternalLink', () => this.redisplay())
+			.setName(`Hover+${getModifierNameInPlatform('Mod').toLowerCase()} to show a popover preview of PDF internal links`);
 
 
 		this.addHeading('Opening links to PDF files');

@@ -105,6 +105,13 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 - **Hover sync (PDF viewer → Backlinks pane)**: Hovering over highlighted text or annotation will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks).
 - **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.
 
+### PDF internal links enhancement
+
+Make it easier to work with internal links embedded in PDF files.
+
+- **Hover+command/ctrl to show a popover preview of PDF internal links**: See [below](#css-customization) for advanced CSS customization.
+- **Enable history navigation for PDF internal links**: When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.
+
 ### Opening links to PDF files
 
 #### Open PDF links cleverly
@@ -166,12 +173,13 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 
 ### Misc
 
-- **Enable history navigation for PDF internal links**: When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.
 - **Render markdown in sticky notes**
 
 ## CSS customization
 
-You can customize the styling of highlighted text using [CSS snippets](https://help.obsidian.md/Extending+Obsidian/CSS+snippets).
+You can customize the styling of various components of PDF++ using [CSS snippets](https://help.obsidian.md/Extending+Obsidian/CSS+snippets).
+
+### Text highlights
 
 Here is a list of CSS selectors to target:
 
@@ -180,6 +188,31 @@ Here is a list of CSS selectors to target:
 - `.pdf-plus-backlink-highlight-layer .pdf-plus-backlink`: PDF text highlights that PDF++ generates from backlinks
   - Use `.pdf-plus-backlink-highlight-layer .pdf-plus-backlink[data-highlight-color="<COLOR NAME>"]` to target a specific color
 - `.pdf-plus-backlink-highlight-layer .pdf-plus-backlink.hovered-highlight`: PDF text highlights that PDF++ generates when you hover over an item in the backlinks pane
+
+### Popover preview of PDF internal links
+
+Sometimes, You may find preview popovers too tall.
+
+For example, suppose you're reading a LaTeX-generated paper.
+You can hover over an inline citation (e.g. "Author et al., 2024") to show a popover preview of the corresponding entry in the bibliography section.
+Since a bib entry is not that tall, the popover often has too much vertical space.
+
+Now, use the following CSS snippet to remove the extra space:
+
+```css
+.pdf-plus-pdf-internal-link-popover[data-dest^="cite."] {
+    height: 200px !important;
+}
+```
+
+The `data-dest` attribute is the ID of the named destination (i.e. link target) that the internal link points to, which starts with `cite.` for bibliographic items.
+In general, you can get the ID by the following steps:
+- Press `command`+`option`+`I` (macOS) / `Ctrl`+`Shift`+`I` (windows) to open the developer tool.
+- Click the arrow icon at the top-left corner of the dev tool to enter the inspection mode.
+- Click the PDF internal link that you want to inspect. Then, an `<a>` element will be highlighted in the "Elements" tab of the dev tool.
+- The `href` attribute of the `<a>` element is the destination ID with a hash sign (`#`) prepended.
+
+You can also find a [great tutorial](https://forum.obsidian.md/t/getting-comfortable-with-obsidian-css/133) on the forum.
 
 ## Installation
 
