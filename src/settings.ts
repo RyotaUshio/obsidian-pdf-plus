@@ -687,8 +687,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('recordPDFInternalLinkHistory')
 			.setName('Enable history navigation for PDF internal links')
 			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.');
+		// @ts-ignore
+		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
 		this.addToggleSetting('enableHoverPDFInternalLink', () => this.redisplay())
-			.setName(`Hover+${getModifierNameInPlatform('Mod').toLowerCase()} to show a popover preview of PDF internal links`);
+			.setName(`Show a popover preview of PDF internal links by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`);
 
 
 		this.addHeading('Opening links to PDF files');

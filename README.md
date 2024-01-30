@@ -109,7 +109,7 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 
 Make it easier to work with internal links embedded in PDF files.
 
-- **Hover+command/ctrl to show a popover preview of PDF internal links**: See [below](#css-customization) for advanced CSS customization.
+- **Show a popover preview of PDF internal links by hover+command/ctrl**: See [below](#css-customization) for advanced CSS customization.
 - **Enable history navigation for PDF internal links**: When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.
 
 ### Opening links to PDF files
