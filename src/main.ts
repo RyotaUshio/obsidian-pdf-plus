@@ -1,4 +1,4 @@
-import { EventRef, Events, Keymap, Notice, PaneType, Plugin, loadPdfJs } from 'obsidian';
+import { EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, loadPdfJs, requireApiVersion } from 'obsidian';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
@@ -9,6 +9,7 @@ import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { copyLink, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
+import { ColorPalette } from 'color-palette';
 
 
 export default class PDFPlus extends Plugin {
@@ -28,6 +29,8 @@ export default class PDFPlus extends Plugin {
 	};
 
 	async onload() {
+		this.checkVersion();
+
 		await loadPdfJs();
 
 		await this.loadSettings();
@@ -82,13 +85,55 @@ export default class PDFPlus extends Plugin {
 				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
 			}
 		}));
+
+		if (Platform.isDesktopApp) {
+			this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
+				if (this.settings.syncWithDefaultApp && leaf && leaf.view instanceof EditableFileView && leaf.view.file?.extension === 'pdf') {
+					const file = leaf.view.file;
+					this.app.openWithDefaultApp(file.path);
+					if (this.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
+						open('obsidian://'); // move focus back to Obsidian
+					}
+				}
+			}));	
+		}
+	}
+
+	checkVersion() {
+		if (requireApiVersion('1.5.4')) {
+			const notice = new Notice(`${this.manifest.name}: This plugin has not been tested on Obsidian v1.5.4 or above. Please report any issue you encounter on `, 0);
+			notice.noticeEl.append(createEl('a', { href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new', text: 'GitHub' }));
+			notice.noticeEl.appendText('.');
+		}
 	}
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		// migration from legacy settings
+
+		/** migration from legacy settings */
+
 		if (this.settings.paneTypeForFirstMDLeaf as PaneType | '' === 'split') {
 			this.settings.paneTypeForFirstMDLeaf = 'right';
+		}
+
+		for (const cmd of this.settings.copyCommands) {
+			// @ts-ignore
+			if (cmd.hasOwnProperty('format')) {
+				// @ts-ignore
+				cmd.template = cmd.format;
+				// @ts-ignore
+				delete cmd.format;
+			}
+		}
+
+		if (this.settings.hasOwnProperty('aliasFormat')) {
+			this.settings.displayTextFormats.push({
+				name: 'Custom',
+				// @ts-ignore
+				template: this.settings.aliasFormat
+			});
+			// @ts-ignore
+			delete this.settings.aliasFormat;
 		}
 	}
 
@@ -98,7 +143,7 @@ export default class PDFPlus extends Plugin {
 
 	patchObsidian() {
 		this.app.workspace.onLayoutReady(() => patchWorkspace(this));
-		this.tryPatchPeriodcallyUntilSuccess(patchPagePreview, 300);
+		this.tryPatchPeriodicallyUntilSuccess(patchPagePreview, 300);
 		this.tryPatchUntilSuccess(patchPDF, () => {
 			iteratePDFViews(this.app, async (view) => {
 				// reflect the patch to existing PDF views
@@ -139,7 +184,7 @@ export default class PDFPlus extends Plugin {
 		});
 	}
 
-	tryPatchPeriodcallyUntilSuccess(patcher: (plugin: PDFPlus) => boolean, periodMs?: number) {
+	tryPatchPeriodicallyUntilSuccess(patcher: (plugin: PDFPlus) => boolean, periodMs?: number) {
 		this.app.workspace.onLayoutReady(() => {
 			const success = patcher(this);
 			if (!success) {
@@ -231,10 +276,11 @@ export default class PDFPlus extends Plugin {
 		const selectedItemEl = toolbarEl.querySelector<HTMLElement>('.pdf-plus-color-palette-item.is-active[data-highlight-color]');
 		const colorName = selectedItemEl?.dataset.highlightColor;
 
-		copyLink(this, this.settings.copyCommands[index].format, checking, colorName);
+		copyLink(this, this.settings.copyCommands[index].template, checking, colorName);
 	}
 
-	on(evt: 'highlighted', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
+	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
+	on(evt: 'color-palette-state-change', callback: (data: { source: ColorPalette }) => any, context?: any): EventRef;
 
 	on(evt: string, callback: (...data: any) => any, context?: any): EventRef {
 		return this.events.on(evt, callback, context);
@@ -248,7 +294,8 @@ export default class PDFPlus extends Plugin {
 		this.events.offref(ref);
 	}
 
-	trigger(evt: 'highlighted', data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }): void;
+	trigger(evt: 'highlight', data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }): void;
+	trigger(evt: 'color-palette-state-change', data: { source: ColorPalette }): void;
 
 	trigger(evt: string, ...args: any[]): void {
 		this.events.trigger(evt, ...args);

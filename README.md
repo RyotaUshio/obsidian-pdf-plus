@@ -113,7 +113,7 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
   - You can optionally highlight the existing tab to enhance visual feedback.
 - **Open PDF links next to the existing PDF tab**: If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side.
 - **Don't move focus to PDF viewer after opening a PDF link**
-- **Open PDF links with an external app**: Open PDF links with the OS-defined default application for PDF files. You can choose whether the same PDF file should be opened in Obsidian as well.
+- **Open PDF links with an external app**: See [below](#integration-with-external-apps-desktop-only) for the details.
 
 #### Other options
 
@@ -137,6 +137,7 @@ You can customize the template format that will used when copying a link to a se
 
 - **Custom display text format**
 - **Custom color palette actions**: Customize the commands that you can trigger by clicking a color palette item while selecting a range of text in PDF viewer.
+- **Use another template when no text is selected**: For example, you can use this to copy a link to the page when there is no selection.
 
 #### Right-click menu options
 
@@ -158,7 +159,12 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 - **Make PDF embeds unscrollable**
 - **Zoom in PDF embeds (experimental)**
 
-### Others
+### Integration with external apps (desktop-only)
+
+- **Open PDF links with an external app**: Open PDF links with the OS-defined default application for PDF files. You can choose whether the same PDF file should be opened in Obsidian as well.
+- **Sync the external app with Obsidian**: When you focus on a PDF file in Obsidian, the external app will also focus on the same file.
+
+### Misc
 
 - **Render markdown in sticky notes**
 

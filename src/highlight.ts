@@ -1,7 +1,7 @@
 import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PropRequired, areRectanglesMergeableHorizontally, areRectanglesMergeableVertically, getPDFPlusBacklinkHighlightLayer, getSubpathWithoutHash, highlightRectInPage, isMouseEventExternal, mergeRectangles, onAnnotationLayerReady, onTextLayerReady, openMarkdownLink } from 'utils';
+import { PropRequired, areRectanglesMergeableHorizontally, areRectanglesMergeableVertically, getSubpathWithoutHash, highlightRectInPage, isMouseEventExternal, mergeRectangles, onAnnotationLayerReady, onTextLayerReady, openMarkdownLink } from 'utils';
 import { BacklinkView, ObsidianViewer, Rect, TextContentItem, TextLayerBuilder } from 'typings';
 
 
@@ -142,7 +142,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         // register a callback that highlights backlinks when the text layer for the page is ready
         onTextLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
             this.clearTextHighlightOnPage(pageNumber);
-            
+
             for (const backlink of this.backlinks[pageNumber]?.selection ?? []) {
                 const { beginIndex, beginOffset, endIndex, endOffset, colorName } = backlink;
 

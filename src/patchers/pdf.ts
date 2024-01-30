@@ -73,18 +73,35 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         },
         getPageLinkAlias(old) {
             return function (page: number): string {
-                if (plugin.settings.aliasFormat) {
-                    const self = this as PDFViewerChild;
+                const self = this as PDFViewerChild;
+
+                let format = plugin.settings.displayTextFormats[plugin.settings.defaultDisplayTextFormatIndex];
+
+                // read display text format from color palette
+                const paletteEl = self.toolbar?.toolbarLeftEl.querySelector<HTMLElement>('.pdf-plus-color-palette');
+                if (paletteEl) {
+                    const palette = ColorPalette.elInstanceMap.get(paletteEl);
+                    if (palette) {
+                        format = plugin.settings.displayTextFormats[palette.displayTextFormatIndex];
+                    }
+                }
+
+                if (format) {
                     let alias = '';
                     try {
-                        const selection = window.getSelection();
-                        const selectionText = selection ? toSingleLine(selection.toString()) : undefined;
-                        alias = new PDFPlusTemplateProcessor(plugin, {}, this.file, page, self.pdfViewer.pagesCount, selectionText).evalTemplate(plugin.settings.aliasFormat);
+                        const selection = toSingleLine(window.getSelection()?.toString() ?? '');
+                        alias = new PDFPlusTemplateProcessor(plugin, {
+                            file: this.file,
+                            page,
+                            pageCount: self.pdfViewer.pagesCount,
+                            pageLabel: self.getPage(page).pageLabel ?? ('' + page),
+                            selection
+                        }).evalTemplate(format.template);
+                        return alias.trim();
                     } catch (err) {
                         console.error(err);
                         new Notice(`${plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);
                     }
-                    return alias.trim();
                 }
                 return old.call(this, page);
             }
@@ -125,7 +142,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     top: - plugin.settings.embedMargin
                 }, true);
 
-                plugin.trigger('highlighted', { type: 'selection', source: 'obsidian', pageNumber: page, child: self });
+                plugin.trigger('highlight', { type: 'selection', source: 'obsidian', pageNumber: page, child: self });
             }
         },
         highlightAnnotation(old) {
@@ -169,7 +186,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     });
                 }
 
-                plugin.trigger('highlighted', { type: 'annotation', source: 'obsidian', pageNumber: page, child: self });
+                plugin.trigger('highlight', { type: 'annotation', source: 'obsidian', pageNumber: page, child: self });
             }
         },
         clearTextHighlight(old) {

@@ -238,7 +238,11 @@ export function getTemplateVariables(plugin: PDFPlus, subpathParams: Record<stri
     const file = child?.file;
     if (!file) return null;
 
-    const page = +pageEl.dataset.pageNumber;
+    let page = +pageEl.dataset.pageNumber;
+    // if there is no selected text, read the current page number from the viewer, not from the selection
+    if (!selection.toString()) {
+        page = child.pdfViewer.pdfViewer?.currentPageNumber ?? page;
+    }
 
     const subpath = paramsToSubpath({
         page,
@@ -252,6 +256,7 @@ export function getTemplateVariables(plugin: PDFPlus, subpathParams: Record<stri
         subpath,
         page,
         pageCount: child.pdfViewer.pagesCount,
+        pageLabel: child.getPage(page).pageLabel ?? ('' + page),
         selection: toSingleLine(selection.toString()),
     };
 }
@@ -262,12 +267,30 @@ export function copyLink(plugin: PDFPlus, template: string, checking: boolean, c
 
     if (variables) {
         if (!checking) {
-            const { child, file, subpath, page, pageCount, selection } = variables;
+            const { child, file, subpath, page, pageCount, pageLabel, selection } = variables;
             const link = app.fileManager.generateMarkdownLink(file, '').slice(1);
+            const linktext = app.metadataCache.fileToLinktext(file, '') + subpath;
             const display = child.getPageLinkAlias(page);
             const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
+            const linkToPage = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`).slice(1);
+            const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);
 
-            const processor = new PDFPlusTemplateProcessor(plugin, { link, display, linkWithDisplay }, file, page, pageCount, selection);
+            const processor = new PDFPlusTemplateProcessor(plugin, {
+                file,
+                page,
+                pageCount,
+                pageLabel,
+                selection,
+                link,
+                linktext,
+                display,
+                linkWithDisplay,
+                linkToPage,
+                linkToPageWithDisplay,
+            });
+            if (plugin.settings.useAnotherCopyTemplateWhenNoSelection && !selection) {
+                template = plugin.settings.copyTemplateWhenNoSelection;
+            }
             const evaluated = processor.evalTemplate(template);
             navigator.clipboard.writeText(evaluated);
         }
@@ -376,7 +399,9 @@ export function highlightRectInPage(rect: [number, number, number, number], page
 }
 
 export function areRectanglesMergeableHorizontally(rect1: Rect, rect2: Rect): boolean {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [left1, bottom1, right1, top1] = rect1;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [left2, bottom2, right2, top2] = rect2;
     const y1 = (bottom1 + top1) / 2;
     const y2 = (bottom2 + top2) / 2;
@@ -387,10 +412,10 @@ export function areRectanglesMergeableHorizontally(rect1: Rect, rect2: Rect): bo
 }
 
 export function areRectanglesMergeableVertically(rect1: Rect, rect2: Rect): boolean {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [left1, bottom1, right1, top1] = rect1;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [left2, bottom2, right2, top2] = rect2;
-    const x1 = (left1 + right1) / 2;
-    const x2 = (left2 + right2) / 2;
     const width1 = Math.abs(right1 - left1);
     const width2 = Math.abs(right2 - left2);
     const threshold = Math.max(width1, width2) * 0.1;
@@ -436,6 +461,6 @@ export function openPDFLinkTextInLeaf(plugin: PDFPlus, leaf: WorkspaceLeaf, link
             const duration = plugin.settings.highlightDuration;
             const { subpath } = parseLinktext(linktext);
             highlightSubpath(child, subpath, duration);
-        });                                    
+        });
     });
 }

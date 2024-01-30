@@ -1,9 +1,8 @@
-import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platform } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
-import { getExistingPDFLeafOfFile, getLeaf, highlightSubpath, openPDFLinkTextInLeaf } from 'utils';
-import { PDFView } from 'typings';
+import { getExistingPDFLeafOfFile, getLeaf, openPDFLinkTextInLeaf } from 'utils';
 
 
 export const patchWorkspace = (plugin: PDFPlus) => {
@@ -13,13 +12,19 @@ export const patchWorkspace = (plugin: PDFPlus) => {
         openLinkText(old) {
             return function (linktext: string, sourcePath: string, newLeaf?: PaneType | boolean, openViewState?: OpenViewState) {
                 if ((plugin.settings.openPDFWithDefaultApp || plugin.settings.singleTabForSinglePDF || plugin.settings.openLinkNextToExistingPDFTab || plugin.settings.paneTypeForFirstPDFLeaf) && !newLeaf) { // respect `newLeaf` when it's not `false`
-                    const { path, subpath } = parseLinktext(linktext);
+                    const { path } = parseLinktext(linktext);
                     const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath);
 
                     if (file && file.extension === 'pdf') {
 
-                        if (plugin.settings.openPDFWithDefaultApp) {                        
-                            const promise = app.openWithDefaultApp(file.path)
+                        if (Platform.isDesktopApp && plugin.settings.openPDFWithDefaultApp) {
+                            if (plugin.settings.openPDFWithDefaultAppAndObsidian && plugin.settings.syncWithDefaultApp) {
+                                return; // will be handled by the 'active-leaf-change' event handler
+                            }
+                            const promise = app.openWithDefaultApp(file.path);
+                            if (plugin.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
+                                open('obsidian://'); // move focus back to Obsidian
+                            }
                             if (!plugin.settings.openPDFWithDefaultAppAndObsidian) {
                                 return promise;
                             }

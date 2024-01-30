@@ -2,27 +2,39 @@ import { App, Component, Menu, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { copyLink, isHexString } from 'utils';
+import { KeysOfType } from 'settings';
 
 
 export class ColorPalette extends Component {
     static readonly CLS = 'pdf-plus-color-palette';
+    /** Maps a paletteEl to the corresponding ColorPalette instance */
     static elInstanceMap = new Map<HTMLElement, ColorPalette>();
 
     app: App;
     spacerEl: HTMLElement | null;
     paletteEl: HTMLElement | null;
     itemEls: HTMLElement[];
-    actionIndex: number;
+    actionMenuEl: HTMLElement | null;
+    displayTextFormatMenuEl: HTMLElement | null;
+
+    /** The state of a color palette is specified by a 3-tuple consisting of the following. */
     selectedColorName: string | null;
+    actionIndex: number;
+    displayTextFormatIndex: number;
 
     constructor(public plugin: PDFPlus, public toolbarLeftEl: HTMLElement) {
         super();
         this.app = plugin.app;
+
         this.spacerEl = null;
         this.paletteEl = null;
         this.itemEls = [];
-        this.actionIndex = plugin.settings.defaultColorPaletteActionIndex;
+        this.actionMenuEl = null;
+        this.displayTextFormatMenuEl = null;
+
         this.selectedColorName = null;
+        this.actionIndex = plugin.settings.defaultColorPaletteActionIndex;
+        this.displayTextFormatIndex = plugin.settings.defaultDisplayTextFormatIndex;
     }
 
     onload() {
@@ -33,7 +45,7 @@ export class ColorPalette extends Component {
         if (!this.plugin.settings.colorPaletteInEmbedToolbar && this.toolbarLeftEl.closest('.pdf-embed')) return;
 
         this.spacerEl = this.toolbarLeftEl.createDiv('pdf-toolbar-spacer');
-        this.paletteEl = this.toolbarLeftEl.createEl('div', { cls: ColorPalette.CLS });
+        this.paletteEl = this.toolbarLeftEl.createDiv(ColorPalette.CLS);
         ColorPalette.elInstanceMap.set(this.paletteEl, this);
 
         if (this.plugin.settings.colorPaletteInToolbar) {
@@ -41,10 +53,15 @@ export class ColorPalette extends Component {
             for (const [name, color] of Object.entries(this.plugin.settings.colors)) {
                 this.addItem(this.paletteEl, name, color);
             }
-            this.setActiveItem(null);
+            this.setActiveItem([null, ...Object.keys(this.plugin.settings.colors)][this.plugin.settings.defaultColorPaletteItemIndex]);
         }
 
-        this.addCopyActionDropdown(this.paletteEl);
+        this.actionMenuEl = this.addCopyActionDropdown(this.paletteEl);
+        this.displayTextFormatMenuEl = this.addDisplayTextFormatDropdown(this.paletteEl);
+
+        this.registerEvent(this.plugin.on('color-palette-state-change', ({ source }) => {
+            if (source !== this) this.syncTo(source);
+        }));
     }
 
     onunload() {
@@ -67,11 +84,20 @@ export class ColorPalette extends Component {
         this.itemEls.push(itemEl);
 
         itemEl.createDiv(ColorPalette.CLS + '-item-inner');
-        this.setTooltipToItem(itemEl, name);
+        this.setTooltipToActionItem(itemEl, name);
 
         itemEl.addEventListener('click', (evt) => {
+            const colorChanged = !itemEl.hasClass('is-active');
             this.setActiveItem(name);
-            copyLink(this.plugin, this.plugin.settings.copyCommands[this.actionIndex].format, false, name ?? undefined);
+            if (this.plugin.settings.syncColorPaletteItem) {
+                this.plugin.settings.defaultColorPaletteItemIndex = name ? (Object.keys(this.plugin.settings.colors).indexOf(name) + 1) : 0;
+            }
+
+            if (colorChanged) {
+                this.plugin.trigger('color-palette-state-change', { source: this });
+            }
+
+            copyLink(this.plugin, this.plugin.settings.copyCommands[this.actionIndex].template, false, name ?? undefined);
             evt.preventDefault();
         });
     }
@@ -83,34 +109,30 @@ export class ColorPalette extends Component {
         });
     }
 
-    addCopyActionDropdown(paletteEl: HTMLElement) {
-        paletteEl.createDiv('clickable-icon pdf-plus-action-menu', (buttonEl) => {
+    addDropdown(paletteEl: HTMLElement, itemNames: string[], checkedIndexKey: KeysOfType<ColorPalette, number>, tooltip: string, onItemClick?: () => void) {
+        return paletteEl.createDiv('clickable-icon', (buttonEl) => {
             setIcon(buttonEl, 'lucide-chevron-down');
-            let tooltip = 'Color palette action options';
-            if (!this.plugin.settings.colorPaletteInToolbar) {
-                tooltip = `${this.plugin.manifest.name}: link copy options (trigger via hotkeys)`
-            }
             setTooltip(buttonEl, tooltip);
-            buttonEl.dataset.checkedIndex = '' + this.actionIndex;
+            buttonEl.dataset.checkedIndex = '' + this[checkedIndexKey];
 
             buttonEl.addEventListener('click', () => {
                 const menu = new Menu();
-                const commands = this.plugin.settings.copyCommands;
 
-                for (let i = 0; i < commands.length; i++) {
-                    const command = commands[i];
-                    const { name } = command;
+                for (let i = 0; i < itemNames.length; i++) {
+                    const name = itemNames[i];
 
                     menu.addItem((item) => {
                         item.setTitle(name)
-                            .setChecked(this.actionIndex === i)
+                            .setChecked(this[checkedIndexKey] === i)
                             .onClick(() => {
-                                this.actionIndex = i;
-                                buttonEl.dataset.checkedIndex = '' + i;
-                                menu.items.forEach((item) => item.setChecked(this.actionIndex === i));
-                                this.itemEls.forEach((itemEl) => {
-                                    this.setTooltipToItem(itemEl, itemEl.dataset.highlightColor ?? null);
-                                });
+                                const checkedIndexChanged = this[checkedIndexKey] !== i;
+
+                                this.setCheckedIndex(checkedIndexKey, i, buttonEl);
+                                onItemClick?.();
+
+                                if (checkedIndexChanged) {
+                                    this.plugin.trigger('color-palette-state-change', { source: this });
+                                }
                             });
                     });
                 }
@@ -127,11 +149,84 @@ export class ColorPalette extends Component {
         });
     }
 
-    setTooltipToItem(itemEl: HTMLElement, name: string | null) {
+    setCheckedIndex(checkedIndexKey: KeysOfType<ColorPalette, number>, newIndex: number, buttonEl: HTMLElement) {
+        this[checkedIndexKey] = newIndex;
+        buttonEl.dataset.checkedIndex = '' + newIndex;
+    }
+
+    setActionIndex(newIndex: number) {
+        if (this.actionMenuEl) {
+            this.setCheckedIndex('actionIndex', newIndex, this.actionMenuEl);
+        }
+        this.updateTooltips();
+    }
+
+    setDisplayTextFormatIndex(newIndex: number) {
+        if (this.displayTextFormatMenuEl) {
+            this.setCheckedIndex('displayTextFormatIndex', newIndex, this.displayTextFormatMenuEl);
+        }
+    }
+
+    addCopyActionDropdown(paletteEl: HTMLElement) {
+        let tooltip = 'Color palette action options';
+        if (!this.plugin.settings.colorPaletteInToolbar) {
+            tooltip = `${this.plugin.manifest.name}: link copy options (trigger via hotkeys)`
+        }
+
+        const buttonEl = this.addDropdown(
+            paletteEl,
+            this.plugin.settings.copyCommands.map((cmd) => cmd.name),
+            'actionIndex',
+            tooltip,
+            () => {
+                this.updateTooltips();
+                if (this.plugin.settings.syncColorPaletteAction) {
+                    this.plugin.settings.defaultColorPaletteActionIndex = this.actionIndex;
+                }
+            }
+        );
+        buttonEl.addClass('pdf-plus-action-menu');
+        return buttonEl;
+    }
+
+    addDisplayTextFormatDropdown(paletteEl: HTMLElement) {
+        const buttonEl = this.addDropdown(
+            paletteEl,
+            this.plugin.settings.displayTextFormats.map((format) => format.name),
+            'displayTextFormatIndex',
+            'Link display text format',
+            () => {
+                if (this.plugin.settings.syncDisplayTextFormat) {
+                    this.plugin.settings.defaultDisplayTextFormatIndex = this.displayTextFormatIndex;
+                }
+            }
+        );
+        buttonEl.addClass('pdf-plus-display-text-format-menu');
+        return buttonEl;
+    }
+
+    setTooltipToActionItem(itemEl: HTMLElement, name: string | null) {
         const pickerEl = itemEl.querySelector<HTMLInputElement>(':scope > .' + ColorPalette.CLS + '-item-inner')!;
         const commandName = this.plugin.settings.copyCommands[this.actionIndex].name;
         const tooltip = name !== null ? `${commandName} and add ${name.toLowerCase()} highlight` : `${commandName} without specifying color`;
         setTooltip(pickerEl, tooltip);
     }
-}
 
+    updateTooltips() {
+        this.itemEls.forEach((itemEl) => {
+            this.setTooltipToActionItem(itemEl, itemEl.dataset.highlightColor ?? null);
+        });
+    }
+
+    syncTo(palette: ColorPalette) {
+        if (this.plugin.settings.syncColorPaletteItem) {
+            this.setActiveItem(palette.selectedColorName);
+        }
+        if (this.plugin.settings.syncColorPaletteAction) {
+            this.setActionIndex(palette.actionIndex);
+        }
+        if (this.plugin.settings.syncDisplayTextFormat) {
+            this.setDisplayTextFormatIndex(palette.displayTextFormatIndex);
+        }
+    }
+}

@@ -22,17 +22,22 @@ const PANE_TYPE: Record<ExtendedPaneType, string> = {
 	'window': 'New window',
 };
 
-export interface CopyCommand {
+export interface namedTemplate {
 	name: string;
-	format: string;
+	template: string;
 }
 
 export const DEFAULT_BACKLINK_HOVER_COLOR = 'green';
 
 export interface PDFPlusSettings {
 	alias: boolean; // the term "alias" is probably incorrect here. It should be "display text" instead.
-	aliasFormat: string;
-	copyCommands: CopyCommand[];
+	// aliasFormat: string;
+	displayTextFormats: namedTemplate[];
+	defaultDisplayTextFormatIndex: number,
+	syncDisplayTextFormat: boolean;
+	copyCommands: namedTemplate[];
+	useAnotherCopyTemplateWhenNoSelection: boolean;
+	copyTemplateWhenNoSelection: string;
 	trimSelectionEmbed: boolean;
 	embedMargin: number;
 	noSidebarInEmbed: boolean;
@@ -46,6 +51,8 @@ export interface PDFPlusSettings {
 	openLinkNextToExistingPDFTab: boolean;
 	openPDFWithDefaultApp: boolean;
 	openPDFWithDefaultAppAndObsidian: boolean;
+	focusObsidianAfterOpenPDFWithDefaultApp: boolean;
+	syncWithDefaultApp: boolean;
 	dontActivateAfterOpenPDF: boolean;
 	dontActivateAfterOpenMD: boolean;
 	highlightDuration: number;
@@ -60,6 +67,8 @@ export interface PDFPlusSettings {
 	backlinkHoverColor: HexString;
 	colors: Record<string, HexString>;
 	defaultColor: string;
+	defaultColorPaletteItemIndex: number;
+	syncColorPaletteItem: boolean;
 	colorPaletteInToolbar: boolean;
 	noColorButtonInColorPalette: boolean;
 	colorPaletteInEmbedToolbar: boolean;
@@ -68,6 +77,8 @@ export interface PDFPlusSettings {
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
 	paneTypeForFirstMDLeaf: ExtendedPaneType;
 	defaultColorPaletteActionIndex: number,
+	syncColorPaletteAction: boolean;
+	proxyMDProperty: string;
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
 	filterBacklinksByPageDefault: boolean;
@@ -76,21 +87,39 @@ export interface PDFPlusSettings {
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	alias: true,
-	aliasFormat: '',
+	// aliasFormat: '',
+	displayTextFormats: [
+		{
+			name: 'Obsidian default',
+			template: '{{file.basename}}, page {{page}}',
+		},
+		{
+			name: 'Title & page',
+			template: '{{file.basename}}, p.{{pageLabel}}',
+		},
+		{
+			name: 'Page only',
+			template: 'p.{{pageLabel}}',
+		}
+	],
+	defaultDisplayTextFormatIndex: 0,
+	syncDisplayTextFormat: true,
 	copyCommands: [
 		{
 			name: 'Copy as quote',
-			format: '> {{selection}}\n\n{{linkWithDisplay}}',
+			template: '> {{selection}}\n\n{{linkWithDisplay}}',
 		},
 		{
 			name: 'Copy link to selection',
-			format: '{{linkWithDisplay}}'
+			template: '{{linkWithDisplay}}'
 		},
 		{
 			name: 'Copy embed of selection',
-			format: '!{{link}}',
+			template: '!{{link}}',
 		}
 	],
+	useAnotherCopyTemplateWhenNoSelection: false,
+	copyTemplateWhenNoSelection: '{{linkToPageWithDisplay}}',
 	trimSelectionEmbed: true,
 	embedMargin: 50,
 	noSidebarInEmbed: true,
@@ -104,6 +133,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	openLinkNextToExistingPDFTab: true,
 	openPDFWithDefaultApp: false,
 	openPDFWithDefaultAppAndObsidian: true,
+	focusObsidianAfterOpenPDFWithDefaultApp: true,
+	syncWithDefaultApp: false,
 	dontActivateAfterOpenPDF: true,
 	dontActivateAfterOpenMD: true,
 	highlightDuration: 0,
@@ -119,10 +150,12 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	colors: {
 		'Yellow': '#ffd000',
 		'Red': '#EA5252',
-		'Blue': '#7b89f4',
+		'Note': '#086ddd',
 		'Important': '#bb61e5',
 	},
 	defaultColor: '',
+	defaultColorPaletteItemIndex: 0,
+	syncColorPaletteItem: true,
 	colorPaletteInToolbar: true,
 	noColorButtonInColorPalette: true,
 	colorPaletteInEmbedToolbar: false,
@@ -131,6 +164,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	hoverHighlightAction: 'preview',
 	paneTypeForFirstMDLeaf: 'right',
 	defaultColorPaletteActionIndex: 0,
+	syncColorPaletteAction: true,
+	proxyMDProperty: 'PDF',
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
 	filterBacklinksByPageDefault: true,
@@ -162,17 +197,20 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		return this.addSetting().setName(heading).setHeading();
 	}
 
-	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string) {
+	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlur?: () => any) {
 		return this.addSetting(settingName)
 			.addText((text) => {
 				text.setValue(this.plugin.settings[settingName])
-					.setPlaceholder(placeholder ?? DEFAULT_SETTINGS[settingName])
-					.then((text) => text.inputEl.size = text.inputEl.placeholder.length)
+					.setPlaceholder(placeholder ?? '')
+					.then((text) => {
+						if (placeholder) text.inputEl.size = text.inputEl.placeholder.length
+					})
 					.onChange(async (value) => {
 						// @ts-ignore
 						this.plugin.settings[settingName] = value;
 						await this.plugin.saveSettings();
 					});
+				if (onBlur) this.component.registerDomEvent(text.inputEl, 'blur', onBlur);
 			});
 	}
 
@@ -276,6 +314,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	async renderMarkdown(lines: string[] | string, el: HTMLElement) {
 		this.promises.push(this._renderMarkdown(lines, el));
+		el.addClass('markdown-rendered');
 	}
 
 	async _renderMarkdown(lines: string[] | string, el: HTMLElement) {
@@ -361,25 +400,47 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 	}
 
-	addCopyCommandSetting(index: number) {
-		const copyCommands = this.plugin.settings.copyCommands;
-		const { name, format } = copyCommands[index];
+	addNameValuePairListSetting<Item>(items: Item[], index: number, accesors: {
+		getName: (item: Item) => string,
+		setName: (item: Item, value: string) => void,
+		getValue: (item: Item) => string,
+		setValue: (item: Item, value: string) => void,
+	}, configs: {
+		name: {
+			placeholder: string,
+			formSize: number,
+			duplicateMessage: string,
+		},
+		value: {
+			placeholder: string,
+			formSize: number,
+			formRows?: number, // for multi-line value
+		},
+		delete: {
+			deleteLastMessage: string,
+		}
+	}) {
+		const { getName, setName, getValue, setValue } = accesors;
+		const item = items[index];
+		const name = getName(item);
+		const value = getValue(item);
+
 		return this.addSetting()
 			.addText((text) => {
-				text.setPlaceholder('Action name')
+				text.setPlaceholder(configs.name.placeholder)
 					.then((text) => {
-						text.inputEl.size = 30;
-						setTooltip(text.inputEl, 'Action name');
+						text.inputEl.size = configs.name.formSize;
+						setTooltip(text.inputEl, configs.name.placeholder);
 					})
 					.setValue(name)
 					.onChange(async (newName) => {
-						if (newName in copyCommands) {
-							new Notice('This action name is already used.');
+						if (items.some((item) => getName(item) === newName)) {
+							new Notice(configs.name.duplicateMessage);
 							text.inputEl.addClass('error');
 							return;
 						}
 						text.inputEl.removeClass('error');
-						copyCommands[index].name = newName;
+						setName(item, newName);
 
 						const setting = this.items.defaultColorPaletteActionIndex;
 						if (setting) {
@@ -393,32 +454,100 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			})
-			.addTextArea((textarea) => {
-				textarea.setPlaceholder('Copied text format')
-					.then((textarea) => {
-						textarea.inputEl.rows = 3;
-						textarea.inputEl.cols = 50;
-						setTooltip(textarea.inputEl, 'Copied text format');
-					})
-					.setValue(format)
-					.onChange(async (newFormat) => {
-						copyCommands[index].format = newFormat;
-						await this.plugin.saveSettings();
+			.then((setting) => {
+				if (configs.value.hasOwnProperty('formRows')) {
+					setting.addTextArea((textarea) => {
+						textarea.setPlaceholder(configs.value.placeholder)
+							.then((textarea) => {
+								textarea.inputEl.rows = configs.value.formRows!;
+								textarea.inputEl.cols = configs.value.formSize;
+								setTooltip(textarea.inputEl, configs.value.placeholder);
+							})
+							.setValue(value)
+							.onChange(async (newValue) => {
+								setValue(item, newValue);
+								await this.plugin.saveSettings();
+							});
 					});
+				} else {
+					setting.addText((textarea) => {
+						textarea.setPlaceholder(configs.value.placeholder)
+							.then((text) => {
+								text.inputEl.size = configs.value.formSize;
+								setTooltip(text.inputEl, configs.value.placeholder);
+							})
+							.setValue(value)
+							.onChange(async (newValue) => {
+								setValue(item, newValue);
+								await this.plugin.saveSettings();
+							});
+					})
+				}
 			})
 			.addExtraButton((button) => {
 				button.setIcon('trash')
 					.setTooltip('Delete')
 					.onClick(async () => {
-						if (copyCommands.length === 1) {
-							new Notice('You cannot delete the last copy command.');
+						if (items.length === 1) {
+							new Notice(configs.delete.deleteLastMessage);
 							return;
 						}
-						copyCommands.splice(index, 1);
+						items.splice(index, 1);
 						await this.plugin.saveSettings();
 						this.redisplay();
 					});
-			});
+			})
+			.setClass('no-border');
+	}
+
+	addNamedTemplatesSetting(items: namedTemplate[], index: number, configs: Parameters<PDFPlusSettingTab['addNameValuePairListSetting']>[3]) {
+		return this.addNameValuePairListSetting(
+			items,
+			index, {
+			getName: (item) => item.name,
+			setName: (item, value) => { item.name = value },
+			getValue: (item) => item.template,
+			setValue: (item, value) => { item.template = value },
+		}, configs);
+	}
+
+	addDisplayTextSetting(index: number) {
+		return this.addNamedTemplatesSetting(
+			this.plugin.settings.displayTextFormats,
+			index, {
+			name: {
+				placeholder: 'Format name',
+				formSize: 30,
+				duplicateMessage: 'This format name is already used.',
+			},
+			value: {
+				placeholder: 'Display text format',
+				formSize: 50,
+			},
+			delete: {
+				deleteLastMessage: 'You cannot delete the last format.',
+			}
+		});
+	}
+
+	addCopyCommandSetting(index: number) {
+		return this.addNamedTemplatesSetting(
+			this.plugin.settings.copyCommands,
+			index, {
+			name: {
+				placeholder: 'Action name',
+				formSize: 30,
+				duplicateMessage: 'This action name is already used.',
+			},
+			value: {
+				placeholder: 'Copied text format',
+				formSize: 50,
+				formRows: 3,
+			},
+			delete: {
+				deleteLastMessage: 'You cannot delete the last copy command.',
+			}
+		});
 	}
 
 	/** Refresh the setting tab and then scroll back to the original position. */
@@ -435,7 +564,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.component.load();
 
 
-		this.addDesc('Note: some of the settings below requires reopening tabs to take effect.')
+		this.addDesc('Note: some of the settings below require reopening tabs to take effect.')
 
 
 		this.addHeading('Annotating PDF files')
@@ -452,13 +581,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'**Note**: When Hover Editor is enabled, "Open backlink" might not work as expected. Reload the app to fix it.'
 				], setting.descEl);
 			});
-		if (this.plugin.settings.hoverHighlightAction === 'open') {
-			this.addDropdownSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
-				.setName(`How to open markdown file with ${getModifierNameInPlatform('Mod').toLowerCase()}+hover when there is no open markdown file`);
-			this.addToggleSetting('dontActivateAfterOpenMD')
-				.setName('Don\'t move focus to markdown view after opening a backlink')
-				.setDesc('This option will be ignored when you open a link in a tab in the same split as the current tab.')
-		}
 		this.addSetting()
 			.setName(`Require ${getModifierNameInPlatform('Mod').toLowerCase()} key for the above action`)
 			.setDesc('You can toggle this on and off in the core Page Preview plugin settings > PDF++ hover action.')
@@ -470,6 +592,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
 			.setName('Double click highlighted text to open the corresponding backlink');
+		this.addDropdownSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
+			.setName(`How to open a markdown file by ${getModifierNameInPlatform('Mod').toLowerCase()}+hovering over or doulbe-clicking highlighted text when there is no open markdown file`);
+		this.addToggleSetting('dontActivateAfterOpenMD')
+			.setName('Don\'t move focus to markdown view after opening a backlink')
+			.setDesc('This option will be ignored when you open a link in a tab in the same split as the current tab.')
 
 		this.addSetting('colors')
 			.setName('Highlight colors')
@@ -571,17 +698,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
 				setting.descEl
 			));
-		this.addToggleSetting('openPDFWithDefaultApp', () => this.redisplay())
-			.setName('Open PDF links with an external app')
-			.setDesc('Open PDF links with the OS-defined default application for PDF files.')
-		if (this.plugin.settings.openPDFWithDefaultApp) {
-			this.addToggleSetting('openPDFWithDefaultAppAndObsidian')
-				.setName('Open PDF links in Obsidian as well')
-				.setDesc('Open the same PDF file both in the default app and Obsidian at the same time.')
-		}
 		this.addToggleSetting('hoverPDFLinkToOpen')
 			.setName('Open PDF link instead of showing popover preview when target PDF is already opened')
 			.setDesc(`Press ${getModifierNameInPlatform('Mod').toLowerCase()} while hovering a PDF link to actually open it if the target PDF is already opened in another tab.`)
+		this.addSetting()
+			.setName('Open PDF links with an external app')
+			.setDesc('See the "Integration with external apps" section for the details.');
+
 
 		this.addSetting()
 			.setName('Clear highlights after a certain amount of time')
@@ -660,7 +783,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Show "without specifying color" button in the color palette');
 			this.addToggleSetting('colorPaletteInEmbedToolbar', () => this.plugin.loadStyle())
 				.setName('Show color palette in PDF embeds as well');
+			this.addIndexDropdowenSetting('defaultColorPaletteItemIndex', ['', ...Object.keys(this.plugin.settings.colors)], (option) => option || 'Don\'t specify')
+				.setName('Default color selected in color palette')
+			this.addToggleSetting('syncColorPaletteItem')
+				.setName('Share a single color among all color palettes')
+				.setDesc('If disabled, you can specify a different color for each color palette.');
 		}
+
 
 		this.addHeading('Copying links via hotkeys');
 		this.addSetting()
@@ -688,25 +817,72 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'Available variables are:',
 				'',
 				'- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.',
-				'- `page`: The page number (`Number`).',
+				'- `page`: The page number (`Number`). The first page is always page 1.',
+				'- `pageLabel`: The page number displayed in the counter in the toolbar (`String`). This can be different from `page`.',
 				'- `pageCount`: The total number of pages (`Number`).',
 				'- `selection`: The selected text (`String`).',
 				'- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.',
+				'- `obsidian`: The Obsidian API. See the [official developer documentation](https://docs.obsidian.md/Home) and the type definition file [`obsidian.d.ts`](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts) for the details.',
+				'- `dv`: Available if the [Dataview](obsidian://show-plugin?id=dataview) plugin is enabled. See Dataview\'s [official documentation](https://blacksmithgu.github.io/obsidian-dataview/api/code-reference/) for the details. You can use it almost the same as the `dv` variable available in `dataviewjs` code blocks, but there are some differences. For example, `dv.current()` is not available.',
+				// '- `tp`: Available if the [Templater](obsidian://show-plugin?id=templater-obsidian) plugin is enabled. See Templater\'s [official documentation](https://silentvoid13.github.io/Templater/internal-functions/overview.html) for the details.',
+				'- `quickAddApi`: Available if the [QuickAdd](obsidian://show-plugin?id=quickadd) plugin is enabled. See QuickAdd\'s [official documentation](https://quickadd.obsidian.guide/docs/QuickAddAPI) for the details.',
 				'- `app`: The global Obsidian app object ([`App`](https://docs.obsidian.md/Reference/TypeScript+API/App)).',
 				'- and other global variables such as:',
 				'  - [`moment`](https://momentjs.com/docs/#/displaying/): For exampe, use `moment().format("YYYY-MM-DD")` to get the current date in the "YYYY-MM-DD" format.',
-				'  - `DataviewAPI`: Available if the [Dataview](https://blacksmithgu.github.io/obsidian-dataview/) plugin is enabled.',
 				'',
-				'Additionally, the following variables are available when the PDF tab is linked to another tab:',
+				`Additionally, you have access to the following variables when the PDF file has a corresponding markdown file specified via the "${this.plugin.settings.proxyMDProperty}" property (see the "Property to associate a markdown file to a PDF file" setting below):`,
 				'',
-				'- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)).',
-				'- `properties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If `linkedFile` has no properties, this is an empty object `{}`.'
+				'- `md`: The markdown file associated with the PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). If there is no such file, this is `null`.',
+				'- `properties`: The properties of `md` as an `Object` mapping each property name to the corresponding value. If `md` is `null` or the `md` has no properties, this is an empty object `{}`.',
+				'',
+				'Furthermore, the following variables are available when the PDF tab is linked to another tab:',
+				'',
+				'- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). If there is no such file, this is `null`.',
+				'- `linkedFileProperties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If there is no `linkedFile` or the `linkedFile` has no properties, this is an empty object `{}`.'
 			], setting.descEl));
-		this.addTextSetting('aliasFormat', 'Leave blank to use default')
+		this.addTextSetting('proxyMDProperty', undefined, () => this.redisplay())
+			.setName('Property to associate a markdown file to a PDF file')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Create a markdown file with this property to associate it with a PDF file. The PDF file is specified by a link, e.g. `[[file.pdf]]`.',
+					'It can be used to store properties/metadata that can be used when copying links.',
+					'',
+					'If you have the [Dataview](obsidian://show-plugin?id=dataview) plugin installed, you can use Dataview\'s inline field syntax such as `' + this.plugin.settings.proxyMDProperty + ':: [[file.pdf]]`.',
+					'',
+					'Remarks:',
+					'- Make sure the associated markdown file can be uniquely identified. For example, if you have two markdown files `file1.md` and `file2.md` and both of their `' + this.plugin.settings.proxyMDProperty + '` properties point to the same PDF file, PDF++ cannot determine which markdown file is associated with `file.pdf`.',
+					'- If you are in Source Mode and using front matter instead of Dataview inline fields, be sure to enclose the link in double quotes.',
+				], setting.descEl);
+			});
+		this.addSetting('displayTextFormats')
 			.setName('Display text format')
-			.then((setting) => this.renderMarkdown(
-				'For example, the default format is `{{file.basename}}, page {{page}}`. This format will be also used when copying a link to a selection or an annotation from the right-click context menu.', setting.descEl)
-			);
+			.then((setting) => this.renderMarkdown([
+				// 'For example, the default format is `{{file.basename}}, page {{page}}`. Another example of a useful format is `{{file.basename}}, p.{{pageLabel}}`. ',
+				'This format will be also used when copying a link to a selection or an annotation from the right-click context menu.'
+			], setting.descEl))
+			.addButton((button) => {
+				button
+					.setIcon('plus')
+					.setTooltip('Add a new display text format')
+					.onClick(() => {
+						this.plugin.settings.displayTextFormats.push({
+							name: '',
+							template: '',
+						});
+						this.redisplay();
+					});
+			});
+		for (let i = 0; i < this.plugin.settings.displayTextFormats.length; i++) {
+			this.addDisplayTextSetting(i);
+		}
+		this.addIndexDropdowenSetting('defaultDisplayTextFormatIndex', this.plugin.settings.displayTextFormats.map((format) => format.name), undefined, () => {
+			this.plugin.loadStyle();
+		})
+			.setName('Default display text format')
+		this.addToggleSetting('syncDisplayTextFormat')
+			.setName('Share a single display text format among all PDF viewers')
+			.setDesc('If disabled, you can specify a different display text format for each PDF viewer from the dropdown menu in the PDF toolbar.');
+
 		this.addSetting('copyCommands')
 			.setName('Custom color palette actions')
 			.then((setting) => this.renderMarkdown([
@@ -715,8 +891,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'In addition to the variables listed above, here you can use',
 				'',
 				'- `link`: The link without display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red]]`,',
-				'- `display`: The display text formatted according to the above setting, e.g. `file, page 1`, and',
-				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red|file, page 1]]`.',
+				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red|file, page 1]]`,',
+				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page=1&selection=0,1,2,3&color=red`, and',
+				'- `display`: The display text formatted according to the above setting, e.g. `file, page 1`.',
+				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page=1]]`.',
+				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page=1|file, page 1]]`.',
 			], setting.descEl))
 			.addButton((button) => {
 				button
@@ -725,22 +904,48 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.onClick(() => {
 						this.plugin.settings.copyCommands.push({
 							name: '',
-							format: '',
+							template: '',
 						});
 						this.redisplay();
 					});
 			});
 		for (let i = 0; i < this.plugin.settings.copyCommands.length; i++) {
-			this.addCopyCommandSetting(i)
-				.setClass('no-border');
+			this.addCopyCommandSetting(i);
 		}
 		this.addIndexDropdowenSetting('defaultColorPaletteActionIndex', this.plugin.settings.copyCommands.map((command) => command.name), undefined, () => {
 			this.plugin.loadStyle();
 		})
-			.setName('Default action when clicking on a color palette item')
-			.setDesc('You can change it for each viewer with the dropdown menu in the color palette.')
+			.setName('Default action when clicking on color palette')
+		this.addToggleSetting('syncColorPaletteAction')
+			.setName('Share a single action among all PDF viewers')
+			.setDesc('If disabled, you can specify a different action for each PDF viewer from the dropdown menu in the PDF toolbar.');
+		this.addToggleSetting('useAnotherCopyTemplateWhenNoSelection', () => this.redisplay())
+			.setName('Use another template when no text is selected')
+			.setDesc('For example, you can use this to copy a link to the page when there is no selection.');
+		if (this.plugin.settings.useAnotherCopyTemplateWhenNoSelection) {
+			this.addTextSetting('copyTemplateWhenNoSelection')
+				.setName('Link copy template used when no text is selected');
+		}
 
-		this.addHeading('Others');
+
+		this.addHeading('Integration with external apps (desktop-only)');
+		this.addToggleSetting('openPDFWithDefaultApp', () => this.redisplay())
+			.setName('Open PDF links with an external app')
+			.setDesc('Open PDF links with the OS-defined default application for PDF files.')
+		if (this.plugin.settings.openPDFWithDefaultApp) {
+			this.addToggleSetting('openPDFWithDefaultAppAndObsidian')
+				.setName('Open PDF links in Obsidian as well')
+				.setDesc('Open the same PDF file both in the default app and Obsidian at the same time.')
+		}
+		this.addToggleSetting('syncWithDefaultApp')
+			.setName('Sync the external app with Obsidian')
+			.setDesc('When you focus on a PDF file in Obsidian, the external app will also focus on the same file.')
+		this.addToggleSetting('focusObsidianAfterOpenPDFWithDefaultApp')
+			.setName('Focus Obsidian after opening a PDF file with an external app')
+			.setDesc('Otherwise, the focus will be moved to the external app.');
+
+
+		this.addHeading('Misc');
 		this.addToggleSetting('renderMarkdownInStickyNote')
 			.setName('Render markdown in sticky notes');
 
@@ -773,7 +978,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.plugin.settings.backlinkHoverColor = '';
 		}
 
-		this.plugin.settings.copyCommands = this.plugin.settings.copyCommands.filter((command) => command.name && command.format);
+		this.plugin.settings.copyCommands = this.plugin.settings.copyCommands.filter((command) => command.name && command.template);
+		this.plugin.settings.displayTextFormats = this.plugin.settings.displayTextFormats.filter((format) => format.name && format.template);
 
 		await this.plugin.saveSettings();
 		this.plugin.loadStyle();

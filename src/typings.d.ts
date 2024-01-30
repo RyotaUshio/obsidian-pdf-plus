@@ -13,6 +13,7 @@ declare global {
         pdfPlus?: PDFPlus;
         pdfjsLib: typeof import('pdfjs-dist');
         pdfjsViewer: any;
+        DataviewAPI?: any;
     }
 }
 
@@ -145,6 +146,8 @@ interface RawPDFViewer {
 }
 
 interface PDFPageView {
+    id: number;
+    pageLabel: string | null;
     pdfPage: PDFPageProxy;
     viewport: PageViewport;
     div: HTMLDivElement; // div.page[data-page-number][data-loaded]
@@ -537,7 +540,6 @@ declare module 'obsidian' {
     }
 
     interface Menu {
-        items: MenuItem[];
         setParentElement(el: HTMLElement): Menu;
     }
 
