@@ -1,6 +1,7 @@
 import { Component } from 'obsidian';
 
 import PDFPlus from 'main';
+import { registerGlobalDomEvent } from 'utils';
 
 
 export class SelectToCopyMode extends Component {
@@ -20,9 +21,14 @@ export class SelectToCopyMode extends Component {
     }
 
     onload() {
-        this.registerDomEvent(document, 'pointerup', (evt) => {
-            if (window.getSelection()?.toString()) this.plugin.copyLinkToSelection(false);
+        const app = this.plugin.app;
+        
+        registerGlobalDomEvent(app, this, 'pointerup', () => {
+            if (activeWindow.getSelection()?.toString()) {
+                this.plugin.copyLinkToSelection(false);
+            }
         });
+
         this.iconEl.addClass('is-active');
     }
 

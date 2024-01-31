@@ -32,7 +32,7 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
         page: number,
         pageLabel: string,
         pageCount: number,
-        selection: string,
+        text: string,
         [key: string]: any,
     }) {
         const { app } = plugin;
@@ -43,6 +43,7 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
             obsidian,
             pdf: variables.file,
             folder: variables.file.parent,
+            selection: variables.text,
         });
 
         const md = this.findMarkdownFileAssociatedToPDF(variables.file);
@@ -56,7 +57,7 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
         this.setVariable('linkedFileProperties', linkedFileProperties);
 
         // @ts-ignore
-        const dv = app.plugins.plugins.dataview.api;
+        const dv = app.plugins.plugins.dataview?.api;
         // @ts-ignore
         // const tp = app.plugins.plugins['templater-obsidian']?.templater.current_functions_object;
         // @ts-ignore

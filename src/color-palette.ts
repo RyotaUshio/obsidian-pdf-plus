@@ -1,7 +1,7 @@
 import { App, Component, Menu, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { copyLink, isHexString } from 'utils';
+import { copyLinkToSelection, getToolbarAssociatedWithNode, isHexString } from 'utils';
 import { KeysOfType } from 'settings';
 
 
@@ -97,7 +97,7 @@ export class ColorPalette extends Component {
                 this.plugin.trigger('color-palette-state-change', { source: this });
             }
 
-            copyLink(this.plugin, this.plugin.settings.copyCommands[this.actionIndex].template, false, name ?? undefined);
+            copyLinkToSelection(this.plugin, false, this.plugin.settings.copyCommands[this.actionIndex].template, name ?? undefined);
             evt.preventDefault();
         });
     }
@@ -228,5 +228,33 @@ export class ColorPalette extends Component {
         if (this.plugin.settings.syncDisplayTextFormat) {
             this.setDisplayTextFormatIndex(palette.displayTextFormatIndex);
         }
+    }
+
+    getState() {
+        return {
+            selectedColorName: this.selectedColorName,
+            actionIndex: this.actionIndex,
+            displayTextFormatIndex: this.displayTextFormatIndex
+        };
+    }
+
+    static getColorPaletteAssociatedWithNode(node: Node) {
+        const toolbarEl = getToolbarAssociatedWithNode(node);
+        if (!toolbarEl) return null;
+        const paletteEl = toolbarEl.querySelector<HTMLElement>('.' + ColorPalette.CLS)
+        if (!paletteEl) return null;
+
+        return ColorPalette.elInstanceMap.get(paletteEl) ?? null;
+    }
+
+    static getColorPaletteAssociatedWithSelection() {
+        const selection = activeWindow.getSelection();
+
+    if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        return ColorPalette.getColorPaletteAssociatedWithNode(range.startContainer);
+    }
+
+    return null;
     }
 }

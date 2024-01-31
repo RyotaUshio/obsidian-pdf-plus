@@ -14,6 +14,7 @@ declare global {
         pdfjsLib: typeof import('pdfjs-dist');
         pdfjsViewer: any;
         DataviewAPI?: any;
+        OBSIDIAN_DEFAULT_I18N: Record<'setting' | 'editor' | 'interface' | 'commands' | 'dialogue' | 'menuItems' | 'plugins' | 'pdf' | 'properties' | 'table' | 'callout' | 'nouns', Record<string, any>>;
     }
 }
 
@@ -66,7 +67,7 @@ interface PDFViewerChild {
     clearAnnotationHighlight(): void;
     renderAnnotationPopup(annotationElement: AnnotationElement): void;
     destroyAnnotationPopup(): void;
-    getAnnotatedText(pageView: PDFPageView, id: string): string;
+    getAnnotatedText(pageView: PDFPageView, id: string): Promise<string>;
     /** Added by this plugin */
     file?: TFile;
     backlinkHighlighter?: BacklinkHighlighter;

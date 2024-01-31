@@ -1,4 +1,4 @@
-import { EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, loadPdfJs, requireApiVersion } from 'obsidian';
+import { EditableFileView, Editor, EventRef, Events, Keymap, MarkdownFileInfo, MarkdownView, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion, setIcon } from 'obsidian';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
@@ -8,7 +8,7 @@ import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLink, destIdToSubpath, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams } from 'utils';
+import { copyLinkToSelection, destIdToSubpath, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams, copyLinkToAnnotation, registerGlobalDomEvent, OverloadParameters, getAnnotationInfoFromPopupEl } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
 
@@ -28,6 +28,13 @@ export default class PDFPlus extends Plugin {
 		pdf: false,
 		backlink: false
 	};
+	/** 
+	 * Tracks the markdown file that a link to a PDF text selection or an annotation was pasted into for the last time. 
+	 * Used for auto-pasting.
+	 */
+	lastPasteFile: TFile | null = null;
+	/** Tracks the PDFViewerChild instance that an annotation popup was rendered on for the last time. */
+	lastAnnotationPopupChild: PDFViewerChild | null = null;
 
 	async onload() {
 		this.checkVersion();
@@ -205,8 +212,22 @@ export default class PDFPlus extends Plugin {
 	registerCommands() {
 		this.addCommand({
 			id: 'copy-link-to-selection',
-			name: 'Copy link to selection with color & format specified in toolbar',
-			checkCallback: (checking) => this.copyLinkToSelection(checking)
+			name: 'Copy link to selection or annotation',
+			checkCallback: (checking) => {
+				if (!this.copyLinkToAnnotation(checking)) {
+					return this.copyLinkToSelection(checking);
+				}
+			}
+		});
+
+		this.addCommand({
+			id: 'copy-auto-paste-link-to-selection',
+			name: 'Copy & auto-paste link to selection or annotation',
+			checkCallback: (checking) => {
+				if (!this.copyLinkToAnnotation(checking, true)) {
+					return this.copyLinkToSelection(checking, true);
+				}
+			}
 		});
 	}
 
@@ -216,10 +237,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
-		this.registerDomEvent(document, type, callback, options);
-		this.registerEvent(this.app.workspace.on('window-open', (win, window) => {
-			this.registerDomEvent(window.document, type, callback, options);
-		}));
+		registerGlobalDomEvent(this.app, this, type, callback, options);
 	}
 
 	registerGlobalDomEvents() {
@@ -321,23 +339,97 @@ export default class PDFPlus extends Plugin {
 		}
 	}
 
-	copyLinkToSelection(checking: boolean) {
-		// get the toolbar in the PDF viewer (a PDF view or a PDF embed) containing the selected text
-		const toolbarEl = getToolbarAssociatedWithSelection();
-		if (!toolbarEl) return false;
+	registerOneTimeEvent<T extends Events>(events: T, ...[evt, callback, ctx]: OverloadParameters<T['on']>) {
+		const eventRef = events.on(evt, (...args: any[]) => {
+			callback.call(ctx, ...args);
+			events.offref(eventRef);
+		}, ctx);
+		this.registerEvent(eventRef);
+	}
 
-		const buttonEl = toolbarEl.querySelector<HTMLElement>(`.pdf-plus-action-menu[data-checked-index]`);
-		if (!buttonEl) return false;
-
-		// get the index of the checked item in the action dropdown menu
-		if (buttonEl.dataset.checkedIndex === undefined) return false;
-		const index = +buttonEl.dataset.checkedIndex;
+	copyLinkToSelection(checking: boolean, autoPaste: boolean = false) {
+		const palette = ColorPalette.getColorPaletteAssociatedWithSelection();
+		if (!palette) return false;
+		const template = this.settings.copyCommands[palette.actionIndex].template;
 
 		// get the currently selected color name
-		const selectedItemEl = toolbarEl.querySelector<HTMLElement>('.pdf-plus-color-palette-item.is-active[data-highlight-color]');
-		const colorName = selectedItemEl?.dataset.highlightColor;
+		const colorName = palette.selectedColorName;
+		if (!colorName) return false;
 
-		copyLink(this, this.settings.copyCommands[index].template, checking, colorName);
+		return copyLinkToSelection(this, checking, template, colorName, autoPaste);
+	}
+
+	copyLinkToAnnotation(checking: boolean, autoPaste: boolean = false) {
+		const child = this.lastAnnotationPopupChild;
+		if (!child) return false;
+		const popupEl = child.activeAnnotationPopupEl;
+		if (!popupEl) return false;
+		const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon');
+		if (!copyButtonEl) return false;
+
+		const palette = ColorPalette.getColorPaletteAssociatedWithNode(copyButtonEl);
+		let template;
+		if (palette) {
+			template = this.settings.copyCommands[palette.actionIndex].template;
+		} else {
+			// If this PDF viewer is embedded in a markdown file and the "Show color palette in PDF embeds as well" is set to false,
+			// there will be no color palette in the toolbar of this PDF viewer.
+			// In this case, use the default color palette action.
+			template = this.settings.copyCommands[this.settings.defaultColorPaletteActionIndex].template;
+		}
+		const annotInfo = getAnnotationInfoFromPopupEl(popupEl);
+		if (!annotInfo) return false;
+		const { page, id } = annotInfo;
+
+		const result = copyLinkToAnnotation(this, child, checking, template, page, id, autoPaste);
+
+		if (!checking && result) setIcon(copyButtonEl, 'lucide-check');
+
+		return result;
+	}
+
+	async autoPaste(text: string) {
+		if (this.lastPasteFile && this.lastPasteFile.extension === 'md') {
+			// use vault, not editor, so that we can auto-paste even when the file is not opened
+			await this.app.vault.process(this.lastPasteFile, (data) => {
+				// if the file does not end with a blank line, add one
+				const idx = data.lastIndexOf('\n');
+				if (idx === -1 || data.slice(idx).trim()) {
+					data += '\n\n';
+				}
+				data += text;
+				return data;
+			});
+			if (this.settings.focusEditorAfterAutoPaste) {
+				this.app.workspace.iterateAllLeaves((leaf) => {
+					if (leaf.view instanceof MarkdownView && leaf.view.file?.path === this.lastPasteFile?.path) {
+						const editor = leaf.view.editor;
+						// After "vault.process" is completed, we have to wait for a while until the editor reflects the change.
+						setTimeout(() => {
+							editor.setCursor(editor.getValue().length);
+							editor.focus();
+						}, 200);
+					}
+				});
+			}
+		} else {
+			new Notice(`${this.manifest.name}: Cannot auto-paste because this is the first time. Please manually paste the link.`)
+		}
+	}
+
+	watchPaste(text: string) {
+		// watch for a manual paste for updating this.lastPasteFile
+		this.registerOneTimeEvent(this.app.workspace, 'editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+			if (info.file?.extension === 'md' && evt.clipboardData?.getData('text/plain') === text) {
+				this.lastPasteFile = info.file;
+			}
+		});
+	}
+
+	getPDFViewerChildAssociatedWithNode(node: Node) {
+		for (const [viewerEl, child] of this.pdfViwerChildren) {
+			if (viewerEl.contains(node)) return child;
+		}
 	}
 
 	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;

@@ -1,12 +1,12 @@
-import { Component, Keymap, MarkdownRenderer, Notice, TFile, ViewStateResult } from 'obsidian';
+import { Component, Keymap, MarkdownRenderer, Notice, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
 import { PDFPlusTemplateProcessor } from 'template';
-import { registerPDFEvent, toSingleLine } from 'utils';
-import { ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
+import { copyLinkToAnnotation, getAnnotationInfoFromAnnotationElement, getLinkTemplateVariables, getToolbarAssociatedWithNode, registerPDFEvent, toSingleLine } from 'utils';
+import { AnnotationElement, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -123,13 +123,13 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 if (format) {
                     let alias = '';
                     try {
-                        const selection = toSingleLine(window.getSelection()?.toString() ?? '');
+                        const text = toSingleLine(window.getSelection()?.toString() ?? '');
                         alias = new PDFPlusTemplateProcessor(plugin, {
                             file: this.file,
                             page,
                             pageCount: self.pdfViewer.pagesCount,
                             pageLabel: self.getPage(page).pageLabel ?? ('' + page),
-                            selection
+                            text
                         }).evalTemplate(format.template);
                         return alias.trim();
                     } catch (err) {
@@ -242,9 +242,11 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             }
         },
         renderAnnotationPopup(old) {
-            return function (...args: any[]) {
-                const ret = old.call(this, ...args);
+            return function (annotationElement: AnnotationElement, ...args: any[]) {
+                const ret = old.call(this, annotationElement, ...args);
                 const self = this as PDFViewerChild;
+                plugin.lastAnnotationPopupChild = self;
+
                 if (plugin.settings.renderMarkdownInStickyNote) {
                     const contentEl = self.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupContent');
                     if (contentEl && contentEl.textContent) {
@@ -282,6 +284,29 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             });
                     }
                 }
+
+                // replace copy button with a custom one
+                const popupMetaEl = self.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupMeta');
+                const copyButtonEl = popupMetaEl?.querySelector<HTMLElement>('.clickable-icon:last-child');
+                if (popupMetaEl && copyButtonEl) {
+                    copyButtonEl.remove(); // We need to remove the default event lisnter so we should use remove() instead of detach()
+
+                    popupMetaEl.createDiv('clickable-icon', (iconEl) => {
+                        setIcon(iconEl, 'lucide-copy');
+                        setTooltip(iconEl, 'Copy');
+                        iconEl.addEventListener('click', async () => {
+                            const palette = ColorPalette.getColorPaletteAssociatedWithNode(popupMetaEl)
+                            if (!palette) return;
+                            const template = plugin.settings.copyCommands[palette.actionIndex].template;
+                            const { page, id } = getAnnotationInfoFromAnnotationElement(annotationElement);
+
+                            copyLinkToAnnotation(plugin, self, false, template, page, id);
+
+                            setIcon(iconEl, 'lucide-check');
+                        })
+                    });
+                }
+
                 return ret;
             }
         },
@@ -289,6 +314,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             return function () {
                 const self = this as PDFViewerChild;
                 self.component?.unload();
+                plugin.lastAnnotationPopupChild = null
                 return old.call(this);
             }
         }

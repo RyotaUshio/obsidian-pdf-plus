@@ -134,9 +134,10 @@ Make it easier to work with internal links embedded in PDF files.
 
 - **Color palette in PDF toolbar**: A color palette will be added to the toolbar of the PDF viewer. Clicking a color while selecting a range of text will copy a link to the selection with `&color=...` appended.
   - You can customize the format of copied text using a powerful templating system (see [below](#link-copy-templates)).
-- **`Copy link to selection with color & format specified in toolbar` command**: This command allows you to trigger the copy-link action specified in a dropdown menu in the PDF toolbar quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
-  > Note: this command cannot be triggered from the Command Palette. Make sure that you set a custom hotkey for it. 
-- **`Toggle "select text to copy" mode` icon in the left ribbon menu**: While it's turned on, the `Copy link to selection with color & format specified in toolbar` command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don't even have to press a hotkey to copy a link.
+- **`Copy link to selection or annotation` command**: This command allows you to trigger the copy-link action specified in a dropdown menu in the PDF toolbar quickly via a hotkey. I recommend using `Ctrl`+`Shift`+`C`/`Cmd`+`Shift`+`C`.
+- **`Copy & auto-paste link to selection or annotation` command**: In addition to copying a link, this command automatically pastes the copied link at the end of the note where you last pasted a link.
+  > Note: these commands cannot be triggered from the Command Palette. Make sure that you set custom hotkeys for them. 
+- **`Toggle "select text to copy" mode` icon in the left ribbon menu**: While it's turned on, the `Copy link to selection or annotation` command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don't even have to press a hotkey to copy a link.
 
 #### Link copy templates
 
@@ -201,7 +202,9 @@ Now, use the following CSS snippet to remove the extra space:
 
 ```css
 .pdf-plus-pdf-internal-link-popover[data-dest^="cite."] {
-    height: 200px !important;
+    --my-height: 200px; /* Change this to your liking */
+    height: var(--my-height) !important;
+    top: calc(var(--popover-height) - var(--my-height)) !important;
 }
 ```
 

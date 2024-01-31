@@ -85,6 +85,7 @@ export interface PDFPlusSettings {
 	enableHoverPDFInternalLink: boolean;
 	recordPDFInternalLinkHistory: boolean;
 	renderMarkdownInStickyNote: boolean;
+	focusEditorAfterAutoPaste: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -109,7 +110,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	copyCommands: [
 		{
 			name: 'Copy as quote',
-			template: '> {{selection}}\n\n{{linkWithDisplay}}',
+			template: '> {{text}}\n\n{{linkWithDisplay}}',
 		},
 		{
 			name: 'Copy link to selection',
@@ -174,6 +175,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableHoverPDFInternalLink: true,
 	recordPDFInternalLinkHistory: true,
 	renderMarkdownInStickyNote: true,
+	focusEditorAfterAutoPaste: true,
 };
 
 // Inspired by https://stackoverflow.com/a/50851710/13613783
@@ -831,9 +833,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Set up hotkeys for copying links')
 			.then((setting) => {
 				this.renderMarkdown([
-					'Press this hotkey while selecting a range of text to copy a link to the selection with the color & format specified in a dropdown menu in the PDF toolbar.',
+					'PDF++ offers two commands for quickly copying links via hotkeys.',
 					'',
-					'Also check out the **Toggle "select text to copy" mode** icon in the left ribbon menu. While it\'s turned on, the `Copy link to selection with color & format specified in toolbar` command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link.'
+					'1. **Copy link to selection or annotation:**',
+					'  Copies a link to the text selection or focused annotation in the PDF viewer, which is formatted according to the options specified in the PDF toolbar.',
+					'',
+					'2. **Copy & auto-paste link to selection or annotation:**',
+					'  In addition to copying the link, it automatically pastes the copied link at the end of the note where you last pasted a link. Note that Canvas is not supported.',
+					'',
+					'Also check out the **Toggle "select text to copy" mode** icon in the left ribbon menu. While it\'s turned on, the **Copy link to selection or annotation** command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link.'
 				], setting.descEl);
 			})
 			.addButton((button) => {
@@ -843,6 +851,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						tab.setQuery(this.plugin.manifest.id);
 					});
 			});
+		this.addToggleSetting('focusEditorAfterAutoPaste')
+			.setName('Focus editor after auto-pasting a link')
+			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
 
 		this.addHeading('Link copy templates')
 			.then((setting) => this.renderMarkdown([
@@ -855,7 +866,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'- `page`: The page number (`Number`). The first page is always page 1.',
 				'- `pageLabel`: The page number displayed in the counter in the toolbar (`String`). This can be different from `page`.',
 				'- `pageCount`: The total number of pages (`Number`).',
-				'- `selection`: The selected text (`String`).',
+				'- `text` or `selection`: The selected text (`String`).',
 				'- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.',
 				'- `obsidian`: The Obsidian API. See the [official developer documentation](https://docs.obsidian.md/Home) and the type definition file [`obsidian.d.ts`](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts) for the details.',
 				'- `dv`: Available if the [Dataview](obsidian://show-plugin?id=dataview) plugin is enabled. See Dataview\'s [official documentation](https://blacksmithgu.github.io/obsidian-dataview/api/code-reference/) for the details. You can use it almost the same as the `dv` variable available in `dataviewjs` code blocks, but there are some differences. For example, `dv.current()` is not available.',

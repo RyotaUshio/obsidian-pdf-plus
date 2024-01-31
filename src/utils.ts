@@ -2,9 +2,10 @@ import { App, Component, EditableFileView, Modifier, Platform, TFile, WorkspaceL
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
-import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView, Rect } from 'typings';
+import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFView, ObsidianViewer, PDFViewerChild, EventBus, BacklinkView, Rect, AnnotationElement } from 'typings';
 import { PDFPlusTemplateProcessor } from 'template';
 import { ExtendedPaneType, FineGrainedSplitDirection } from 'settings';
+import { ColorPalette } from 'color-palette';
 
 
 export type PropRequired<T, Prop extends keyof T> = T & Pick<Required<T>, Prop>;
@@ -226,7 +227,7 @@ export function getActiveGroupLeaves(app: App) {
 }
 
 export function getTemplateVariables(plugin: PDFPlus, subpathParams: Record<string, any>) {
-    const selection = window.getSelection();
+    const selection = activeWindow.getSelection();
     if (!selection) return null;
     const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
     const pageEl = range?.startContainer.parentElement?.closest('.page');
@@ -258,52 +259,91 @@ export function getTemplateVariables(plugin: PDFPlus, subpathParams: Record<stri
         page,
         pageCount: child.pdfViewer.pagesCount,
         pageLabel: child.getPage(page).pageLabel ?? ('' + page),
-        selection: toSingleLine(selection.toString()),
+        text: toSingleLine(selection.toString()),
     };
 }
 
-export function copyLink(plugin: PDFPlus, template: string, checking: boolean, colorName?: string): boolean {
+export function getLinkTemplateVariables(app: App, child: PDFViewerChild, file: TFile, subpath: string, page: number) {
+    const link = app.fileManager.generateMarkdownLink(file, '').slice(1);
+    const linktext = app.metadataCache.fileToLinktext(file, '') + subpath;
+    const display = child.getPageLinkAlias(page);
+    // https://github.com/obsidianmd/obsidian-api/issues/154
+    // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
+    const linkWithDisplay = generateMarkdownLink(app, file, '', subpath, display).slice(1);
+    const linkToPage = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`).slice(1);
+    // https://github.com/obsidianmd/obsidian-api/issues/154
+    // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);
+    const linkToPageWithDisplay = generateMarkdownLink(app, file, '', `#page=${page}`, display).slice(1);
+
+    return {
+        link,
+        linktext,
+        display,
+        linkWithDisplay,
+        linkToPage,
+        linkToPageWithDisplay
+    };
+}
+
+export function copyLinkToSelection(plugin: PDFPlus, checking: boolean, template: string, colorName?: string, autoPaste?: boolean): boolean {
     const app = plugin.app;
     const variables = getTemplateVariables(plugin, colorName ? { color: colorName.toLowerCase() } : {});
 
     if (variables) {
         if (!checking) {
-            const { child, file, subpath, page, pageCount, pageLabel, selection } = variables;
-            const link = app.fileManager.generateMarkdownLink(file, '').slice(1);
-            const linktext = app.metadataCache.fileToLinktext(file, '') + subpath;
-            const display = child.getPageLinkAlias(page);
-            // https://github.com/obsidianmd/obsidian-api/issues/154
-            // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
-            const linkWithDisplay = generateMarkdownLink(app, file, '', subpath, display).slice(1);
-            const linkToPage = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`).slice(1);
-            // https://github.com/obsidianmd/obsidian-api/issues/154
-            // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);
-            const linkToPageWithDisplay = generateMarkdownLink(app, file, '', `#page=${page}`, display).slice(1);
+            const { child, file, subpath, page, pageCount, pageLabel, text } = variables;
 
             const processor = new PDFPlusTemplateProcessor(plugin, {
                 file,
                 page,
                 pageCount,
                 pageLabel,
-                selection,
-                link,
-                linktext,
-                display,
-                linkWithDisplay,
-                linkToPage,
-                linkToPageWithDisplay,
+                text,
+                ...getLinkTemplateVariables(app, child, file, subpath, page)
             });
-            if (plugin.settings.useAnotherCopyTemplateWhenNoSelection && !selection) {
+
+            if (plugin.settings.useAnotherCopyTemplateWhenNoSelection && !text) {
                 template = plugin.settings.copyTemplateWhenNoSelection;
             }
+
             const evaluated = processor.evalTemplate(template);
             navigator.clipboard.writeText(evaluated);
+            plugin.watchPaste(evaluated);
+
+            if (autoPaste) plugin.autoPaste(evaluated);
         }
 
         return true;
     }
 
     return false;
+}
+
+export function copyLinkToAnnotation(plugin: PDFPlus, child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean) {
+    if (!child.file) return false;
+
+    if (!checking) {
+        const pageView = child.getPage(page);
+        child.getAnnotatedText(pageView, id)
+            .then((text) => {
+                const processor = new PDFPlusTemplateProcessor(plugin, {
+                    file: child.file!,
+                    page,
+                    pageLabel: pageView.pageLabel ?? ('' + page),
+                    pageCount: child.pdfViewer.pagesCount,
+                    text,
+                    ...getLinkTemplateVariables(plugin.app, child, child.file!, `#page=${page}&annotation=${id}`, page)
+                });
+
+                const evaluated = processor.evalTemplate(template);
+                navigator.clipboard.writeText(evaluated);
+                plugin.watchPaste(evaluated);
+
+                if (autoPaste) plugin.autoPaste(evaluated);
+            });
+    }
+
+    return true;
 }
 
 export async function openMarkdownLink(plugin: PDFPlus, linktext: string, sourcePath: string, line?: number) {
@@ -360,16 +400,24 @@ export async function openMarkdownLink(plugin: PDFPlus, linktext: string, source
     return;
 }
 
+export function getToolbarAssociatedWithNode(node: Node) {
+    const el = node.instanceOf(HTMLElement) ? node : node.parentElement;
+    if (!el) return null;
+    const containerEl = el.closest('.pdf-container');
+    const toolbarEl = containerEl?.previousElementSibling;
+    if (toolbarEl && toolbarEl.hasClass('pdf-toolbar')) {
+        return toolbarEl;
+    }
+
+    return null;
+}
+
 export function getToolbarAssociatedWithSelection() {
-    const selection = window.getSelection();
+    const selection = activeWindow.getSelection();
 
     if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        const containerEl = range.startContainer.parentElement?.closest('.pdf-container');
-        const toolbarEl = containerEl?.previousElementSibling;
-        if (toolbarEl?.hasClass('pdf-toolbar')) {
-            return toolbarEl;
-        }
+        return getToolbarAssociatedWithNode(range.startContainer);
     }
 
     return null;
@@ -499,7 +547,7 @@ export async function destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
 // the same as app.fileManager.generateMarkdownLink(), but respects the "alias" parameter for non-markdown files as well
 // See https://github.com/obsidianmd/obsidian-api/issues/154
 export function generateMarkdownLink(app: App, file: TFile, sourcePath: string, subpath?: string, alias?: string) {
-    const useMarkdownLinks = app.vault.getConfig("useMarkdownLinks");
+    const useMarkdownLinks = app.vault.getConfig('useMarkdownLinks');
     const useWikilinks = !useMarkdownLinks;
     const linkpath = app.metadataCache.fileToLinktext(file, sourcePath, useWikilinks);
     let linktext = linkpath + (subpath || '');
@@ -507,20 +555,93 @@ export function generateMarkdownLink(app: App, file: TFile, sourcePath: string, 
     let nonEmbedLink;
 
     if (useMarkdownLinks) {
-        nonEmbedLink = "[".concat(alias || file.basename, "](").concat(encodeLinktext(linktext), ")");
+        nonEmbedLink = '['.concat(alias || file.basename, '](').concat(encodeLinktext(linktext), ')');
     } else {
         if (alias && alias.toLowerCase() === linktext.toLowerCase()) {
             linktext = alias;
             alias = undefined;
         }
         nonEmbedLink = alias
-            ? "[[".concat(linktext, "|").concat(alias, "]]")
-            : "[[".concat(linktext, "]]");
+            ? '[['.concat(linktext, '|').concat(alias, ']]')
+            : '[['.concat(linktext, ']]');
     }
 
-    return "md" !== file.extension ? "!" + nonEmbedLink : nonEmbedLink;
+    return 'md' !== file.extension ? '!' + nonEmbedLink : nonEmbedLink;
 }
 
 export function encodeLinktext(linktext: string) {
     return linktext.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (component) => encodeURIComponent(component));
 }
+
+export function getAnnotationInfoFromAnnotationElement(annot: AnnotationElement) {
+    return {
+        page: annot.parent.page.pageNumber,
+        id: annot.data.id,
+    }
+}
+
+export function getAnnotationInfoFromPopupEl(popupEl: HTMLElement) {
+    if (!popupEl.matches('.popupWrapper[data-annotation-id]')) return null;
+
+    const pageEl = popupEl.closest<HTMLElement>('div.page');
+    if (!pageEl || pageEl.dataset.pageNumber === undefined) return null;
+    const page = +pageEl.dataset.pageNumber;
+
+    const id = popupEl.dataset.annotationId;
+    if (id === undefined) return null;
+
+    return { page, id };
+}
+
+export function registerGlobalDomEvent<K extends keyof DocumentEventMap>(app: App, component: Component, type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
+    // For the currently opened windows
+    const windows = new Set<Window>();
+    app.workspace.iterateAllLeaves((leaf) => windows.add(leaf.getContainer().win));
+
+    windows.forEach((window) => {
+        component.registerDomEvent(window.document, type, callback, options);
+    });
+
+    // For windows opened in the future
+    component.registerEvent(app.workspace.on('window-open', (win, window) => {
+        component.registerDomEvent(window.document, type, callback, options);
+    }));
+}
+
+
+// Thanks @derekrjones (https://github.com/microsoft/TypeScript/issues/32164#issuecomment-890824817)
+
+type FN = (...args: unknown[]) => unknown;
+
+// current typescript version infers 'unknown[]' for any additional overloads
+// we can filter them out to get the correct result
+type _Params<T> = T extends {
+    (...args: infer A1): unknown;
+    (...args: infer A2): unknown;
+    (...args: infer A3): unknown;
+    (...args: infer A4): unknown;
+    (...args: infer A5): unknown;
+    (...args: infer A6): unknown;
+    (...args: infer A7): unknown;
+    (...args: infer A8): unknown;
+    (...args: infer A9): unknown;
+}
+    ? [A1, A2, A3, A4, A5, A6, A7, A8, A9]
+    : never;
+
+// type T1 = filterUnknowns<[unknown[], string[]]>; // [string[]]
+type filterUnknowns<T> = T extends [infer A, ...infer Rest]
+    ? unknown[] extends A
+    ? filterUnknowns<Rest>
+    : [A, ...filterUnknowns<Rest>]
+    : T;
+
+// type T1 = TupleArrayUnion<[[], [string], [string, number]]>; // [] | [string] | [string, number]
+type TupleArrayUnion<A extends readonly unknown[][]> = A extends (infer T)[]
+    ? T extends unknown[]
+    ? T
+    : []
+    : [];
+
+
+export type OverloadParameters<T extends FN> = TupleArrayUnion<filterUnknowns<_Params<T>>>;
