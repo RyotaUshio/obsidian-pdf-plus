@@ -2,7 +2,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian'
 
 import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
-import { paramsToSubpath, toSingleLine } from 'utils';
+import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
 import { PDFViewerChild } from 'typings';
 import { ColorPalette } from 'color-palette';
 
@@ -48,11 +48,15 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
     getLinkTemplateVariables(child: PDFViewerChild, file: TFile, subpath: string, page: number) {
         const link = this.app.fileManager.generateMarkdownLink(file, '').slice(1);
-        const linktext = this.app.metadataCache.fileToLinktext(file, '') + subpath;
+        let linktext = this.app.metadataCache.fileToLinktext(file, '') + subpath;
+        if (this.app.vault.getConfig('useMarkdownLinks')) {
+            linktext = encodeLinktext(linktext);
+        }
         const display = child.getPageLinkAlias(page);
         // https://github.com/obsidianmd/obsidian-api/issues/154
         // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
         const linkWithDisplay = this.api.generateMarkdownLink(file, '', subpath, display).slice(1);
+
         const linkToPage = this.app.fileManager.generateMarkdownLink(file, '', `#page=${page}`).slice(1);
         // https://github.com/obsidianmd/obsidian-api/issues/154
         // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);

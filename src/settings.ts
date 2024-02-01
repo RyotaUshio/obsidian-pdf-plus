@@ -969,9 +969,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'',
 				'- `link`: The link without display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red]]`,',
 				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red|file, page 1]]`,',
-				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page=1&selection=0,1,2,3&color=red`, and',
-				'- `display`: The display text formatted according to the above setting, e.g. `file, page 1`.',
-				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page=1]]`.',
+				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page=1&selection=0,1,2,3&color=red` <br>(if the "Use \\[\\[Wikilinks\\]\\]" setting is turned off, `linktext` will be properly encoded for use in markdown links),',
+				'- `display`: The display text formatted according to the above setting, e.g. `file, page 1`,',
+				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page=1]]`, and',
 				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page=1|file, page 1]]`.',
 			], setting.descEl))
 			.addButton((button) => {
