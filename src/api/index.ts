@@ -184,10 +184,15 @@ export class PDFPlusAPI {
     }
 
     registerGlobalDomEvent<K extends keyof DocumentEventMap>(component: Component, type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
+        component.registerDomEvent(document, type, callback, options);
+
         this.app.workspace.onLayoutReady(() => {
             // For the currently opened windows
             const windows = new Set<Window>();
-            this.app.workspace.iterateAllLeaves((leaf) => windows.add(leaf.getContainer().win));
+            this.app.workspace.iterateAllLeaves((leaf) => {
+                const win = leaf.getContainer().win;
+                if (win !== window) windows.add(win);
+            });
 
             windows.forEach((window) => {
                 component.registerDomEvent(window.document, type, callback, options);

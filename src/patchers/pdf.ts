@@ -251,7 +251,9 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 // > Uncaught TypeError: Cannot read properties of undefined (reading 'str')
                 // 
                 // An annotation popup should not be rendered for a link annotation.
-                if (annotationElement.data.subtype === 'Link') return;
+                if (annotationElement.data.subtype === 'Link') {
+                    return;
+                }
 
                 const ret = old.call(this, annotationElement, ...args);
 
