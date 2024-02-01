@@ -70,6 +70,7 @@ export interface PDFPlusSettings {
 	colorPaletteInToolbar: boolean;
 	noColorButtonInColorPalette: boolean;
 	colorPaletteInEmbedToolbar: boolean;
+	showStatusInToolbar: boolean;
 	highlightColorSpecifiedOnly: boolean;
 	doubleClickHighlightToOpenBacklink: boolean;
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
@@ -165,6 +166,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	colorPaletteInToolbar: true,
 	noColorButtonInColorPalette: true,
 	colorPaletteInEmbedToolbar: false,
+	showStatusInToolbar: true,
 	highlightColorSpecifiedOnly: false,
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'preview',
@@ -1023,6 +1025,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Misc');
+		this.addToggleSetting('showStatusInToolbar')
+			.setName('Show status in PDF toolbar')
+			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');
 		this.addToggleSetting('renderMarkdownInStickyNote')
 			.setName('Render markdown in sticky notes');
 

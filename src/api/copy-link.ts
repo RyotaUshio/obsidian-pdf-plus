@@ -4,7 +4,6 @@ import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
 import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
 import { PDFViewerChild } from 'typings';
-import { ColorPalette } from 'color-palette';
 
 
 export class copyLinkAPI extends PDFPlusAPISubmodule {
@@ -199,8 +198,8 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                     // Annots should be grouped, but pdfAnnotate does not do that. So we ended up with just using the first one.
                     const { page, object_id } = annots[0];
                     if (!object_id) return;
-                    // TODO: Should we take `object_id.generation` into account? If so, how? //
-                    const annotationId = `${object_id.obj}R`;
+                    // This is how PDF.js creates annotation IDs. See https://github.com/mozilla/pdf.js/blob/af4d2fa53c3a1fae35619ba2ac1b69499ec78c41/src/core/primitives.js#L281-L288
+                    const annotationId = object_id.generation === 0 ? `${object_id.obj}R` : `${object_id.obj}R${object_id.generation}`;
 
                     setTimeout(() => {
                         // After the file modification, the PDF viewer DOM is reloaded, so we need to 

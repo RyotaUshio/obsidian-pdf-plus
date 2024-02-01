@@ -359,8 +359,7 @@ export default class PDFPlus extends Plugin {
 		const template = this.settings.copyCommands[palette.actionIndex].template;
 
 		// get the currently selected color name
-		const colorName = palette.selectedColorName;
-		if (!colorName) return false;
+		const colorName = palette.selectedColorName ?? undefined;
 
 		return this.api.copyLink.copyLinkToSelection(checking, template, colorName, autoPaste);
 	}
@@ -404,16 +403,9 @@ export default class PDFPlus extends Plugin {
 		const template = this.settings.copyCommands[palette.actionIndex].template;
 
 		// get the currently selected color name
-		const colorName = palette.selectedColorName;
-		if (!colorName) return false;
+		const colorName = palette.selectedColorName ?? undefined;
 
 		return this.api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
-	}
-
-	getPDFViewerChildAssociatedWithNode(node: Node) {
-		for (const [viewerEl, child] of this.pdfViwerChildren) {
-			if (viewerEl.contains(node)) return child;
-		}
 	}
 
 	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;

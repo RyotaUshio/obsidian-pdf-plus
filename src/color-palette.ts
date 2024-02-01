@@ -263,7 +263,7 @@ export class ColorPalette extends Component {
     }
 
     setStatus(text: string, durationMs: number) {
-        if (this.statusEl) {
+        if (this.plugin.settings.showStatusInToolbar && this.statusEl) {
             this.statusEl.setText(text);
             if (durationMs > 0) {
                 setTimeout(() => {
