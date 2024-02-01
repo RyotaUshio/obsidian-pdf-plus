@@ -233,6 +233,14 @@ But you can install the latest release using [BRAT](https://github.com/TfTHacker
 3. Open the following URL in the browser: `obsidian://brat?plugin=RyotaUshio/obsidian-pdf-plus`.
 4. Click the "Add Plugin" button.
 
+## Credits
+
+PDF++ is built on top of Obsidian's native PDF viewer powered by [Mozilla's PDF.js](https://mozilla.github.io/pdf.js/), which is already pretty good even without PDF++.
+Without the awesome work of the Obsidian team and the PDF.js maintainers, PDF++ would not have been possible.
+
+PDF++ extends the native viewer by using [monkey-around](https://github.com/pjeby/monkey-around), a patching library by [PJ Eby](https://github.com/pjeby).
+He's also the author of several popular Obsidian plugins including Tag Wrangler.
+
 ## Compatibility
 
 I'm trying to keep PDF++ compatible with the following plugin(s) as much as possible:
