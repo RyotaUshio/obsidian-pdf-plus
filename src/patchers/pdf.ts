@@ -246,7 +246,15 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         },
         renderAnnotationPopup(old) {
             return function (annotationElement: AnnotationElement, ...args: any[]) {
+                // This is a fix for a bug of Obsidian, which causes the following error when clicking on links in PDFs:
+                // 
+                // > Uncaught TypeError: Cannot read properties of undefined (reading 'str')
+                // 
+                // An annotation popup should not be rendered for a link annotation.
+                if (annotationElement.data.subtype === 'Link') return;
+
                 const ret = old.call(this, annotationElement, ...args);
+
                 const self = this as PDFViewerChild;
                 plugin.lastAnnotationPopupChild = self;
 

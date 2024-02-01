@@ -132,10 +132,10 @@ export class PDFPlusAPI {
     }
 
     getPDFViewerChildAssociatedWithNode(node: Node) {
-		for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
-			if (viewerEl.contains(node)) return child;
-		}
-	}
+        for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
+            if (viewerEl.contains(node)) return child;
+        }
+    }
 
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
         const dest = await doc.getDestination(destId);
@@ -184,18 +184,20 @@ export class PDFPlusAPI {
     }
 
     registerGlobalDomEvent<K extends keyof DocumentEventMap>(component: Component, type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
-        // For the currently opened windows
-        const windows = new Set<Window>();
-        this.app.workspace.iterateAllLeaves((leaf) => windows.add(leaf.getContainer().win));
+        this.app.workspace.onLayoutReady(() => {
+            // For the currently opened windows
+            const windows = new Set<Window>();
+            this.app.workspace.iterateAllLeaves((leaf) => windows.add(leaf.getContainer().win));
 
-        windows.forEach((window) => {
-            component.registerDomEvent(window.document, type, callback, options);
+            windows.forEach((window) => {
+                component.registerDomEvent(window.document, type, callback, options);
+            });
+
+            // For windows opened in the future
+            component.registerEvent(this.app.workspace.on('window-open', (win, window) => {
+                component.registerDomEvent(window.document, type, callback, options);
+            }));
         });
-
-        // For windows opened in the future
-        component.registerEvent(this.app.workspace.on('window-open', (win, window) => {
-            component.registerDomEvent(window.document, type, callback, options);
-        }));
     }
 
     /**

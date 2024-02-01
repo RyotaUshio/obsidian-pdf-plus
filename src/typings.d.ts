@@ -193,6 +193,7 @@ interface AnnotationElement {
     layer: HTMLElement; // div.annotationLayer
     parent: AnnotationLayer;
     data: {
+        subtype: string;
         id: string;
         rect: Rect;
     }
