@@ -1,13 +1,15 @@
 import { App, Component, TFile, ReferenceCache, parseLinktext } from 'obsidian';
 
 import PDFPlus from 'main';
-import { MutationObservingChild, findReferenceCache, getExistingPDFViewOfFile, getSubpathWithoutHash, registerPDFEvent } from 'utils';
+import { PDFPlusAPI } from 'api';
+import { MutationObservingChild, findReferenceCache, getSubpathWithoutHash } from 'utils';
 import { BacklinkRenderer, PDFViewerChild } from 'typings';
 
 
 /** A component that will be loaded as a child of the backlinks pane while the active file is PDF. */
 export class BacklinkPanePDFManager extends Component {
     app: App;
+    api: PDFPlusAPI;
     navButtonEl: HTMLElement | null = null;
     pageTracker: BacklinkPanePDFPageTracker;
     isTrackingPage: boolean;
@@ -15,6 +17,7 @@ export class BacklinkPanePDFManager extends Component {
     constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
         super();
         this.app = plugin.app;
+        this.api = plugin.api;
         this.pageTracker = new BacklinkPanePDFPageTracker(plugin, renderer, file);
         this.isTrackingPage = plugin.settings.filterBacklinksByPageDefault;
     }
@@ -79,11 +82,13 @@ export class BacklinkPanePDFManager extends Component {
 /** While this component is loaded, the backlinks pane shows only backlinks to the page that is currently opened in the PDF viewer. */
 export class BacklinkPanePDFPageTracker extends Component {
     app: App;
+    api: PDFPlusAPI;
     matchCountObserver: MutationObservingChild;
 
     constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
         super();
         this.app = plugin.app;
+        this.api = plugin.api;
         this.matchCountObserver = new MutationObservingChild(
             this.renderer.backlinkDom.el,
             () => {
@@ -99,7 +104,7 @@ export class BacklinkPanePDFPageTracker extends Component {
     onload() {
         this.renderer.backlinkDom.filter = undefined;
 
-        const view = getExistingPDFViewOfFile(this.app, this.file);
+        const view = this.api.workspace.getExistingPDFViewOfFile(this.file);
         if (view) {
             view.viewer.then((child) => {
                 this.renderer.backlinkDom.filter = (file, linkCache) => {
@@ -108,7 +113,7 @@ export class BacklinkPanePDFPageTracker extends Component {
                 this.updateBacklinkDom();
                 this.updateBacklinkItemDomHoverHandler(child, child.pdfViewer.pdfViewer?.currentPageNumber);
 
-                registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
+                this.api.registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
                     const page = typeof data.pageNumber === 'number' ? (data.pageNumber as number) : child.pdfViewer.pdfViewer?.currentPageNumber;
                     if (page) this.renderer.backlinkDom.filter = (file, linkCache) => this.filter(page, linkCache);
 
@@ -126,7 +131,7 @@ export class BacklinkPanePDFPageTracker extends Component {
     onunload() {
         this.renderer.backlinkDom.filter = undefined;
         this.updateBacklinkDom();
-        const view = getExistingPDFViewOfFile(this.app, this.file);
+        const view = this.api.workspace.getExistingPDFViewOfFile(this.file);
         if (view) {
             view.viewer.then((child) => this.updateBacklinkItemDomHoverHandler(child));
         }

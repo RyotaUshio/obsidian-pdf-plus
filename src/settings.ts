@@ -1,16 +1,14 @@
-import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PaneType, PluginSettingTab, Setting, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PluginSettingTab, Setting, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { getModifierNameInPlatform, isHexString } from 'utils';
+import { ExtendedPaneType } from 'api/workspace-api';
+import { KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
 
 
 const HOVER_HIGHLIGHT_ACTIONS = {
 	'open': 'Open backlink',
 	'preview': 'Popover preview of backlink',
 } as const;
-
-export type FineGrainedSplitDirection = 'right' | 'left' | 'down' | 'up';
-export type ExtendedPaneType = Exclude<PaneType, 'split'> | '' | FineGrainedSplitDirection;
 
 const PANE_TYPE: Record<ExtendedPaneType, string> = {
 	'': 'Current tab',
@@ -86,6 +84,11 @@ export interface PDFPlusSettings {
 	recordPDFInternalLinkHistory: boolean;
 	renderMarkdownInStickyNote: boolean;
 	focusEditorAfterAutoPaste: boolean;
+	enalbeWriteHighlightToFile: boolean;
+	auther: string;
+	writeHighlightToFileOpacity: number;
+	defaultWriteFileToggle: boolean;
+	syncWriteFileToggle: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -176,10 +179,13 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	recordPDFInternalLinkHistory: true,
 	renderMarkdownInStickyNote: true,
 	focusEditorAfterAutoPaste: true,
+	enalbeWriteHighlightToFile: false,
+	auther: '',
+	writeHighlightToFileOpacity: 0.5,
+	defaultWriteFileToggle: false,
+	syncWriteFileToggle: true,
 };
 
-// Inspired by https://stackoverflow.com/a/50851710/13613783
-export type KeysOfType<Obj, Type> = NonNullable<{ [k in keyof Obj]: Obj[k] extends Type ? k : never }[keyof Obj]>;
 
 export class PDFPlusSettingTab extends PluginSettingTab {
 	component: Component;
@@ -209,7 +215,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				text.setValue(this.plugin.settings[settingName])
 					.setPlaceholder(placeholder ?? '')
 					.then((text) => {
-						if (placeholder) text.inputEl.size = text.inputEl.placeholder.length
+						if (placeholder) {
+							text.inputEl.size = Math.max(text.inputEl.size, text.inputEl.placeholder.length);
+						}
 					})
 					.onChange(async (value) => {
 						// @ts-ignore
@@ -444,7 +452,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const item = items[index];
 		const name = getName(item);
 		const value = getValue(item);
-		
+
 		return this.addSetting()
 			.addText((text) => {
 				text.setPlaceholder(configs.name.placeholder)
@@ -526,7 +534,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addNamedTemplatesSetting(items: namedTemplate[], index: number, defaultIndexKey: KeysOfType<PDFPlusSettings, number>, configs: Parameters<PDFPlusSettingTab['addNameValuePairListSetting']>[4]) {
 		return this.addNameValuePairListSetting(
 			items,
-			index, 
+			index,
 			defaultIndexKey, {
 			getName: (item) => item.name,
 			setName: (item, value) => { item.name = value },
@@ -538,7 +546,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addDisplayTextSetting(index: number) {
 		return this.addNamedTemplatesSetting(
 			this.plugin.settings.displayTextFormats,
-			index, 
+			index,
 			'defaultDisplayTextFormatIndex', {
 			name: {
 				placeholder: 'Format name',
@@ -558,7 +566,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addCopyCommandSetting(index: number) {
 		return this.addNamedTemplatesSetting(
 			this.plugin.settings.copyCommands,
-			index, 
+			index,
 			'defaultColorPaletteActionIndex', {
 			name: {
 				placeholder: 'Action name',
@@ -687,6 +695,28 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			)
 				.setName('Highlight color for hover sync (Backlinks pane → PDF viewer)')
 				.setDesc('To add a new color, click the "+" button in the "highlight colors" setting above.');
+		}
+
+
+		this.addHeading('Adding highlights directly to PDF files (experimental)')
+			.then((setting) => {
+				this.renderMarkdown([
+					'<span style="color: var(--text-warning);">This is the only part of PDF++ that involves direct modification of PDF files. The author assumes no responsibility for any data corruption. Please use it at your own risk.</span> Report any issues you encounter on [GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).',
+				], setting.descEl);
+			});
+		this.addToggleSetting('enalbeWriteHighlightToFile', () => this.redisplay())
+			.setName('Enable');
+		if (this.plugin.settings.enalbeWriteHighlightToFile) {
+			this.addTextSetting('auther', 'Your name')
+				.setName('Annotation author');
+			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
+				.setName('Highlight opacity');
+			this.addToggleSetting('defaultWriteFileToggle')
+				.setName('Write highlight to file by default')
+				.setDesc('You can turn this on and off with the toggle button in the PDF viewer toolbar.');
+			this.addToggleSetting('syncWriteFileToggle')
+				.setName('Share the same toggle state among all PDF viewers')
+				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
 		}
 
 
@@ -836,7 +866,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'PDF++ offers two commands for quickly copying links via hotkeys.',
 					'',
 					'1. **Copy link to selection or annotation:**',
-					'  Copies a link to the text selection or focused annotation in the PDF viewer, which is formatted according to the options specified in the PDF toolbar.',
+					'   Copies a link to the text selection or focused annotation in the PDF viewer, which is formatted according to the options specified in the PDF toolbar.',
+					'   <br>If the "write to file directly" toggle switch in the PDF toolbar is on, it first adds a highlight annotation directly to the PDF file, and then copies the link to the created annotation.',
 					'',
 					'2. **Copy & auto-paste link to selection or annotation:**',
 					'  In addition to copying the link, it automatically pastes the copied link at the end of the note where you last pasted a link. Note that Canvas is not supported.',

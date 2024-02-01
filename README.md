@@ -26,7 +26,6 @@ See [here](#installation) for an installation guide.
 
 > [!warning]
 > - This plugin relies on many private APIs of Obsidian, so **there is a relatively high risk that this plugin may break when Obsidian is updated**. For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
-> - For now, PDF++ does not modify PDF files themselves. The backlink highlight feature just changes how file contents are displayed in Obsidian. Exporting highlights into an actual PDF file is a planned feature, but it's not supported yet.
 > - Although this plugin is almost mobile-compatible, some features, including copying links with color palette, might not work well on mobile.
 
 ## Getting started
@@ -104,6 +103,12 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 - **Filter backlinks by page**: Show only backlinks to the page that is currently opened in the PDF viewer.
 - **Hover sync (PDF viewer → Backlinks pane)**: Hovering over highlighted text or annotation will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks).
 - **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.
+
+#### Adding highlights directly to PDF files (experimental)
+
+While the backlink highlighting feature described above does not write text highlights into actual PDF files, you can choose to do so if you want.
+
+***This is the only part of PDF++ that involves direct modification of PDF files. The author assumes no responsibility for any data corruption. Please use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
 
 ### PDF internal links enhancement
 

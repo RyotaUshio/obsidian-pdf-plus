@@ -2,11 +2,11 @@ import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platf
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
-import { getExistingPDFLeafOfFile, getLeaf, openPDFLinkTextInLeaf } from 'utils';
 
 
 export const patchWorkspace = (plugin: PDFPlus) => {
     const app = plugin.app;
+    const api = plugin.api;
 
     plugin.register(around(Workspace.prototype, {
         openLinkText(old) {
@@ -31,7 +31,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                         }
 
                         if (plugin.settings.singleTabForSinglePDF) {
-                            const sameFileLeaf = getExistingPDFLeafOfFile(app, file);
+                            const sameFileLeaf = api.workspace.getExistingPDFLeafOfFile(file);
                             if (sameFileLeaf) {
                                 // Ignore the "dontActivateAfterOpenPDF" option when opening a link in a tab in the same split as the current tab
                                 // I believe using activeLeaf (which is deprecated) is inevitable here
@@ -45,7 +45,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                                     setTimeout(() => sameFileLeaf.containerEl.removeClass('pdf-plus-link-opened', 'is-highlighted'), plugin.settings.existingTabHighlightDuration * 1000);
                                 }
 
-                                return openPDFLinkTextInLeaf(plugin, sameFileLeaf, linktext, sourcePath, openViewState);
+                                return api.workspace.openPDFLinkTextInLeaf(sameFileLeaf, linktext, sourcePath, openViewState);
                             }
                         }
 
@@ -54,11 +54,11 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                             if (pdfLeaf) {
                                 if (plugin.settings.openLinkNextToExistingPDFTab) {
                                     const newLeaf = app.workspace.createLeafInParent(pdfLeaf.parentSplit, -1);
-                                    return openPDFLinkTextInLeaf(plugin, newLeaf, linktext, sourcePath, openViewState)
+                                    return api.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState)
                                 }
                             } else if (plugin.settings.paneTypeForFirstPDFLeaf) {
-                                const newLeaf = getLeaf(app, plugin.settings.paneTypeForFirstPDFLeaf);
-                                return openPDFLinkTextInLeaf(plugin, newLeaf, linktext, sourcePath, openViewState);
+                                const newLeaf = api.workspace.getLeaf(plugin.settings.paneTypeForFirstPDFLeaf);
+                                return api.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState);
                             }
                         }
                     }

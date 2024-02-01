@@ -1,9 +1,11 @@
-import { App, Component, Menu, setIcon, setTooltip } from 'obsidian';
+import { App, Component, Menu, ToggleComponent, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { copyLinkToSelection, getToolbarAssociatedWithNode, isHexString } from 'utils';
-import { KeysOfType } from 'settings';
+import { PDFPlusAPI } from 'api';
+import { KeysOfType, isHexString } from 'utils';
 
+
+type ColorPaletteState = Pick<ColorPalette, 'selectedColorName' | 'actionIndex' | 'displayTextFormatIndex' | 'writeFile'>;
 
 export class ColorPalette extends Component {
     static readonly CLS = 'pdf-plus-color-palette';
@@ -11,30 +13,43 @@ export class ColorPalette extends Component {
     static elInstanceMap = new Map<HTMLElement, ColorPalette>();
 
     app: App;
+    api: PDFPlusAPI;
+
     spacerEl: HTMLElement | null;
     paletteEl: HTMLElement | null;
     itemEls: HTMLElement[];
     actionMenuEl: HTMLElement | null;
     displayTextFormatMenuEl: HTMLElement | null;
+    writeFileToggleContainerEl: HTMLElement | null;
+    writeFileToggle: ToggleComponent | null;
+    statusContainerEl: HTMLElement | null;
+    statusEl: HTMLElement | null;
 
-    /** The state of a color palette is specified by a 3-tuple consisting of the following. */
+    /** The state of a color palette is specified by a 4-tuple consisting of the following. */
     selectedColorName: string | null;
     actionIndex: number;
     displayTextFormatIndex: number;
+    writeFile: boolean;
 
     constructor(public plugin: PDFPlus, public toolbarLeftEl: HTMLElement) {
         super();
         this.app = plugin.app;
+        this.api = plugin.api;
 
         this.spacerEl = null;
         this.paletteEl = null;
         this.itemEls = [];
         this.actionMenuEl = null;
         this.displayTextFormatMenuEl = null;
+        this.writeFileToggleContainerEl = null;
+        this.writeFileToggle = null;
+        this.statusContainerEl = null;
+        this.statusEl = null;
 
         this.selectedColorName = null;
         this.actionIndex = plugin.settings.defaultColorPaletteActionIndex;
         this.displayTextFormatIndex = plugin.settings.defaultDisplayTextFormatIndex;
+        this.writeFile = plugin.settings.enalbeWriteHighlightToFile && plugin.settings.defaultWriteFileToggle;
     }
 
     onload() {
@@ -58,6 +73,13 @@ export class ColorPalette extends Component {
 
         this.actionMenuEl = this.addCopyActionDropdown(this.paletteEl);
         this.displayTextFormatMenuEl = this.addDisplayTextFormatDropdown(this.paletteEl);
+
+        if (this.plugin.settings.enalbeWriteHighlightToFile) {
+            this.addWriteFileToggle(this.paletteEl);
+        }
+
+        this.statusContainerEl = this.paletteEl.createDiv('pdf-plus-color-palette-status-container');
+        this.statusEl = this.statusContainerEl.createSpan('pdf-plus-color-palette-status');
 
         this.registerEvent(this.plugin.on('color-palette-state-change', ({ source }) => {
             if (source !== this) this.syncTo(source);
@@ -97,7 +119,14 @@ export class ColorPalette extends Component {
                 this.plugin.trigger('color-palette-state-change', { source: this });
             }
 
-            copyLinkToSelection(this.plugin, false, this.plugin.settings.copyCommands[this.actionIndex].template, name ?? undefined);
+            const template = this.plugin.settings.copyCommands[this.actionIndex].template;
+
+            if (this.writeFile) {
+                this.api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, name ?? undefined);
+            } else {
+                this.api.copyLink.copyLinkToSelection(false, template, name ?? undefined);
+            }
+
             evt.preventDefault();
         });
     }
@@ -194,7 +223,7 @@ export class ColorPalette extends Component {
             paletteEl,
             this.plugin.settings.displayTextFormats.map((format) => format.name),
             'displayTextFormatIndex',
-            'Link display text format',
+            `${this.plugin.manifest.name}: Link display text format`,
             () => {
                 if (this.plugin.settings.syncDisplayTextFormat) {
                     this.plugin.settings.defaultDisplayTextFormatIndex = this.displayTextFormatIndex;
@@ -203,6 +232,47 @@ export class ColorPalette extends Component {
         );
         buttonEl.addClass('pdf-plus-display-text-format-menu');
         return buttonEl;
+    }
+
+    addWriteFileToggle(paletteEl: HTMLElement) {
+        const containerEl = paletteEl.createDiv('pdf-plus-write-file-toggle-container');
+        const toggle = new ToggleComponent(containerEl)
+            .setTooltip(`${this.plugin.manifest.name}: Write to file directly`)
+            .setValue(this.writeFile)
+            .onChange((value) => {
+                this.writeFile = value;
+
+                if (this.plugin.settings.syncWriteFileToggle) {
+                    this.plugin.settings.defaultWriteFileToggle = value;
+                }
+
+                this.plugin.trigger('color-palette-state-change', { source: this });
+            });
+        this.writeFileToggleContainerEl = containerEl;
+        this.writeFileToggle = toggle;
+    }
+
+    setWriteFile(value: boolean) {
+        this.writeFile = value;
+        // the same as this.writeFileToggle.setValue(value), but without calling the onChange callback
+        if (this.writeFileToggle) {
+            // @ts-ignore
+            this.writeFileToggle.on = value;
+            this.writeFileToggle.toggleEl.toggleClass('is-enabled', value);
+        }
+    }
+
+    setStatus(text: string, durationMs: number) {
+        if (this.statusEl) {
+            this.statusEl.setText(text);
+            if (durationMs > 0) {
+                setTimeout(() => {
+                    if (this.statusEl?.getText() === text) {
+                        this.statusEl.setText('');
+                    }
+                }, durationMs);
+            }
+        }
     }
 
     setTooltipToActionItem(itemEl: HTMLElement, name: string | null) {
@@ -218,43 +288,38 @@ export class ColorPalette extends Component {
         });
     }
 
-    syncTo(palette: ColorPalette) {
-        if (this.plugin.settings.syncColorPaletteItem) {
-            this.setActiveItem(palette.selectedColorName);
-        }
-        if (this.plugin.settings.syncColorPaletteAction) {
-            this.setActionIndex(palette.actionIndex);
-        }
-        if (this.plugin.settings.syncDisplayTextFormat) {
-            this.setDisplayTextFormatIndex(palette.displayTextFormatIndex);
-        }
-    }
-
-    getState() {
+    getState(): ColorPaletteState {
         return {
             selectedColorName: this.selectedColorName,
             actionIndex: this.actionIndex,
-            displayTextFormatIndex: this.displayTextFormatIndex
+            displayTextFormatIndex: this.displayTextFormatIndex,
+            writeFile: this.writeFile
         };
     }
 
-    static getColorPaletteAssociatedWithNode(node: Node) {
-        const toolbarEl = getToolbarAssociatedWithNode(node);
-        if (!toolbarEl) return null;
-        const paletteEl = toolbarEl.querySelector<HTMLElement>('.' + ColorPalette.CLS)
-        if (!paletteEl) return null;
-
-        return ColorPalette.elInstanceMap.get(paletteEl) ?? null;
+    setState(state: Partial<ColorPaletteState>) {
+        if (typeof state.selectedColorName === 'string') this.setActiveItem(state.selectedColorName);
+        if (typeof state.actionIndex === 'number') this.setActionIndex(state.actionIndex);
+        if (typeof state.displayTextFormatIndex === 'number') this.setDisplayTextFormatIndex(state.displayTextFormatIndex);
+        if (typeof state.writeFile === 'boolean') this.setWriteFile(state.writeFile);
     }
 
-    static getColorPaletteAssociatedWithSelection() {
-        const selection = activeWindow.getSelection();
+    syncTo(palette: ColorPalette) {
+        const state: Partial<ColorPaletteState> = palette.getState();
 
-    if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        return ColorPalette.getColorPaletteAssociatedWithNode(range.startContainer);
-    }
+        if (!this.plugin.settings.syncColorPaletteItem) {
+            delete state.selectedColorName;
+        }
+        if (!this.plugin.settings.syncColorPaletteAction) {
+            delete state.actionIndex;
+        }
+        if (!this.plugin.settings.syncDisplayTextFormat) {
+            delete state.displayTextFormatIndex;
+        }
+        if (!this.plugin.settings.syncWriteFileToggle) {
+            delete state.writeFile;
+        }
 
-    return null;
+        this.setState(state);
     }
 }

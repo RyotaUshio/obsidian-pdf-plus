@@ -1,27 +1,32 @@
-import { EditableFileView, Editor, EventRef, Events, Keymap, MarkdownFileInfo, MarkdownView, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion, setIcon } from 'obsidian';
+import { EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion, setIcon } from 'obsidian';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
+import { PDFPlusAPI } from 'api';
 import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
-import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { copyLinkToSelection, destIdToSubpath, getToolbarAssociatedWithSelection, iterateBacklinkViews, iteratePDFViews, subpathToParams, copyLinkToAnnotation, registerGlobalDomEvent, OverloadParameters, getAnnotationInfoFromPopupEl } from 'utils';
-import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
+import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
+import { subpathToParams, OverloadParameters, toSingleLine } from 'utils';
+import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 
 
 export default class PDFPlus extends Plugin {
+	/** This API is not intended to be used by other plugins. */
+	api: PDFPlusAPI = new PDFPlusAPI(this);
+	/** User's preferences. */
 	settings: PDFPlusSettings;
-	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object */
+	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object. */
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
-	/** Manages DOMs and event handlers introduced by this plugin */
+	/** Manages DOMs and event handlers introduced by this plugin. */
 	domManager: DomManager;
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
 	selectToCopyMode: SelectToCopyMode;
 	events: Events = new Events();
+	/** PDF++ relies on monkey-patching several aspects of Obsidian's internals. This property keeps track of the patching status (succeeded or not). */
 	patchStatus = {
 		workspace: false,
 		pagePreview: false,
@@ -68,7 +73,7 @@ export default class PDFPlus extends Plugin {
 		this.registerEvents();
 	}
 
-	checkVersion() {
+	private checkVersion() {
 		if (requireApiVersion('1.5.4')) {
 			const notice = new Notice(`${this.manifest.name}: This plugin has not been tested on Obsidian v1.5.4 or above. Please report any issue you encounter on `, 0);
 			notice.noticeEl.append(createEl('a', { href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new', text: 'GitHub' }));
@@ -110,11 +115,11 @@ export default class PDFPlus extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	patchObsidian() {
+	private patchObsidian() {
 		this.app.workspace.onLayoutReady(() => patchWorkspace(this));
 		this.tryPatchPeriodicallyUntilSuccess(patchPagePreview, 300);
 		this.tryPatchUntilSuccess(patchPDF, () => {
-			iteratePDFViews(this.app, async (view) => {
+			this.api.workspace.iteratePDFViews(async (view) => {
 				// reflect the patch to existing PDF views
 				const file = view.file;
 				if (file) view.onLoadFile(file);
@@ -124,7 +129,7 @@ export default class PDFPlus extends Plugin {
 			duration: 7000
 		});
 		this.tryPatchUntilSuccess(patchBacklink, () => {
-			iterateBacklinkViews(this.app, (view) => {
+			this.api.workspace.iterateBacklinkViews((view) => {
 				// reflect the patch to existing backlink views
 				if (view.file?.extension === 'pdf') {
 					view.onLoadFile(view.file);
@@ -181,7 +186,7 @@ export default class PDFPlus extends Plugin {
 		this.domManager.update();
 	}
 
-	registerPDFEmbedCreator() {
+	private registerPDFEmbedCreator() {
 		const originalPDFEmbedCreator = this.app.embedRegistry.embedByExtension['pdf'];
 
 		this.register(() => {
@@ -209,38 +214,16 @@ export default class PDFPlus extends Plugin {
 		});
 	}
 
-	registerCommands() {
-		this.addCommand({
-			id: 'copy-link-to-selection',
-			name: 'Copy link to selection or annotation',
-			checkCallback: (checking) => {
-				if (!this.copyLinkToAnnotation(checking)) {
-					return this.copyLinkToSelection(checking);
-				}
-			}
-		});
-
-		this.addCommand({
-			id: 'copy-auto-paste-link-to-selection',
-			name: 'Copy & auto-paste link to selection or annotation',
-			checkCallback: (checking) => {
-				if (!this.copyLinkToAnnotation(checking, true)) {
-					return this.copyLinkToSelection(checking, true);
-				}
-			}
-		});
-	}
-
-	registerGlobalVariables() {
+	private registerGlobalVariables() {
 		window.pdfPlus = this;
 		this.register(() => delete window.pdfPlus);
 	}
 
 	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
-		registerGlobalDomEvent(this.app, this, type, callback, options);
+		this.api.registerGlobalDomEvent(this, type, callback, options);
 	}
 
-	registerGlobalDomEvents() {
+	private registerGlobalDomEvents() {
 		this.enhancePDFInternalLinks();
 
 		// Make PDF embeds with a subpath unscrollable
@@ -267,7 +250,7 @@ export default class PDFPlus extends Plugin {
 		});
 	}
 
-	enhancePDFInternalLinks() {
+	private enhancePDFInternalLinks() {
 		// record history when clicking an internal link IN a PDF file
 		this.registerGlobalDomEvent('click', (evt) => {
 			if (this.settings.recordPDFInternalLinkHistory
@@ -299,7 +282,7 @@ export default class PDFPlus extends Plugin {
 							const doc = child.pdfViewer.pdfViewer?.pdfDocument;
 							if (!doc) return;
 
-							const subpath = await destIdToSubpath(destId, doc);
+							const subpath = await this.api.destIdToSubpath(destId, doc);
 							if (subpath === null) return;
 							const linktext = view.file!.path + subpath;
 
@@ -317,7 +300,7 @@ export default class PDFPlus extends Plugin {
 		});
 	}
 
-	registerEvents() {
+	private registerEvents() {
 		// keep this.pdfViewerChildren up-to-date
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
 			for (const viewerEl of this.pdfViwerChildren.keys()) {
@@ -347,8 +330,31 @@ export default class PDFPlus extends Plugin {
 		this.registerEvent(eventRef);
 	}
 
+	private registerCommands() {
+		this.addCommand({
+			id: 'copy-link-to-selection',
+			name: 'Copy link to selection or annotation',
+			checkCallback: (checking) => this.copyLink(checking, false)
+		});
+
+		this.addCommand({
+			id: 'copy-auto-paste-link-to-selection',
+			name: 'Copy & auto-paste link to selection or annotation',
+			checkCallback: (checking) => this.copyLink(checking, true)
+		});
+	}
+
+	copyLink(checking: boolean, autoPaste: boolean = false) {
+		if (!this.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, autoPaste)) {
+			if (!this.copyLinkToAnnotation(checking, autoPaste)) {
+				return this.copyLinkToSelection(checking, autoPaste);
+			}
+		}
+		return true;
+	}
+
 	copyLinkToSelection(checking: boolean, autoPaste: boolean = false) {
-		const palette = ColorPalette.getColorPaletteAssociatedWithSelection();
+		const palette = this.api.getColorPaletteAssociatedWithSelection();
 		if (!palette) return false;
 		const template = this.settings.copyCommands[palette.actionIndex].template;
 
@@ -356,7 +362,7 @@ export default class PDFPlus extends Plugin {
 		const colorName = palette.selectedColorName;
 		if (!colorName) return false;
 
-		return copyLinkToSelection(this, checking, template, colorName, autoPaste);
+		return this.api.copyLink.copyLinkToSelection(checking, template, colorName, autoPaste);
 	}
 
 	copyLinkToAnnotation(checking: boolean, autoPaste: boolean = false) {
@@ -367,7 +373,7 @@ export default class PDFPlus extends Plugin {
 		const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon');
 		if (!copyButtonEl) return false;
 
-		const palette = ColorPalette.getColorPaletteAssociatedWithNode(copyButtonEl);
+		const palette = this.api.getColorPaletteAssociatedWithNode(copyButtonEl);
 		let template;
 		if (palette) {
 			template = this.settings.copyCommands[palette.actionIndex].template;
@@ -377,53 +383,31 @@ export default class PDFPlus extends Plugin {
 			// In this case, use the default color palette action.
 			template = this.settings.copyCommands[this.settings.defaultColorPaletteActionIndex].template;
 		}
-		const annotInfo = getAnnotationInfoFromPopupEl(popupEl);
+		const annotInfo = this.api.getAnnotationInfoFromPopupEl(popupEl);
 		if (!annotInfo) return false;
 		const { page, id } = annotInfo;
 
-		const result = copyLinkToAnnotation(this, child, checking, template, page, id, autoPaste);
+		const result = this.api.copyLink.copyLinkToAnnotation(child, checking, template, page, id, autoPaste);
 
 		if (!checking && result) setIcon(copyButtonEl, 'lucide-check');
 
 		return result;
 	}
 
-	async autoPaste(text: string) {
-		if (this.lastPasteFile && this.lastPasteFile.extension === 'md') {
-			// use vault, not editor, so that we can auto-paste even when the file is not opened
-			await this.app.vault.process(this.lastPasteFile, (data) => {
-				// if the file does not end with a blank line, add one
-				const idx = data.lastIndexOf('\n');
-				if (idx === -1 || data.slice(idx).trim()) {
-					data += '\n\n';
-				}
-				data += text;
-				return data;
-			});
-			if (this.settings.focusEditorAfterAutoPaste) {
-				this.app.workspace.iterateAllLeaves((leaf) => {
-					if (leaf.view instanceof MarkdownView && leaf.view.file?.path === this.lastPasteFile?.path) {
-						const editor = leaf.view.editor;
-						// After "vault.process" is completed, we have to wait for a while until the editor reflects the change.
-						setTimeout(() => {
-							editor.setCursor(editor.getValue().length);
-							editor.focus();
-						}, 200);
-					}
-				});
-			}
-		} else {
-			new Notice(`${this.manifest.name}: Cannot auto-paste because this is the first time. Please manually paste the link.`)
-		}
-	}
+	// TODO: A better, more concise function name 😅
+	writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking: boolean, autoPaste: boolean = false) {
+		const palette = this.api.getColorPaletteAssociatedWithSelection();
+		if (!palette) return false;
 
-	watchPaste(text: string) {
-		// watch for a manual paste for updating this.lastPasteFile
-		this.registerOneTimeEvent(this.app.workspace, 'editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-			if (info.file?.extension === 'md' && evt.clipboardData?.getData('text/plain') === text) {
-				this.lastPasteFile = info.file;
-			}
-		});
+		if (!palette.writeFile) return false;
+
+		const template = this.settings.copyCommands[palette.actionIndex].template;
+
+		// get the currently selected color name
+		const colorName = palette.selectedColorName;
+		if (!colorName) return false;
+
+		return this.api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
 	}
 
 	getPDFViewerChildAssociatedWithNode(node: Node) {

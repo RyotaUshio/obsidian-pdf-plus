@@ -5,12 +5,14 @@ import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
 import { PDFPlusTemplateProcessor } from 'template';
-import { copyLinkToAnnotation, getAnnotationInfoFromAnnotationElement, getLinkTemplateVariables, getToolbarAssociatedWithNode, registerPDFEvent, toSingleLine } from 'utils';
+import { toSingleLine } from 'utils';
 import { AnnotationElement, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
+    const api = plugin.api;
+
     const pdfView = app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
     if (!pdfView) return false;
     const child = pdfView.viewer.child;
@@ -43,7 +45,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             if (pdfViewer.pagesCount) { // pages are already loaded
                                 pdfViewer.currentPageNumber = state.page;
                             } else { // pages are not loaded yet (this is the case typically when opening a different file)
-                                registerPDFEvent('pagesloaded', pdfViewer.eventBus, null, () => {
+                                api.registerPDFEvent('pagesloaded', pdfViewer.eventBus, null, () => {
                                     pdfViewer.currentPageNumber = state.page;
                                 });
                             }
@@ -137,6 +139,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         new Notice(`${plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);
                     }
                 }
+
                 return old.call(this, page);
             }
         },
@@ -295,12 +298,12 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         setIcon(iconEl, 'lucide-copy');
                         setTooltip(iconEl, 'Copy');
                         iconEl.addEventListener('click', async () => {
-                            const palette = ColorPalette.getColorPaletteAssociatedWithNode(popupMetaEl)
+                            const palette = api.getColorPaletteAssociatedWithNode(popupMetaEl)
                             if (!palette) return;
                             const template = plugin.settings.copyCommands[palette.actionIndex].template;
-                            const { page, id } = getAnnotationInfoFromAnnotationElement(annotationElement);
+                            const { page, id } = api.getAnnotationInfoFromAnnotationElement(annotationElement);
 
-                            copyLinkToAnnotation(plugin, self, false, template, page, id);
+                            api.copyLink.copyLinkToAnnotation(self, false, template, page, id);
 
                             setIcon(iconEl, 'lucide-check');
                         })
@@ -314,7 +317,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             return function () {
                 const self = this as PDFViewerChild;
                 self.component?.unload();
-                plugin.lastAnnotationPopupChild = null
+                plugin.lastAnnotationPopupChild = null;
                 return old.call(this);
             }
         }
@@ -327,7 +330,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const ret = old.call(this);
 
                 if (plugin.settings.noSpreadModeInEmbed && self.isEmbed) {
-                    registerPDFEvent('pagerendered', self.eventBus, null, () => {
+                    api.registerPDFEvent('pagerendered', self.eventBus, null, () => {
                         self.eventBus.dispatch('switchspreadmode', { mode: 0 });
                     });
                 }

@@ -3,11 +3,11 @@ import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
 import { BacklinkHighlighter } from 'highlight';
-import { getExistingPDFLeafOfFile, openMarkdownLink } from 'utils';
 
 
 export const patchPagePreview = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
+    const api = plugin.api;
     const pagePreview = app.internalPlugins.plugins['page-preview'].instance;
 
     // Make sure this plugin patches `onLinkHover` after Hover Editor, because it completely overrides the original method
@@ -24,13 +24,13 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
                 const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
                 if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkHighlighter) {
-                    openMarkdownLink(plugin, linktext, sourcePath, state.scroll);
+                    api.workspace.openMarkdownLink(linktext, sourcePath, state.scroll);
                     return;
                 }
 
                 if (file?.extension === 'pdf') {
                     if (plugin.settings.hoverPDFLinkToOpen) {
-                        const leaf = getExistingPDFLeafOfFile(app, file);
+                        const leaf = api.workspace.getExistingPDFLeafOfFile(file);
                         if (leaf) {
                             leaf.openLinkText(linktext, sourcePath, {
                                 active: !plugin.settings.dontActivateAfterOpenPDF

@@ -1,8 +1,9 @@
 import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PropRequired, areRectanglesMergeableHorizontally, areRectanglesMergeableVertically, getSubpathWithoutHash, highlightRectInPage, isMouseEventExternal, mergeRectangles, onAnnotationLayerReady, onTextLayerReady, openMarkdownLink } from 'utils';
-import { BacklinkView, ObsidianViewer, Rect, TextContentItem, TextLayerBuilder } from 'typings';
+import { PDFPlusAPI } from 'api';
+import { getSubpathWithoutHash, isMouseEventExternal } from 'utils';
+import { BacklinkView, ObsidianViewer } from 'typings';
 
 
 interface BacklinkInfo {
@@ -31,6 +32,7 @@ interface AnnotationBacklinkInfo extends BacklinkInfo {
 
 export class BacklinkHighlighter extends Component implements HoverParent {
     app: App;
+    api: PDFPlusAPI;
     file: TFile | null;
     hoverPopover: HoverPopover | null;
     eventManager: Component;
@@ -43,6 +45,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
     constructor(public plugin: PDFPlus, public viewer: ObsidianViewer) {
         super();
         this.app = plugin.app;
+        this.api = plugin.api;
         this.file = null;
         this.hoverPopover = null;
         this.eventManager = this.addChild(new Component());
@@ -140,8 +143,8 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         this.clearTextHighlight();
 
         // register a callback that highlights backlinks when the text layer for the page is ready
-        onTextLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
-            this.clearTextHighlightOnPage(pageNumber);
+        this.api.onTextLayerReady(this.viewer, this.eventManager, (pageView, pageNumber, newlyRendered) => {
+            if (newlyRendered) this.clearTextHighlightOnPage(pageNumber);
 
             for (const backlink of this.backlinks[pageNumber]?.selection ?? []) {
                 const { beginIndex, beginOffset, endIndex, endOffset, colorName } = backlink;
@@ -161,7 +164,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             }
         });
 
-        onAnnotationLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
+        this.api.onAnnotationLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
             for (const backlink of this.backlinks[pageNumber]?.annotation ?? []) {
                 const { id } = backlink;
 
@@ -183,10 +186,10 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
                 const { textDivs } = pageView.textLayer;
 
-                const results = this.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
+                const results = this.api.highlight.geometry.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
 
                 for (const { rect, indices } of results) {
-                    const highlightedEl = highlightRectInPage(rect, pageView);
+                    const highlightedEl = this.api.highlight.viewer.highlightRectInPage(rect, pageView);
 
                     // font-size is used to set the padding of this highlight in em unit
                     const textDiv = textDivs[indices[0]];
@@ -204,134 +207,6 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                 this.highlightedTexts.push({ page: pageNumber });
             }
         }
-    }
-
-    computeHighlightRectForItem(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
-        // If the item has the `chars` property filled, use it to get the bounding rectangle of each character in the item.
-        if (item.chars && item.chars.length >= item.str.length) {
-            return this.computeHighlightRectForItemFromChars(item as PropRequired<TextContentItem, 'chars'>, index, beginIndex, beginOffset, endIndex, endOffset);
-        }
-        // Otherwise, use the text layer divs to get the bounding rectangle of the text selection.
-        return this.computeHighlightRectForItemFromTextLayer(textLayerDiv, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
-    }
-
-    computeHighlightRectForItemFromChars(item: PropRequired<TextContentItem, 'chars'>, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
-        // trim `item.chars` so that it will match `item.str`, which is already trimmed
-        const trimmedChars = item.chars.slice(
-            item.chars.findIndex((char) => char.c === item.str.charAt(0)),
-            item.chars.findLastIndex((char) => char.c === item.str.charAt(item.str.length - 1)) + 1
-        );
-
-        const offsetFrom = index === beginIndex ? beginOffset : 0;
-        // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
-        // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
-        // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
-        const offsetTo = (index === endIndex ? endOffset : trimmedChars.length) - 1;
-
-        if (offsetFrom > trimmedChars.length - 1 || offsetTo < 0) return null;
-
-        const charFrom = trimmedChars[offsetFrom];
-        const charTo = trimmedChars[offsetTo];
-        // the minimum rectangle that contains all the chars of this text content item
-        return [
-            Math.min(charFrom.r[0], charTo.r[0]), Math.min(charFrom.r[1], charTo.r[1]),
-            Math.max(charFrom.r[2], charTo.r[2]), Math.max(charFrom.r[3], charTo.r[3]),
-        ];
-    }
-
-    // Inspired by PDFViewerChild.prototype.hightlightText from Obsidian's app.js
-    computeHighlightRectForItemFromTextLayer(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
-        const offsetFrom = index === beginIndex ? beginOffset : 0;
-        // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
-        // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
-        // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
-        const offsetTo = index === endIndex ? endOffset : undefined;
-
-        // the bounding box of the whole text content item
-        const x1 = item.transform[4];
-        const y1 = item.transform[5];
-        const x2 = item.transform[4] + item.width;
-        const y2 = item.transform[5] + item.height;
-
-        const textDivCopied = textDiv.cloneNode() as HTMLElement;
-        textLayerDiv.appendChild(textDivCopied);
-
-        const textBefore = item.str.substring(0, offsetFrom);
-        textDivCopied.appendText(textBefore);
-
-        const text = item.str.substring(offsetFrom, offsetTo);
-        const boundingEl = textDivCopied.createSpan();
-        boundingEl.appendText(text);
-
-        if (offsetTo !== undefined) {
-            const textAfter = item.str.substring(offsetTo);
-            textDivCopied.appendText(textAfter);
-        }
-
-        const rect = boundingEl.getBoundingClientRect();
-        const parentRect = textDiv.getBoundingClientRect();
-
-        textDivCopied.remove();
-
-        return [
-            x1 + (rect.left - parentRect.left) / parentRect.width * item.width,
-            y1 + (rect.bottom - parentRect.bottom) / parentRect.height * item.height,
-            x2 - (parentRect.right - rect.right) / parentRect.width * item.width,
-            y2 - (parentRect.top - rect.top) / parentRect.height * item.height,
-        ];
-    }
-
-    /**
-     * Returns an array of rectangles that cover the background of the text selection speficied by the given parameters.
-     * Each rectangle is obtained by merging the rectangles of the text content items contained in the selection, when possible (typically when the text selection is within a single line).
-     * Each rectangle is associated with an array of indices of the text content items contained in the rectangle.
-     */
-    computeMergedHighlightRects(textLayer: TextLayerBuilder, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): { rect: Rect, indices: number[] }[] {
-        const { textContentItems, textDivs, div } = textLayer;
-
-        const results: { rect: Rect, indices: number[] }[] = [];
-
-        let mergedRect: Rect | null = null;
-        let mergedIndices: number[] = [];
-
-        // If the selection ends at the beginning of a text content item, 
-        // replace the end point with the end of the previous text content item.
-        if (endOffset === 0) {
-            endIndex--;
-            endOffset = textContentItems[endIndex].str.length;
-        }
-
-        for (let index = beginIndex; index <= endIndex; index++) {
-            const item = textContentItems[index];
-            const textDiv = textDivs[index];
-
-            if (!item.str) continue;
-
-            // the minimum rectangle that contains all the chars of this text content item
-            const rect = this.computeHighlightRectForItem(div, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
-            if (!rect) continue;
-
-            if (!mergedRect) {
-                mergedRect = rect;
-                mergedIndices = [index];
-            } else {
-                const mergeable = areRectanglesMergeableHorizontally(mergedRect, rect)
-                    || areRectanglesMergeableVertically(mergedRect, rect);
-                if (mergeable) {
-                    mergedRect = mergeRectangles(mergedRect, rect);
-                    mergedIndices.push(index);
-                } else {
-                    results.push({ rect: mergedRect, indices: mergedIndices });
-
-                    mergedRect = rect;
-                    mergedIndices = [index];
-                }
-            }
-        }
-
-        if (mergedRect) results.push({ rect: mergedRect, indices: mergedIndices });
-
-        return results;
     }
 
     clearTextHighlightOnPage(pageNumber: number) {
@@ -439,7 +314,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     });
                     return;
                 }
-                openMarkdownLink(this.plugin, sourcePath, this.file?.path ?? '', line);
+                this.api.workspace.openMarkdownLink(sourcePath, this.file?.path ?? '', line);
             }
         });
     }

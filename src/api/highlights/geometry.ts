@@ -1,0 +1,174 @@
+import { PDFPlusAPISubmodule } from 'api/submodule';
+import { PropRequired } from 'utils';
+import { TextLayerBuilder, Rect, TextContentItem } from 'typings';
+
+
+export class HighlightGeometryAPI extends PDFPlusAPISubmodule {
+
+    /**
+     * Returns an array of rectangles that cover the background of the text selection speficied by the given parameters.
+     * Each rectangle is obtained by merging the rectangles of the text content items contained in the selection, when possible (typically when the text selection is within a single line).
+     * Each rectangle is associated with an array of indices of the text content items contained in the rectangle.
+     */
+    computeMergedHighlightRects(textLayer: TextLayerBuilder, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): { rect: Rect, indices: number[] }[] {
+        const { textContentItems, textDivs, div } = textLayer;
+
+        const results: { rect: Rect, indices: number[] }[] = [];
+
+        let mergedRect: Rect | null = null;
+        let mergedIndices: number[] = [];
+
+        // If the selection ends at the beginning of a text content item, 
+        // replace the end point with the end of the previous text content item.
+        if (endOffset === 0) {
+            endIndex--;
+            endOffset = textContentItems[endIndex].str.length;
+        }
+
+        for (let index = beginIndex; index <= endIndex; index++) {
+            const item = textContentItems[index];
+            const textDiv = textDivs[index];
+
+            if (!item.str) continue;
+
+            // the minimum rectangle that contains all the chars of this text content item
+            const rect = this.computeHighlightRectForItem(div, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
+            if (!rect) continue;
+
+            if (!mergedRect) {
+                mergedRect = rect;
+                mergedIndices = [index];
+            } else {
+                const mergeable = this.areRectanglesMergeable(mergedRect, rect);
+                if (mergeable) {
+                    mergedRect = this.mergeRectangles(mergedRect, rect);
+                    mergedIndices.push(index);
+                } else {
+                    results.push({ rect: mergedRect, indices: mergedIndices });
+
+                    mergedRect = rect;
+                    mergedIndices = [index];
+                }
+            }
+        }
+
+        if (mergedRect) results.push({ rect: mergedRect, indices: mergedIndices });
+
+        return results;
+    }
+
+    computeHighlightRectForItem(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
+        // If the item has the `chars` property filled, use it to get the bounding rectangle of each character in the item.
+        if (item.chars && item.chars.length >= item.str.length) {
+            return this.computeHighlightRectForItemFromChars(item as PropRequired<TextContentItem, 'chars'>, index, beginIndex, beginOffset, endIndex, endOffset);
+        }
+        // Otherwise, use the text layer divs to get the bounding rectangle of the text selection.
+        return this.computeHighlightRectForItemFromTextLayer(textLayerDiv, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
+    }
+
+    computeHighlightRectForItemFromChars(item: PropRequired<TextContentItem, 'chars'>, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
+        // trim `item.chars` so that it will match `item.str`, which is already trimmed
+        const trimmedChars = item.chars.slice(
+            item.chars.findIndex((char) => char.c === item.str.charAt(0)),
+            item.chars.findLastIndex((char) => char.c === item.str.charAt(item.str.length - 1)) + 1
+        );
+
+        const offsetFrom = index === beginIndex ? beginOffset : 0;
+        // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
+        // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
+        // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
+        const offsetTo = (index === endIndex ? endOffset : trimmedChars.length) - 1;
+
+        if (offsetFrom > trimmedChars.length - 1 || offsetTo < 0) return null;
+
+        const charFrom = trimmedChars[offsetFrom];
+        const charTo = trimmedChars[offsetTo];
+        // the minimum rectangle that contains all the chars of this text content item
+        return [
+            Math.min(charFrom.r[0], charTo.r[0]), Math.min(charFrom.r[1], charTo.r[1]),
+            Math.max(charFrom.r[2], charTo.r[2]), Math.max(charFrom.r[3], charTo.r[3]),
+        ];
+    }
+
+    // Inspired by PDFViewerChild.prototype.hightlightText from Obsidian's app.js
+    computeHighlightRectForItemFromTextLayer(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
+        const offsetFrom = index === beginIndex ? beginOffset : 0;
+        // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
+        // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
+        // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
+        const offsetTo = index === endIndex ? endOffset : undefined;
+
+        // the bounding box of the whole text content item
+        const x1 = item.transform[4];
+        const y1 = item.transform[5];
+        const x2 = item.transform[4] + item.width;
+        const y2 = item.transform[5] + item.height;
+
+        const textDivCopied = textDiv.cloneNode() as HTMLElement;
+        textLayerDiv.appendChild(textDivCopied);
+
+        const textBefore = item.str.substring(0, offsetFrom);
+        textDivCopied.appendText(textBefore);
+
+        const text = item.str.substring(offsetFrom, offsetTo);
+        const boundingEl = textDivCopied.createSpan();
+        boundingEl.appendText(text);
+
+        if (offsetTo !== undefined) {
+            const textAfter = item.str.substring(offsetTo);
+            textDivCopied.appendText(textAfter);
+        }
+
+        const rect = boundingEl.getBoundingClientRect();
+        const parentRect = textDiv.getBoundingClientRect();
+
+        textDivCopied.remove();
+
+        return [
+            x1 + (rect.left - parentRect.left) / parentRect.width * item.width,
+            y1 + (rect.bottom - parentRect.bottom) / parentRect.height * item.height,
+            x2 - (parentRect.right - rect.right) / parentRect.width * item.width,
+            y2 - (parentRect.top - rect.top) / parentRect.height * item.height,
+        ];
+    }
+
+    areRectanglesMergeable(rect1: Rect, rect2: Rect): boolean {
+        return this.areRectanglesMergeableHorizontally(rect1, rect2)
+            || this.areRectanglesMergeableVertically(rect1, rect2);
+    }
+
+    areRectanglesMergeableHorizontally(rect1: Rect, rect2: Rect): boolean {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const [left1, bottom1, right1, top1] = rect1;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const [left2, bottom2, right2, top2] = rect2;
+        const y1 = (bottom1 + top1) / 2;
+        const y2 = (bottom2 + top2) / 2;
+        const height1 = Math.abs(top1 - bottom1);
+        const height2 = Math.abs(top2 - bottom2);
+        const threshold = Math.max(height1, height2) * 0.5;
+        return Math.abs(y1 - y2) < threshold;
+    }
+
+    areRectanglesMergeableVertically(rect1: Rect, rect2: Rect): boolean {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const [left1, bottom1, right1, top1] = rect1;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const [left2, bottom2, right2, top2] = rect2;
+        const width1 = Math.abs(right1 - left1);
+        const width2 = Math.abs(right2 - left2);
+        const threshold = Math.max(width1, width2) * 0.1;
+        return Math.abs(left1 - left2) < threshold && Math.abs(right1 - right2) < threshold;
+    }
+
+    mergeRectangles(rect1: Rect, rect2: Rect): Rect {
+        const [left1, bottom1, right1, top1] = rect1;
+        const [left2, bottom2, right2, top2] = rect2;
+        const left = Math.min(left1, left2);
+        const right = Math.max(right1, right2);
+        const bottom = Math.min(bottom1, bottom2);
+        const top = Math.max(top1, top2);
+        return [left, bottom, right, top];
+    }
+
+} 

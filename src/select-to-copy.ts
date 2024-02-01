@@ -1,7 +1,6 @@
 import { Component } from 'obsidian';
 
 import PDFPlus from 'main';
-import { registerGlobalDomEvent } from 'utils';
 
 
 export class SelectToCopyMode extends Component {
@@ -21,9 +20,9 @@ export class SelectToCopyMode extends Component {
     }
 
     onload() {
-        const app = this.plugin.app;
-        
-        registerGlobalDomEvent(app, this, 'pointerup', () => {
+        const api = this.plugin.api;
+
+        api.registerGlobalDomEvent(this, 'pointerup', () => {
             if (activeWindow.getSelection()?.toString()) {
                 this.plugin.copyLinkToSelection(false);
             }
