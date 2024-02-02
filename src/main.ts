@@ -1,4 +1,6 @@
 import { EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion, setIcon } from 'obsidian';
+import * as pdflib from '@cantoo/pdf-lib';
+import * as pdfAnnotate from 'annotpdf';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
@@ -214,9 +216,21 @@ export default class PDFPlus extends Plugin {
 		});
 	}
 
+	private registerGlobalVariable(name: string, value: any, throwError: boolean = true) {
+		if (name in window) {
+			if (throwError) throw new Error(`${this.manifest.name}: Global variable "${name}" already exists.`);
+			else return;
+		}
+		// @ts-ignore
+		window[name] = value;
+		// @ts-ignore
+		this.register(() => delete window[name]);
+	}
+
 	private registerGlobalVariables() {
-		window.pdfPlus = this;
-		this.register(() => delete window.pdfPlus);
+		this.registerGlobalVariable('pdfPlus', this, false);
+		this.registerGlobalVariable('pdflib', pdflib, false);
+		this.registerGlobalVariable('pdfAnnotate', pdfAnnotate, false);
 	}
 
 	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {

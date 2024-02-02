@@ -90,6 +90,7 @@ export interface PDFPlusSettings {
 	writeHighlightToFileOpacity: number;
 	defaultWriteFileToggle: boolean;
 	syncWriteFileToggle: boolean;
+	writeFileLibrary: 'pdf-lib' | 'pdfAnnotate';
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -123,6 +124,10 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		{
 			name: 'Copy embed of selection',
 			template: '!{{link}}',
+		},
+		{
+			name: 'Selected text',
+			template: '[[{{linktext}}|{{selection}}]]'
 		}
 	],
 	useAnotherCopyTemplateWhenNoSelection: false,
@@ -186,6 +191,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	writeHighlightToFileOpacity: 0.5,
 	defaultWriteFileToggle: false,
 	syncWriteFileToggle: true,
+	writeFileLibrary: 'pdfAnnotate',
 };
 
 
@@ -721,6 +727,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addToggleSetting('syncWriteFileToggle')
 				.setName('Share the same toggle state among all PDF viewers')
 				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
+			this.addDropdownSetting('writeFileLibrary', ['pdf-lib', 'pdfAnnotate'])
+				.setName('Library to write highlights')
+				.then((setting) => {
+					this.renderMarkdown([
+						'- **pdf-lib**: A JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.',
+						'- **[pdfAnnotate](https://github.com/highkite/pdfAnnotate)**: A JavaScript library for creating PDF annotations by Thomas Osterland.'
+					], setting.descEl);
+				});
 		}
 
 

@@ -327,8 +327,15 @@ But you can install the latest release using [BRAT](https://github.com/TfTHacker
 PDF++ is built on top of Obsidian's native PDF viewer powered by [Mozilla's PDF.js](https://mozilla.github.io/pdf.js/), which is already pretty good even without PDF++.
 Without the awesome work of the Obsidian team and the PDF.js maintainers, PDF++ would not have been possible.
 
-PDF++ extends the native viewer by using [monkey-around](https://github.com/pjeby/monkey-around), a patching library by [PJ Eby](https://github.com/pjeby).
+PDF++ extends the native viewer by using [monkey-around](https://github.com/pjeby/monkey-around), an awesome patching library by [PJ Eby](https://github.com/pjeby).
+It is used by countless Obsidian plugins and has been helping the community as an infrastructure providing a foundation of Obsidian's high extendability.
 He's also the author of several popular Obsidian plugins including Tag Wrangler.
+
+PDF++ offers two ways to highlight text in PDF: one that does not involve modifying the PDF file, and the other that writes highlight annotations directly into the PDF file.
+The latter is powered by the following libraries:
+
+- pdf-lib: A JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.
+- [pdfAnnotate](https://github.com/highkite/pdfAnnotate): A JavaScript library for creating PDF annotations by Thomas Osterland.
 
 ## Compatibility
 
