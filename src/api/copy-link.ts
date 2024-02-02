@@ -46,7 +46,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     getLinkTemplateVariables(child: PDFViewerChild, file: TFile, subpath: string, page: number) {
-        const link = this.app.fileManager.generateMarkdownLink(file, '').slice(1);
+        const link = this.app.fileManager.generateMarkdownLink(file, '', subpath).slice(1);
         let linktext = this.app.metadataCache.fileToLinktext(file, '') + subpath;
         if (this.app.vault.getConfig('useMarkdownLinks')) {
             linktext = encodeLinktext(linktext);
@@ -86,6 +86,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                     pageCount,
                     pageLabel,
                     text,
+                    colorName: colorName?.toLowerCase() ?? '',
                     ...this.getLinkTemplateVariables(child, file, subpath, page)
                 });
 
@@ -146,7 +147,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         return true;
     }
 
-    copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean) {
+    copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean, templateVariables?: Record<string, any>) {
         if (!checking) {
             const pageView = child.getPage(page);
 
@@ -156,6 +157,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                 pageLabel: pageView.pageLabel ?? ('' + page),
                 pageCount: child.pdfViewer.pagesCount,
                 text,
+                ...templateVariables ?? {},
                 ...this.getLinkTemplateVariables(child, file, `#page=${page}&annotation=${id}`, page)
             });
 
@@ -192,21 +194,15 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                 .then((result) => {
                     if (!result) return;
 
-                    const { child, file, annots } = result;
-                    if (!annots || !file) return;
-
-                    // Annots should be grouped, but pdfAnnotate does not do that. So we ended up with just using the first one.
-                    const { page, object_id } = annots[0];
-                    if (!object_id) return;
-                    // This is how PDF.js creates annotation IDs. See https://github.com/mozilla/pdf.js/blob/af4d2fa53c3a1fae35619ba2ac1b69499ec78c41/src/core/primitives.js#L281-L288
-                    const annotationId = object_id.generation === 0 ? `${object_id.obj}R` : `${object_id.obj}R${object_id.generation}`;
+                    const { child, file, page, annotationID } = result;
+                    if (!annotationID || !file) return;
 
                     setTimeout(() => {
                         // After the file modification, the PDF viewer DOM is reloaded, so we need to 
                         // get the new DOM to access the newly loaded color palette instance.
                         const newPalette = this.api.getColorPaletteFromChild(child);
                         newPalette?.setStatus('Link copied', this.statusDurationMs);
-                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page + 1, annotationId, autoPaste);
+                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, autoPaste, { colorName: colorName?.toLowerCase() ?? '' });
                     }, 300);
                 })
         }

@@ -86,7 +86,7 @@ export interface PDFPlusSettings {
 	renderMarkdownInStickyNote: boolean;
 	focusEditorAfterAutoPaste: boolean;
 	enalbeWriteHighlightToFile: boolean;
-	auther: string;
+	author: string;
 	writeHighlightToFileOpacity: number;
 	defaultWriteFileToggle: boolean;
 	syncWriteFileToggle: boolean;
@@ -182,7 +182,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	renderMarkdownInStickyNote: true,
 	focusEditorAfterAutoPaste: true,
 	enalbeWriteHighlightToFile: false,
-	auther: '',
+	author: '',
 	writeHighlightToFileOpacity: 0.5,
 	defaultWriteFileToggle: false,
 	syncWriteFileToggle: true,
@@ -643,6 +643,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'You can ues the color palette in PDF toolbars to easily copy links with "&color=..." appended automatically. See the "Color palette" section for the details.',
 				'',
 				'You can also opt not to use this plugin-dependent notation and apply a single color (the "default highlight color" setting) to all highlights.',
+				'',
+				'These colors are also available as CSS variables, e.g. `--pdf-plus-yellow-rgb`. You can use them for various CSS customizations. See [README](https://github.com/RyotaUshio/obsidian-pdf-plus?tab=readme-ov-file#css-customization) for the details.',
 			], setting.descEl))
 			.addButton((button) => {
 				button
@@ -709,7 +711,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('enalbeWriteHighlightToFile', () => this.redisplay())
 			.setName('Enable');
 		if (this.plugin.settings.enalbeWriteHighlightToFile) {
-			this.addTextSetting('auther', 'Your name')
+			this.addTextSetting('author', 'Your name')
 				.setName('Annotation author');
 			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
 				.setName('Highlight opacity');
@@ -973,8 +975,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red|file, page 1]]`,',
 				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page=1&selection=0,1,2,3&color=red` <br>(if the "Use \\[\\[Wikilinks\\]\\]" setting is turned off, `linktext` will be properly encoded for use in markdown links),',
 				'- `display`: The display text formatted according to the above setting, e.g. `file, page 1`,',
-				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page=1]]`, and',
-				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page=1|file, page 1]]`.',
+				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page=1]]`,',
+				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page=1|file, page 1]]`, and',
+				'- `colorName`: The name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string.',
 			], setting.descEl))
 			.addButton((button) => {
 				button

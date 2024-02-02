@@ -1,7 +1,9 @@
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, HexString } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, HexString, RGB } from 'obsidian';
 
 
 export function isHexString(color: string) {
+    // It's actually /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i
+    // but it will be overkill
     return color.length === 7 && color.startsWith('#');
 }
 
@@ -15,12 +17,28 @@ export function hexToRgb(hexColor: HexString) {
     } : null;
 }
 
-export function getObsidianDefaultHighlightColorRGB() {
+export function rgbStringToObject(rgbString: string): RGB {
+    const [r, g, b] = rgbString // "R, G, B"
+        .split(',')
+        .map((s) => parseInt(s.trim())) // [R, G, B];
+    return { r, g, b };
+}
+
+export function getObsidianDefaultHighlightColorRGB(): RGB {
     const [r, g, b] = getComputedStyle(document.body)
         .getPropertyValue('--text-highlight-bg-rgb') // "R, G, B"
         .split(',')
         .map((s) => parseInt(s.trim())) // [R, G, B];
     return { r, g, b };
+}
+
+export function getBorderRadius() {
+    const cssValue = getComputedStyle(document.body).getPropertyValue('--radius-s');
+    if (cssValue.endsWith('px')) {
+        const px = parseInt(cssValue.slice(0, -2));
+        if (!isNaN(px)) return px;
+    }
+    return 0;
 }
 
 export function getModifierNameInPlatform(mod: Modifier): string {
@@ -55,7 +73,7 @@ export function subpathToParams(subpath: string): URLSearchParams {
     return new URLSearchParams(subpath);
 }
 
-export function parsePDFSubpath(subpath: string): { page: number } | { page: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } | { page: number, annotation: string } | null{
+export function parsePDFSubpath(subpath: string): { page: number } | { page: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } | { page: number, annotation: string } | null {
     const params = subpathToParams(subpath);
     if (!params.has('page')) return null;
     const page = +params.get('page')!;
@@ -75,6 +93,11 @@ export function parsePDFSubpath(subpath: string): { page: number } | { page: num
 
 export function paramsToSubpath(params: Record<string, any>) {
     return '#' + Object.entries(params).map(([k, v]) => k && (v || v === 0) ? `${k}=${v}` : '').join('&');
+}
+
+export function formatAnnotationID(obj: number, generation: number) {
+    // This is how PDF.js creates annotation IDs. See https://github.com/mozilla/pdf.js/blob/af4d2fa53c3a1fae35619ba2ac1b69499ec78c41/src/core/primitives.js#L281-L288
+    return generation === 0 ? `${obj}R` : `${obj}R${generation}`;
 }
 
 export class MutationObservingChild extends Component {

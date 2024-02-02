@@ -132,10 +132,10 @@ export class PDFPlusAPI {
     }
 
     getPDFViewerChildAssociatedWithNode(node: Node) {
-        for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
-            if (viewerEl.contains(node)) return child;
-        }
-    }
+		for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
+			if (viewerEl.contains(node)) return child;
+		}
+	}
 
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
         const dest = await doc.getDestination(destId);

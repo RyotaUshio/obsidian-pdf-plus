@@ -161,14 +161,24 @@ export class HighlightGeometryAPI extends PDFPlusAPISubmodule {
         return Math.abs(left1 - left2) < threshold && Math.abs(right1 - right2) < threshold;
     }
 
-    mergeRectangles(rect1: Rect, rect2: Rect): Rect {
-        const [left1, bottom1, right1, top1] = rect1;
-        const [left2, bottom2, right2, top2] = rect2;
-        const left = Math.min(left1, left2);
-        const right = Math.max(right1, right2);
-        const bottom = Math.min(bottom1, bottom2);
-        const top = Math.max(top1, top2);
-        return [left, bottom, right, top];
+    mergeRectangles(...rects: Rect[]): Rect {
+        const lefts = rects.map((rect) => rect[0]);
+        const bottoms = rects.map((rect) => rect[1]);
+        const rights = rects.map((rect) => rect[2]);
+        const tops = rects.map((rect) => rect[3]);
+        return [
+            Math.min(...lefts),
+            Math.min(...bottoms),
+            Math.max(...rights),
+            Math.max(...tops),
+        ];
     }
 
+    rectsToQuadPoints(rects: Rect[]): number[] {
+        // Surprisingly enough, the PDF specification states a wrong order for the quadpoints!!
+        // https://stackoverflow.com/questions/9855814/pdf-spec-vs-acrobat-creation-quadpoints
+        // It says each rectangle is described as "left-bottom, right-bottom, right-top, left-top,"
+        // but in reality it is "left-top, right-top, left-bottom, right-bottom."
+        return rects.flatMap(([left, bottom, right, top]) => [left, top, right, top, left, bottom, right, bottom]);
+    }
 } 

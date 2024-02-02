@@ -1,9 +1,9 @@
-import { App, Component } from 'obsidian';
+import { App, Component, RGB } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { DEFAULT_BACKLINK_HOVER_COLOR } from 'settings';
-import { isHexString } from 'utils';
+import { getObsidianDefaultHighlightColorRGB, hexToRgb, isHexString, rgbStringToObject } from 'utils';
 
 
 export class DomManager extends Component {
@@ -38,6 +38,8 @@ export class DomManager extends Component {
 
 		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.plugin.settings.dblclickEmbedToOpenLink);
 		this.register(() => document.body.removeClass('pdf-plus-click-embed-to-open-link'));
+
+		this.setCSSColorVariables();
 
 		this.app.workspace.trigger('css-change');
 	}
@@ -93,5 +95,69 @@ export class DomManager extends Component {
 			`	opacity: ${settings.existingTabHighlightOpacity};`,
 			`}`
 		].join('\n');
+	}
+
+	setCSSColorVariables() {
+		const settings = this.plugin.settings;
+
+		for (const [colorName, hexColor] of Object.entries(settings.colors)) {
+			const varName = this.toCSSVariableName(colorName);
+			const rgbColor = hexToRgb(hexColor);
+			if (varName !== null) {
+				if (rgbColor !== null) {
+					const { r, g, b } = rgbColor;
+					document.body.style.setProperty(varName, `${r}, ${g}, ${b}`);
+				}
+			}
+		}
+
+		let defaultColorSet = false;
+		if (settings.defaultColor in settings.colors) {
+			const varName = this.toCSSVariableName(settings.defaultColor);
+			if (varName !== null) {
+				document.body.style.setProperty(
+					'--pdf-plus-default-color-rgb',
+					`var(${varName})`
+				);
+				defaultColorSet = true;
+			}
+		}
+		if (!defaultColorSet) {
+			document.body.style.setProperty(
+				'--pdf-plus-default-color-rgb',
+				'var(--text-highlight-bg-rgb)'
+			);
+		}
+
+		let defaultColor = settings.colors[settings.defaultColor];
+		if (!defaultColor || !isHexString(defaultColor)) {
+			defaultColor = 'rgb(var(--text-highlight-bg-rgb))';
+		}
+		this.styleEl.textContent += [
+			`\n.pdf-plus-backlink-highlight-layer .pdf-plus-backlink:not(.hovered-highlight) {`,
+			`    background-color: ${defaultColor};`,
+			`}`
+		].join('\n');
+	}
+
+	toCSSVariableName(colorName: string): string | null {
+		// extract alphanumeric parts from colorName, and then concatenate them with '-'
+		let encoded = colorName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+		// strip leading and trailing '-'
+		encoded = encoded.replace(/^-+|-+$/g, '');
+		return encoded ? '--pdf-plus-' + encoded + '-rgb' : null;
+	}
+
+	getRgb(colorName?: string): RGB {
+		let colorVarName = '--pdf-plus-default-color-rgb';
+		if (colorName) {
+			const specificColorVarName = this.toCSSVariableName(colorName);
+			if (specificColorVarName) {
+				colorVarName = specificColorVarName;
+			}
+		}
+		const rgbString = getComputedStyle(document.body).getPropertyValue(colorVarName); // "R, G, B"
+		const rgbColor = rgbStringToObject(rgbString);
+		return rgbColor;
 	}
 }

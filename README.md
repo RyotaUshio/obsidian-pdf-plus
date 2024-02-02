@@ -195,6 +195,95 @@ Here is a list of CSS selectors to target:
   - Use `.pdf-plus-backlink-highlight-layer .pdf-plus-backlink[data-highlight-color="<COLOR NAME>"]` to target a specific color
 - `.pdf-plus-backlink-highlight-layer .pdf-plus-backlink.hovered-highlight`: PDF text highlights that PDF++ generates when you hover over an item in the backlinks pane
 
+### Callout colors
+
+The highlight colors that you define in the **Highlight colors** setting are also available as CSS variables.
+For example, a color named "Yellow" will be converted into a variable `--pdf-plus-yellow-rgb`. Its value is a tuple of the RGB values, e.g. `255, 208, 0`.
+Note that non-alphanumeric characters are replaced with hyphens in variable names. For example, a color with name "Super LONG name!!" will result in a variable name `--pdf-plus-super-long-name-rgb`.
+
+Additionally, the color specified in the **Default highlight color** setting is also available as `--pdf-plus-default-color-rgb`.
+
+You can use these CSS variables for various purposes.
+For example, you can create a callout whose color matches the highlight color in the PDF viewer.
+
+#### 1. Different colors within a single callout type
+
+Here we use a callout type "PDF" as an example, but it can be anything you like.
+
+**Copy format**:
+
+```
+> [!PDF|{{colorName}}] {{linkWithDisplay}}
+> {{text}}
+```
+
+**Result example**:
+
+```
+> [!PDF|yellow] [[file.pdf#page=1&selection=0,1,2,3&color=yellow|file, page 1]]
+> Lorem ipsum
+
+> [!PDF|red] [[file.pdf#page=1&selection=0,1,2,3&color=red|file, page 1]]
+> Lorem ipsum
+
+> [!PDF|] [[file.pdf#page=1&selection=0,1,2,3|file, page 1]]
+> Lorem ipsum
+
+or without pipe ("|") after the callout type ("PDF"):
+
+> [!PDF] [[file.pdf#page=1&selection=0,1,2,3|file, page 1]]
+> Lorem ipsum
+```
+
+**CSS snippet**:
+
+```css
+.callout[data-callout="pdf"][data-callout-metadata="yellow"] {
+    --callout-color: var(--pdf-plus-yellow-rgb);
+}
+
+.callout[data-callout="pdf"][data-callout-metadata="red"] {
+    --callout-color: var(--pdf-plus-red-rgb);
+}
+
+.callout[data-callout="pdf"] {
+    --callout-color: var(--pdf-plus-default-color-rgb);
+}
+```
+
+#### 2. Color by callout types
+
+Another approach is to associate each highlight color to a specify callout type such as "Note" or "Important".
+
+**Copy format**:
+
+```
+> [!{{colorName}}] {{linkWithDisplay}}
+> {{text}}
+```
+
+**Result example**:
+
+```
+> [!note] [[file.pdf#page=1&selection=0,1,2,3&color=note|file, page 1]]
+> Lorem ipsum
+
+> [!important] [[file.pdf#page=1&selection=0,1,2,3&color=important|file, page 1]]
+> Lorem ipsum
+```
+
+**CSS snippet**:
+
+```css
+.callout[data-callout="note"] {
+    --callout-color: var(--pdf-plus-note-rgb);
+}
+
+.callout[data-callout="important"] {
+    --callout-color: var(--pdf-plus-important-rgb);
+}
+```
+
 ### Popover preview of PDF internal links
 
 Sometimes, You may find preview popovers too tall.
