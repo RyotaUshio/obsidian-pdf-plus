@@ -332,10 +332,7 @@ It is used by countless Obsidian plugins and has been helping the community as a
 He's also the author of several popular Obsidian plugins including Tag Wrangler.
 
 PDF++ offers two ways to highlight text in PDF: one that does not involve modifying the PDF file, and the other that writes highlight annotations directly into the PDF file.
-The latter is powered by the following libraries:
-
-- pdf-lib: A JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.
-- [pdfAnnotate](https://github.com/highkite/pdfAnnotate): A JavaScript library for creating PDF annotations by Thomas Osterland.
+The latter is powered by the pdf-lib, a JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.
 
 ## Compatibility
 

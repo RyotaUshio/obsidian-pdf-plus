@@ -126,6 +126,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                         pageLabel: pageView.pageLabel ?? ('' + page),
                         pageCount: child.pdfViewer.pagesCount,
                         text,
+                        colorName: '',
                         ...this.getLinkTemplateVariables(child, child.file!, `#page=${page}&annotation=${id}`, page)
                     });
 
@@ -212,9 +213,12 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
     async autoPaste(text: string): Promise<boolean> {
         if (this.plugin.lastPasteFile && this.plugin.lastPasteFile.extension === 'md') {
-            // use vault, not editor, so that we can auto-paste even when the file is not opened
+            const lastPasteFile = this.plugin.lastPasteFile;
+            const isLastPasteFileOpened = this.api.workspace.isMarkdownFileOpened(lastPasteFile);
+
+            // Use vault, not editor, so that we can auto-paste even when the file is not opened
             await this.app.vault.process(this.plugin.lastPasteFile, (data) => {
-                // if the file does not end with a blank line, add one
+                // If the file does not end with a blank line, add one
                 const idx = data.lastIndexOf('\n');
                 if (idx === -1 || data.slice(idx).trim()) {
                     data += '\n\n';
@@ -222,17 +226,21 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                 data += text;
                 return data;
             });
-            if (this.plugin.settings.focusEditorAfterAutoPaste) {
-                this.app.workspace.iterateAllLeaves((leaf) => {
-                    if (leaf.view instanceof MarkdownView && leaf.view.file?.path === this.plugin.lastPasteFile?.path) {
-                        const editor = leaf.view.editor;
-                        // After "vault.process" is completed, we have to wait for a while until the editor reflects the change.
-                        setTimeout(() => {
-                            editor.setCursor(editor.getValue().length);
-                            editor.focus();
-                        }, 200);
+
+            if (this.plugin.settings.focusEditorAfterAutoPaste && isLastPasteFileOpened) {
+                // If the file opened in some tab, focus the tab and move the cursor to the end of the file.
+                // To this end, we listen to the editor-change event so that we can detect when the editor update
+                // triggered by the auto-paste is done.
+                const eventRef = this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+                    if (info.file?.path === lastPasteFile.path) {
+                        this.app.workspace.offref(eventRef);
+
+                        if (!editor.hasFocus()) editor.focus();
+                        editor.setCursor(editor.getValue().length); // move cursor to the end of the file
                     }
                 });
+
+                this.plugin.registerEvent(eventRef);
             }
 
             return true;

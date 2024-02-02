@@ -139,3 +139,20 @@ settings:
     border-radius: var(--radius-s);
     pointer-events: auto;
 }
+
+.pdf-plus-annotation-edit-modal {
+    .desc {
+        margin-bottom: var(--size-4-4);
+    }
+
+    .preview-container {
+        background: var(--background-modifier-form-field);
+        border: var(--input-border-width) solid var(--background-modifier-border);
+        border-radius: var(--input-radius);
+        padding: var(--size-4-1) var(--size-4-2);
+    }
+
+    .setting-item {
+        padding-top: var(--size-4-3);
+    }
+}

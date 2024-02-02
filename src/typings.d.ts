@@ -525,6 +525,11 @@ declare module 'obsidian' {
         commands: {
             executeCommandById(id: string): boolean;
         }
+        hotkeyManager: {
+            getDefaultHotkeys(id: string): Hotkey[] | undefined;
+            getHotkeys(id: string): Hotkey[] | undefined;
+            printHotkeyForCommand(id: string): string;
+        }
         embedRegistry: EmbedRegistry;
         openWithDefaultApp(path: string): Promise<void>;
     }
@@ -536,7 +541,7 @@ declare module 'obsidian' {
     interface MetadataCache {
         initialized: boolean;
         on(name: 'initialized', callback: () => void, ctx?: any): EventRef;
-        getBacklinksForFile(file: TFile): CustomArrayDict<LinkCache>;
+        getBacklinksForFile(file: TFile): CustomArrayDict<ReferenceCache>;
     }
 
     interface Workspace {
@@ -584,5 +589,9 @@ declare module 'obsidian' {
     interface Vault {
         getConfig(name: string): any;
         getConfig(name: 'useMarkdownLinks'): boolean;
+    }
+
+    interface Component {
+        _loaded: boolean;
     }
 }

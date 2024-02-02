@@ -1,9 +1,8 @@
 import { TFile } from 'obsidian';
-import { PDFDocument, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
-import { Util } from 'annotpdf';
+import { PDFDict, PDFDocument, PDFName, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
 
 import { PDFPlusAPISubmodule } from 'api/submodule';
-import { formatAnnotationID, getBorderRadius } from 'utils';
+import { convertDateToPDFDate, formatAnnotationID, getBorderRadius } from 'utils';
 import { Rect } from 'typings';
 import { IPdfIo } from '.';
 
@@ -31,7 +30,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
                 // For Contents & T, make sure to pass a PDFString, not a raw string!!
                 // https://github.com/Hopding/pdf-lib/issues/555#issuecomment-670243166
                 Contents: PDFString.of(contents ?? ''),
-                M: PDFString.of(Util.convertDateToPDFDate(new Date())),
+                M: PDFString.of(convertDateToPDFDate(new Date())),
                 T: PDFString.of(this.plugin.settings.author),
                 CA: this.plugin.settings.writeHighlightToFileOpacity,
                 Border: [borderRadius, borderRadius, 0],
@@ -71,5 +70,44 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
         page.node.addAnnot(ref);
         // page.node.set(PDFName.of('Annots'), context.obj([...page.node.Annots()?.asArray() ?? [], ref]));
         return ref;
+    }
+
+    async deleteAnnotation(file: TFile, pageNumber: number, id: string) {
+        await this.process(file, (pdfDoc) => {
+            const page = pdfDoc.getPage(pageNumber - 1);
+            const ref = this.findAnnotRef(page, id);
+            if (ref) page.node.removeAnnot(ref);
+        });
+    }
+
+    async getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string> {
+        return await this.read(file, (pdfDoc) => {
+            const page = pdfDoc.getPage(pageNumber - 1);
+            const ref = this.findAnnotRef(page, id);
+            if (ref) {            
+                const contents = page.node.context.lookup(ref, PDFDict).get(PDFName.of('Contents'));
+                if (contents instanceof PDFString) return contents.asString();
+            }
+            return ''
+        });
+    }
+
+    async setAnnotationContents(file: TFile, pageNumber: number, id: string, content: string): Promise<void> {
+        await this.process(file, (pdfDoc) => {
+            const page = pdfDoc.getPage(pageNumber - 1);
+            const ref = this.findAnnotRef(page, id);
+            if (ref) {            
+                page.node.context.lookup(ref, PDFDict).set(PDFName.of('Contents'), PDFString.of(content));
+            }
+        });
+    }
+
+    findAnnotRef(page: PDFPage, id: string): PDFRef | undefined {
+        return page.node.Annots()
+            ?.asArray()
+            .find((ref): ref is PDFRef => {
+                return ref instanceof PDFRef
+                    && formatAnnotationID(ref.objectNumber, ref.generationNumber) === id;
+            });
     }
 }

@@ -1,4 +1,4 @@
-import { App, Component, TFile } from 'obsidian';
+import { App, Component, TFile, parseLinktext } from 'obsidian';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
@@ -6,7 +6,7 @@ import { ColorPalette } from 'color-palette';
 import { copyLinkAPI } from './copy-link';
 import { HighlightAPI } from './highlights';
 import { WorkspaceAPI } from './workspace-api';
-import { encodeLinktext } from 'utils';
+import { encodeLinktext, parsePDFSubpath } from 'utils';
 import { AnnotationElement, EventBus, ObsidianViewer, PDFPageView, PDFViewerChild } from 'typings';
 
 
@@ -132,10 +132,10 @@ export class PDFPlusAPI {
     }
 
     getPDFViewerChildAssociatedWithNode(node: Node) {
-		for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
-			if (viewerEl.contains(node)) return child;
-		}
-	}
+        for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
+            if (viewerEl.contains(node)) return child;
+        }
+    }
 
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
         const dest = await doc.getDestination(destId);
@@ -231,5 +231,53 @@ export class PDFPlusAPI {
         }
 
         return 'md' !== file.extension ? '!' + nonEmbedLink : nonEmbedLink;
+    }
+
+    isBacklinked(file: TFile, subpathParams?: { page: number, selection?: [number, number, number, number], annotation?: string }): boolean {
+        // validate parameters
+        if (subpathParams) {
+            const { page, selection, annotation } = subpathParams;
+            if (isNaN(page) || page < 1) throw new Error('Invalid page number');
+            if (selection && (selection.length !== 4 || selection.some((pos) => isNaN(pos)))) throw new Error('Invalid selection');
+            if (selection && typeof annotation === 'string') throw new Error('Selection and annotation cannot be used together');
+        }
+
+        // query type
+        const isFileQuery = !subpathParams;
+        const isPageQuery = subpathParams && !subpathParams.selection && !subpathParams.annotation;
+        const isSelectionQuery = subpathParams && !!(subpathParams.selection);
+        const isAnnotationQuery = typeof subpathParams?.annotation === 'string';
+
+        const backlinkDict = this.app.metadataCache.getBacklinksForFile(file);
+
+        if (isFileQuery) return backlinkDict.count() > 0;
+
+        for (const sourcePath of backlinkDict.keys()) {
+            const backlinks = backlinkDict.get(sourcePath);
+            if (!backlinks) continue;
+
+            for (const backlink of backlinks) {
+                const { subpath } = parseLinktext(backlink.link);
+                const result = parsePDFSubpath(subpath);
+                if (!result) continue;
+
+                if (isPageQuery && result.page === subpathParams.page) return true;
+                if (isSelectionQuery
+                    && 'beginIndex' in result
+                    && result.page === subpathParams.page
+                    && result.beginIndex === subpathParams.selection![0]
+                    && result.beginOffset === subpathParams.selection![1]
+                    && result.endIndex === subpathParams.selection![2]
+                    && result.endOffset === subpathParams.selection![3]
+                ) return true;
+                if (isAnnotationQuery
+                    && 'annotation' in result
+                    && result.page === subpathParams.page
+                    && result.annotation === subpathParams.annotation
+                ) return true;
+            }
+        }
+
+        return false;
     }
 }

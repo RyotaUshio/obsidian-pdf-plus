@@ -21,5 +21,8 @@
   },
   "include": [
     "**/*.ts"
+  ],
+  "exclude": [
+    "src/api/highlights/write-file/pdfAnnotate.ts"
   ]
 }

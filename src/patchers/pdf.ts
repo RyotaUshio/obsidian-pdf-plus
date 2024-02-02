@@ -1,12 +1,13 @@
-import { Component, Keymap, MarkdownRenderer, Notice, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
 import { PDFPlusTemplateProcessor } from 'template';
-import { toSingleLine } from 'utils';
+import { hookInternalLinkMouseEventHandlers, toSingleLine } from 'utils';
 import { AnnotationElement, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
+import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -259,65 +260,76 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                 const self = this as PDFViewerChild;
                 plugin.lastAnnotationPopupChild = self;
+                const { page, id } = api.getAnnotationInfoFromAnnotationElement(annotationElement);
 
-                if (plugin.settings.renderMarkdownInStickyNote) {
+                if (plugin.settings.renderMarkdownInStickyNote && self.file) {
                     const contentEl = self.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupContent');
-                    if (contentEl && contentEl.textContent) {
-                        const markdown = contentEl.textContent;
+                    if (contentEl) {
                         contentEl.textContent = '';
-                        if (!self.component) {
-                            self.component = new Component();
-                        }
-                        self.component.load();
-                        MarkdownRenderer.render(app, markdown, contentEl, '', self.component)
-                            .then(() => {
-                                contentEl.querySelectorAll('a.internal-link').forEach((el) => {
-                                    el.addEventListener('click', (evt: MouseEvent) => {
-                                        evt.preventDefault();
-                                        const linktext = el.getAttribute('href');
-                                        if (linktext) {
-                                            app.workspace.openLinkText(linktext, '', Keymap.isModEvent(evt));
-                                        }
-                                    });
-                                    el.addEventListener('mouseover', (event: MouseEvent) => {
-                                        event.preventDefault();
-                                        const linktext = el.getAttribute('href');
-                                        if (linktext) {
-                                            app.workspace.trigger('hover-link', {
-                                                event,
-                                                source: 'pdf-plus',
-                                                hoverParent: self.component,
-                                                targetEl: event.currentTarget,
-                                                linktext,
-                                                sourcePath: self.file?.path ?? ''
-                                            });
-                                        }
-                                    });
-                                });
+                        // we can use contentEl.textContent, but it has backslashes escaped
+                        api.highlight.writeFile.getAnnotationContents(self.file, page, id)
+                            .then(async (markdown) => {
+                                if (!self.component) {
+                                    self.component = new Component();
+                                }
+                                self.component.load();
+                                await MarkdownRenderer.render(app, markdown, contentEl, '', self.component);
+                                hookInternalLinkMouseEventHandlers(app, contentEl, self.file?.path ?? '');
                             });
                     }
                 }
 
-                // replace copy button with a custom one
+
                 const popupMetaEl = self.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupMeta');
-                const copyButtonEl = popupMetaEl?.querySelector<HTMLElement>('.clickable-icon:last-child');
-                if (popupMetaEl && copyButtonEl) {
-                    copyButtonEl.remove(); // We need to remove the default event lisnter so we should use remove() instead of detach()
 
-                    popupMetaEl.createDiv('clickable-icon', (iconEl) => {
-                        setIcon(iconEl, 'lucide-copy');
-                        setTooltip(iconEl, 'Copy');
-                        iconEl.addEventListener('click', async () => {
-                            const palette = api.getColorPaletteAssociatedWithNode(popupMetaEl)
-                            if (!palette) return;
-                            const template = plugin.settings.copyCommands[palette.actionIndex].template;
-                            const { page, id } = api.getAnnotationInfoFromAnnotationElement(annotationElement);
+                if (popupMetaEl) {
+                    // replace the copy button with a custom one
+                    const copyButtonEl = popupMetaEl?.querySelector<HTMLElement>('.clickable-icon:last-child');
+                    if (copyButtonEl) {
+                        copyButtonEl.remove(); // We need to remove the default event lisnter so we should use remove() instead of detach()
 
-                            api.copyLink.copyLinkToAnnotation(self, false, template, page, id);
+                        popupMetaEl.createDiv('clickable-icon pdf-plus-copy-annotation-link', (iconEl) => {
+                            setIcon(iconEl, 'lucide-copy');
+                            setTooltip(iconEl, 'Copy link');
+                            iconEl.addEventListener('click', async () => {
+                                const palette = api.getColorPaletteAssociatedWithNode(popupMetaEl)
+                                if (!palette) return;
+                                const template = plugin.settings.copyCommands[palette.actionIndex].template;
 
-                            setIcon(iconEl, 'lucide-check');
-                        })
-                    });
+                                api.copyLink.copyLinkToAnnotation(self, false, template, page, id);
+
+                                setIcon(iconEl, 'lucide-check');
+                            });
+                        });
+                    }
+
+                    // add edit button
+                    if (plugin.settings.enalbeWriteHighlightToFile && plugin.settings.enableAnnotationContentEdit) {
+                        popupMetaEl.createDiv('clickable-icon pdf-plus-edit-annotation', (editButtonEl) => {
+                            setIcon(editButtonEl, 'lucide-pencil');
+                            setTooltip(editButtonEl, 'Edit');
+                            editButtonEl.addEventListener('click', async () => {
+                                if (self.file) {
+                                    new PDFAnnotationEditModal(plugin, self.file, page, id)
+                                        .open();
+                                }
+                            });
+                        });
+                    }
+
+                    // add delete button
+                    if (plugin.settings.enalbeWriteHighlightToFile && plugin.settings.enableAnnotationDeletion) {
+                        popupMetaEl.createDiv('clickable-icon pdf-plus-delete-annotation', (deleteButtonEl) => {
+                            setIcon(deleteButtonEl, 'lucide-trash');
+                            setTooltip(deleteButtonEl, 'Delete');
+                            deleteButtonEl.addEventListener('click', async () => {
+                                if (self.file) {
+                                    new PDFAnnotationDeleteModal(plugin, self.file, page, id)
+                                        .openIfNeccessary();
+                                }
+                            });
+                        });
+                    }
                 }
 
                 return ret;

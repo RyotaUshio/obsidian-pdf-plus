@@ -1,6 +1,6 @@
 import { EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion, setIcon } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
-import * as pdfAnnotate from 'annotpdf';
+// import * as pdfAnnotate from 'annotpdf';
 
 import { patchPDF } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
@@ -230,7 +230,7 @@ export default class PDFPlus extends Plugin {
 	private registerGlobalVariables() {
 		this.registerGlobalVariable('pdfPlus', this, false);
 		this.registerGlobalVariable('pdflib', pdflib, false);
-		this.registerGlobalVariable('pdfAnnotate', pdfAnnotate, false);
+		// this.registerGlobalVariable('pdfAnnotate', pdfAnnotate, false);
 	}
 
 	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
@@ -383,7 +383,7 @@ export default class PDFPlus extends Plugin {
 		if (!child) return false;
 		const popupEl = child.activeAnnotationPopupEl;
 		if (!popupEl) return false;
-		const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon');
+		const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon.pdf-plus-copy-annotation-link');
 		if (!copyButtonEl) return false;
 
 		const palette = this.api.getColorPaletteAssociatedWithNode(copyButtonEl);

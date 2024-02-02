@@ -1,5 +1,47 @@
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, HexString, RGB } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, HexString, RGB, Keymap, App } from 'obsidian';
 
+/**
+ * Converts the given date into PDF formatting.
+ * Taken from pdfAnnotate (https://github.com/highkite/pdfAnnotate/blob/b5e5bc2a4947d604610d15d78f47289074a0f2b7/src/util.ts#L391-L408)
+ * liced under the MIT License.
+ * 
+ * MIT License
+ * 
+ * Copyright (c) 2019 Thomas Osterland
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+export function convertDateToPDFDate(date: Date): string {
+    let date_str = "D:";
+    date_str += date.getFullYear();
+    let month: string = String(date.getMonth() + 1)
+    date_str += (month.length == 1 ? "0" : "") + month;
+    let day: string = String(date.getDate())
+    date_str += (day.length == 1 ? "0" : "") + day;
+    let hours: string = String(date.getHours())
+    date_str += (hours.length == 1 ? "0" : "") + hours;
+    let minutes: string = String(date.getMinutes())
+    date_str += (minutes.length == 1 ? "0" : "") + minutes;
+    let seconds: string = String(date.getSeconds())
+    date_str += (seconds.length == 1 ? "0" : "") + seconds;
+    return date_str;
+}
 
 export function isHexString(color: string) {
     // It's actually /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i
@@ -115,6 +157,33 @@ export class MutationObservingChild extends Component {
     onunload() {
         this.observer.disconnect();
     }
+}
+
+export function hookInternalLinkMouseEventHandlers(app: App, containerEl: HTMLElement, sourcePath: string) {
+    containerEl.querySelectorAll('a.internal-link').forEach((el) => {
+        el.addEventListener('click', (evt: MouseEvent) => {
+            evt.preventDefault();
+            const linktext = el.getAttribute('href');
+            if (linktext) {
+                app.workspace.openLinkText(linktext, sourcePath, Keymap.isModEvent(evt));
+            }
+        });
+
+        el.addEventListener('mouseover', (event: MouseEvent) => {
+            event.preventDefault();
+            const linktext = el.getAttribute('href');
+            if (linktext) {
+                app.workspace.trigger('hover-link', {
+                    event,
+                    source: 'pdf-plus',
+                    hoverParent: { hoverPopover: null },
+                    targetEl: event.currentTarget,
+                    linktext,
+                    sourcePath
+                });
+            }
+        });
+    });
 }
 
 export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {

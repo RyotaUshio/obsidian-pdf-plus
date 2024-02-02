@@ -1,7 +1,7 @@
 import { Notice, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PdfAnnotateIO } from './pdfAnnotate';
+// import { PdfAnnotateIO } from './pdfAnnotate';
 import { PdfLibIO } from './pdf-lib';
 import { PDFPlusAPISubmodule } from 'api/submodule';
 import { parsePDFSubpath } from 'utils';
@@ -10,12 +10,18 @@ import { PDFViewerChild, Rect } from 'typings';
 
 export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
     pdflib: PdfLibIO;
-    pdfAnnotate: PdfAnnotateIO;
+    // pdfAnnotate: PdfAnnotateIO;
 
     constructor(plugin: PDFPlus) {
         super(plugin);
         this.pdflib = new PdfLibIO(plugin);
-        this.pdfAnnotate = new PdfAnnotateIO(plugin);
+        // this.pdfAnnotate = new PdfAnnotateIO(plugin);
+    }
+
+    private getPdfIo(): IPdfIo {
+        // if (this.plugin.settings.writeFileLibrary === 'pdfAnnotate') return this.pdfAnnotate;
+        // else 
+        return this.pdflib;
     }
 
     async highlightSelection(colorName?: string) {
@@ -58,9 +64,19 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
         }
     }
 
-    getPdfIo(): IPdfIo {
-        if (this.plugin.settings.writeFileLibrary === 'pdfAnnotate') return this.pdfAnnotate;
-        else return this.pdflib;
+    async deleteAnnotation(file: TFile, pageNumber: number, id: string) {
+        const io = this.getPdfIo();
+        await io.deleteAnnotation(file, pageNumber, id);
+    }
+
+    async getAnnotationContents(file: TFile, pageNumber: number, id: string) {
+        const io = this.getPdfIo();
+        return await io.getAnnotationContents(file, pageNumber, id);
+    }
+
+    async setAnnotationContents(file: TFile, pageNumber: number, id: string, contents: string) {
+        const io = this.getPdfIo();
+        return await io.setAnnotationContents(file, pageNumber, id, contents);
     }
 }
 
@@ -71,4 +87,7 @@ export interface IPdfIo {
      * containing the given rectangles "grouped" using quadpoints.
      */
     addHighlightAnnotations(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string): Promise<string>;
+    deleteAnnotation(file: TFile, pageNumber: number, id: string): Promise<void>;
+    getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string>;
+    setAnnotationContents(file: TFile, pageNumber: number, id: string, contents: string): Promise<void>;
 }

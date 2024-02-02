@@ -90,7 +90,11 @@ export interface PDFPlusSettings {
 	writeHighlightToFileOpacity: number;
 	defaultWriteFileToggle: boolean;
 	syncWriteFileToggle: boolean;
-	writeFileLibrary: 'pdf-lib' | 'pdfAnnotate';
+	// writeFileLibrary: 'pdf-lib' | 'pdfAnnotate';
+	enableAnnotationContentEdit: boolean;
+	warnEveryAnnotationDelete: boolean;
+	warnBacklinkedAnnotationDelete: boolean;
+	enableAnnotationDeletion: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -140,7 +144,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	singleTabForSinglePDF: true,
 	highlightExistingTab: false,
 	existingTabHighlightOpacity: 0.5,
-	existingTabHighlightDuration: 1,
+	existingTabHighlightDuration: 0.75,
 	paneTypeForFirstPDFLeaf: '',
 	openLinkNextToExistingPDFTab: true,
 	openPDFWithDefaultApp: false,
@@ -149,7 +153,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	syncWithDefaultApp: false,
 	dontActivateAfterOpenPDF: true,
 	dontActivateAfterOpenMD: true,
-	highlightDuration: 0,
+	highlightDuration: 0.75,
 	noTextHighlightsInEmbed: false,
 	noAnnotationHighlightsInEmbed: true,
 	persistentTextHighlightsInEmbed: true,
@@ -188,10 +192,14 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	focusEditorAfterAutoPaste: true,
 	enalbeWriteHighlightToFile: false,
 	author: '',
-	writeHighlightToFileOpacity: 0.5,
+	writeHighlightToFileOpacity: 0.2,
 	defaultWriteFileToggle: false,
 	syncWriteFileToggle: true,
-	writeFileLibrary: 'pdfAnnotate',
+	// writeFileLibrary: 'pdfAnnotate',
+	enableAnnotationDeletion: true,
+	warnEveryAnnotationDelete: false,
+	warnBacklinkedAnnotationDelete: true,
+	enableAnnotationContentEdit: true,
 };
 
 
@@ -727,14 +735,28 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addToggleSetting('syncWriteFileToggle')
 				.setName('Share the same toggle state among all PDF viewers')
 				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
-			this.addDropdownSetting('writeFileLibrary', ['pdf-lib', 'pdfAnnotate'])
-				.setName('Library to write highlights')
-				.then((setting) => {
-					this.renderMarkdown([
-						'- **pdf-lib**: A JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.',
-						'- **[pdfAnnotate](https://github.com/highkite/pdfAnnotate)**: A JavaScript library for creating PDF annotations by Thomas Osterland.'
-					], setting.descEl);
-				});
+			// this.addDropdownSetting('writeFileLibrary', ['pdf-lib', 'pdfAnnotate'])
+			// 	.setName('Library to write highlights')
+			// 	.then((setting) => {
+			// 		this.renderMarkdown([
+			// 			'- **pdf-lib**: A JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.',
+			// 			'- **[pdfAnnotate](https://github.com/highkite/pdfAnnotate)**: A JavaScript library for creating PDF annotations by Thomas Osterland.'
+			// 		], setting.descEl);
+			// 	});
+			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
+				.setName('Enable editing annotation contents')
+				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
+			this.addToggleSetting('enableAnnotationDeletion', () => this.redisplay())
+				.setName('Enable annotation deletion')
+				.setDesc('If enabled, you can delete annotations embedded in PDF files by clicking the "Delete" button in the annotation popup.');
+			if (this.plugin.settings.enableAnnotationDeletion) {
+				this.addToggleSetting('warnEveryAnnotationDelete', () => this.redisplay())
+					.setName('Always warn when deleting an annotation');
+				if (!this.plugin.settings.warnEveryAnnotationDelete) {
+					this.addToggleSetting('warnBacklinkedAnnotationDelete')
+					.setName('Warn when deleting an annotation with backlinks');
+				}
+			}
 		}
 
 
@@ -765,7 +787,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			if (this.plugin.settings.highlightExistingTab) {
 				this.addSliderSetting('existingTabHighlightOpacity', 0, 1, 0.01)
 					.setName('Highlight opacity of an existing tab')
-				this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.1)
+				this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.05)
 					.setName('Highlight duration of an existing tab (sec)')
 			}
 		}
@@ -806,7 +828,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					});
 			});
 		if (this.plugin.settings.highlightDuration > 0) {
-			this.addSliderSetting('highlightDuration', 0.1, 10, 0.1)
+			this.addSliderSetting('highlightDuration', 0.1, 10, 0.05)
 				.setName('Highlight duration (sec)');
 		}
 		this.addToggleSetting('ignoreHeightParamInPopoverPreview')
@@ -1046,7 +1068,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Show status in PDF toolbar')
 			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');
 		this.addToggleSetting('renderMarkdownInStickyNote')
-			.setName('Render markdown in sticky notes');
+			.setName('Render markdown in annotation popups when the annotation has text contents');
 
 
 		this.addHeading('Style settings')
@@ -1081,6 +1103,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.plugin.settings.displayTextFormats = this.plugin.settings.displayTextFormats.filter((format) => format.name && format.template);
 
 		await this.plugin.saveSettings();
+
+		// Reflect the changes in the options such as highlightOnHoverBacklinkPane
+		this.plugin.pdfViwerChildren.forEach((child) => {
+			const highlighter = child.backlinkHighlighter;
+			if (highlighter && highlighter._loaded) {
+				highlighter.unload();
+				highlighter.load();	
+			}
+		});
+
 		this.plugin.loadStyle();
 
 		this.promises = [];

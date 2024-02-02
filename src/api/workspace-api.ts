@@ -121,4 +121,18 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
             });
         });
     }
+
+    isMarkdownFileOpened(file: TFile): boolean {
+        let opened = false;
+
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            if (leaf.view instanceof MarkdownView && leaf.view.file) {
+                if (leaf.view.file.path === file.path) {
+                    opened = true;
+                }
+            }
+        });
+
+        return opened;
+    }
 }
