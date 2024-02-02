@@ -236,7 +236,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                         this.app.workspace.offref(eventRef);
 
                         if (!editor.hasFocus()) editor.focus();
-                        editor.setCursor(editor.getValue().length); // move cursor to the end of the file
+                        editor.exec('goEnd');
                     }
                 });
 
