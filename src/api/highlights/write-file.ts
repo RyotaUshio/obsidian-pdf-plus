@@ -59,8 +59,8 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
     }
 
     getPdfIo(): IPdfIo {
-        // return this.pdfAnnotate;
-        return this.pdfLib;
+        return this.pdfAnnotate;
+        // return this.pdfLib;
     }
 }
 
