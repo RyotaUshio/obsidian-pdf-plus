@@ -469,7 +469,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                 self.clearEphemeralUI();
                 menu.showAtMouseEvent(evt);
-                if (self.opts?.isEmbed) evt.preventDefault();
+                evt.preventDefault();
             }
         }
     }));
