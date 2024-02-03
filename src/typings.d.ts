@@ -13,7 +13,7 @@ declare global {
         pdfPlus?: PDFPlus;
         pdfjsLib: typeof import('pdfjs-dist');
         pdfjsViewer: any;
-        electron: typeof import('electron');
+        electron?: typeof import('electron');
     }
 }
 

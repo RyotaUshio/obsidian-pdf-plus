@@ -1,3 +1,7 @@
+/**
+ * No longer used. This file is kept for reference.
+ */
+
 import { TFile } from 'obsidian';
 import { AnnotationFactory } from 'annotpdf';
 

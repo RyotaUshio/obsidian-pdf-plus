@@ -10,6 +10,10 @@ import { IPdfIo } from '.';
 export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
 
     async addHighlightAnnotations(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string) {
+        if (!this.plugin.settings.author) {
+            throw new Error(`${this.plugin.manifest.name}: The author name is not set. Please set it in the plugin settings.`);
+        }
+        
         return await this.process(file, (pdfDoc) => {
             const page = pdfDoc.getPage(pageNumber - 1);
             const { r, g, b } = this.plugin.domManager.getRgb(colorName);

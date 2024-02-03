@@ -353,15 +353,34 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                 const selection = toSingleLine(window.getSelection()?.toString() ?? '');
 
+                let electron: typeof window.electron;
+
+                if (Platform.isDesktopApp) {
+                    electron = evt.win.electron;
+                    if (electron && evt.isTrusted) {
+                        evt.stopPropagation();
+                        evt.stopImmediatePropagation();
+                        await new Promise((resolve) => {
+                            // wait up to 1 sec
+                            const timer = evt.win.setTimeout(() => resolve(null), 1000);
+                            electron!.ipcRenderer.once("context-menu", (n, r) => {
+                                evt.win.clearTimeout(timer);
+                                resolve(r);
+                            });
+                            electron!.ipcRenderer.send("context-menu");
+                        });
+                    }
+                }
+
                 // Create a new Menu
-                const menu = new Menu().addSections(['action', 'selection', 'annotation']);
+                const menu = new Menu().addSections(['action', 'selection', 'write-file', 'annotation']);
 
                 // Get page number
                 const pageNumber = api.getPageNumberFromEvent(evt);
                 if (pageNumber === null) return;
 
                 // If macOS, add "look up selection" action
-                if (Platform.isMacOS && Platform.isDesktopApp && selection) {
+                if (Platform.isMacOS && Platform.isDesktopApp && electron && selection) {
                     menu.addItem((item) => {
                         return item
                             .setSection("action")
@@ -369,7 +388,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             .setIcon("lucide-library")
                             .onClick(() => {
                                 // @ts-ignore
-                                evt.win.electron.remote.getCurrentWebContents().showDefinitionForSelection();
+                                electron!.remote.getCurrentWebContents().showDefinitionForSelection();
                             });
                     });
                 }
@@ -386,7 +405,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             .setTitle('Copy text')
                             .setIcon('lucide-copy')
                             .onClick(() => {
-                                // How does the electron version differs?
+                                // How does the electron version differ?
                                 navigator.clipboard.writeText(selection);
                             });
                     })
@@ -417,7 +436,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         for (const { name, template } of formats) {
                             menu.addItem((item) => {
                                 return item
-                                    .setSection('selection')
+                                    .setSection('write-file')
                                     .setTitle(`Write highlight to file & copy link with format "${name}"`)
                                     .setIcon('lucide-save')
                                     .onClick(() => {
@@ -446,7 +465,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                                     .setTitle('Copy annotated text')
                                     .setIcon('lucide-copy')
                                     .onClick(() => {
-                                        // How does the electron version differs?
+                                        // How does the electron version differ?
                                         navigator.clipboard.writeText(annotatedText);
                                     });
                             })
@@ -469,7 +488,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                 self.clearEphemeralUI();
                 menu.showAtMouseEvent(evt);
-                evt.preventDefault();
+                if (self.pdfViewer.isEmbed) evt.preventDefault();
             }
         }
     }));
