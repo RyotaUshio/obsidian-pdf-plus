@@ -226,12 +226,13 @@ function getCJKRegexp() {
 
 /** Process (possibly) multiline strings cleverly to convert it into a single line string. */
 export function toSingleLine(str: string) {
-    return str.replace(/(.?)([\r\n]+)(.?)/g, (match, prev, br, next) => {
+    str = str.replace(/(.?)([\r\n]+)(.?)/g, (match, prev, br, next) => {
         const regexp = getCJKRegexp();
         if (regexp.test(prev) && regexp.test(next)) return prev + next;
         if (prev === '-' && next.match(/[a-zA-Z]/)) return next;
         return prev + ' ' + next;
     });
+    return window.pdfjsViewer.removeNullCharacters(window.pdfjsLib.normalizeUnicode(str));
 }
 
 /**

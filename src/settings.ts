@@ -1,4 +1,4 @@
-import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PluginSettingTab, Setting, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PluginSettingTab, Setting, TextComponent, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType } from 'api/workspace-api';
@@ -95,6 +95,7 @@ export interface PDFPlusSettings {
 	warnEveryAnnotationDelete: boolean;
 	warnBacklinkedAnnotationDelete: boolean;
 	enableAnnotationDeletion: boolean;
+	replaceContextMenu: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -118,15 +119,15 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	syncDisplayTextFormat: true,
 	copyCommands: [
 		{
-			name: 'Copy as quote',
+			name: 'Quote',
 			template: '> {{text}}\n\n{{linkWithDisplay}}',
 		},
 		{
-			name: 'Copy link to selection',
+			name: 'Link only',
 			template: '{{linkWithDisplay}}'
 		},
 		{
-			name: 'Copy embed of selection',
+			name: 'Embed',
 			template: '!{{link}}',
 		},
 		{
@@ -200,6 +201,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	warnEveryAnnotationDelete: false,
 	warnBacklinkedAnnotationDelete: true,
 	enableAnnotationContentEdit: true,
+	replaceContextMenu: true,
 };
 
 
@@ -725,8 +727,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('enalbeWriteHighlightToFile', () => this.redisplay())
 			.setName('Enable');
 		if (this.plugin.settings.enalbeWriteHighlightToFile) {
-			this.addTextSetting('author', 'Your name')
-				.setName('Annotation author');
+			this.addTextSetting('author', 'Your name', function () {
+				const inputEl = this as HTMLInputElement;
+				inputEl.toggleClass('error', !inputEl.value);
+			})
+				.setName('Annotation author')
+				.setDesc('It must contain at least one character in order to make annotations referenceable & editable within Obsidian.')
+				.then((setting) => {
+					const inputEl = (setting.components[0] as TextComponent).inputEl;
+					inputEl.toggleClass('error', !inputEl.value);
+				});
 			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
 				.setName('Highlight opacity');
 			this.addToggleSetting('defaultWriteFileToggle')
@@ -754,7 +764,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setName('Always warn when deleting an annotation');
 				if (!this.plugin.settings.warnEveryAnnotationDelete) {
 					this.addToggleSetting('warnBacklinkedAnnotationDelete')
-					.setName('Warn when deleting an annotation with backlinks');
+						.setName('Warn when deleting an annotation with backlinks');
 				}
 			}
 		}
@@ -866,15 +876,19 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.addHeading('Right-click menu in PDF viewer')
 			.setDesc('Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.')
-		this.addToggleSetting('alias', () => this.redisplay())
-			.setName('Copy link with display text')
-			.then((setting) => this.renderMarkdown(
-				'When copying a link to a selection or an annotation from the right-click context menu, Obsidian appends "|`<PDF FILE TITLE>`, page `<PAGE NUMBER>`" to the link text by default. Disable this option if you don\'t like it.',
-				setting.descEl
-			));
-		this.addSetting()
-			.setName('Display text format')
-			.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
+		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
+			.setName('Replace the built-in right-click menu and show color palette actions instead');
+		if (!this.plugin.settings.replaceContextMenu) {
+			this.addToggleSetting('alias', () => this.redisplay())
+				.setName('Copy link with display text')
+				.then((setting) => this.renderMarkdown(
+					'When copying a link to a selection or an annotation from the right-click context menu, Obsidian appends "|`<PDF FILE TITLE>`, page `<PAGE NUMBER>`" to the link text by default. Disable this option if you don\'t like it.',
+					setting.descEl
+				));
+			this.addSetting()
+				.setName('Display text format')
+				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
+		}
 
 
 		this.addHeading('Color palette')
@@ -1102,6 +1116,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.plugin.settings.copyCommands = this.plugin.settings.copyCommands.filter((command) => command.name && command.template);
 		this.plugin.settings.displayTextFormats = this.plugin.settings.displayTextFormats.filter((format) => format.name && format.template);
 
+		// avoid annotations to be not referneceable
+		if (!this.plugin.settings.author) {
+			this.plugin.settings.enalbeWriteHighlightToFile = false;
+			new Notice(`${this.plugin.manifest.name}: Cannot enable writing highlights into PDF files because the "Annotation author" option is empty.`)
+		}
+
 		await this.plugin.saveSettings();
 
 		// Reflect the changes in the options such as highlightOnHoverBacklinkPane
@@ -1109,7 +1129,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			const highlighter = child.backlinkHighlighter;
 			if (highlighter && highlighter._loaded) {
 				highlighter.unload();
-				highlighter.load();	
+				highlighter.load();
 			}
 		});
 

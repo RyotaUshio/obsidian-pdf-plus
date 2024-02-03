@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, Notice, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, Menu, Notice, Platform, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -341,6 +341,135 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 self.component?.unload();
                 plugin.lastAnnotationPopupChild = null;
                 return old.call(this);
+            }
+        },
+        onContextMenu(old) {
+            return async function (evt: MouseEvent): Promise<void> {
+                if (!plugin.settings.replaceContextMenu) {
+                    return await old.call(this, evt);
+                }
+
+                const self = this as PDFViewerChild;
+
+                const selection = toSingleLine(window.getSelection()?.toString() ?? '');
+
+                // Create a new Menu
+                const menu = new Menu().addSections(['action', 'selection', 'annotation']);
+
+                // Get page number
+                const pageNumber = api.getPageNumberFromEvent(evt);
+                if (pageNumber === null) return;
+
+                // If macOS, add "look up selection" action
+                if (Platform.isMacOS && Platform.isDesktopApp && selection) {
+                    menu.addItem((item) => {
+                        return item
+                            .setSection("action")
+                            .setTitle(`Look up "${selection.length <= 25 ? selection : selection.slice(0, 24).trim() + '…'}"`)
+                            .setIcon("lucide-library")
+                            .onClick(() => {
+                                // @ts-ignore
+                                evt.win.electron.remote.getCurrentWebContents().showDefinitionForSelection();
+                            });
+                    });
+                }
+
+                //// Add items ////
+
+                const formats = plugin.settings.copyCommands;
+
+                // copy selected text only //
+                if (selection) {
+                    menu.addItem((item) => {
+                        return item
+                            .setSection('selection')
+                            .setTitle('Copy text')
+                            .setIcon('lucide-copy')
+                            .onClick(() => {
+                                // How does the electron version differs?
+                                navigator.clipboard.writeText(selection);
+                            });
+                    })
+
+                    // copy with custom formats //
+
+                    // get the currently selected color name
+                    const palette = api.getColorPaletteFromChild(self);
+                    const colorName = palette?.selectedColorName ?? undefined;
+                    // check whether to write highlight to file or not
+                    // const writeFile = palette?.writeFile;
+
+
+                    // if (!writeFile) {
+                    for (const { name, template } of formats) {
+                        menu.addItem((item) => {
+                            return item
+                                .setSection('selection')
+                                .setTitle(`Copy link to selection with format "${name}"`)
+                                .setIcon('lucide-copy')
+                                .onClick(() => {
+                                    api.copyLink.copyLinkToSelection(false, template, colorName);
+                                });
+                        });
+                    }
+                    // } else {
+                    if (plugin.settings.enalbeWriteHighlightToFile) {
+                        for (const { name, template } of formats) {
+                            menu.addItem((item) => {
+                                return item
+                                    .setSection('selection')
+                                    .setTitle(`Write highlight to file & copy link with format "${name}"`)
+                                    .setIcon('lucide-save')
+                                    .onClick(() => {
+                                        api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
+                                    });
+                            });
+                        }
+                    }
+                    // }
+                }
+
+                // Get annotation & annotated text
+                const pageView = self.getPage(pageNumber);
+                const annot = self.getAnnotationFromEvt(pageView, evt);
+
+                await (async () => {
+                    if (annot) {
+                        const { id } = api.getAnnotationInfoFromAnnotationElement(annot);
+                        const annotatedText = await self.getAnnotatedText(pageView, id);
+
+                        // copy annotated text only //
+                        if (annotatedText) {
+                            menu.addItem((item) => {
+                                return item
+                                    .setSection('annotation')
+                                    .setTitle('Copy annotated text')
+                                    .setIcon('lucide-copy')
+                                    .onClick(() => {
+                                        // How does the electron version differs?
+                                        navigator.clipboard.writeText(annotatedText);
+                                    });
+                            })
+                        }
+
+                        // copy link to annotation with custom formats //
+                        for (const { name, template } of formats) {
+                            menu.addItem((item) => {
+                                return item
+                                    .setSection('annotation')
+                                    .setTitle(`Copy link with format "${name}"`)
+                                    .setIcon('lucide-copy')
+                                    .onClick(() => {
+                                        api.copyLink.copyLinkToAnnotation(self, false, template, pageNumber, id);
+                                    });
+                            });
+                        }
+                    }
+                })();
+
+                self.clearEphemeralUI();
+                menu.showAtMouseEvent(evt);
+                if (self.opts?.isEmbed) evt.preventDefault();
             }
         }
     }));

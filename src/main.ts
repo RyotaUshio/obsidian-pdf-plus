@@ -123,8 +123,13 @@ export default class PDFPlus extends Plugin {
 		this.tryPatchUntilSuccess(patchPDF, () => {
 			this.api.workspace.iteratePDFViews(async (view) => {
 				// reflect the patch to existing PDF views
+				// especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu)
+				view.viewer.unload();
+				view.viewer.load();
 				const file = view.file;
-				if (file) view.onLoadFile(file);
+				if (file) {
+					view.viewer.loadFile(file);
+				}
 			});
 		}, {
 			message: 'Some features for PDF embeds will not be activated until a PDF file is opened in a viewer.',

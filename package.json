@@ -16,6 +16,7 @@
         "@typescript-eslint/eslint-plugin": "5.29.0",
         "@typescript-eslint/parser": "5.29.0",
         "builtin-modules": "3.3.0",
+        "electron": "^28.2.1",
         "esbuild": "0.17.3",
         "monkey-around": "^2.3.0",
         "obsidian": "latest",

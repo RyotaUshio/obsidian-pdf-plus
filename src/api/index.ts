@@ -75,11 +75,30 @@ export class PDFPlusAPI {
         });
     }
 
-    getPageElFromSelection(selection: Selection) {
-        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-        const pageEl = range?.startContainer.parentElement?.closest('.page');
+    getPageElAssociatedWithNode(node: Node) {
+        const el = node.instanceOf(HTMLElement) ? node : node.parentElement;
+        if (!el) return null;
+        const pageEl = el.closest('.page');
         if (!pageEl || !(pageEl.instanceOf(HTMLElement))) return null;
         return pageEl;
+    }
+
+    getPageElFromSelection(selection: Selection) {
+        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        return range ? this.getPageElAssociatedWithNode(range.startContainer) : null;
+    }
+
+    getPageElFromEvent(event: MouseEvent) {
+        return event.target instanceof Node
+            ? this.getPageElAssociatedWithNode(event.target)
+            : null;
+    }
+
+    getPageNumberFromEvent(event: MouseEvent): number | null {
+        const pageEl = this.getPageElFromEvent(event);
+        const pageNumber = pageEl?.dataset.pageNumber;
+        if (pageNumber === undefined) return null;
+        return +pageNumber;
     }
 
     getToolbarAssociatedWithNode(node: Node) {

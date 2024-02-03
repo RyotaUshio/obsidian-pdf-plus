@@ -278,7 +278,7 @@ export class ColorPalette extends Component {
     setTooltipToActionItem(itemEl: HTMLElement, name: string | null) {
         const pickerEl = itemEl.querySelector<HTMLInputElement>(':scope > .' + ColorPalette.CLS + '-item-inner')!;
         const commandName = this.plugin.settings.copyCommands[this.actionIndex].name;
-        const tooltip = name !== null ? `${commandName} and add ${name.toLowerCase()} highlight` : `${commandName} without specifying color`;
+        const tooltip = name !== null ? `Copy link with format "${commandName}" & add ${name.toLowerCase()} highlight` : `Copy link with "${commandName}" format without specifying color`;
         setTooltip(pickerEl, tooltip);
     }
 

@@ -13,8 +13,7 @@ declare global {
         pdfPlus?: PDFPlus;
         pdfjsLib: typeof import('pdfjs-dist');
         pdfjsViewer: any;
-        DataviewAPI?: any;
-        OBSIDIAN_DEFAULT_I18N: Record<'setting' | 'editor' | 'interface' | 'commands' | 'dialogue' | 'menuItems' | 'plugins' | 'pdf' | 'properties' | 'table' | 'callout' | 'nouns', Record<string, any>>;
+        electron: typeof import('electron');
     }
 }
 
@@ -53,8 +52,10 @@ interface PDFViewerChild {
     annotationHighlight: HTMLElement | null;
     activeAnnotationPopupEl: HTMLElement | null;
     load(): void;
+    unload(): void;
     getPage(page: number): PDFPageView;
-    getTextByRect(pageView: any, rect: number[]): any;
+    getTextByRect(pageView: PDFPageView, rect: number[]): any;
+    getAnnotationFromEvt(pageView: PDFPageView, evt: MouseEvent): AnnotationElement | null;
     getPageLinkAlias(page: number): string;
     getTextSelectionRangeStr(el: HTMLElement): string;
     getMarkdownLink(subpath?: string, alias?: string, embed?: boolean): string;
@@ -65,6 +66,7 @@ interface PDFViewerChild {
     highlightAnnotation(page: number, id: string): void;
     clearTextHighlight(): void;
     clearAnnotationHighlight(): void;
+    clearEphemeralUI(): void;
     renderAnnotationPopup(annotationElement: AnnotationElement): void;
     destroyAnnotationPopup(): void;
     getAnnotatedText(pageView: PDFPageView, id: string): Promise<string>;
@@ -576,6 +578,7 @@ declare module 'obsidian' {
 
     interface Menu {
         setParentElement(el: HTMLElement): Menu;
+        addSections(sections: string[]): Menu;
     }
 
     interface Editor {
