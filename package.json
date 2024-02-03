@@ -1,7 +1,7 @@
 {
     "name": "obsidian-pdf-plus",
-    "version": "0.27.10",
-    "description": "An Obsidian.md plugin for annotating PDF files with highlights just by linking to text selection. It also adds quality-of-life improvements to Obsidian's built-in PDF viewer and PDF embeds.",
+    "version": "0.27.11",
+    "description": "The most Obsidian-native PDF annotator ever.",
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",

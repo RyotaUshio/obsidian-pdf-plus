@@ -156,3 +156,7 @@ settings:
         padding-top: var(--size-4-3);
     }
 }
+
+.popupWrapper {
+    --pdf-popup-width: 300px;
+}

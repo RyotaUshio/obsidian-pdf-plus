@@ -56,7 +56,7 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
                 try {
                     annotationID = await io.addHighlightAnnotations(child.file, pageNumber, rects, colorName, contents);
                 } catch (e) {
-                    new Notice(`${this.plugin.manifest.name}: An error occurred while attemping to addi the highlight annotation.`);
+                    new Notice(`${this.plugin.manifest.name}: An error occurred while attemping to add the highlight annotation.`);
                     console.error(e);
                 }
                 return { annotationID, rects };

@@ -44,7 +44,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
 
     async process<T>(file: TFile, fn: (pdfDoc: PDFDocument) => T) {
         const buffer = await this.app.vault.readBinary(file);
-        const pdfDoc = await PDFDocument.load(buffer);
+        const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
 
         const ret = await fn(pdfDoc);
 
@@ -55,7 +55,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
 
     async read<T>(file: TFile, fn: (pdfDoc: PDFDocument) => T) {
         const buffer = await this.app.vault.readBinary(file);
-        const pdfDoc = await PDFDocument.load(buffer);
+        const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
         return await fn(pdfDoc);
     }
 

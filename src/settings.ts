@@ -132,7 +132,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		},
 		{
 			name: 'Selected text',
-			template: '[[{{linktext}}|{{selection}}]]'
+			template: '[[{{linktext}}|{{text}}]]'
+		},
+		{
+			name: 'Create new note',
+			template: '{{app.vault.create(text + ".md", linkWithDisplay).then((file) => app.workspace.getLeaf(true).openFile(file)), ""}}'
 		}
 	],
 	useAnotherCopyTemplateWhenNoSelection: false,
@@ -1117,7 +1121,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.plugin.settings.displayTextFormats = this.plugin.settings.displayTextFormats.filter((format) => format.name && format.template);
 
 		// avoid annotations to be not referneceable
-		if (!this.plugin.settings.author) {
+		if (this.plugin.settings.enalbeWriteHighlightToFile && !this.plugin.settings.author) {
 			this.plugin.settings.enalbeWriteHighlightToFile = false;
 			new Notice(`${this.plugin.manifest.name}: Cannot enable writing highlights into PDF files because the "Annotation author" option is empty.`)
 		}
