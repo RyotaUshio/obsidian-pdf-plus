@@ -156,6 +156,28 @@ export class PDFPlusAPI {
         }
     }
 
+    /** 
+     * Convert a destination name (see the PDF spec (PDF 32000-1:2008), 12.3.2.3 "Named Destinations")
+     * into a subpath of the form `#page=<pageNumber>&offset=<left>,<top>,<zoom>`.
+     * 
+     * For how Obsidian handles the "offset" parameter, see the PDFViewerChild.prototype.applySubpath method 
+     * in Obsidian's app.js.
+     * 
+     * The rule is:
+     * - `offset` is a comma-separated list of three (or two) numbers, representing the "left", "top", and "zoom" parameters.
+     * - If "left" is omitted, then only the "top" parameter is used and the destination is treated as "[page /FitBH top]".
+     *   - What is "FitBH"? Well, Table 151 in the PDF spec says: 
+     *     > "Display the page designated by page, with the vertical coordinate top positioned at the top edge of
+     *       the window and the contents of the page magnified just enough to fit the entire width of its bounding box
+     *       within the window. 
+     *     > A null value for top specifies that the current value of that parameter shall be retained unchanged."
+     * - Otherwise, the destination is treated as "[page /XYZ left top zoom]".
+     *   - According to the PDF spec, "XYZ" means:
+     *     > "Display the page designated by page, with the coordinates (left, top) positioned at the upper-left corner of
+     *       the window and the contents of the page magnified by the factor zoom. 
+     *     > A null value for any of the parameters left, top, or zoom specifies that the current value of that parameter
+     *       shall be retained unchanged. A zoom value of 0 has the same meaning as a null value."
+     */
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
         const dest = await doc.getDestination(destId);
         if (!dest) return null;

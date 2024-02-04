@@ -54,7 +54,7 @@ interface PDFViewerChild {
     load(): void;
     unload(): void;
     getPage(page: number): PDFPageView;
-    getTextByRect(pageView: PDFPageView, rect: number[]): any;
+    getTextByRect(pageView: PDFPageView, rect: number[]): string;
     getAnnotationFromEvt(pageView: PDFPageView, evt: MouseEvent): AnnotationElement | null;
     getPageLinkAlias(page: number): string;
     getTextSelectionRangeStr(el: HTMLElement): string;
@@ -198,6 +198,7 @@ interface AnnotationElement {
         subtype: string;
         id: string;
         rect: Rect;
+        [key: string]: any;
     }
 }
 

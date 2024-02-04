@@ -30,15 +30,15 @@ import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLin
 export function convertDateToPDFDate(date: Date): string {
     let date_str = "D:";
     date_str += date.getFullYear();
-    let month: string = String(date.getMonth() + 1)
+    const month = String(date.getMonth() + 1)
     date_str += (month.length == 1 ? "0" : "") + month;
-    let day: string = String(date.getDate())
+    const day = String(date.getDate())
     date_str += (day.length == 1 ? "0" : "") + day;
-    let hours: string = String(date.getHours())
+    const hours = String(date.getHours())
     date_str += (hours.length == 1 ? "0" : "") + hours;
-    let minutes: string = String(date.getMinutes())
+    const minutes = String(date.getMinutes())
     date_str += (minutes.length == 1 ? "0" : "") + minutes;
-    let seconds: string = String(date.getSeconds())
+    const seconds = String(date.getSeconds())
     date_str += (seconds.length == 1 ? "0" : "") + seconds;
     return date_str;
 }
@@ -225,7 +225,7 @@ function getCJKRegexp() {
 }
 
 /** Process (possibly) multiline strings cleverly to convert it into a single line string. */
-export function toSingleLine(str: string) {
+export function toSingleLine(str: string): string {
     str = str.replace(/(.?)([\r\n]+)(.?)/g, (match, prev, br, next) => {
         const regexp = getCJKRegexp();
         if (regexp.test(prev) && regexp.test(next)) return prev + next;

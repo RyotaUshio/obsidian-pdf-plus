@@ -12,7 +12,7 @@ import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { subpathToParams, OverloadParameters, toSingleLine } from 'utils';
+import { subpathToParams, OverloadParameters } from 'utils';
 import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 
 

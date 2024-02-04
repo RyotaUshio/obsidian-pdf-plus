@@ -88,6 +88,6 @@ export interface IPdfIo {
      */
     addHighlightAnnotations(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string): Promise<string>;
     deleteAnnotation(file: TFile, pageNumber: number, id: string): Promise<void>;
-    getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string>;
+    getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string | null>;
     setAnnotationContents(file: TFile, pageNumber: number, id: string, contents: string): Promise<void>;
 }

@@ -3,7 +3,7 @@ import { App, Component, RGB } from 'obsidian';
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { DEFAULT_BACKLINK_HOVER_COLOR } from 'settings';
-import { getObsidianDefaultHighlightColorRGB, hexToRgb, isHexString, rgbStringToObject } from 'utils';
+import { hexToRgb, isHexString, rgbStringToObject } from 'utils';
 
 
 export class DomManager extends Component {

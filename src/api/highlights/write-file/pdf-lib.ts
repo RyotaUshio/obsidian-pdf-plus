@@ -1,5 +1,5 @@
-import { TFile } from 'obsidian';
-import { PDFDict, PDFDocument, PDFName, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
+import { RGB, TFile } from 'obsidian';
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
 
 import { PDFPlusAPISubmodule } from 'api/submodule';
 import { convertDateToPDFDate, formatAnnotationID, getBorderRadius } from 'utils';
@@ -13,7 +13,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
         if (!this.plugin.settings.author) {
             throw new Error(`${this.plugin.manifest.name}: The author name is not set. Please set it in the plugin settings.`);
         }
-        
+
         return await this.process(file, (pdfDoc) => {
             const page = pdfDoc.getPage(pageNumber - 1);
             const { r, g, b } = this.plugin.domManager.getRgb(colorName);
@@ -27,7 +27,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
             // - 12.5.2 "Annotation Dictionaries", 
             // - 12.5.6.2 "Markup Annotations" and 
             // - 12.5.6.10 "Text Markup Annotations".
-            const ref = this.addAnnot(page, {
+            const ref = this.addAnnotation(page, {
                 Subtype: 'Highlight',
                 Rect: geometry.mergeRectangles(...rects),
                 QuadPoints: geometry.rectsToQuadPoints(rects),
@@ -63,7 +63,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
         return await fn(pdfDoc);
     }
 
-    addAnnot(page: PDFPage, annotDict: Record<string, any>): PDFRef {
+    addAnnotation(page: PDFPage, annotDict: Record<string, any>): PDFRef {
         const context = page.doc.context;
         const ref = context.register(
             context.obj({
@@ -79,39 +79,128 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
     async deleteAnnotation(file: TFile, pageNumber: number, id: string) {
         await this.process(file, (pdfDoc) => {
             const page = pdfDoc.getPage(pageNumber - 1);
-            const ref = this.findAnnotRef(page, id);
+            const ref = this.findAnnotationRef(page, id);
             if (ref) page.node.removeAnnot(ref);
         });
     }
 
-    async getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string> {
-        return await this.read(file, (pdfDoc) => {
-            const page = pdfDoc.getPage(pageNumber - 1);
-            const ref = this.findAnnotRef(page, id);
-            if (ref) {            
-                const contents = page.node.context.lookup(ref, PDFDict).get(PDFName.of('Contents'));
-                if (contents instanceof PDFString) return contents.asString();
-            }
-            return ''
-        });
+    async getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string | null> {
+        const annot = await this.getAnnotation(file, pageNumber, id);
+        if (annot) {
+            const contents = this.getContentsFromAnnotation(annot);
+            return contents ?? null;
+        }
+        return null;
     }
 
     async setAnnotationContents(file: TFile, pageNumber: number, id: string, content: string): Promise<void> {
-        await this.process(file, (pdfDoc) => {
-            const page = pdfDoc.getPage(pageNumber - 1);
-            const ref = this.findAnnotRef(page, id);
-            if (ref) {            
-                page.node.context.lookup(ref, PDFDict).set(PDFName.of('Contents'), PDFString.of(content));
-            }
+        await this.processAnnotation(file, pageNumber, id, (annot) => {
+            annot.set(PDFName.of('Contents'), PDFString.of(content));
         });
     }
 
-    findAnnotRef(page: PDFPage, id: string): PDFRef | undefined {
+    async getAnnotationColor(file: TFile, pageNumber: number, id: string): Promise<RGB | null> {
+        const annot = await this.getAnnotation(file, pageNumber, id);
+        if (annot) {
+            return this.getColorFromAnnotation(annot) ?? null;
+        }
+        return null;
+    }
+
+    async setAnnotationColor(file: TFile, pageNumber: number, id: string, rgb: RGB): Promise<any> {
+        await this.processAnnotation(file, pageNumber, id, async (annot) => {
+            this.setColorToAnnotation(annot, rgb);
+        });
+    }
+
+    async getAnnotationOpacity(file: TFile, pageNumber: number, id: string): Promise<number | null> {
+        const annot = await this.getAnnotation(file, pageNumber, id);
+        if (annot) {
+            return this.getOpacityFromAnnotation(annot) ?? null;
+        }
+        return null;
+    }
+
+    async setAnnotationOpacity(file: TFile, pageNumber: number, id: string, opacity: number): Promise<any> {
+        await this.processAnnotation(file, pageNumber, id, async (annot) => {
+            this.setOpacityToAnnotation(annot, opacity);
+        });
+    }
+
+    findAnnotationRef(page: PDFPage, id: string): PDFRef | undefined {
         return page.node.Annots()
             ?.asArray()
             .find((ref): ref is PDFRef => {
                 return ref instanceof PDFRef
                     && formatAnnotationID(ref.objectNumber, ref.generationNumber) === id;
             });
+    }
+
+    async getAnnotation(file: TFile, pageNumber: number, id: string): Promise<PDFDict | null> {
+        return await this.read(file, (pdfDoc) => {
+            const page = pdfDoc.getPage(pageNumber - 1);
+            const ref = this.findAnnotationRef(page, id);
+            return ref ? page.node.context.lookup(ref, PDFDict) : null;
+        });
+    }
+
+    async processAnnotation(file: TFile, pageNumber: number, id: string, fn: (annot: PDFDict) => any): Promise<void> {
+        return await this.process(file, async (pdfDoc) => {
+            const page = pdfDoc.getPage(pageNumber - 1);
+            const ref = this.findAnnotationRef(page, id);
+            if (ref) {
+                const annot = page.node.context.lookup(ref, PDFDict);
+                await fn(annot);
+            }
+        });
+    }
+
+    getColorFromAnnotation(annot: PDFDict) {
+        const color = annot.get(PDFName.of('C'));
+        if (color instanceof PDFArray) {
+            const [r, g, b] = color.asArray().map((c) => {
+                if (c instanceof PDFNumber) {
+                    return Math.round(c.asNumber() * 255);
+                }
+                throw new Error(`${this.plugin.manifest.name}: Invalid color`);
+            });
+            return { r, g, b };
+        }
+    }
+
+    setColorToAnnotation(annot: PDFDict, rgb: RGB) {
+        const color = annot.get(PDFName.of('C'));
+        if (color instanceof PDFArray) {
+            color.set(0, PDFNumber.of(rgb.r / 255));
+            color.set(1, PDFNumber.of(rgb.g / 255));
+            color.set(2, PDFNumber.of(rgb.b / 255));
+        }
+    }
+
+    getContentsFromAnnotation(annot: PDFDict) {
+        const contents = annot.get(PDFName.of('Contents'));
+        if (contents instanceof PDFString) return contents.asString();
+    }
+
+    setContentsToAnnotation(annot: PDFDict, contents: string) {
+        annot.set(PDFName.of('Contents'), PDFString.of(contents));
+    }
+
+    getOpacityFromAnnotation(annot: PDFDict) {
+        const opacity = annot.get(PDFName.of('CA'));
+        if (opacity instanceof PDFNumber) return opacity.asNumber();
+    }
+
+    setOpacityToAnnotation(annot: PDFDict, opacity: number) {
+        annot.set(PDFName.of('CA'), PDFNumber.of(opacity));
+    }
+
+    getAuthorFromAnnotation(annot: PDFDict) {
+        const author = annot.get(PDFName.of('T'));
+        if (author instanceof PDFString) return author.asString();
+    }
+
+    setAuthorToAnnotation(annot: PDFDict, author: string) {
+        annot.set(PDFName.of('T'), PDFString.of(author));
     }
 }

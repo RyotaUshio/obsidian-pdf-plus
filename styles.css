@@ -71,6 +71,14 @@ settings:
     border-color: var(--background-modifier-error);
 }
 
+.is-mobile,
+.is-tablet {
+    .pdf-plus-color-palette .pdf-plus-color-palette-item-inner {
+        width: calc(var(--swatch-width) * 0.85);
+        height: calc(var(--swatch-width) * 0.85);
+    }
+}
+
 .pdf-plus-color-palette {
     user-select: none;
     -webkit-user-select: none;
@@ -81,9 +89,8 @@ settings:
     align-items: center;
 
     .pdf-plus-color-palette-item-inner {
-        /* draw circle */
         width: var(--swatch-width);
-        height: var(--swatch-height);
+        height: var(--swatch-width);
         border-radius: 50%;
         border: var(--input-border-width) solid var(--background-modifier-border);
     }
@@ -150,10 +157,28 @@ settings:
         border: var(--input-border-width) solid var(--background-modifier-border);
         border-radius: var(--input-radius);
         padding: var(--size-4-1) var(--size-4-2);
+        text-align: left;
+
+        &>p:first-child {
+            margin-top: 0;
+        }
+
+        &>p:last-child {
+            margin-bottom: 0;
+        }
     }
 
-    .setting-item {
-        padding-top: var(--size-4-3);
+    /* Arrange two children of .setting-item, namely .setting-item-info and .setting-item-contrl, vertically */
+    .setting-item:last-child {
+        display: flex;
+        flex-direction: column;
+        justify-content: left;
+        align-items: flex-start;
+
+        .setting-item-control {
+            width: 100%;
+            padding-top: var(--size-4-2);
+        }
     }
 }
 

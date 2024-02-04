@@ -269,10 +269,12 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         // we can use contentEl.textContent, but it has backslashes escaped
                         api.highlight.writeFile.getAnnotationContents(self.file, page, id)
                             .then(async (markdown) => {
+                                if (!markdown) return;
                                 if (!self.component) {
                                     self.component = new Component();
                                 }
                                 self.component.load();
+                                contentEl.addClass('markdown-rendered');
                                 await MarkdownRenderer.render(app, markdown, contentEl, '', self.component);
                                 hookInternalLinkMouseEventHandlers(app, contentEl, self.file?.path ?? '');
                             });
@@ -457,6 +459,33 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         const { id } = api.getAnnotationInfoFromAnnotationElement(annot);
                         const annotatedText = await self.getAnnotatedText(pageView, id);
 
+                        if (annot.data.subtype === 'Link') {
+                            const doc = self.pdfViewer.pdfViewer?.pdfDocument;
+                            if ('dest' in annot.data && typeof annot.data.dest === 'string' && doc && self.file) {
+                                const destId = annot.data.dest;
+                                const file = self.file;
+                                // copy PDF internal link as Obsidian wikilink (or markdown link) //
+                                menu.addItem((item) => {
+                                    return item
+                                        .setSection('annotation')
+                                        .setTitle('Copy PDF link as Obsidian link')
+                                        .setIcon('lucide-copy')
+                                        .onClick(async () => {
+                                            const subpath = await api.destIdToSubpath(destId, doc);
+                                            if (typeof subpath === 'string') {
+                                                let display = annotatedText;
+                                                if (!display && annot.data.rect) {
+                                                    display = self.getTextByRect(pageView, annot.data.rect);
+                                                }
+                                                const link = api.generateMarkdownLink(file, '', subpath, display).slice(1);
+                                                // How does the electron version differ?
+                                                navigator.clipboard.writeText(link);
+                                            }
+                                        });
+                                })
+                            }
+                        }
+
                         // copy annotated text only //
                         if (annotatedText) {
                             menu.addItem((item) => {
@@ -476,7 +505,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                             menu.addItem((item) => {
                                 return item
                                     .setSection('annotation')
-                                    .setTitle(`Copy link with format "${name}"`)
+                                    .setTitle(`Copy link to annotation with format "${name}"`)
                                     .setIcon('lucide-copy')
                                     .onClick(() => {
                                         api.copyLink.copyLinkToAnnotation(self, false, template, pageNumber, id);
@@ -485,6 +514,12 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         }
                     }
                 })();
+
+                app.workspace.trigger('pdf-menu', menu, self, {
+                    pageNumber,
+                    selection,
+                    annot
+                });
 
                 self.clearEphemeralUI();
                 menu.showAtMouseEvent(evt);

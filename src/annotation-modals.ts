@@ -2,7 +2,7 @@ import { Component, Modal, Setting, TFile, TextAreaComponent, MarkdownRenderer }
 
 import PDFPlus from 'main';
 import { PDFPlusAPI } from 'api';
-import { hookInternalLinkMouseEventHandlers } from 'utils';
+import { hexToRgb, hookInternalLinkMouseEventHandlers } from 'utils';
 
 
 class PDFPlusModal extends Modal {
@@ -41,28 +41,20 @@ class PDFAnnotationModal extends PDFPlusModal {
 }
 
 export class PDFAnnotationEditModal extends PDFAnnotationModal {
-    textarea: TextAreaComponent;
-
-    descEl: HTMLElement;
-    editorEl: HTMLElement;
-    previewEl: HTMLElement;
+    textarea: TextAreaComponent | null;
+    editorEl: HTMLElement | null;
+    previewEl: HTMLElement | null;
     buttonContainerEl: HTMLElement;
 
     constructor(...args: ConstructorParameters<typeof PDFAnnotationModal>) {
         super(...args);
         this.containerEl.addClass('pdf-plus-annotation-edit-modal');
 
-        this.descEl = this.contentEl.createDiv('desc');
-        this.editorEl = this.contentEl.createDiv('editor-contaniner');
-        this.previewEl = this.contentEl.createDiv('preview-container');
+        this.textarea = null;
+
+        this.editorEl = null;
+        this.previewEl = null;
         this.buttonContainerEl = this.modalEl.createDiv();
-        this.textarea = new TextAreaComponent(this.editorEl)
-            .then((textarea) => {
-                textarea.inputEl.rows = 5;
-                textarea.inputEl.setCssStyles({
-                    width: '100%',
-                });
-            });
 
         if (this.plugin.settings.renderMarkdownInStickyNote) {
             const hotkeys = this.app.hotkeyManager.getHotkeys('markdown:toggle-preview')
@@ -77,9 +69,92 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     async onOpen() {
         super.onOpen();
 
-        if (this.plugin.settings.renderMarkdownInStickyNote) {
-            this.descEl.setText(`Press ${this.app.hotkeyManager.printHotkeyForCommand('markdown:toggle-preview')} to toggle preview.`);
+        const pdflibAPI = this.api.highlight.writeFile.pdflib;
+        const annot = await pdflibAPI.getAnnotation(this.file, this.page, this.id);
+        if (!annot) {
+            throw new Error(`${this.plugin.manifest.name}: Annotation not found.`);
         }
+
+        const existingColor = pdflibAPI.getColorFromAnnotation(annot);
+        const existingOpacity = pdflibAPI.getOpacityFromAnnotation(annot);
+        const existingAuthor = pdflibAPI.getAuthorFromAnnotation(annot);
+        const existingContents = pdflibAPI.getContentsFromAnnotation(annot);
+
+        if (!existingColor) {
+            throw new Error(`${this.plugin.manifest.name}: Invalid annotation color.`);
+        }
+        if (typeof existingOpacity !== 'number') {
+            throw new Error(`${this.plugin.manifest.name}: Invalid annotation opacity.`);
+        }
+        if (typeof existingAuthor !== 'string') {
+            throw new Error(`${this.plugin.manifest.name}: Invalid annotation author.`);
+        }
+        if (typeof existingContents !== 'string') {
+            throw new Error(`${this.plugin.manifest.name}: Invalid annotation contents.`);
+        }
+
+        let newColor = existingColor;
+        let newOpacity = existingOpacity;
+        let newAuthor = existingAuthor;
+        let newContents = existingContents;
+
+        new Setting(this.contentEl)
+            .setName('Color')
+            .addColorPicker((picker) => {
+                picker
+                    .setValueRgb(existingColor)
+                    .onChange((value) => {
+                        const rgb = hexToRgb(value);
+                        if (!rgb) return;
+                        newColor = rgb;
+                    });
+            });
+
+        new Setting(this.contentEl)
+            .setName('Opacity')
+            .addSlider((slider) => {
+                slider
+                    .setLimits(0, 1, 0.01)
+                    .setValue(existingOpacity)
+                    .setDynamicTooltip()
+                    .onChange((value) => {
+                        newOpacity = value;
+                    });
+            });
+
+        new Setting(this.contentEl)
+            .setName('Annotation author')
+            .addText((text) => {
+                text.setValue(existingAuthor)
+                    .onChange((value) => {
+                        newAuthor = value;
+                    });
+            });
+
+        new Setting(this.contentEl)
+            .setName('Contents')
+            .then((setting) => {
+                this.previewEl = setting.controlEl.createDiv('preview-container markdown-rendered');
+                if (this.plugin.settings.renderMarkdownInStickyNote) {
+                    setting.setDesc(`Press ${this.app.hotkeyManager.printHotkeyForCommand('markdown:toggle-preview')} to toggle preview.`);
+                } else {
+                    setting.setDesc('Tip: There is an option called "Render markdown in annotation popups when the annotation has text contents".')
+                }
+            })
+            .addTextArea((textarea) => {
+                this.textarea = textarea;
+                this.editorEl = textarea.inputEl;
+                this.editorEl.addClass('editor-container');
+                textarea.inputEl.rows = 5;
+                textarea.inputEl.setCssStyles({
+                    width: '100%',
+                });
+                textarea
+                    .setValue(existingContents)
+                    .onChange((value) => {
+                        newContents = value;
+                    });
+            });
 
         this.showEditor();
         this.titleEl.setText(`${this.plugin.manifest.name}: edit annotation contents`);
@@ -90,7 +165,17 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                     .setButtonText('Save')
                     .setCta()
                     .onClick(() => {
-                        this.api.highlight.writeFile.setAnnotationContents(this.file, this.page, this.id, this.textarea.getValue());
+                        if (existingColor !== newColor
+                            || existingOpacity !== newOpacity
+                            || existingAuthor !== newAuthor
+                            || existingContents !== newContents) {
+                            pdflibAPI.processAnnotation(this.file, this.page, this.id, (annot) => {
+                                pdflibAPI.setColorToAnnotation(annot, newColor);
+                                pdflibAPI.setOpacityToAnnotation(annot, newOpacity);
+                                pdflibAPI.setAuthorToAnnotation(annot, newAuthor);
+                                pdflibAPI.setContentsToAnnotation(annot, newContents);
+                            });
+                        }
                         this.close();
                     });
             })
@@ -100,26 +185,29 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                     .onClick(() => this.close());
             })
             .then((setting) => setting.setClass('no-border'));
-
-        const existingContents = await this.api.highlight.writeFile.getAnnotationContents(this.file, this.page, this.id);
-        this.textarea.setValue(existingContents);
     }
 
     async showEditor() {
-        this.editorEl.show();
-        this.previewEl.hide();
+        this.editorEl?.show();
+        this.previewEl?.hide();
     }
 
     async showPreview() {
-        this.previewEl.empty();
-        await MarkdownRenderer.render(this.app, this.textarea.getValue(), this.previewEl, '', this.component);
-        hookInternalLinkMouseEventHandlers(this.app, this.previewEl, this.file.path);
-        this.editorEl.hide();
-        this.previewEl.show();
+        if (this.editorEl && this.previewEl) {
+            this.previewEl.setCssStyles({
+                width: `${this.editorEl.clientWidth}px`,
+                height: `${this.editorEl.clientHeight}px`
+            })
+            this.previewEl.empty();
+            await MarkdownRenderer.render(this.app, this.textarea?.getValue() ?? '', this.previewEl, '', this.component);
+            hookInternalLinkMouseEventHandlers(this.app, this.previewEl, this.file.path);
+            this.editorEl.hide();
+            this.previewEl.show();
+        }
     }
 
     async togglePreview() {
-        if (this.editorEl.isShown()) {
+        if (this.editorEl?.isShown()) {
             return this.showPreview();
         }
         return this.showEditor();
