@@ -42,6 +42,9 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         },
         setState(old) {
             return function (state: any, result: ViewStateResult): Promise<void> {
+                if (plugin.settings.alwaysRecordHistory) {
+                    result.history = true;
+                }
                 return old.call(this, state, result).then(() => {
                     const self = this as PDFView;
                     const child = self.viewer.child;

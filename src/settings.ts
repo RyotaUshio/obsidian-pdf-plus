@@ -83,6 +83,7 @@ export interface PDFPlusSettings {
 	filterBacklinksByPageDefault: boolean;
 	enableHoverPDFInternalLink: boolean;
 	recordPDFInternalLinkHistory: boolean;
+	alwaysRecordHistory: boolean;
 	renderMarkdownInStickyNote: boolean;
 	focusEditorAfterAutoPaste: boolean;
 	enalbeWriteHighlightToFile: boolean;
@@ -196,6 +197,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	filterBacklinksByPageDefault: true,
 	enableHoverPDFInternalLink: true,
 	recordPDFInternalLinkHistory: true,
+	alwaysRecordHistory: true,
 	renderMarkdownInStickyNote: true,
 	focusEditorAfterAutoPaste: true,
 	enalbeWriteHighlightToFile: false,
@@ -728,7 +730,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Hovering your mouse over highlighted text or annotation will also highlight the corresponding item in the backlink pane.');
 		this.addToggleSetting('highlightOnHoverBacklinkPane')
 			.setName('Hover sync (Backlinks pane → PDF viewer)')
-			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.')
+			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer. This option requires reopening or switching tabs to take effect.')
 		if (this.plugin.settings.highlightOnHoverBacklinkPane) {
 			this.addDropdownSetting(
 				'backlinkHoverColor',
@@ -816,17 +818,20 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('(Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".');
 		if (this.plugin.settings.replaceContextMenu && this.plugin.settings.enalbeWriteHighlightToFile) {
 			this.addToggleSetting('pdfLinkBorder', () => this.redisplay())
-			.setName('Draw borders around internal links')
-			.setDesc('Specify whether PDF internal links that you create by "Paste copied link to selection" should be surrounded by borders.');
+				.setName('Draw borders around internal links')
+				.setDesc('Specify whether PDF internal links that you create by "Paste copied link to selection" should be surrounded by borders.');
 			if (this.plugin.settings.pdfLinkBorder) {
 				this.addColorPickerSetting('pdfLinkColor')
-				.setName('Border color of internal links')
-				.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
+					.setName('Border color of internal links')
+					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
 			}
 		}
 
 
 		this.addHeading('Opening links to PDF files');
+		this.addToggleSetting('alwaysRecordHistory')
+			.setName('Always record navigation history when opening PDF links')
+			.setDesc('By default, the history is recorded only when you open a link to a different PDF file. If enabled, the history will be recorded even when you open a link to the same PDF file as the current one, and you will be able to go back and forth the history by clicking the left/right arrow buttons even within a single PDF file.');
 		this.addToggleSetting('singleTabForSinglePDF', () => this.redisplay())
 			.setName('Don\'t open a single PDF file in multiple tabs')
 			.then((setting) => this.renderMarkdown(
@@ -1173,15 +1178,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 		await this.plugin.saveSettings();
-
-		// Reflect the changes in the options such as highlightOnHoverBacklinkPane
-		this.plugin.pdfViwerChildren.forEach((child) => {
-			const highlighter = child.backlinkHighlighter;
-			if (highlighter && highlighter._loaded) {
-				highlighter.unload();
-				highlighter.load();
-			}
-		});
 
 		this.plugin.loadStyle();
 
