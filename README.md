@@ -3,7 +3,8 @@
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
 - It transforms backlinks to PDF files into highlighted annotations, i.e. you can **annotate PDF files with highlights just by linking to text selection**.
-- It also adds many **quality-of-life improvements** to the built-in PDF viewer and PDF embeds. So it's useful even if you don't use it as an annotation tool (you can even turn off the annotation functionality!).
+- Alternativly, you can add annotaions directly into PDF files so that they are also visible outside Obsidian.
+- Moreover, it adds many **quality-of-life improvements** to the built-in PDF viewer and PDF embeds. So it's useful even if you don't use it as an annotation tool (you can even turn off the annotation functionality!).
 
 PDF++ stands out among other PDF annotation tools for the following reasons:
 
@@ -79,7 +80,7 @@ https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/2285a837-0588-4a
 
 Each feature can be toggled on and off in the plugin settings.
 
-### Annotating PDF files
+### Backlink highlighting
 
 Annotate PDF files with highlights just by linking to text selection. You can easily copy links to selections using color palette in the toolbar. See the "Color palette" section for the details.
 
@@ -104,11 +105,12 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 - **Hover sync (PDF viewer → Backlinks pane)**: Hovering over highlighted text or annotation will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks).
 - **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.
 
-#### Adding highlights directly to PDF files (experimental)
+### Editing PDF files directly (experimental)
 
-While the backlink highlighting feature described above does not write text highlights into actual PDF files, you can choose to do so if you want.
+Add, edit and delete highlights and links in PDF files.
+Added annotations will be visible even outside Obsidian unlike backlink highlights.
 
-***This is the only part of PDF++ that involves direct modification of PDF files. The author assumes no responsibility for any data corruption. Please use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
+PDF++ will not modify PDF files themselves unless you explicitly enable it. ***The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
 
 ### PDF internal links enhancement
 
@@ -116,6 +118,10 @@ Make it easier to work with internal links embedded in PDF files.
 
 - **Show a popover preview of PDF internal links by hover+command/ctrl**: See [below](#css-customization) for advanced CSS customization.
 - **Enable history navigation for PDF internal links**: When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.
+- **Show a popover preview of PDF internal links by hover+command/ctrl**
+- **Copy PDF link as Obsidian link**: (Requires custom right-click menu enabled) In the PDF viewer, right-click a PDF-embedded link and then click "Copy PDF link as Obsidian link". It will copy the PDF link as an Obsidian link that you can paste into markdown files. Clicking the pasted link will take you to the same destination as the original PDF link.
+- **"Copy link to current page view" command**: Running this command while viewing a PDF file will copy a link, clicking which will open the PDF file at the current scroll position and zoom level.
+- **Paste copied link to a text selection in a PDF file**: (Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".
 
 ### Opening links to PDF files
 
@@ -143,6 +149,10 @@ Make it easier to work with internal links embedded in PDF files.
 - **`Copy & auto-paste link to selection or annotation` command**: In addition to copying a link, this command automatically pastes the copied link at the end of the note where you last pasted a link.
   > Note: these commands cannot be triggered from the Command Palette. Make sure that you set custom hotkeys for them. 
 - **`Toggle "select text to copy" mode` icon in the left ribbon menu**: While it's turned on, the `Copy link to selection or annotation` command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don't even have to press a hotkey to copy a link.
+
+#### Copy PDF internal links as Obsidian links
+
+See [here](#pdf-internal-links-enhancement) for the details.
 
 #### Link copy templates
 

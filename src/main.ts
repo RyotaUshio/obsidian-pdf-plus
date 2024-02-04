@@ -13,7 +13,7 @@ import { DomManager } from 'dom-manager';
 import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters } from 'utils';
-import { PDFEmbed, PDFView, PDFViewerChild } from 'typings';
+import { DestArray, PDFEmbed, PDFView, PDFViewerChild } from 'typings';
 
 
 export default class PDFPlus extends Plugin {
@@ -42,6 +42,8 @@ export default class PDFPlus extends Plugin {
 	lastPasteFile: TFile | null = null;
 	/** Tracks the PDFViewerChild instance that an annotation popup was rendered on for the last time. */
 	lastAnnotationPopupChild: PDFViewerChild | null = null;
+	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
+	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
 
 	async onload() {
 		this.checkVersion();
@@ -361,6 +363,12 @@ export default class PDFPlus extends Plugin {
 			name: 'Copy & auto-paste link to selection or annotation',
 			checkCallback: (checking) => this.copyLink(checking, true)
 		});
+
+		this.addCommand({
+			id: 'copy-link-to-page-view',
+			name: 'Copy link to current page view',
+			checkCallback: (checking) => this.copyLinkToPageView(checking)
+		});
 	}
 
 	copyLink(checking: boolean, autoPaste: boolean = false) {
@@ -427,6 +435,35 @@ export default class PDFPlus extends Plugin {
 		return this.api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
 	}
 
+	copyLinkToPageView(checking: boolean) {
+		const view = this.getPDFView(true);
+		if (!view || !view.file) return false;
+
+		const state = view.getState();
+		if (typeof state.left !== 'number' || typeof state.top !== 'number') return false;
+
+		if (!checking) {
+			let subpath = `#page=${state.page}`;
+			let destArray: DestArray;
+			const scaleValue = view.viewer.child?.pdfViewer.pdfViewer?.currentScaleValue;
+			if (scaleValue === 'page-width') { // Destination type = "FitBH"
+				subpath += `&offset=,${state.top},`;
+				destArray = [state.page - 1, { name: 'FitBH' }, state.top];
+			} else { // Destination type = "XYZ"
+				subpath += `&offset=${state.left},${state.top},${state.zoom ?? 0}`;
+				destArray = [state.page - 1, { name: 'XYZ' }, state.left, state.top, state.zoom ?? 0];
+			}
+			const display = view.viewer.child?.getPageLinkAlias(state.page);
+			const link = this.api.generateMarkdownLink(view.file, '', subpath, display).slice(1);
+			navigator.clipboard.writeText(link);
+			new Notice(`${this.manifest.name}: Link copied to clipboard`);
+
+			this.lastCopiedDestInfo = { file: view.file, destArray };
+		}
+
+		return true;
+	}
+
 	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
 	on(evt: 'color-palette-state-change', callback: (data: { source: ColorPalette }) => any, context?: any): EventRef;
 
@@ -487,5 +524,23 @@ export default class PDFPlus extends Plugin {
 
 	getPDFDocument(activeOnly: boolean = false) {
 		return this.getRawPDFViewer(activeOnly)?.pdfDocument;
+	}
+
+	async getPdfLibDocument(activeOnly: boolean = false) {
+		const doc = this.getPDFDocument(activeOnly);
+		if (doc) {
+			return await pdflib.PDFDocument.load(await doc.getData());
+		}
+	}
+
+	async getPdfLibPage(activeOnly: boolean = false) {
+		const pdfViewer = this.getRawPDFViewer(activeOnly);
+		if (!pdfViewer) return;
+		const pageNumber = pdfViewer.currentPageNumber;
+		if (pageNumber === undefined) return;
+		const doc = await pdflib.PDFDocument.load(await pdfViewer.pdfDocument.getData());
+		if (doc) {
+			return doc.getPage(pageNumber - 1);
+		}
 	}
 }

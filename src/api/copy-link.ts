@@ -96,7 +96,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
                 const evaluated = processor.evalTemplate(template);
                 navigator.clipboard.writeText(evaluated);
-                this.watchPaste(evaluated);
+                this.onCopyFinish(evaluated);
 
                 const palette = this.api.getColorPaletteFromChild(child);
                 palette?.setStatus('Link copied', this.statusDurationMs);
@@ -113,7 +113,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         return false;
     }
 
-    copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean) {
+    copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
         if (!child.file) return false;
 
         if (!checking) {
@@ -132,11 +132,11 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
                     const evaluated = processor.evalTemplate(template);
                     navigator.clipboard.writeText(evaluated);
-                    this.watchPaste(evaluated);
+                    this.onCopyFinish(evaluated);
 
                     const palette = this.api.getColorPaletteFromChild(child);
-                    // This is redundant because the copy button already shows the status.
-                    // palette?.setStatus('Link copied', this.statusDurationMs);
+                    // This can be redundant because the copy button already shows the status.
+                    if (shouldShowStatus) palette?.setStatus('Link copied', this.statusDurationMs);
                     if (autoPaste) {
                         this.autoPaste(evaluated).then((success) => {
                             if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
@@ -164,7 +164,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
             const evaluated = processor.evalTemplate(template);
             navigator.clipboard.writeText(evaluated);
-            this.watchPaste(evaluated);
+            this.onCopyFinish(evaluated);
 
             const palette = this.api.getColorPaletteFromChild(child);
             palette?.setStatus('Link copied', this.statusDurationMs);
@@ -190,8 +190,8 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
         if (!checking) {
             const palette = this.api.getColorPaletteAssociatedWithSelection();
-            palette?.setStatus('Writing highlight annotation into file...', 0);
-            this.api.highlight.writeFile.highlightSelection(colorName)
+            palette?.setStatus('Writing highlight annotation into file...', 10000);
+            this.api.highlight.writeFile.addHighlightAnnotationToSelection(colorName)
                 .then((result) => {
                     if (!result) return;
 
@@ -235,6 +235,10 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                     if (info.file?.path === lastPasteFile.path) {
                         this.app.workspace.offref(eventRef);
 
+                        if (info instanceof MarkdownView) {
+                            this.app.workspace.revealLeaf(info.leaf);
+                        }
+
                         if (!editor.hasFocus()) editor.focus();
                         editor.exec('goEnd');
                     }
@@ -257,5 +261,11 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                 this.plugin.lastPasteFile = info.file;
             }
         });
+    }
+
+    onCopyFinish(text: string) {
+        this.watchPaste(text);
+        // update this.lastCopiedDestArray
+        this.plugin.lastCopiedDestInfo = null;
     }
 }

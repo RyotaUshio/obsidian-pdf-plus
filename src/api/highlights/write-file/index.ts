@@ -5,7 +5,7 @@ import PDFPlus from 'main';
 import { PdfLibIO } from './pdf-lib';
 import { PDFPlusAPISubmodule } from 'api/submodule';
 import { parsePDFSubpath } from 'utils';
-import { PDFViewerChild, Rect } from 'typings';
+import { DestArray, PDFViewerChild, Rect } from 'typings';
 
 
 export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
@@ -24,7 +24,24 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
         return this.pdflib;
     }
 
-    async highlightSelection(colorName?: string) {
+    async addHighlightAnnotationToSelection(colorName?: string) {
+        return this.addAnnotationToSelection(async (file, page, rects) => {
+            const io = this.getPdfIo();
+            return await io.addHighlightAnnotation(file, page, rects, colorName);
+        });
+    }
+
+    /**
+     * @param dest A destination, represented either by its name (named destination) or as a DestArray (explicit destination).
+     */
+    async addLinkAnnotationToSelection(dest: DestArray | string) {
+        return this.addAnnotationToSelection(async (file, page, rects) => {
+            const io = this.getPdfIo();
+            return await io.addLinkAnnotation(file, page, rects, dest);
+        });
+    }
+
+    async addAnnotationToSelection(annotator: Annotator) {
         // TODO: separate logic for getting page number and selection range
         const variables = this.api.copyLink.getTemplateVariables({});
         if (!variables) return;
@@ -36,14 +53,14 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
                 child,
                 file: child.file,
                 page,
-                ...await this.addHighlightToTextSelection(child, page, beginIndex, beginOffset, endIndex, endOffset, colorName)
+                ...await this.addAnnotationToTextRange(annotator, child, page, beginIndex, beginOffset, endIndex, endOffset)
             }
         }
         return null;
     }
 
     /** Add a highlight annotation to a text selection specified by a subpath of the form `#page=<pageNumber>&selection=<beginIndex>,<beginOffset>,<endIndex>,<endOffset>`. */
-    async addHighlightToTextSelection(child: PDFViewerChild, pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number, colorName?: string, contents?: string) {
+    async addAnnotationToTextRange(annotator: Annotator, child: PDFViewerChild, pageNumber: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number) {
         if (!child.file) return;
 
         if (1 <= pageNumber && pageNumber <= child.pdfViewer.pagesCount) {
@@ -51,12 +68,11 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
                 const results = this.api.highlight.geometry.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
                 const rects = results.map(({ rect }) => rect);
-                const io = this.getPdfIo();
                 let annotationID;
                 try {
-                    annotationID = await io.addHighlightAnnotations(child.file, pageNumber, rects, colorName, contents);
+                    annotationID = await annotator(child.file, pageNumber, rects);
                 } catch (e) {
-                    new Notice(`${this.plugin.manifest.name}: An error occurred while attemping to add the highlight annotation.`);
+                    new Notice(`${this.plugin.manifest.name}: An error occurred while attemping to add an annotation.`);
                     console.error(e);
                 }
                 return { annotationID, rects };
@@ -83,11 +99,18 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
 export interface IPdfIo {
     /**
      * @param pageNumber A 1-based page number.
-     * @returns The ID of the newly created annotation. The annotation must be a highlight annotation 
+     * @returns A promise resolving to the ID of the newly created annotation. The annotation must be a highlight annotation 
      * containing the given rectangles "grouped" using quadpoints.
      */
-    addHighlightAnnotations(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string): Promise<string>;
+    addHighlightAnnotation(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string): Promise<string>;
+    addLinkAnnotation(file: TFile, pageNumber: number, rects: Rect[], dest: DestArray | string, colorName?: string, contents?: string): Promise<string>;
     deleteAnnotation(file: TFile, pageNumber: number, id: string): Promise<void>;
     getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string | null>;
     setAnnotationContents(file: TFile, pageNumber: number, id: string, contents: string): Promise<void>;
 }
+
+/**
+ * @returns A promise resolving to the ID of the newly created annotation. The annotation must be a highlight annotation 
+ * containing the given rectangles "grouped" using quadpoints.
+ */
+export type Annotator = (file: TFile, page: number, rects: Rect[]) => Promise<string>;

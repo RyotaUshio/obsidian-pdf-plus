@@ -95,6 +95,9 @@ export interface PDFPlusSettings {
 	warnEveryAnnotationDelete: boolean;
 	warnBacklinkedAnnotationDelete: boolean;
 	enableAnnotationDeletion: boolean;
+	enableEditEncryptedPDF: boolean;
+	pdfLinkColor: HexString;
+	pdfLinkBorder: boolean;
 	replaceContextMenu: boolean;
 }
 
@@ -120,7 +123,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	copyCommands: [
 		{
 			name: 'Quote',
-			template: '> {{text}}\n\n{{linkWithDisplay}}',
+			template: '> ({{linkWithDisplay}})\n> {{selection}}\n',
 		},
 		{
 			name: 'Link only',
@@ -205,6 +208,9 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	warnEveryAnnotationDelete: false,
 	warnBacklinkedAnnotationDelete: true,
 	enableAnnotationContentEdit: true,
+	enableEditEncryptedPDF: false,
+	pdfLinkColor: '#04a802',
+	pdfLinkBorder: false,
 	replaceContextMenu: true,
 };
 
@@ -282,6 +288,19 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		return this.addSetting(settingName)
 			.addToggle((toggle) => {
 				toggle.setValue(this.plugin.settings[settingName])
+					.onChange(async (value) => {
+						// @ts-ignore
+						this.plugin.settings[settingName] = value;
+						await this.plugin.saveSettings();
+						extraOnChange?.(value);
+					});
+			});
+	}
+
+	addColorPickerSetting(settingName: KeysOfType<PDFPlusSettings, HexString>, extraOnChange?: (value: HexString) => void) {
+		return this.addSetting(settingName)
+			.addColorPicker((picker) => {
+				picker.setValue(this.plugin.settings[settingName])
 					.onChange(async (value) => {
 						// @ts-ignore
 						this.plugin.settings[settingName] = value;
@@ -623,7 +642,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addDesc('Note: some of the settings below require reopening tabs to take effect.')
 
 
-		this.addHeading('Annotating PDF files')
+		this.addHeading('Backlink highlighting')
 			.setDesc('Annotate PDF files with highlights just by linking to text selection. You can easily copy links to selections using color palette in the toolbar. See the "Color palette" section for the details.');
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks in PDF viewer')
@@ -722,14 +741,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Adding highlights directly to PDF files (experimental)')
+		this.addHeading('Editing PDF files directly (experimental)')
+			.setDesc('Add, edit and delete highlights and links in PDF files.')
+		this.addToggleSetting('enalbeWriteHighlightToFile', () => this.redisplay())
+			.setName('Enable')
 			.then((setting) => {
 				this.renderMarkdown([
-					'<span style="color: var(--text-warning);">This is the only part of PDF++ that involves direct modification of PDF files. The author assumes no responsibility for any data corruption. Please use it at your own risk.</span> Report any issues you encounter on [GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).',
+					'PDF++ will not modify PDF files themselves unless you turn on this option. <span style="color: var(--text-warning);">The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.</span> Report any issues you encounter on [GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).',
 				], setting.descEl);
 			});
-		this.addToggleSetting('enalbeWriteHighlightToFile', () => this.redisplay())
-			.setName('Enable');
 		if (this.plugin.settings.enalbeWriteHighlightToFile) {
 			this.addTextSetting('author', 'Your name', function () {
 				const inputEl = this as HTMLInputElement;
@@ -771,6 +791,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						.setName('Warn when deleting an annotation with backlinks');
 				}
 			}
+			this.addToggleSetting('enableEditEncryptedPDF')
+				.setName('Enable editing encrypted PDF files');
 		}
 
 
@@ -783,6 +805,25 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
 		this.addToggleSetting('enableHoverPDFInternalLink', () => this.redisplay())
 			.setName(`Show a popover preview of PDF internal links by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`);
+		this.addSetting()
+			.setName('Copy PDF link as Obsidian link')
+			.setDesc('(Requires custom right-click menu enabled) In the PDF viewer, right-click a PDF-embedded link and then click "Copy PDF link as Obsidian link". It will copy the PDF link as an Obsidian link that you can paste into markdown files. Clicking the pasted link will take you to the same destination as the original PDF link.');
+		this.addSetting()
+			.setName('"Copy link to current page view" command')
+			.setDesc('Running this command while viewing a PDF file will copy a link, clicking which will open the PDF file at the current scroll position and zoom level.');
+		this.addSetting()
+			.setName('Paste copied link to a text selection in a PDF file')
+			.setDesc('(Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".');
+		if (this.plugin.settings.replaceContextMenu && this.plugin.settings.enalbeWriteHighlightToFile) {
+			this.addToggleSetting('pdfLinkBorder', () => this.redisplay())
+			.setName('Draw borders around internal links')
+			.setDesc('Specify whether PDF internal links that you create by "Paste copied link to selection" should be surrounded by borders.');
+			if (this.plugin.settings.pdfLinkBorder) {
+				this.addColorPickerSetting('pdfLinkColor')
+				.setName('Border color of internal links')
+				.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
+			}
+		}
 
 
 		this.addHeading('Opening links to PDF files');
@@ -921,16 +962,21 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Set up hotkeys for copying links')
 			.then((setting) => {
 				this.renderMarkdown([
-					'PDF++ offers two commands for quickly copying links via hotkeys.',
+					'PDF++ offers three commands for quickly copying links via hotkeys.',
 					'',
 					'1. **Copy link to selection or annotation:**',
 					'   Copies a link to the text selection or focused annotation in the PDF viewer, which is formatted according to the options specified in the PDF toolbar.',
 					'   <br>If the "write to file directly" toggle switch in the PDF toolbar is on, it first adds a highlight annotation directly to the PDF file, and then copies the link to the created annotation.',
-					'',
 					'2. **Copy & auto-paste link to selection or annotation:**',
 					'  In addition to copying the link, it automatically pastes the copied link at the end of the note where you last pasted a link. Note that Canvas is not supported.',
 					'',
-					'Also check out the **Toggle "select text to copy" mode** icon in the left ribbon menu. While it\'s turned on, the **Copy link to selection or annotation** command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link.'
+					'Also check out the **Toggle "select text to copy" mode** icon in the left ribbon menu. While it\'s turned on, the **Copy link to selection or annotation** command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link.',
+					'',
+					'The third command is very different from the first two:',
+					'',
+					'3. **Copy link to current page view:** Copies a link, clicking which will open the PDF file at the current scroll position and zoom level.',
+					'',
+					'After running this command, you can add the copied link to the PDF file itself: select a range of text, right-click, and then click "Paste copied link to selection".'
 				], setting.descEl);
 			})
 			.addButton((button) => {

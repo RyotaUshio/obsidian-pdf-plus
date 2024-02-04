@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, Menu, Notice, Platform, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, Platform, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -8,6 +8,7 @@ import { PDFPlusTemplateProcessor } from 'template';
 import { hookInternalLinkMouseEventHandlers, toSingleLine } from 'utils';
 import { AnnotationElement, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
+import { PDFPlusContextMenu } from 'context-menu';
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -23,15 +24,18 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
     const toolbar = child.toolbar;
     if (!toolbar) return false;
 
-    // TODO: Add color palette state handling to getState/setState
     plugin.register(around(pdfView.constructor.prototype, {
         getState(old) {
             return function () {
                 const ret = old.call(this);
                 const self = this as PDFView;
-                const pdfViewer = self.viewer.child?.pdfViewer.pdfViewer;
+                const child = self.viewer.child;
+                const pdfViewer = child?.pdfViewer.pdfViewer;
                 if (pdfViewer) {
                     ret.page = pdfViewer.currentPageNumber;
+                    ret.left = pdfViewer._location?.left;
+                    ret.top = pdfViewer._location?.top;
+                    ret.zoom = pdfViewer.currentScale;
                 }
                 return ret;
             }
@@ -39,17 +43,12 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         setState(old) {
             return function (state: any, result: ViewStateResult): Promise<void> {
                 return old.call(this, state, result).then(() => {
+                    const self = this as PDFView;
+                    const child = self.viewer.child;
+                    const pdfViewer = child?.pdfViewer.pdfViewer;
                     if (typeof state.page === 'number') {
-                        const self = this as PDFView;
-                        const pdfViewer = self.viewer.child?.pdfViewer.pdfViewer;
                         if (pdfViewer) {
-                            if (pdfViewer.pagesCount) { // pages are already loaded
-                                pdfViewer.currentPageNumber = state.page;
-                            } else { // pages are not loaded yet (this is the case typically when opening a different file)
-                                api.registerPDFEvent('pagesloaded', pdfViewer.eventBus, null, () => {
-                                    pdfViewer.currentPageNumber = state.page;
-                                });
-                            }
+                            api.applyPDFViewStateToViewer(pdfViewer, state);
                         }
                     }
                 });
@@ -306,13 +305,17 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     }
 
                     // add edit button
-                    if (plugin.settings.enalbeWriteHighlightToFile && plugin.settings.enableAnnotationContentEdit) {
+                    if (plugin.settings.enalbeWriteHighlightToFile
+                        && plugin.settings.enableAnnotationContentEdit
+                        && PDFAnnotationEditModal.isSubtypeSupported(annotationElement.data.subtype)) {
+                        const subtype = annotationElement.data.subtype;
                         popupMetaEl.createDiv('clickable-icon pdf-plus-edit-annotation', (editButtonEl) => {
                             setIcon(editButtonEl, 'lucide-pencil');
                             setTooltip(editButtonEl, 'Edit');
                             editButtonEl.addEventListener('click', async () => {
                                 if (self.file) {
-                                    new PDFAnnotationEditModal(plugin, self.file, page, id)
+                                    PDFAnnotationEditModal
+                                        .forSubtype(subtype, plugin, self.file, page, id)
                                         .open();
                                 }
                             });
@@ -353,173 +356,25 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
 
                 const self = this as PDFViewerChild;
 
-                const selection = toSingleLine(window.getSelection()?.toString() ?? '');
-
-                let electron: typeof window.electron;
-
+                // take from app.js
                 if (Platform.isDesktopApp) {
-                    electron = evt.win.electron;
+                    const electron = evt.win.electron;
                     if (electron && evt.isTrusted) {
                         evt.stopPropagation();
                         evt.stopImmediatePropagation();
                         await new Promise((resolve) => {
                             // wait up to 1 sec
                             const timer = evt.win.setTimeout(() => resolve(null), 1000);
-                            electron!.ipcRenderer.once("context-menu", (n, r) => {
+                            electron!.ipcRenderer.once('context-menu', (n, r) => {
                                 evt.win.clearTimeout(timer);
                                 resolve(r);
                             });
-                            electron!.ipcRenderer.send("context-menu");
+                            electron!.ipcRenderer.send('context-menu');
                         });
                     }
                 }
 
-                // Create a new Menu
-                const menu = new Menu().addSections(['action', 'selection', 'write-file', 'annotation']);
-
-                // Get page number
-                const pageNumber = api.getPageNumberFromEvent(evt);
-                if (pageNumber === null) return;
-
-                // If macOS, add "look up selection" action
-                if (Platform.isMacOS && Platform.isDesktopApp && electron && selection) {
-                    menu.addItem((item) => {
-                        return item
-                            .setSection("action")
-                            .setTitle(`Look up "${selection.length <= 25 ? selection : selection.slice(0, 24).trim() + '…'}"`)
-                            .setIcon("lucide-library")
-                            .onClick(() => {
-                                // @ts-ignore
-                                electron!.remote.getCurrentWebContents().showDefinitionForSelection();
-                            });
-                    });
-                }
-
-                //// Add items ////
-
-                const formats = plugin.settings.copyCommands;
-
-                // copy selected text only //
-                if (selection) {
-                    menu.addItem((item) => {
-                        return item
-                            .setSection('selection')
-                            .setTitle('Copy text')
-                            .setIcon('lucide-copy')
-                            .onClick(() => {
-                                // How does the electron version differ?
-                                navigator.clipboard.writeText(selection);
-                            });
-                    })
-
-                    // copy with custom formats //
-
-                    // get the currently selected color name
-                    const palette = api.getColorPaletteFromChild(self);
-                    const colorName = palette?.selectedColorName ?? undefined;
-                    // check whether to write highlight to file or not
-                    // const writeFile = palette?.writeFile;
-
-
-                    // if (!writeFile) {
-                    for (const { name, template } of formats) {
-                        menu.addItem((item) => {
-                            return item
-                                .setSection('selection')
-                                .setTitle(`Copy link to selection with format "${name}"`)
-                                .setIcon('lucide-copy')
-                                .onClick(() => {
-                                    api.copyLink.copyLinkToSelection(false, template, colorName);
-                                });
-                        });
-                    }
-                    // } else {
-                    if (plugin.settings.enalbeWriteHighlightToFile) {
-                        for (const { name, template } of formats) {
-                            menu.addItem((item) => {
-                                return item
-                                    .setSection('write-file')
-                                    .setTitle(`Write highlight to file & copy link with format "${name}"`)
-                                    .setIcon('lucide-save')
-                                    .onClick(() => {
-                                        api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
-                                    });
-                            });
-                        }
-                    }
-                    // }
-                }
-
-                // Get annotation & annotated text
-                const pageView = self.getPage(pageNumber);
-                const annot = self.getAnnotationFromEvt(pageView, evt);
-
-                await (async () => {
-                    if (annot) {
-                        const { id } = api.getAnnotationInfoFromAnnotationElement(annot);
-                        const annotatedText = await self.getAnnotatedText(pageView, id);
-
-                        if (annot.data.subtype === 'Link') {
-                            const doc = self.pdfViewer.pdfViewer?.pdfDocument;
-                            if ('dest' in annot.data && typeof annot.data.dest === 'string' && doc && self.file) {
-                                const destId = annot.data.dest;
-                                const file = self.file;
-                                // copy PDF internal link as Obsidian wikilink (or markdown link) //
-                                menu.addItem((item) => {
-                                    return item
-                                        .setSection('annotation')
-                                        .setTitle('Copy PDF link as Obsidian link')
-                                        .setIcon('lucide-copy')
-                                        .onClick(async () => {
-                                            const subpath = await api.destIdToSubpath(destId, doc);
-                                            if (typeof subpath === 'string') {
-                                                let display = annotatedText;
-                                                if (!display && annot.data.rect) {
-                                                    display = self.getTextByRect(pageView, annot.data.rect);
-                                                }
-                                                const link = api.generateMarkdownLink(file, '', subpath, display).slice(1);
-                                                // How does the electron version differ?
-                                                navigator.clipboard.writeText(link);
-                                            }
-                                        });
-                                })
-                            }
-                        }
-
-                        // copy annotated text only //
-                        if (annotatedText) {
-                            menu.addItem((item) => {
-                                return item
-                                    .setSection('annotation')
-                                    .setTitle('Copy annotated text')
-                                    .setIcon('lucide-copy')
-                                    .onClick(() => {
-                                        // How does the electron version differ?
-                                        navigator.clipboard.writeText(annotatedText);
-                                    });
-                            })
-                        }
-
-                        // copy link to annotation with custom formats //
-                        for (const { name, template } of formats) {
-                            menu.addItem((item) => {
-                                return item
-                                    .setSection('annotation')
-                                    .setTitle(`Copy link to annotation with format "${name}"`)
-                                    .setIcon('lucide-copy')
-                                    .onClick(() => {
-                                        api.copyLink.copyLinkToAnnotation(self, false, template, pageNumber, id);
-                                    });
-                            });
-                        }
-                    }
-                })();
-
-                app.workspace.trigger('pdf-menu', menu, self, {
-                    pageNumber,
-                    selection,
-                    annot
-                });
+                const menu = await PDFPlusContextMenu.fromMouseEvent(plugin, self, evt);
 
                 self.clearEphemeralUI();
                 menu.showAtMouseEvent(evt);

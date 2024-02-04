@@ -157,8 +157,11 @@ export class HighlightGeometryAPI extends PDFPlusAPISubmodule {
         const [left2, bottom2, right2, top2] = rect2;
         const width1 = Math.abs(right1 - left1);
         const width2 = Math.abs(right2 - left2);
+        const height1 = Math.abs(top1 - bottom1);
+        const height2 = Math.abs(top2 - bottom2);
         const threshold = Math.max(width1, width2) * 0.1;
-        return Math.abs(left1 - left2) < threshold && Math.abs(right1 - right2) < threshold;
+        return Math.abs(left1 - left2) < threshold && Math.abs(right1 - right2) < threshold
+            && height1 / width1 > 0.85 && height2 / width2 > 0.85;
     }
 
     mergeRectangles(...rects: Rect[]): Rect {

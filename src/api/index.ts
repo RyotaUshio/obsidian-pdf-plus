@@ -7,7 +7,7 @@ import { copyLinkAPI } from './copy-link';
 import { HighlightAPI } from './highlights';
 import { WorkspaceAPI } from './workspace-api';
 import { encodeLinktext, parsePDFSubpath } from 'utils';
-import { AnnotationElement, EventBus, ObsidianViewer, PDFPageView, PDFViewerChild } from 'typings';
+import { AnnotationElement, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFViewExtraState, PDFViewerChild, RawPDFViewer } from 'typings';
 
 
 export class PDFPlusAPI {
@@ -73,6 +73,22 @@ export class PDFPlusAPI {
         this.registerPDFEvent('annotationlayerrendered', viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
             cb(data.source, data.pageNumber, true);
         });
+    }
+
+    applyPDFViewStateToViewer(pdfViewer: RawPDFViewer, state: PDFViewExtraState) {
+        const applyState = () => {
+            if (typeof state.left === 'number' && typeof state.top === 'number' && typeof state.zoom === 'number') {
+                pdfViewer.scrollPageIntoView({ pageNumber: state.page, destArray: [state.page, { name: 'XYZ' }, state.left, state.top, state.zoom] });
+            } else {
+                pdfViewer.currentPageNumber = state.page;
+            }
+        };
+
+        if (pdfViewer.pagesCount) { // pages are already loaded
+            applyState();
+        } else { // pages are not loaded yet (this is the case typically when opening a different file)
+            this.registerPDFEvent('pagesloaded', pdfViewer.eventBus, null, () => applyState());
+        }
     }
 
     getPageElAssociatedWithNode(node: Node) {
@@ -150,6 +166,13 @@ export class PDFPlusAPI {
         return null;
     }
 
+    getColorPaletteContainedIn(el: HTMLElement) {
+        for (const [paletteEl, palette] of ColorPalette.elInstanceMap) {
+            if (el.contains(paletteEl)) return palette;
+        }
+        return null;
+    }
+
     getPDFViewerChildAssociatedWithNode(node: Node) {
         for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
             if (viewerEl.contains(node)) return child;
@@ -181,22 +204,30 @@ export class PDFPlusAPI {
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
         const dest = await doc.getDestination(destId);
         if (!dest) return null;
+        const page = await doc.getPageIndex(dest[0]);
+        // @ts-ignore
+        return this.destArrayToSubpath([page, ...dest.slice(1)]);
+    }
 
-        const pageRef = dest[0];
-        const pageNumber = await doc.getPageIndex(pageRef);
+    /**
+     * page: a 0-based page number
+     * destType.name: Obsidian only supports "XYZ" and "FitBH"
+     */
+    destArrayToSubpath(destArray: DestArray) {
+        const pageNumber = destArray[0];
 
         let top = '';
         let left = '';
         let zoom = '';
 
-        if (dest[1].name === 'XYZ') {
-            left = '' + dest[2];
-            top = '' + dest[3];
+        if (destArray[1].name === 'XYZ') {
+            left = '' + destArray[2];
+            top = '' + destArray[3];
             // Obsidian recognizes the `offset` parameter as "FitHB" if the third parameter is omitted.
             // from the PDF spec: "A zoom value of 0 has the same meaning as a null value."
-            zoom = '' + (dest[4] ?? 0);
-        } else if (dest[1].name === 'FitBH') {
-            top = dest[2];
+            zoom = '' + (destArray[4] ?? 0);
+        } else if (destArray[1].name === 'FitBH') {
+            top = '' + destArray[2];
         }
 
         const subpath = `#page=${pageNumber + 1}&offset=${left},${top},${zoom}`;

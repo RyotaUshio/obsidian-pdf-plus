@@ -24,7 +24,20 @@ interface PDFView extends EditableFileView {
     scope: Scope;
     onModify(): void;
     showSearch(): void;
+    getState(): PDFViewState;
+    setState(state: PDFViewState): Promise<void>;
 }
+
+type PDFViewState = {
+    file: string;
+} & PDFViewExtraState;
+
+type PDFViewExtraState = {
+    page: number;
+    left?: number;
+    top?: number;
+    zoom?: number;
+};
 
 interface PDFViewer extends Component {
     scope: Scope;
@@ -145,16 +158,29 @@ interface RawPDFViewer {
     _pages: PDFPageView[];
     /** Accessor property. 0 for "single page", 1 for "two page (odd)", 2 for "two page (even)" */
     spreadMode: number;
+    /** Accessor property */
+    currentScale: number;
+    /** Accessor property */
+    currentScaleValue: string;
     scroll: {
         right: boolean;
         down: boolean;
         lastX: number;
         lastY: number;
     };
+    _location: {
+        pageNumber: number;
+        scale: number;
+        left: number;
+        top: number;
+        rotation: number;
+        pdfOpenParams: string;
+    } | null;
     viewer: HTMLElement; // div.pdf-viewer
     container: HTMLElement; // div.pdf-viewer-container
     eventBus: EventBus;
     getPageView(page: number): PDFPageView;
+    scrollPageIntoView(params: { pageNumber: number, destArray?: [number, { name: string }, ...number[]] | null, allowNegativeOffset?: boolean, ignoreDestinationZoom?: boolean }): void;
 }
 
 interface PDFPageView {
@@ -166,6 +192,11 @@ interface PDFPageView {
     canvas: HTMLCanvasElement;
     textLayer: TextLayerBuilder | null;
     annotationLayer: AnnotationLayerBuilder | null;
+    /**
+     * Converts viewport coordinates to the PDF location.
+     * Equivalent to viewport.convertToPdfPoint(x, y)
+     */
+    getPagePoint(x: number, y: number): number[];
 }
 
 interface TextLayerBuilder {
@@ -189,6 +220,12 @@ interface AnnotationLayerBuilder {
  * [x1, y1, x2, y2], where [x1, y1] is the bottom-left corner and [x2, y2] is the top-right corner
  */
 type Rect = [number, number, number, number];
+
+/**
+ * page: 0-based page number
+ * destType.name: "XYZ" or "FitBH"
+ */
+type DestArray = [page: number, destType: { name: string }, ...params: number[]];
 
 interface AnnotationElement {
     annotationStorage: AnnotationStorage;

@@ -169,7 +169,7 @@ settings:
     }
 
     /* Arrange two children of .setting-item, namely .setting-item-info and .setting-item-contrl, vertically */
-    .setting-item:last-child {
+    .setting-item:last-child:has( textarea) {
         display: flex;
         flex-direction: column;
         justify-content: left;

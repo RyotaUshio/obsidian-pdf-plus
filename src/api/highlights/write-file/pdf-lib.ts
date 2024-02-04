@@ -1,15 +1,15 @@
-import { RGB, TFile } from 'obsidian';
-import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
+import { Notice, RGB, TFile } from 'obsidian';
+import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
 
 import { PDFPlusAPISubmodule } from 'api/submodule';
-import { convertDateToPDFDate, formatAnnotationID, getBorderRadius } from 'utils';
-import { Rect } from 'typings';
+import { formatAnnotationID, getBorderRadius, hexToRgb } from 'utils';
+import { Rect, DestArray } from 'typings';
 import { IPdfIo } from '.';
 
 
 export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
 
-    async addHighlightAnnotations(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string) {
+    async addHighlightAnnotation(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string) {
         if (!this.plugin.settings.author) {
             throw new Error(`${this.plugin.manifest.name}: The author name is not set. Please set it in the plugin settings.`);
         }
@@ -33,9 +33,9 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
                 QuadPoints: geometry.rectsToQuadPoints(rects),
                 // For Contents & T, make sure to pass a PDFString, not a raw string!!
                 // https://github.com/Hopding/pdf-lib/issues/555#issuecomment-670243166
-                Contents: PDFString.of(contents ?? ''),
-                M: PDFString.of(convertDateToPDFDate(new Date())),
-                T: PDFString.of(this.plugin.settings.author),
+                Contents: PDFHexString.fromText(contents ?? ''),
+                M: PDFString.fromDate(new Date()),
+                T: PDFHexString.fromText(this.plugin.settings.author),
                 CA: this.plugin.settings.writeHighlightToFileOpacity,
                 Border: [borderRadius, borderRadius, 0],
                 C: [r / 255, g / 255, b / 255],
@@ -46,21 +46,64 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
         });
     }
 
+    async addLinkAnnotation(file: TFile, pageNumber: number, rects: Rect[], dest: DestArray | string, colorName?: string, contents?: string) {
+        return await this.process(file, (pdfDoc) => {
+            const page = pdfDoc.getPage(pageNumber - 1);
+            const rgb = hexToRgb(this.plugin.settings.pdfLinkColor);
+            const { r, g, b } = rgb ?? { r: 0, g: 0, b: 0 };
+            const geometry = this.api.highlight.geometry;
+
+            let Dest;
+            if (typeof dest === 'string') {
+                Dest = PDFString.of(dest);
+            } else {
+                const targetPageRef = pdfDoc.getPage(dest[0]).ref;
+                Dest = [targetPageRef, dest[1].name, ...dest.slice(2).map((num: number) => PDFNumber.of(num))];
+            }
+
+            const ref = this.addAnnotation(page, {
+                Subtype: 'Link',
+                Rect: geometry.mergeRectangles(...rects),
+                QuadPoints: geometry.rectsToQuadPoints(rects),
+                Dest,
+                M: PDFString.fromDate(new Date()),
+                Border: [0, 0, this.plugin.settings.pdfLinkBorder ? 1 : 0],
+                C: [r / 255, g / 255, b / 255],
+            });
+
+            const annotationID = formatAnnotationID(ref.objectNumber, ref.generationNumber);
+            return annotationID;
+        });
+    }
+
     async process<T>(file: TFile, fn: (pdfDoc: PDFDocument) => T) {
         const buffer = await this.app.vault.readBinary(file);
-        const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+        try {
+            const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: this.plugin.settings.enableEditEncryptedPDF });
+            const ret = await fn(pdfDoc);
 
-        const ret = await fn(pdfDoc);
+            await this.app.vault.modifyBinary(file, await pdfDoc.save());
 
-        await this.app.vault.modifyBinary(file, await pdfDoc.save());
-
-        return ret;
+            return ret;
+        } catch (e) {
+            if (e instanceof EncryptedPDFError && !this.plugin.settings.enableEditEncryptedPDF) {
+                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. Please consider enabling "Enable editing encrypted PDF files" in the plugin settings.`);
+            }
+            throw e;
+        }
     }
 
     async read<T>(file: TFile, fn: (pdfDoc: PDFDocument) => T) {
         const buffer = await this.app.vault.readBinary(file);
-        const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-        return await fn(pdfDoc);
+        try {
+            const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: this.plugin.settings.enableEditEncryptedPDF });
+            return await fn(pdfDoc);
+        } catch (e) {
+            if (e instanceof EncryptedPDFError && !this.plugin.settings.enableEditEncryptedPDF) {
+                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. Please consider enabling "Enable editing encrypted PDF files" in the plugin settings.`);
+            }
+            throw e;
+        }
     }
 
     addAnnotation(page: PDFPage, annotDict: Record<string, any>): PDFRef {
@@ -95,7 +138,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
 
     async setAnnotationContents(file: TFile, pageNumber: number, id: string, content: string): Promise<void> {
         await this.processAnnotation(file, pageNumber, id, (annot) => {
-            annot.set(PDFName.of('Contents'), PDFString.of(content));
+            this.setContentsToAnnotation(annot, content);
         });
     }
 
@@ -156,15 +199,23 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
     }
 
     getColorFromAnnotation(annot: PDFDict) {
-        const color = annot.get(PDFName.of('C'));
-        if (color instanceof PDFArray) {
-            const [r, g, b] = color.asArray().map((c) => {
-                if (c instanceof PDFNumber) {
-                    return Math.round(c.asNumber() * 255);
+        const appearanceStream = annot.get(PDFName.of('AP'));
+        if (!appearanceStream) {
+            const color = annot.get(PDFName.of('C'));
+            if (color instanceof PDFArray) {
+                const colorArray = color.asArray();
+
+                // non-RGB color is not supported for now
+                if (colorArray.length === 3) {
+                    const [r, g, b] = colorArray.map((c) => {
+                        if (c instanceof PDFNumber) {
+                            return Math.round(c.asNumber() * 255);
+                        }
+                        throw new Error(`${this.plugin.manifest.name}: Invalid color`);
+                    });
+                    return { r, g, b };
                 }
-                throw new Error(`${this.plugin.manifest.name}: Invalid color`);
-            });
-            return { r, g, b };
+            }
         }
     }
 
@@ -179,16 +230,22 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
 
     getContentsFromAnnotation(annot: PDFDict) {
         const contents = annot.get(PDFName.of('Contents'));
-        if (contents instanceof PDFString) return contents.asString();
+        // Use decodeText, not asString, to avoid encoding issues
+        if (contents instanceof PDFString || contents instanceof PDFHexString) return contents.decodeText();
     }
 
     setContentsToAnnotation(annot: PDFDict, contents: string) {
-        annot.set(PDFName.of('Contents'), PDFString.of(contents));
+        // Use PDFHextString.fromText, not PDFString.of, to avoid encoding issues
+        // https://github.com/Hopding/pdf-lib/issues/516
+        annot.set(PDFName.of('Contents'), PDFHexString.fromText(contents));
     }
 
     getOpacityFromAnnotation(annot: PDFDict) {
-        const opacity = annot.get(PDFName.of('CA'));
-        if (opacity instanceof PDFNumber) return opacity.asNumber();
+        const appearanceStream = annot.get(PDFName.of('AP'));
+        if (!appearanceStream) { // see Table 170 in PDF 32000-1:2008 
+            const opacity = annot.get(PDFName.of('CA'));
+            if (opacity instanceof PDFNumber) return opacity.asNumber();
+        }
     }
 
     setOpacityToAnnotation(annot: PDFDict, opacity: number) {
@@ -197,10 +254,28 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
 
     getAuthorFromAnnotation(annot: PDFDict) {
         const author = annot.get(PDFName.of('T'));
-        if (author instanceof PDFString) return author.asString();
+        // Use decodeText, not asString, to avoid encoding issues
+        if (author instanceof PDFString || author instanceof PDFHexString) return author.decodeText();
     }
 
     setAuthorToAnnotation(annot: PDFDict, author: string) {
-        annot.set(PDFName.of('T'), PDFString.of(author));
+        // Use PDFHextString.fromText, not PDFString.of, to avoid encoding issues
+        // https://github.com/Hopding/pdf-lib/issues/516
+        annot.set(PDFName.of('T'), PDFHexString.fromText(author));
+    }
+
+    getBorderWidthFromAnnotation(annot: PDFDict) {
+        const border = annot.get(PDFName.of('Border'));
+        if (border instanceof PDFArray) {
+            const borderWidth = border.asArray()[2];
+            if (borderWidth instanceof PDFNumber) return borderWidth.asNumber();
+        }
+    }
+
+    setBorderWidthToAnnotation(annot: PDFDict, width: number) {
+        const border = annot.get(PDFName.of('Border'));
+        if (border instanceof PDFArray) {
+            border.set(2, PDFNumber.of(width));
+        }
     }
 }
