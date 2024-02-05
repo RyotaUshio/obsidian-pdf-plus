@@ -118,7 +118,6 @@ Make it easier to work with internal links embedded in PDF files.
 
 - **Show a popover preview of PDF internal links by hover+command/ctrl**: See [below](#css-customization) for advanced CSS customization.
 - **Enable history navigation for PDF internal links**: When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.
-- **Show a popover preview of PDF internal links by hover+command/ctrl**
 - **Copy PDF link as Obsidian link**: (Requires custom right-click menu enabled) In the PDF viewer, right-click a PDF-embedded link and then click "Copy PDF link as Obsidian link". It will copy the PDF link as an Obsidian link that you can paste into markdown files. Clicking the pasted link will take you to the same destination as the original PDF link.
 - **"Copy link to current page view" command**: Running this command while viewing a PDF file will copy a link, clicking which will open the PDF file at the current scroll position and zoom level.
 - **Paste copied link to a text selection in a PDF file**: (Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".
