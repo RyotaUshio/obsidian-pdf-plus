@@ -110,6 +110,7 @@ export interface PDFPlusSettings {
 	thumbnailContextMenu: boolean;
 	thumbnailLinkDisplayTextFormat: string;
 	thumbnailLinkCopyFormat: string;
+	annotationPopupDrag: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -234,6 +235,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	thumbnailContextMenu: true,
 	thumbnailLinkDisplayTextFormat: '{{file.basename}}, page {{pageLabel}}',
 	thumbnailLinkCopyFormat: '{{linkWithDisplay}}',
+	annotationPopupDrag: true,
 };
 
 
@@ -1214,6 +1216,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					textarea.inputEl.cols = 30;
 				});
 		}
+
+
+		this.addHeading('Create link to annotation by drag & drop');
+		this.addToggleSetting('annotationPopupDrag')
+			.setName('Drag & drop annotation popup to create a link to the annotation')
+			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
+
 
 		this.addHeading('Integration with external apps (desktop-only)');
 		this.addToggleSetting('openPDFWithDefaultApp', () => this.redisplay())

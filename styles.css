@@ -185,3 +185,7 @@ settings:
 .popupWrapper {
     --pdf-popup-width: 300px;
 }
+
+.pdf-plus-draggable .popup {
+    cursor: default;
+}

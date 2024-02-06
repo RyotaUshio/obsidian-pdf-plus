@@ -363,10 +363,11 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     }
                 }
 
-                if (self.activeAnnotationPopupEl && self.file) {
+                if (plugin.settings.annotationPopupDrag && self.activeAnnotationPopupEl && self.file) {
                     const el = self.activeAnnotationPopupEl;
                     const file = self.file;
                     hookDragHandlerToAnnotationPopup(plugin, el, self, file, page, id);
+                    el.addClass('pdf-plus-draggable');
                 }
 
                 return ret;

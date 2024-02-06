@@ -61,7 +61,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
             }, {
                 id: 'go-to-page',
                 name: 'Go to page',
-                checkCallback: (checking) => this.focusPageNumberEl(checking)
+                checkCallback: (checking) => this.focusAndSelectPageNumberEl(checking)
             }, {
                 id: 'copy-format-menu',
                 name: 'Show copy format menu',
@@ -304,10 +304,13 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
         return false;
     }
 
-    focusPageNumberEl(checking: boolean) {
+    focusAndSelectPageNumberEl(checking: boolean) {
         const toolbar = this.api.getToolbar(true);
         if (!toolbar) return false;
-        if (!checking) toolbar.pageInputEl.focus();
+        if (!checking) {
+            toolbar.pageInputEl.focus();
+            toolbar.pageInputEl.select();
+        }
         return true;
     }
 
