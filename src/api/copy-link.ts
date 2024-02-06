@@ -3,7 +3,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian'
 import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
 import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
-import { PDFViewerChild } from 'typings';
+import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 
 
 export class copyLinkAPI extends PDFPlusAPISubmodule {
@@ -45,21 +45,22 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         };
     }
 
-    getLinkTemplateVariables(child: PDFViewerChild, file: TFile, subpath: string, page: number) {
-        const link = this.app.fileManager.generateMarkdownLink(file, '', subpath).slice(1);
-        let linktext = this.app.metadataCache.fileToLinktext(file, '') + subpath;
+    getLinkTemplateVariables(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, subpath: string, page: number, text: string, sourcePath?: string) {
+        sourcePath = sourcePath ?? '';
+        const link = this.app.fileManager.generateMarkdownLink(file, sourcePath, subpath).slice(1);
+        let linktext = this.app.metadataCache.fileToLinktext(file, sourcePath) + subpath;
         if (this.app.vault.getConfig('useMarkdownLinks')) {
             linktext = encodeLinktext(linktext);
         }
-        const display = child.getPageLinkAlias(page);
+        const display = this.getDisplayText(child, displayTextFormat, file, page, text);
         // https://github.com/obsidianmd/obsidian-api/issues/154
-        // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, '', subpath, display).slice(1);
-        const linkWithDisplay = this.api.generateMarkdownLink(file, '', subpath, display).slice(1);
+        // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
+        const linkWithDisplay = this.api.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
 
-        const linkToPage = this.app.fileManager.generateMarkdownLink(file, '', `#page=${page}`).slice(1);
+        const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
         // https://github.com/obsidianmd/obsidian-api/issues/154
-        // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);
-        const linkToPageWithDisplay = this.api.generateMarkdownLink(file, '', `#page=${page}`, display).slice(1);
+        // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
+        const linkToPageWithDisplay = this.api.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
 
         return {
             link,
@@ -71,30 +72,77 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         };
     }
 
+    getDisplayText(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, page: number, text: string) {
+        if (!displayTextFormat) {
+            // read display text format from color palette
+            const palette = this.api.getColorPaletteFromChild(child);
+            if (palette) {
+                displayTextFormat = this.settings.displayTextFormats[palette.displayTextFormatIndex].template;
+            } else {
+                displayTextFormat = this.settings.displayTextFormats[this.settings.defaultDisplayTextFormatIndex].template;
+            }
+        }
+
+        try {
+            return new PDFPlusTemplateProcessor(this.plugin, {
+                file,
+                page,
+                pageCount: child.pdfViewer.pagesCount,
+                pageLabel: child.getPage(page).pageLabel ?? ('' + page),
+                text
+            }).evalTemplate(displayTextFormat)
+                .trim();
+        } catch (err) {
+            console.error(err);
+            new Notice(`${this.plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);
+        }
+    }
+
+    getTextToCopy(child: PDFViewerChild, template: string, displayTextFormat: string | undefined, file: TFile, page: number, subpath: string, text: string, colorName: string, sourcePath?: string) {
+        const pageView = child.getPage(page);
+
+        const processor = new PDFPlusTemplateProcessor(this.plugin, {
+            file,
+            page,
+            pageLabel: pageView.pageLabel ?? ('' + page),
+            pageCount: child.pdfViewer.pagesCount,
+            text,
+            colorName,
+            ...this.api.copyLink.getLinkTemplateVariables(child, displayTextFormat, file, subpath, page, text, sourcePath)
+        });
+
+        const evaluated = processor.evalTemplate(template);
+        return evaluated;
+    }
+
+    async getTextToCopyForOutlineItem(child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode, sourcePath?: string) {
+        return (await this.getTextToCopyForOutlineItemDynamic(child, file, item))(sourcePath);
+    }
+
+    async getTextToCopyForOutlineItemDynamic(child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode) {
+        const dest = await item.getExplicitDestination();
+        const pageNumber = await item.getPageNumber();
+        const destArray = this.api.normalizePDFjsDestArray(pageNumber, dest);
+        const subpath = this.api.destArrayToSubpath(destArray);
+
+        return (sourcePath?: string) => this.getTextToCopy(
+            child,
+            this.settings.outlineLinkCopyFormat,
+            this.settings.outlineLinkDisplayTextFormat,
+            file, pageNumber, subpath, item.item.title, '', sourcePath
+        );
+    }
+
     copyLinkToSelection(checking: boolean, template: string, colorName?: string, autoPaste?: boolean): boolean {
         const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
 
         if (variables) {
-            const { child, file, subpath, page, pageCount, pageLabel, text } = variables;
+            const { child, file, subpath, page, text } = variables;
 
             if (!text) return false;
 
             if (!checking) {
-                const processor = new PDFPlusTemplateProcessor(this.plugin, {
-                    file,
-                    page,
-                    pageCount,
-                    pageLabel,
-                    text,
-                    colorName: colorName?.toLowerCase() ?? '',
-                    ...this.getLinkTemplateVariables(child, file, subpath, page)
-                });
-
-                if (this.plugin.settings.useAnotherCopyTemplateWhenNoSelection && !text) {
-                    template = this.plugin.settings.copyTemplateWhenNoSelection;
-                }
-
-                const evaluated = processor.evalTemplate(template);
+                const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text, colorName?.toLowerCase() ?? '');
                 navigator.clipboard.writeText(evaluated);
                 this.onCopyFinish(evaluated);
 
@@ -114,23 +162,14 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
-        if (!child.file) return false;
+        const file = child.file;
+        if (!file) return false;
 
         if (!checking) {
             const pageView = child.getPage(page);
             child.getAnnotatedText(pageView, id)
                 .then((text) => {
-                    const processor = new PDFPlusTemplateProcessor(this.plugin, {
-                        file: child.file!,
-                        page,
-                        pageLabel: pageView.pageLabel ?? ('' + page),
-                        pageCount: child.pdfViewer.pagesCount,
-                        text,
-                        colorName: '',
-                        ...this.getLinkTemplateVariables(child, child.file!, `#page=${page}&annotation=${id}`, page)
-                    });
-
-                    const evaluated = processor.evalTemplate(template);
+                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '');
                     navigator.clipboard.writeText(evaluated);
                     this.onCopyFinish(evaluated);
 
@@ -148,21 +187,9 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         return true;
     }
 
-    copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean, templateVariables?: Record<string, any>) {
+    copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, colorName: string, autoPaste?: boolean) {
         if (!checking) {
-            const pageView = child.getPage(page);
-
-            const processor = new PDFPlusTemplateProcessor(this.plugin, {
-                file,
-                page,
-                pageLabel: pageView.pageLabel ?? ('' + page),
-                pageCount: child.pdfViewer.pagesCount,
-                text,
-                ...templateVariables ?? {},
-                ...this.getLinkTemplateVariables(child, file, `#page=${page}&annotation=${id}`, page)
-            });
-
-            const evaluated = processor.evalTemplate(template);
+            const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, colorName)
             navigator.clipboard.writeText(evaluated);
             this.onCopyFinish(evaluated);
 
@@ -203,7 +230,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                         // get the new DOM to access the newly loaded color palette instance.
                         const newPalette = this.api.getColorPaletteFromChild(child);
                         newPalette?.setStatus('Link copied', this.statusDurationMs);
-                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, autoPaste, { colorName: colorName?.toLowerCase() ?? '' });
+                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, colorName?.toLowerCase() ?? '', autoPaste);
                     }, 300);
                 })
         }
@@ -219,10 +246,8 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             // Use vault, not editor, so that we can auto-paste even when the file is not opened
             await this.app.vault.process(this.plugin.lastPasteFile, (data) => {
                 // If the file does not end with a blank line, add one
-                const idx = data.lastIndexOf('\n');
-                if (idx === -1 || data.slice(idx).trim()) {
-                    data += '\n\n';
-                }
+                data = data.trimEnd()
+                if (data) data += '\n\n';
                 data += text;
                 return data;
             });

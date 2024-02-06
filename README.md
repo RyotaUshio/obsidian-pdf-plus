@@ -110,7 +110,7 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 Add, edit and delete highlights and links in PDF files.
 Added annotations will be visible even outside Obsidian unlike backlink highlights.
 
-PDF++ will not modify PDF files themselves unless you explicitly enable it. ***The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
+PDF++ will not modify PDF files themselves unless you explicitly allow it. ***The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
 
 ### PDF internal links enhancement
 
@@ -169,6 +169,17 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 - **Copy link with/without display text**: When copying a link to a selection or an annotation in a PDF file, Obsidian appends `|<PDF FILE TITLE>, page <PAGE NUMBER>` to the link text by default. This plugin allows you to disable this behavior if you don't like it.
 - **Display text format**: You can customize the display text format.
 
+#### Copy link to section from PDF outline (table of contents)
+
+- **Replace the built-in right-click menu in the outline with a custom one**: This enables you to copy a section link with a custom format by right-clicking an item in the outline.
+- **Drag & drop outline item to copy link to section**: Grab an item in the outline and drop it to a markdown file to create a section link.
+
+#### Copy link to page from PDF thumbnail
+
+- **Replace the built-in right-click menu in the thumbnail with a custom one**: This enables you to copy a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail.
+- **Drag & drop PDF thumbnail to copy link to section**: Grab a thumbnail image and drop it to a markdown file to create a page link.
+  > Note: When disabled, drag-and-drop will cause the thumbnail image to be paste as a data url, which is seemingly Obsidian\'s bug.
+
 ### Embedding PDF files
 
 - **Click PDF embeds to open links**: Clicking a PDF embed will open the embedded file.
@@ -181,6 +192,18 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 - **Don't clear highlights in a selection/annotation embeds**
 - **Make PDF embeds unscrollable**
 - **Zoom in PDF embeds (experimental)**
+
+### Keyboard shortcut commands
+
+PDF++ offers the following commands for reducing mouse clicks on the PDF toolbar by assigning hotkeys to them.
+
+- **Show outline** / **show thumbnail**
+- **Close PDF siderbar**
+- **Zoom in** / **zoom out**
+- **Fit width** / **fit height**
+- **Go to page**: This command brings the cursor to the page number input field in the PDF toolbar. Enter a page number and press Enter to jump to the page.
+- **Show copy format menu** / show display text format menu: By running thes commands via hotkeys and then using the arrow keys you can quickly select a format from the menu without using the mouse.
+- **Enable PDF edit** / **disable PDF edit**
 
 ### Integration with external apps (desktop-only)
 

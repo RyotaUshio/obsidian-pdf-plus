@@ -7,7 +7,9 @@ import { copyLinkAPI } from './copy-link';
 import { HighlightAPI } from './highlights';
 import { WorkspaceAPI } from './workspace-api';
 import { encodeLinktext, parsePDFSubpath } from 'utils';
-import { AnnotationElement, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFViewExtraState, PDFViewerChild, RawPDFViewer } from 'typings';
+import { AnnotationElement, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, RawPDFViewer } from 'typings';
+import { PDFDocument } from '@cantoo/pdf-lib';
+import { PDFPlusCommands } from './commands';
 
 
 export class PDFPlusAPI {
@@ -15,6 +17,7 @@ export class PDFPlusAPI {
     plugin: PDFPlus
 
     /** Sub-modules */
+    commands: PDFPlusCommands;
     copyLink: copyLinkAPI;
     highlight: HighlightAPI;
     workspace: WorkspaceAPI;
@@ -23,6 +26,7 @@ export class PDFPlusAPI {
         this.app = plugin.app;
         this.plugin = plugin;
 
+        this.commands = new PDFPlusCommands(plugin);
         this.copyLink = new copyLinkAPI(plugin);
         this.highlight = new HighlightAPI(plugin);
         this.workspace = new WorkspaceAPI(plugin);
@@ -33,7 +37,7 @@ export class PDFPlusAPI {
      */
     registerPDFEvent(name: string, eventBus: EventBus, component: Component | null, cb: (data: any) => any) {
         const listener = async (data: any) => {
-            cb(data);
+            await cb(data);
             if (!component) eventBus.off(name, listener);
         };
         component?.register(() => eventBus.off(name, listener));
@@ -140,6 +144,14 @@ export class PDFPlusAPI {
         return null;
     }
 
+    getColorPalette() {
+        const child = this.getPDFViewerChild(true) ?? this.plugin.lastAnnotationPopupChild;
+        if (child) {
+            return this.getColorPaletteFromChild(child);
+        }
+        return this.getColorPaletteAssociatedWithSelection();
+    }
+
     getColorPaletteAssociatedWithNode(node: Node) {
         const toolbarEl = this.getToolbarAssociatedWithNode(node);
         if (!toolbarEl) return null;
@@ -202,11 +214,25 @@ export class PDFPlusAPI {
      *       shall be retained unchanged. A zoom value of 0 has the same meaning as a null value."
      */
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
-        const dest = await doc.getDestination(destId);
+        const dest = await doc.getDestination(destId) as PDFjsDestArray;
         if (!dest) return null;
         const page = await doc.getPageIndex(dest[0]);
-        // @ts-ignore
-        return this.destArrayToSubpath([page, ...dest.slice(1)]);
+        return this.destArrayToSubpath(this.normalizePDFjsDestArray(page + 1, dest));
+    }
+
+    /**
+     * 
+     * @param pageNumber 1-based page number
+     * @param dest 
+     */
+    normalizePDFjsDestArray(pageNumber: number, dest: PDFjsDestArray): DestArray {
+        return [
+            pageNumber - 1,
+            dest[1].name,
+            ...dest
+                .slice(2)
+                .filter((param: number | null): param is number => typeof param === 'number')
+        ]
     }
 
     /**
@@ -220,13 +246,13 @@ export class PDFPlusAPI {
         let left = '';
         let zoom = '';
 
-        if (destArray[1].name === 'XYZ') {
+        if (destArray[1] === 'XYZ') {
             left = '' + destArray[2];
             top = '' + destArray[3];
             // Obsidian recognizes the `offset` parameter as "FitHB" if the third parameter is omitted.
             // from the PDF spec: "A zoom value of 0 has the same meaning as a null value."
             zoom = '' + (destArray[4] ?? 0);
-        } else if (destArray[1].name === 'FitBH') {
+        } else if (destArray[1] === 'FitBH') {
             top = '' + destArray[2];
         }
 
@@ -351,5 +377,62 @@ export class PDFPlusAPI {
         }
 
         return false;
+    }
+
+    getPDFView(activeOnly: boolean = false): PDFView | undefined {
+        // I believe using `activeLeaf` is inevitable here.
+        const leaf = this.app.workspace.activeLeaf;
+        if (leaf?.view.getViewType() === 'pdf') return leaf.view as PDFView;
+        if (!activeOnly) return this.app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
+    }
+
+    getPDFViewer(activeOnly: boolean = false) {
+        return this.getPDFView(activeOnly)?.viewer;
+    }
+
+    getPDFViewerChild(activeOnly: boolean = false) {
+        return this.getPDFViewer(activeOnly)?.child;
+    }
+
+    getObsidianViewer(activeOnly: boolean = false) {
+        return this.getPDFViewerChild(activeOnly)?.pdfViewer;
+    }
+
+    getRawPDFViewer(activeOnly: boolean = false) {
+        return this.getObsidianViewer(activeOnly)?.pdfViewer;
+    }
+
+    getToolbar(activeOnly: boolean = false) {
+        return this.getPDFViewerChild(activeOnly)?.toolbar;
+    }
+
+    getPage(activeOnly: boolean = false) {
+        const viewer = this.getRawPDFViewer(activeOnly);
+        if (viewer) {
+            return viewer.getPageView(viewer.currentPageNumber - 1);
+        }
+        return null;
+    }
+
+    getPDFDocument(activeOnly: boolean = false) {
+        return this.getRawPDFViewer(activeOnly)?.pdfDocument;
+    }
+
+    async getPdfLibDocument(activeOnly: boolean = false) {
+        const doc = this.getPDFDocument(activeOnly);
+        if (doc) {
+            return await PDFDocument.load(await doc.getData());
+        }
+    }
+
+    async getPdfLibPage(activeOnly: boolean = false) {
+        const pdfViewer = this.getRawPDFViewer(activeOnly);
+        if (!pdfViewer) return;
+        const pageNumber = pdfViewer.currentPageNumber;
+        if (pageNumber === undefined) return;
+        const doc = await PDFDocument.load(await pdfViewer.pdfDocument.getData());
+        if (doc) {
+            return doc.getPage(pageNumber - 1);
+        }
     }
 }

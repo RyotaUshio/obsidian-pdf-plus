@@ -2,6 +2,7 @@ import { App } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusAPI } from 'api';
+import { PDFPlusSettings } from 'settings';
 
 
 export class PDFPlusAPISubmodule {
@@ -15,5 +16,9 @@ export class PDFPlusAPISubmodule {
 
     get api(): PDFPlusAPI {
         return this.plugin.api;
+    }
+
+    get settings(): PDFPlusSettings {
+        return this.plugin.settings;
     }
 }

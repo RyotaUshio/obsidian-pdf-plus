@@ -10,14 +10,10 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
     const api = plugin.api;
     const pagePreview = app.internalPlugins.plugins['page-preview'].instance;
 
-    // Make sure this plugin patches `onLinkHover` after Hover Editor, because it completely overrides the original method
-    if (app.plugins.enabledPlugins.has('obsidian-hover-editor')) {
-        const hoverEditor = app.plugins.plugins['obsidian-hover-editor']; // this is set after loading Hover Editor
-        if (!hoverEditor) return false;
-        if (!pagePreview.onLinkHover.name) return false;
-    }
+    // Patch the instance instead of the prototype to avoid conflicts with Hover Editor
+    // https://github.com/nothingislost/obsidian-hover-editor/issues/259
 
-    plugin.register(around(pagePreview.constructor.prototype, {
+    plugin.register(around(pagePreview, {
         onLinkHover(old) {
             return function (hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void {
                 const { path: linkpath, subpath } = parseLinktext(linktext);
@@ -28,7 +24,7 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
                     return;
                 }
 
-                if (file?.extension === 'pdf') {
+                if (file?.extension === 'pdf' && sourcePath.endsWith('.md')) {
                     if (plugin.settings.hoverPDFLinkToOpen) {
                         const leaf = api.workspace.getExistingPDFLeafOfFile(file);
                         if (leaf) {

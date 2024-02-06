@@ -28,7 +28,7 @@ export class ViewerHighlightAPI extends PDFPlusAPISubmodule {
             left: `${100 * (mirroredRect[0] - pageX) / pageWidth}%`,
             top: `${100 * (mirroredRect[1] - pageY) / pageHeight}%`,
             width: `${100 * (mirroredRect[2] - mirroredRect[0]) / pageWidth}%`,
-            height: `${100 * (mirroredRect[3] - mirroredRect[1]) / pageHeight}%`
+            height: `${100 * (mirroredRect[3] - mirroredRect[1]) / pageHeight}%`,
         });
 
         return rectEl;

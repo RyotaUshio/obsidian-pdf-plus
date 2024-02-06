@@ -24,7 +24,7 @@ export class SelectToCopyMode extends Component {
 
         api.registerGlobalDomEvent(this, 'pointerup', () => {
             if (activeWindow.getSelection()?.toString()) {
-                this.plugin.copyLinkToSelection(false);
+                api.commands.copyLinkToSelection(false);
             }
         });
 

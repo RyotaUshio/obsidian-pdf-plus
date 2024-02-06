@@ -58,7 +58,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
                 Dest = PDFString.of(dest);
             } else {
                 const targetPageRef = pdfDoc.getPage(dest[0]).ref;
-                Dest = [targetPageRef, dest[1].name, ...dest.slice(2).map((num: number) => PDFNumber.of(num))];
+                Dest = [targetPageRef, dest[1], ...dest.slice(2).map((num: number) => PDFNumber.of(num))];
             }
 
             const ref = this.addAnnotation(page, {

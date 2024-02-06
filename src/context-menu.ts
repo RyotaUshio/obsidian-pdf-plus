@@ -1,11 +1,85 @@
-import { App, Menu, Platform } from 'obsidian';
+import { App, Menu, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusAPI } from 'api';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
 import { toSingleLine } from 'utils';
-import { PDFViewerChild } from 'typings';
+import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 
+
+export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
+    // take from app.js
+    if (Platform.isDesktopApp) {
+        const electron = evt.win.electron;
+        if (electron && evt.isTrusted) {
+            evt.stopPropagation();
+            evt.stopImmediatePropagation();
+            await new Promise((resolve) => {
+                // wait up to 1 sec
+                const timer = evt.win.setTimeout(() => resolve(null), 1000);
+                electron!.ipcRenderer.once('context-menu', (n, r) => {
+                    evt.win.clearTimeout(timer);
+                    resolve(r);
+                });
+                electron!.ipcRenderer.send('context-menu');
+            });
+        }
+    }
+
+    const menu = await PDFPlusContextMenu.fromMouseEvent(plugin, child, evt);
+
+    child.clearEphemeralUI();
+    menu.showAtMouseEvent(evt);
+    if (child.pdfViewer.isEmbed) evt.preventDefault();
+}
+
+export const onThumbnailContextMenu = (child: PDFViewerChild, evt: MouseEvent): void => {
+    const node = evt.targetNode;
+    if (node && node.instanceOf(HTMLElement) && node.hasClass('thumbnail') && node.dataset.pageNumber !== undefined) {
+        const pageNumber = parseInt(node.dataset.pageNumber);
+        if (Number.isNaN(pageNumber)) return;
+
+        const link = child.getMarkdownLink(`#page=${pageNumber}`, child.getPageLinkAlias(pageNumber));
+        const pageView = child.getPage(pageNumber);
+        const pageLabel = pageView.pageLabel ?? ('' + pageNumber);
+        const pageCount = child.pdfViewer.pagesCount;
+        const title = ('' + pageNumber === pageLabel)
+            ? `Copy link to page ${pageNumber}`
+            : `Copy link to page ${pageLabel} (${pageNumber}/${pageCount})`;
+        new Menu()
+            .addItem((item) => {
+                item.setTitle(title)
+                    .setIcon('lucide-copy')
+                    .onClick(() => {
+                        (evt.view ?? activeWindow).navigator.clipboard.writeText(link);
+                    })
+            })
+            .showAtMouseEvent(evt);
+    }
+}
+
+export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode, evt: MouseEvent) => {
+    const { api } = plugin;
+
+    if (child.pdfViewer.isEmbed) evt.preventDefault();
+
+    const itemTitle = toSingleLine(item.item.title);
+    const title = itemTitle
+        ? `Copy link to "${itemTitle.length <= 40 ? itemTitle : itemTitle.slice(0, 39).trim() + '…'}"`
+        : 'Copy link to section';
+
+    new Menu()
+        .addItem((menuItem) => {
+            menuItem
+                .setTitle(title)
+                .setIcon('lucide-copy')
+                .onClick(async () => {
+                    const evaluated = await api.copyLink.getTextToCopyForOutlineItem(child, file, item);
+                    (evt.view ?? activeWindow).navigator.clipboard.writeText(evaluated);
+                })
+        })
+        .showAtMouseEvent(evt);
+}
 
 export class PDFPlusContextMenu extends Menu {
     app: App

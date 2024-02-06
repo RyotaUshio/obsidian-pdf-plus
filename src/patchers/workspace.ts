@@ -50,7 +50,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                         }
 
                         if (plugin.settings.openLinkNextToExistingPDFTab || plugin.settings.paneTypeForFirstPDFLeaf) {
-                            const pdfLeaf = plugin.getPDFView()?.leaf;
+                            const pdfLeaf = api.getPDFView()?.leaf;
                             if (pdfLeaf) {
                                 if (plugin.settings.openLinkNextToExistingPDFTab) {
                                     const newLeaf = app.workspace.createLeafInParent(pdfLeaf.parentSplit, -1);

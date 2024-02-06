@@ -1,4 +1,4 @@
-import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PluginSettingTab, Setting, TextComponent, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, HexString, MarkdownRenderer, Notice, PluginSettingTab, Setting, TextAreaComponent, TextComponent, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType } from 'api/workspace-api';
@@ -28,8 +28,6 @@ export interface namedTemplate {
 export const DEFAULT_BACKLINK_HOVER_COLOR = 'green';
 
 export interface PDFPlusSettings {
-	alias: boolean; // the term "alias" is probably incorrect here. It should be "display text" instead.
-	// aliasFormat: string;
 	displayTextFormats: namedTemplate[];
 	defaultDisplayTextFormatIndex: number,
 	syncDisplayTextFormat: boolean;
@@ -100,11 +98,21 @@ export interface PDFPlusSettings {
 	pdfLinkColor: HexString;
 	pdfLinkBorder: boolean;
 	replaceContextMenu: boolean;
+	executeBuiltinCommandForOutline: boolean;
+	executeBuiltinCommandForZoom: boolean;
+	executeFontSizeAdjusterCommand: boolean;
+	closeSidebarWithShowCommandIfExist: boolean;
+	outlineDrag: boolean;
+	outlineContextMenu: boolean;
+	outlineLinkDisplayTextFormat: string;
+	outlineLinkCopyFormat: string;
+	thumbnailDrag: boolean;
+	thumbnailContextMenu: boolean;
+	thumbnailLinkDisplayTextFormat: string;
+	thumbnailLinkCopyFormat: string;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
-	alias: true,
-	// aliasFormat: '',
 	displayTextFormats: [
 		{
 			name: 'Obsidian default',
@@ -117,6 +125,10 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		{
 			name: 'Page only',
 			template: 'p.{{pageLabel}}',
+		},
+		{
+			name: 'Text',
+			template: '{{text}}',
 		}
 	],
 	defaultDisplayTextFormatIndex: 0,
@@ -133,10 +145,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		{
 			name: 'Embed',
 			template: '!{{link}}',
-		},
-		{
-			name: 'Selected text',
-			template: '[[{{linktext}}|{{text}}]]'
 		},
 		{
 			name: 'Create new note',
@@ -214,6 +222,18 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	pdfLinkColor: '#04a802',
 	pdfLinkBorder: false,
 	replaceContextMenu: true,
+	executeBuiltinCommandForOutline: true,
+	executeBuiltinCommandForZoom: true,
+	executeFontSizeAdjusterCommand: true,
+	closeSidebarWithShowCommandIfExist: true,
+	outlineDrag: true,
+	outlineContextMenu: true,
+	outlineLinkDisplayTextFormat: '{{file.basename}}, {{text}}',
+	outlineLinkCopyFormat: '{{linkWithDisplay}}',
+	thumbnailDrag: true,
+	thumbnailContextMenu: true,
+	thumbnailLinkDisplayTextFormat: '{{file.basename}}, page {{pageLabel}}',
+	thumbnailLinkCopyFormat: '{{linkWithDisplay}}',
 };
 
 
@@ -627,6 +647,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		});
 	}
 
+	addHotkeySettingButton(setting: Setting) {
+		setting.addButton((button) => {
+			button.setButtonText('Open hotkeys settings')
+				.onClick(() => {
+					const tab = this.app.setting.openTabById('hotkeys');
+					tab.setQuery(this.plugin.manifest.id);
+				});
+		});
+	}
+
 	/** Refresh the setting tab and then scroll back to the original position. */
 	async redisplay() {
 		const scrollTop = this.containerEl.scrollTop;
@@ -651,13 +681,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
 		this.addDropdownSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
 			.setName('Action when hovering over highlighted text')
-			.then((setting) => {
-				this.renderMarkdown([
-					`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`,
-					'',
-					'**Note**: When Hover Editor is enabled, "Open backlink" might not work as expected. Reload the app to fix it.'
-				], setting.descEl);
-			});
+			.setDesc(`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`)
 		this.addSetting()
 			.setName(`Require ${getModifierNameInPlatform('Mod').toLowerCase()} key for the above action`)
 			.setDesc('You can toggle this on and off in the core Page Preview plugin settings > PDF++ hover action.')
@@ -929,12 +953,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
 			.setName('Replace the built-in right-click menu and show color palette actions instead');
 		if (!this.plugin.settings.replaceContextMenu) {
-			this.addToggleSetting('alias', () => this.redisplay())
-				.setName('Copy link with display text')
-				.then((setting) => this.renderMarkdown(
-					'When copying a link to a selection or an annotation from the right-click context menu, Obsidian appends "|`<PDF FILE TITLE>`, page `<PAGE NUMBER>`" to the link text by default. Disable this option if you don\'t like it.',
-					setting.descEl
-				));
 			this.addSetting()
 				.setName('Display text format')
 				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
@@ -984,16 +1002,45 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'After running this command, you can add the copied link to the PDF file itself: select a range of text, right-click, and then click "Paste copied link to selection".'
 				], setting.descEl);
 			})
-			.addButton((button) => {
-				button.setButtonText('Open hotkeys settings')
-					.onClick(() => {
-						const tab = this.app.setting.openTabById('hotkeys');
-						tab.setQuery(this.plugin.manifest.id);
-					});
-			});
+			.then((setting) => this.addHotkeySettingButton(setting));
 		this.addToggleSetting('focusEditorAfterAutoPaste')
 			.setName('Focus editor after auto-pasting a link')
 			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
+
+
+		this.addHeading('Other shortcut commands')
+			.then((setting) => {
+				this.renderMarkdown([
+					'PDF++ also offers the following commands for reducing mouse clicks on the PDF toolbar by assigning hotkeys to them.',
+					'',
+					'- **Show outline** / **show thumbnail**',
+					'- **Close PDF siderbar**',
+					'- **Zoom in** / **zoom out**',
+					'- **Fit width** / **fit height**',
+					'- **Go to page**: This command brings the cursor to the page number input field in the PDF toolbar. Enter a page number and press Enter to jump to the page.',
+					'- **Show copy format menu** / show display text format menu: By running thes commands via hotkeys and then using the arrow keys, you can quickly select a format from the menu without using the mouse.',
+					'- **Enable PDF edit** / **disable PDF edit**'
+				], setting.descEl);
+			})
+			.then((setting) => this.addHotkeySettingButton(setting));
+		this.addToggleSetting('executeBuiltinCommandForOutline')
+			.setName('Show outline: when the active file is not PDF, run the core Outline plugin\'s "Show outline" command')
+			.setDesc('By turning this on, you can use the same hotkey to show the outline of a markdown file and a PDF file without key conflict.');
+		this.addToggleSetting('closeSidebarWithShowCommandIfExist')
+			.setName('Show outline / show thumbnail: close the sidebar if it is already open')
+			.setDesc('Enabling this will allow you to use the same hotkey to close the sidebar if it is already open.');
+		this.addToggleSetting('executeBuiltinCommandForZoom')
+			.setName('Zoom in / zoom out: when the active file is not PDF, run the built-in "Zoom in" / "Zoom out" command')
+			.setDesc('By turning this on, you can use the same hotkey to zoom in/out a PDF viewer or any other type of view without key conflict.');
+		this.addToggleSetting('executeFontSizeAdjusterCommand')
+			.setName('Zoom in / zoom out: when the active file is not PDF, run Font Size Adjuster\'s "Increment font size" / "Decrement font size" command')
+			.then((setting) => {
+				this.renderMarkdown([
+					'_(Requires the [Font Size Adjuster](https://github.com/RyotaUshio/obsidian-font-size) plugin enabled)_ ',
+					'If both of this option and the above option are enabled, this option will be prioritized. The built-in "Zoom in" / "Zoom out" command will be executed if Font Size Adjuster is not installed or disabled.'
+				], setting.descEl);
+			});
+
 
 		this.addHeading('Link copy templates')
 			.then((setting) => this.renderMarkdown([
@@ -1114,6 +1161,59 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Link copy template used when no text is selected');
 		}
 
+
+		this.addHeading('Copy link to section from PDF outline (table of contents)')
+		this.addToggleSetting('outlineContextMenu')
+			.setName('Replace the built-in right-click menu in the outline with a custom one')
+			.setDesc('This enables you to copy a section link with a custom format by right-clicking an item in the outline.')
+		this.addToggleSetting('outlineDrag')
+			.setName('Drag & drop outline item to copy link to section')
+			.setDesc('Grab an item in the outline and drop it to a markdown file to create a section link. Changing this option requires reopening the tabs or reloading the app.');
+		if (this.plugin.settings.outlineContextMenu || this.plugin.settings.outlineDrag) {
+			this.addTextSetting('outlineLinkDisplayTextFormat')
+				.setName('Display text format')
+				.then((setting) => {
+					const text = setting.components[0] as TextComponent;
+					text.inputEl.size = 30;
+				});
+			this.addTextAreaSetting('outlineLinkCopyFormat')
+				.setName('Link copy format')
+				.then((setting) => {
+					const textarea = setting.components[0] as TextAreaComponent;
+					textarea.inputEl.rows = 3;
+					textarea.inputEl.cols = 30;
+				});
+		}
+
+
+		this.addHeading('Copy link to page from PDF thumbnail')
+		this.addToggleSetting('thumbnailContextMenu')
+			.setName('Replace the built-in right-click menu in the thumbnail with a custom one')
+			.setDesc('This enables you to copy a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail.');
+		this.addToggleSetting('thumbnailDrag')
+			.setName('Drag & drop PDF thumbnail to copy link to section')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Grab a thumbnail image and drop it to a markdown file to create a page link. Changing this option requires reopening the tabs or reloading the app.',
+					'',
+					'Note: When disabled, drag-and-drop will cause the thumbnail image to be paste as a data url, which is seemingly Obsidian\'s bug.'
+				], setting.descEl);
+			});
+		if (this.plugin.settings.thumbnailContextMenu || this.plugin.settings.thumbnailDrag) {
+			this.addTextSetting('thumbnailLinkDisplayTextFormat')
+				.setName('Display text format')
+				.then((setting) => {
+					const text = setting.components[0] as TextComponent;
+					text.inputEl.size = 30;
+				});
+			this.addTextAreaSetting('thumbnailLinkCopyFormat')
+				.setName('Link copy format')
+				.then((setting) => {
+					const textarea = setting.components[0] as TextAreaComponent;
+					textarea.inputEl.rows = 3;
+					textarea.inputEl.cols = 30;
+				});
+		}
 
 		this.addHeading('Integration with external apps (desktop-only)');
 		this.addToggleSetting('openPDFWithDefaultApp', () => this.redisplay())

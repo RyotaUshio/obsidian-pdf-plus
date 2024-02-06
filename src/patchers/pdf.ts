@@ -1,14 +1,15 @@
-import { Component, MarkdownRenderer, Notice, Platform, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
-import { PDFPlusTemplateProcessor } from 'template';
-import { hookInternalLinkMouseEventHandlers, toSingleLine } from 'utils';
-import { AnnotationElement, ObsidianViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
-import { PDFPlusContextMenu } from 'context-menu';
+import { onContextMenu, onThumbnailContextMenu } from 'context-menu';
+import { hookDragHandlerToAnnotationPopup, hookDragHandlerToOutline, hookDragHandlerToThumbnail } from 'drag';
+import { patchPDFOutlineViewer } from './pdf-outline-viewer';
+import { hookInternalLinkMouseEventHandlers, toSingleLine } from 'utils';
+import { AnnotationElement, ObsidianViewer, PDFOutlineViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -97,6 +98,48 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
     }));
 
     plugin.register(around(child.constructor.prototype, {
+        load(old) {
+            return async function (...args: any[]): Promise<void> {
+                await old.call(this, ...args);
+                const self = this as PDFViewerChild;
+
+                if (plugin.settings.outlineDrag) {
+                    api.registerPDFEvent(
+                        'outlineloaded', self.pdfViewer.eventBus, null,
+                        async (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => {
+                            const pdfOutlineViewer = data.source;
+
+                            if (!plugin.patchStatus.pdfOutlineViewer) {
+                                const success = patchPDFOutlineViewer(plugin, pdfOutlineViewer);
+                                plugin.patchStatus.pdfOutlineViewer = success;
+                            }
+
+                            if (!data.outlineCount) return;
+
+                            const file = self.file;
+                            if (!file) return;
+
+                            await hookDragHandlerToOutline(plugin, pdfOutlineViewer, self, file);
+                        }
+                    );
+                }
+
+                if (plugin.settings.thumbnailDrag) {
+                    api.registerPDFEvent('thumbnailrendered', self.pdfViewer.eventBus, null, () => {
+                        const file = self.file;
+                        if (!file) return;
+                        hookDragHandlerToThumbnail(plugin, self, file);
+                    });
+                }
+            }
+        },
+        unload(old) {
+            return function () {
+                const self = this as PDFViewerChild;
+                self.component?.unload();
+                return old.call(this);
+            }
+        },
         onResize(old) {
             return function () {
                 const self = this as PDFViewerChild;
@@ -107,40 +150,20 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         },
         getMarkdownLink(old) {
             return function (subpath?: string, alias?: string, embed?: boolean): string {
-                return old.call(this, subpath, plugin.settings.alias ? alias : undefined, embed);
+                const self = this as PDFViewerChild;
+                if (!self.file) return old.call(this, subpath, alias, embed);
+                const embedLink = api.generateMarkdownLink(self.file, '', subpath, alias);
+                if (embed) return embedLink;
+                return embedLink.slice(1);
             }
         },
         getPageLinkAlias(old) {
             return function (page: number): string {
                 const self = this as PDFViewerChild;
 
-                let format = plugin.settings.displayTextFormats[plugin.settings.defaultDisplayTextFormatIndex];
-
-                // read display text format from color palette
-                const paletteEl = self.toolbar?.toolbarLeftEl.querySelector<HTMLElement>('.pdf-plus-color-palette');
-                if (paletteEl) {
-                    const palette = ColorPalette.elInstanceMap.get(paletteEl);
-                    if (palette) {
-                        format = plugin.settings.displayTextFormats[palette.displayTextFormatIndex];
-                    }
-                }
-
-                if (format) {
-                    let alias = '';
-                    try {
-                        const text = toSingleLine(window.getSelection()?.toString() ?? '');
-                        alias = new PDFPlusTemplateProcessor(plugin, {
-                            file: this.file,
-                            page,
-                            pageCount: self.pdfViewer.pagesCount,
-                            pageLabel: self.getPage(page).pageLabel ?? ('' + page),
-                            text
-                        }).evalTemplate(format.template);
-                        return alias.trim();
-                    } catch (err) {
-                        console.error(err);
-                        new Notice(`${plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);
-                    }
+                if (self.file) {
+                    const alias = api.copyLink.getDisplayText(self, undefined, self.file, page, toSingleLine(activeWindow.getSelection()?.toString() ?? ''));
+                    if (alias) return alias;
                 }
 
                 return old.call(this, page);
@@ -253,7 +276,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 // 
                 // > Uncaught TypeError: Cannot read properties of undefined (reading 'str')
                 // 
-                // An annotation popup should not be rendered for a link annotation.
+                // An annotation popup should not be rendered when clicking a link annotation.
                 if (annotationElement.data.subtype === 'Link') {
                     return;
                 }
@@ -272,11 +295,11 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         api.highlight.writeFile.getAnnotationContents(self.file, page, id)
                             .then(async (markdown) => {
                                 if (!markdown) return;
+                                contentEl.addClass('markdown-rendered');
                                 if (!self.component) {
                                     self.component = new Component();
                                 }
                                 self.component.load();
-                                contentEl.addClass('markdown-rendered');
                                 await MarkdownRenderer.render(app, markdown, contentEl, '', self.component);
                                 hookInternalLinkMouseEventHandlers(app, contentEl, self.file?.path ?? '');
                             });
@@ -340,6 +363,12 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     }
                 }
 
+                if (self.activeAnnotationPopupEl && self.file) {
+                    const el = self.activeAnnotationPopupEl;
+                    const file = self.file;
+                    hookDragHandlerToAnnotationPopup(plugin, el, self, file, page, id);
+                }
+
                 return ret;
             }
         },
@@ -357,31 +386,16 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                     return await old.call(this, evt);
                 }
 
-                const self = this as PDFViewerChild;
-
-                // take from app.js
-                if (Platform.isDesktopApp) {
-                    const electron = evt.win.electron;
-                    if (electron && evt.isTrusted) {
-                        evt.stopPropagation();
-                        evt.stopImmediatePropagation();
-                        await new Promise((resolve) => {
-                            // wait up to 1 sec
-                            const timer = evt.win.setTimeout(() => resolve(null), 1000);
-                            electron!.ipcRenderer.once('context-menu', (n, r) => {
-                                evt.win.clearTimeout(timer);
-                                resolve(r);
-                            });
-                            electron!.ipcRenderer.send('context-menu');
-                        });
-                    }
+                onContextMenu(plugin, this, evt);
+            }
+        },
+        onThumbnailContextMenu(old) {
+            return function (evt: MouseEvent) {
+                if (!plugin.settings.thumbnailContextMenu) {
+                    return old.call(this, evt);
                 }
 
-                const menu = await PDFPlusContextMenu.fromMouseEvent(plugin, self, evt);
-
-                self.clearEphemeralUI();
-                menu.showAtMouseEvent(evt);
-                if (self.pdfViewer.isEmbed) evt.preventDefault();
+                onThumbnailContextMenu(this, evt);
             }
         }
     }));
