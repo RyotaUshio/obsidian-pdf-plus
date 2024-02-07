@@ -21,7 +21,7 @@ declare global {
 /** PDF-related */
 
 interface PDFView extends EditableFileView {
-    viewer: PDFViewer;
+    viewer: PDFViewerComponent;
     scope: Scope;
     onModify(): void;
     showSearch(): void;
@@ -40,10 +40,10 @@ type PDFViewExtraState = {
     zoom?: number;
 };
 
-interface PDFViewer extends Component {
+interface PDFViewerComponent extends Component {
     scope: Scope;
     child: PDFViewerChild | null;
-    next: any[];
+    next: ((child: PDFViewerChild) => any)[] | null;
     app: App;
     containerEl: HTMLElement;
     opts: any;
@@ -117,7 +117,7 @@ interface ObsidianViewer {
     subpath: string | null;
     isEmbed: boolean;
     eventBus: EventBus;
-    pdfViewer: RawPDFViewer | null;
+    pdfViewer: PDFViewer | null;
     pdfSidebar: PDFSidebar;
     pdfOutlineViewer: PDFOutlineViewer;
     pdfThumbnailViewer: PDFThumbnailViewer;
@@ -210,8 +210,7 @@ interface PDFToolbar {
     reset(): void;
 }
 
-/** Originally named "PDFViewer" */
-interface RawPDFViewer {
+interface PDFViewer {
     pdfDocument: PDFDocumentProxy;
     pagesPromise: Promise<any> | null;
     pagesCount: number;
@@ -332,7 +331,7 @@ interface PDFEmbed extends Embed {
     file: TFile;
     subpath?: string;
     containerEl: HTMLElement;
-    viewer: PDFViewer;
+    viewer: PDFViewerComponent;
 }
 
 interface AnnotationLayer {
@@ -791,6 +790,45 @@ declare module 'obsidian' {
         handleDrop: DropEventListener;
     }
 
+    interface CanvasView extends TextFileView {
+        canvas: Canvas;
+    }
+
+    interface Canvas {
+        nodes: Map<string, CanvasNode>;
+        createTextNode(config: {
+            pos: { x: number, y: number };
+            position?: 'center' | 'top' | 'right' | 'bottom' | 'left';
+            size?: unknown;
+            text?: string;
+            save?: boolean;
+            focus?: boolean;
+        }): CanvasTextNode;
+        posCenter(): { x: number, y: number };
+    }
+
+    type CanvasNode = CanvasFileNode | CanvasTextNode | CanvasLinkNode | CanvasGroupNode;
+
+    interface CanvasFileNode {
+        app: App;
+        file: TFile | null;
+        subpath: string
+        child: Embed;
+    }
+
+    interface CanvasTextNode {
+        app: App;
+        text: string;
+    }
+
+    interface CanvasLinkNode {
+        app: App;
+    }
+
+    interface CanvasGroupNode {
+        app: App;
+    }
+
     interface Vault {
         getConfig(name: string): any;
         getConfig(name: 'useMarkdownLinks'): boolean;
@@ -798,5 +836,6 @@ declare module 'obsidian' {
 
     interface Component {
         _loaded: boolean;
+        _children: Component[];
     }
 }

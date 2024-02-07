@@ -97,7 +97,7 @@ export class PDFPlusContextMenu extends Menu {
 
     static async fromMouseEvent(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {
         const menu = new PDFPlusContextMenu(plugin, child);
-        menu.addSections(['action', 'selection', 'write-file', 'annotation', 'modify-annotation', 'link']);
+        menu.addSections(['action', 'selection', 'selection-canvas', 'write-file', 'annotation', 'annotation-canvas', 'modify-annotation', 'link']);
         await menu.addItems(evt);
         return menu;
     }
@@ -105,6 +105,8 @@ export class PDFPlusContextMenu extends Menu {
     // TODO: divide into smaller methods
     async addItems(evt: MouseEvent) {
         const { child, plugin, api, app } = this;
+
+        const canvas = api.workspace.getActiveCanvasView()?.canvas;
 
         const selection = toSingleLine(evt.win.getSelection()?.toString() ?? '');
 
@@ -164,6 +166,22 @@ export class PDFPlusContextMenu extends Menu {
                         });
                 });
             }
+
+            // Createa a Canvas card
+            if (canvas && plugin.settings.canvasContextMenu) {
+                for (const { name, template } of formats) {
+                    this.addItem((item) => {
+                        return item
+                            .setSection('selection-canvas')
+                            .setTitle(`Create Canvas card from selection with format "${name}"`)
+                            .setIcon('lucide-sticky-note')
+                            .onClick(() => {
+                                api.copyLink.makeCanvasTextNodeFromSelection(false, canvas, template, colorName);
+                            });
+                    });
+                }
+            }
+
             // } else {
             if (plugin.settings.enalbeWriteHighlightToFile) {
                 for (const { name, template } of formats) {
@@ -243,6 +261,21 @@ export class PDFPlusContextMenu extends Menu {
                                 api.copyLink.copyLinkToAnnotation(child, false, template, pageNumber, id, false, true);
                             });
                     });
+                }
+
+                // Createa a Canvas card
+                if (canvas && plugin.settings.canvasContextMenu) {
+                    for (const { name, template } of formats) {
+                        this.addItem((item) => {
+                            return item
+                                .setSection('annotation-canvas')
+                                .setTitle(`Create Canvas card from annotation with format "${name}"`)
+                                .setIcon('lucide-sticky-note')
+                                .onClick(() => {
+                                    api.copyLink.makeCanvasTextNodeFromAnnotation(false, canvas, child, template, pageNumber, id);
+                                });
+                        });
+                    }
                 }
 
                 // edit & delete annotation //

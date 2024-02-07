@@ -1,4 +1,4 @@
-import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
+import { Canvas, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
@@ -15,10 +15,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         const pageEl = this.api.getPageElFromSelection(selection);
         if (!pageEl || pageEl.dataset.pageNumber === undefined) return null;
 
-        const viewerEl = pageEl.closest<HTMLElement>('.pdf-viewer');
-        if (!viewerEl) return null;
-
-        const child = this.plugin.pdfViwerChildren.get(viewerEl);
+        const child = this.api.getPDFViewerChildAssociatedWithNode(pageEl);
         const file = child?.file;
         if (!file) return null;
 
@@ -134,6 +131,47 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         );
     }
 
+    getSelectionLinkInfo() {
+        const palette = this.api.getColorPaletteAssociatedWithSelection();
+        if (!palette) return null;
+
+        const template = this.settings.copyCommands[palette.actionIndex].template;
+
+        // get the currently selected color name
+        const colorName = palette.selectedColorName ?? undefined;
+
+        const writeFile = palette.writeFile;
+
+        return { template, colorName, writeFile };
+    }
+
+    getAnnotationLinkInfo() {
+        const child = this.plugin.lastAnnotationPopupChild;
+        if (!child) return null;
+        const popupEl = child.activeAnnotationPopupEl;
+        if (!popupEl) return null;
+        const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon.pdf-plus-copy-annotation-link');
+        if (!copyButtonEl) return null;
+
+        const palette = this.api.getColorPaletteAssociatedWithNode(copyButtonEl);
+        let template;
+        if (palette) {
+            template = this.settings.copyCommands[palette.actionIndex].template;
+        } else {
+            // If this PDF viewer is embedded in a markdown file and the "Show color palette in PDF embeds as well" is set to false,
+            // there will be no color palette in the toolbar of this PDF viewer.
+            // In this case, use the default color palette action.
+            template = this.settings.copyCommands[this.settings.defaultColorPaletteActionIndex].template;
+        }
+
+        const annotInfo = this.api.getAnnotationInfoFromPopupEl(popupEl);
+        if (!annotInfo) return null;
+
+        const { page, id } = annotInfo;
+
+        return { child, copyButtonEl, template, page, id };
+    }
+
     copyLinkToSelection(checking: boolean, template: string, colorName?: string, autoPaste?: boolean): boolean {
         const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
 
@@ -234,6 +272,49 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                         this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, colorName?.toLowerCase() ?? '', autoPaste);
                     }, 300);
                 })
+        }
+
+        return true;
+    }
+
+    makeCanvasTextNodeFromSelection(checking: boolean, canvas: Canvas, template: string, colorName?: string): boolean {
+        const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
+
+        if (variables) {
+            const { child, file, subpath, page, text } = variables;
+
+            if (!text) return false;
+
+            if (!checking) {
+                const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text, colorName?.toLowerCase() ?? '');
+                canvas.createTextNode({
+                    pos: canvas.posCenter(),
+                    position: 'center',
+                    text: evaluated
+                });
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    makeCanvasTextNodeFromAnnotation(checking: boolean, canvas: Canvas, child: PDFViewerChild, template: string, page: number, id: string): boolean {
+        const file = child.file;
+        if (!file) return false;
+
+        if (!checking) {
+            const pageView = child.getPage(page);
+            child.getAnnotatedText(pageView, id)
+                .then((text) => {
+                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '');
+                    canvas.createTextNode({
+                        pos: canvas.posCenter(),
+                        position: 'center',
+                        text: evaluated
+                    });
+                });
         }
 
         return true;

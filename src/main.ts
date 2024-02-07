@@ -1,8 +1,9 @@
-import { EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 // import * as pdfAnnotate from 'annotpdf';
 
-import { patchPDF } from 'patchers/pdf';
+import { patchPDFView } from 'patchers/pdf-view';
+import { patchPDFInternals } from 'patchers/pdf';
 import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
@@ -11,10 +12,10 @@ import { PDFPlusAPI } from 'api';
 import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
-import { enhancePDFInternalLinks } from 'pdf-internal-links';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters } from 'utils';
-import { DestArray, PDFEmbed, PDFViewerChild } from 'typings';
+import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
+import { patchPDFInternalFromPDFEmbed } from 'pdf-embed';
 
 
 export default class PDFPlus extends Plugin {
@@ -31,10 +32,18 @@ export default class PDFPlus extends Plugin {
 	patchStatus = {
 		workspace: false,
 		pagePreview: false,
-		pdf: false,
+		pdfView: false,
+		pdfInternals: false,
 		pdfOutlineViewer: false,
 		backlink: false
 	};
+	classes: {
+		PDFView?: Constructor<PDFView>;
+		PDFViewerComponent?: Constructor<PDFViewerComponent>;
+		PDFViewerChild?: Constructor<PDFViewerChild>;
+		ObsidianViewer?: Constructor<ObsidianViewer>; // In fact, this is already accessible as `pdfjsViewer.ObsidianViewer`
+		PDFEmbed?: Constructor<PDFEmbed>;
+	} = {};
 	/** 
 	 * Tracks the markdown file that a link to a PDF text selection or an annotation was pasted into for the last time. 
 	 * Used for auto-pasting.
@@ -45,6 +54,8 @@ export default class PDFPlus extends Plugin {
 	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
 	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
 	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object. */
+	// In most use cases of this map, the goal is also achieved by using api.workspace.iteratePDFViewerChild.
+	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 
 	async onload() {
@@ -126,19 +137,8 @@ export default class PDFPlus extends Plugin {
 			patchWorkspace(this);
 			patchPagePreview(this);
 		});
-		this.tryPatchUntilSuccess(patchPDF, () => {
-			this.api.workspace.iteratePDFViews(async (view) => {
-				// reflect the patch to existing PDF views
-				// especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
-				view.viewer.unload();
-				view.viewer.load();
-				const file = view.file;
-				if (file) {
-					view.viewer.loadFile(file);
-				}
-			});
-		}, () => new Notice(`${this.manifest.name}: Some features for PDF embeds will not be activated until a PDF file is opened in a viewer.`, 7000)
-		);
+		this.tryPatchUntilSuccess(patchPDFView);
+		this.tryPatchUntilSuccess(patchPDFInternalFromPDFEmbed);
 		this.tryPatchUntilSuccess(patchBacklink, () => {
 			this.api.workspace.iterateBacklinkViews((view) => {
 				// reflect the patch to existing backlink views
@@ -150,7 +150,7 @@ export default class PDFPlus extends Plugin {
 		this.tryPatchUntilSuccess(patchClipboardManager);
 	}
 
-	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, onSuccess?: () => any, noticeOnFail?: () => Notice) {
+	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, onSuccess?: () => any, noticeOnFail?: () => Notice | undefined) {
 		this.app.workspace.onLayoutReady(() => {
 			const success = patcher(this);
 			if (success) onSuccess?.();
@@ -194,13 +194,37 @@ export default class PDFPlus extends Plugin {
 		this.app.embedRegistry.unregisterExtension('pdf');
 		this.app.embedRegistry.registerExtension('pdf', (ctx, file, subpath) => {
 			const embed = originalPDFEmbedCreator(ctx, file, subpath) as PDFEmbed;
+			// @ts-ignore
+			if (!this.classes.PDFEmbed) this.classes.PDFEmbed = embed.constructor;
+
+			if (!this.patchStatus.pdfInternals) {
+				patchPDFInternals(this, embed.viewer);
+			}
+
 			embed.viewer.then((child) => {
-				if (this.settings.noSidebarInEmbed) {
-					child.pdfViewer.pdfSidebar.open = function () {
-						this.close();
-					};
+				if (child.pdfViewer) {
+					this.api.registerPDFEvent('sidebarviewchanged', child.pdfViewer.eventBus, null, (data) => {
+						const { source: pdfSidebar } = data;
+						if (this.settings.noSidebarInEmbed) {
+							pdfSidebar.close();
+						}
+					});
 				}
 			});
+
+			// Double-lick PDF embeds to open links
+			this.registerDomEvent(embed.containerEl, 'dblclick', (evt) => {
+				if (this.settings.dblclickEmbedToOpenLink
+					&& evt.target instanceof HTMLElement
+					// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
+					&& evt.target.closest('.pdf-embed[src] > .pdf-container')) {
+					const linktext = file.path + subpath;
+					// we don't need sourcePath because linktext is the full path
+					this.app.workspace.openLinkText(linktext, '', Keymap.isModEvent(evt));
+					evt.preventDefault();
+				}
+			});
+
 			const params = subpathToParams(subpath);
 			if (params.has('color')) {
 				embed.containerEl.dataset.highlightColor = params.get('color')!.toLowerCase();
@@ -233,7 +257,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private registerGlobalDomEvents() {
-		enhancePDFInternalLinks(this);
+		// enhancePDFInternalLinks(this);
 
 		// Make PDF embeds with a subpath unscrollable
 		this.registerGlobalDomEvent('wheel', (evt) => {
@@ -243,20 +267,6 @@ export default class PDFPlus extends Plugin {
 				evt.preventDefault();
 			}
 		}, { passive: false });
-
-		// Double-lick PDF embeds to open links
-		this.registerGlobalDomEvent('dblclick', (evt) => {
-			if (this.settings.dblclickEmbedToOpenLink && evt.target instanceof HTMLElement) {
-				// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
-				const linktext = evt.target.closest('.pdf-embed[src] > .pdf-container')?.parentElement!.getAttribute('src');
-				if (linktext) {
-					const viewerEl = evt.target.closest<HTMLElement>('div.pdf-viewer');
-					const sourcePath = viewerEl ? (this.pdfViwerChildren.get(viewerEl)?.file?.path ?? '') : '';
-					this.app.workspace.openLinkText(linktext, sourcePath, Keymap.isModEvent(evt));
-					evt.preventDefault();
-				}
-			}
-		});
 	}
 
 	private registerEvents() {

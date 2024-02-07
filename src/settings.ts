@@ -118,6 +118,7 @@ export interface PDFPlusSettings {
 	useCallout: boolean;
 	calloutType: string;
 	calloutIcon: string;
+	canvasContextMenu: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -213,7 +214,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'preview',
 	paneTypeForFirstMDLeaf: 'right',
-	defaultColorPaletteActionIndex: 0,
+	defaultColorPaletteActionIndex: 4,
 	syncColorPaletteAction: true,
 	proxyMDProperty: 'PDF',
 	hoverPDFLinkToOpen: false,
@@ -258,6 +259,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	useCallout: true,
 	calloutType: 'PDF',
 	calloutIcon: 'highlighter',
+	canvasContextMenu: true
 };
 
 
@@ -988,7 +990,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.addHeading('Opening links to PDF files', 'lucide-book-open');
 		this.addToggleSetting('alwaysRecordHistory')
-			.setName('Always record navigation history when opening PDF links')
+			.setName('Always record to history when opening PDF links')
 			.setDesc('By default, the history is recorded only when you open a link to a different PDF file. If enabled, the history will be recorded even when you open a link to the same PDF file as the current one, and you will be able to go back and forth the history by clicking the left/right arrow buttons even within a single PDF file.');
 		this.addToggleSetting('singleTabForSinglePDF', () => this.redisplay())
 			.setName('Don\'t open a single PDF file in multiple tabs')
@@ -1066,7 +1068,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Selection/annotation embeds margin (px)');
 		}
 		this.addToggleSetting('noSidebarInEmbed')
-			.setName('Never show sidebar in PDF embeds');
+			.setName('Hide sidebar in PDF embeds by default');
 		this.addToggleSetting('noSpreadModeInEmbed')
 			.setName('Don\'t display PDF embeds or PDF popover previews in "two page" layout')
 			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.')
@@ -1326,7 +1328,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`)
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('recordHistoryOnOutlineClick')
-			.setName('Record navigation history when clicking an outline item')
+			.setName('Record to history when clicking an outline item')
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 
 
@@ -1362,7 +1364,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`)
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('recordHistoryOnThumbnailClick')
-			.setName('Record navigation history when clicking a thumbnail')
+			.setName('Record to history when clicking a thumbnail')
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 
 
@@ -1370,6 +1372,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('annotationPopupDrag')
 			.setName('Drag & drop annotation popup to insert a link to the annotation')
 			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
+
+
+		this.addHeading('Canvas', 'lucide-layout-dashboard')
+			.setDesc('Embed PDF files in Canvas and create a card from text selection or annotation using the "Create canvas card from selection or annotation" command.')
+		this.addToggleSetting('canvasContextMenu')
+			.setName('Show "Create Canvas card from ..." in the right-click menu in Canvas')
+			.setDesc('Turn this off if you don\'t want to clutter the right-click menu. You can always use the "Create canvas card from selection or annotation" command via a hotkey.');
 
 
 		this.addHeading('Integration with external apps (desktop-only)', 'lucide-share');

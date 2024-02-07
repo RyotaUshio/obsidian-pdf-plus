@@ -1,42 +1,33 @@
 import { HoverParent, HoverPopover, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFOutlineViewer, PDFView, PDFViewerChild } from 'typings';
+import { PDFOutlineViewer, PDFPageView, PDFViewerChild } from 'typings';
 
 
-export const enhancePDFInternalLinks = (plugin: PDFPlus) => {
-    const { app } = plugin;
+export const registerHistoryRecordOnPDFInternalLinkClick = (plugin: PDFPlus, pageView: PDFPageView) => {
+    const annotationLayerEl = pageView.annotationLayer?.div;
+    if (annotationLayerEl) {
+        plugin.registerDomEvent(annotationLayerEl, 'click', (evt) => {
+            if (evt.target instanceof HTMLElement
+                && evt.target.closest('section.linkAnnotation[data-internal-link]')) {
+                recordLeafHistory(plugin, evt.target);
+            }
+        });
+    }
+}
 
-    // record history when clicking an internal link IN a PDF file
-    plugin.registerGlobalDomEvent('click', (evt) => {
-        if (plugin.settings.recordPDFInternalLinkHistory
-            && evt.target instanceof HTMLElement
-            && evt.target.closest('section.linkAnnotation[data-internal-link]')) {
-            recordLeafHistory(plugin, evt.target);
-        }
-    });
-
-    // Hover+Mod to show popover preview of PDF internal links
-    plugin.registerGlobalDomEvent('mouseover', (event) => {
-        if (plugin.settings.enableHoverPDFInternalLink
-            && event.target instanceof HTMLElement
-            && event.target.matches('section.linkAnnotation[data-internal-link] > a[href^="#"]')) {
-            const targetEl = event.target as HTMLAnchorElement;
-            const destId = targetEl.getAttribute('href')!.slice(1);
-
-            app.workspace.iterateAllLeaves((leaf) => {
-                if (leaf.view.getViewType() === 'pdf' && leaf.containerEl.contains(targetEl)) {
-                    const view = leaf.view as PDFView;
-                    const file = view.file;
-                    if (!file) return;
-
-                    view.viewer.then(async (child) => {
-                        triggerHoverPDFInternalLink(plugin, child, file, destId, event, targetEl);
-                    });
+export const registerPDFInternalLinkHover = (plugin: PDFPlus, child: PDFViewerChild, pageView: PDFPageView) => {
+    pageView.annotationLayer?.div
+        .querySelectorAll<HTMLElement>('section.linkAnnotation[data-internal-link] > a[href^="#"]')
+        .forEach((targetEl) => {
+            plugin.registerDomEvent(targetEl, 'mouseover', (event) => {
+                const destId = targetEl.getAttribute('href')!.slice(1);
+                const file = child.file;
+                if (file) {
+                    triggerHoverPDFInternalLink(plugin, child, file, destId, event, targetEl);
                 }
             });
-        }
-    });
+        });
 }
 
 export const recordLeafHistory = (plugin: PDFPlus, dom: HTMLElement) => {

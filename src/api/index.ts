@@ -1,5 +1,5 @@
-import { App, Component, TFile, parseLinktext } from 'obsidian';
-import { PDFDocumentProxy } from 'pdfjs-dist';
+import { App, CanvasFileNode, CanvasNode, CanvasView, Component, EditableFileView, MarkdownView, TFile, TextFileView, View, parseLinktext } from 'obsidian';
+import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
@@ -7,7 +7,7 @@ import { copyLinkAPI } from './copy-link';
 import { HighlightAPI } from './highlights';
 import { WorkspaceAPI } from './workspace-api';
 import { encodeLinktext, parsePDFSubpath } from 'utils';
-import { AnnotationElement, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, RawPDFViewer } from 'typings';
+import { AnnotationElement, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed } from 'typings';
 import { PDFDocument } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
 
@@ -35,9 +35,18 @@ export class PDFPlusAPI {
     /** 
      * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
      */
-    registerPDFEvent(name: string, eventBus: EventBus, component: Component | null, cb: (data: any) => any) {
+    registerPDFEvent(name: 'outlineloaded', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => any): void;
+    registerPDFEvent(name: 'thumbnailrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFThumbnailView, pageNumber: number, pdfPage: PDFPageProxy }) => any): void;
+    registerPDFEvent(name: 'sidebarviewchanged', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFSidebar, view: number }) => any): void;
+    registerPDFEvent(name: 'textlayerrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number }) => any): void;
+    registerPDFEvent(name: 'annotationlayerrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number }) => any): void;
+    registerPDFEvent(name: 'pagesloaded', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFViewer, pagesCount: number }) => any): void;
+    registerPDFEvent(name: 'pagerendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number, cssTransform: boolean, timestamp: number, error: any }) => any): void;
+    registerPDFEvent(name: 'pagechanging', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFViewer, pageNumber: number, pageLabel: string | null, previous: number }) => any): void;
+
+    registerPDFEvent(name: string, eventBus: EventBus, component: Component | null, callback: (data: any) => any) {
         const listener = async (data: any) => {
-            await cb(data);
+            await callback(data);
             if (!component) eventBus.off(name, listener);
         };
         component?.register(() => eventBus.off(name, listener));
@@ -79,7 +88,7 @@ export class PDFPlusAPI {
         });
     }
 
-    applyPDFViewStateToViewer(pdfViewer: RawPDFViewer, state: PDFViewExtraState) {
+    applyPDFViewStateToViewer(pdfViewer: PDFViewer, state: PDFViewExtraState) {
         const applyState = () => {
             if (typeof state.left === 'number' && typeof state.top === 'number' && typeof state.zoom === 'number') {
                 pdfViewer.scrollPageIntoView({ pageNumber: state.page, destArray: [state.page, { name: 'XYZ' }, state.left, state.top, state.zoom] });
@@ -186,9 +195,14 @@ export class PDFPlusAPI {
     }
 
     getPDFViewerChildAssociatedWithNode(node: Node) {
-        for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
-            if (viewerEl.contains(node)) return child;
-        }
+        // for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
+        //     if (viewerEl.contains(node)) return child;
+        // }
+        const el = node.instanceOf(HTMLElement) ? node : node.parentElement;
+        if (!el) return null;
+        const viewerEl = el.closest<HTMLElement>('.pdf-viewer');
+        if (!viewerEl) return null;
+        return this.plugin.pdfViwerChildren.get(viewerEl);
     }
 
     /** 
@@ -379,26 +393,91 @@ export class PDFPlusAPI {
         return false;
     }
 
-    getPDFView(activeOnly: boolean = false): PDFView | undefined {
-        // I believe using `activeLeaf` is inevitable here.
-        const leaf = this.app.workspace.activeLeaf;
-        if (leaf?.view.getViewType() === 'pdf') return leaf.view as PDFView;
-        if (!activeOnly) return this.app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
+    getPDFView(activeOnly: boolean = false): PDFView | null {
+        const activeView = this.workspace.getActivePDFView();
+        if (activeView) return activeView;
+        if (!activeOnly) {
+            let pdfView: PDFView | undefined;
+            this.app.workspace.iterateAllLeaves((leaf) => {
+                if (this.isPDFView(leaf.view)) pdfView = leaf.view;
+            });
+            if (pdfView) return pdfView;
+        }
+        return null;
     }
 
-    getPDFViewer(activeOnly: boolean = false) {
-        return this.getPDFView(activeOnly)?.viewer;
+    getPDFEmbedInMarkdownView(view: MarkdownView): PDFEmbed | null {
+        // @ts-ignore
+        const children = view.currentMode._children as any[];
+        const pdfEmbed = children.find((component): component is PDFEmbed => this.isPDFEmbed(component));
+        return pdfEmbed ?? null;
+    }
+
+    getAllPDFEmbedInMarkdownView(view: MarkdownView): PDFEmbed[] {
+        // @ts-ignore
+        const children = view.currentMode._children as any[];
+        return children.filter((component): component is PDFEmbed => this.isPDFEmbed(component));
+    }
+
+    getPDFEmbedInCanvasView(view: CanvasView): PDFEmbed | null {
+        const canvasPDFFileNode = Array.from(view.canvas.nodes.values()).find((node): node is CanvasFileNode => this.isCanvasPDFNode(node));
+        return (canvasPDFFileNode?.child as PDFEmbed | undefined) ?? null;
+    }
+
+    getAllPDFEmbedInCanvasView(view: CanvasView): PDFEmbed[] {
+        return Array.from(view.canvas.nodes.values())
+            .filter((node): node is CanvasFileNode => this.isCanvasPDFNode(node))
+            .map(node => node.child as PDFEmbed);
+    }
+
+    getPDFEmbedInActiveView(): PDFEmbed | null {
+        const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (markdownView) {
+            const embed = this.getPDFEmbedInMarkdownView(markdownView);
+            if (embed) return embed;
+        }
+        const canvas = this.workspace.getActiveCanvasView();
+        if (canvas) {
+            const embed = this.getPDFEmbedInCanvasView(canvas);
+            if (embed) return embed;
+        }
+        return null;
+    }
+
+    getPDFEmbed(activeOnly: boolean = false): PDFEmbed | null {
+        const activeEmbed = this.getPDFEmbedInActiveView();
+        if (activeEmbed) return activeEmbed;
+        if (!activeOnly) {
+            let pdfEmbed: PDFEmbed | null = null;
+            this.app.workspace.iterateAllLeaves((leaf) => {
+                if (pdfEmbed) return;
+
+                const view = leaf.view;
+
+                if (view instanceof MarkdownView) {
+                    pdfEmbed = this.getPDFEmbedInMarkdownView(view);
+                } else if (this.isCanvasView(view)) {
+                    pdfEmbed = this.getPDFEmbedInCanvasView(view);
+                }
+            });
+            if (pdfEmbed) return pdfEmbed;
+        }
+        return null;
+    }
+
+    getPDFViewerComponent(activeOnly: boolean = false) {
+        return (this.getPDFView(activeOnly) ?? this.getPDFEmbed())?.viewer;
     }
 
     getPDFViewerChild(activeOnly: boolean = false) {
-        return this.getPDFViewer(activeOnly)?.child;
+        return this.getPDFViewerComponent(activeOnly)?.child;
     }
 
     getObsidianViewer(activeOnly: boolean = false) {
         return this.getPDFViewerChild(activeOnly)?.pdfViewer;
     }
 
-    getRawPDFViewer(activeOnly: boolean = false) {
+    getPDFViewer(activeOnly: boolean = false) {
         return this.getObsidianViewer(activeOnly)?.pdfViewer;
     }
 
@@ -407,7 +486,7 @@ export class PDFPlusAPI {
     }
 
     getPage(activeOnly: boolean = false) {
-        const viewer = this.getRawPDFViewer(activeOnly);
+        const viewer = this.getPDFViewer(activeOnly);
         if (viewer) {
             return viewer.getPageView(viewer.currentPageNumber - 1);
         }
@@ -415,7 +494,7 @@ export class PDFPlusAPI {
     }
 
     getPDFDocument(activeOnly: boolean = false) {
-        return this.getRawPDFViewer(activeOnly)?.pdfDocument;
+        return this.getPDFViewer(activeOnly)?.pdfDocument;
     }
 
     async getPdfLibDocument(activeOnly: boolean = false) {
@@ -426,7 +505,7 @@ export class PDFPlusAPI {
     }
 
     async getPdfLibPage(activeOnly: boolean = false) {
-        const pdfViewer = this.getRawPDFViewer(activeOnly);
+        const pdfViewer = this.getPDFViewer(activeOnly);
         if (!pdfViewer) return;
         const pageNumber = pdfViewer.currentPageNumber;
         if (pageNumber === undefined) return;
@@ -434,5 +513,38 @@ export class PDFPlusAPI {
         if (doc) {
             return doc.getPage(pageNumber - 1);
         }
+    }
+
+    isPDFView(view: View): view is PDFView {
+        if (this.plugin.classes.PDFView) {
+            return view instanceof this.plugin.classes.PDFView;
+        }
+        return view instanceof EditableFileView && view.getViewType() === 'pdf';
+    }
+
+    isPDFEmbed(embed: any): embed is PDFEmbed {
+        return 'loadFile' in embed
+            && 'file' in embed
+            && 'containerEl' in embed
+            && embed.file instanceof TFile
+            && embed.file.extension === 'pdf'
+            && embed.containerEl instanceof HTMLElement
+            && embed.containerEl?.matches('.pdf-embed') // additional class: "internal-embed" for embeds in markdown views, "canvas-node-content" for embeds in canvas views
+            && embed instanceof Component;
+    }
+
+    isCanvasView(view: View): view is CanvasView {
+        return view instanceof TextFileView && view.getViewType() === 'canvas' && 'canvas' in view
+    }
+
+    isCanvasPDFNode(node: CanvasNode): node is CanvasFileNode {
+        if ('file' in node
+            && node.file instanceof TFile
+            && node.file.extension === 'pdf'
+            && node.child instanceof Component
+            && this.isPDFEmbed(node.child)) {
+            return true;
+        }
+        return false;
     }
 }

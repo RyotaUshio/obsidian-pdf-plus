@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, TFile, ViewStateResult, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, TFile, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -9,63 +9,60 @@ import { onContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { hookInternalLinkMouseEventHandlers, toSingleLine } from 'utils';
-import { AnnotationElement, ObsidianViewer, PDFOutlineViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
-import { registerHistoryRecordOnThumbnailClick, registerOutlineHover, registerThumbnailHover } from 'pdf-internal-links';
+import { AnnotationElement, PDFOutlineViewer, PDFToolbar, PDFViewerComponent, PDFViewerChild } from 'typings';
+import { registerHistoryRecordOnPDFInternalLinkClick, registerHistoryRecordOnThumbnailClick, registerOutlineHover, registerPDFInternalLinkHover, registerThumbnailHover } from 'pdf-internal-links';
 
 
-export const patchPDF = (plugin: PDFPlus): boolean => {
-    const app = plugin.app;
-    const api = plugin.api;
+export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
+    if (plugin.patchStatus.pdfInternals) return true;
 
-    const pdfView = app.workspace.getLeavesOfType('pdf')[0]?.view as PDFView | undefined;
-    if (!pdfView) return false;
-    const child = pdfView.viewer.child;
-    if (!child) return false;
-    const viewer = child.pdfViewer;
-    if (!viewer) return false;
-    const toolbar = child.toolbar;
-    if (!toolbar) return false;
+    return new Promise<boolean>((resolve) => {
+        pdfViewerComponent.then((child) => {
+            // check patch status once more because some time has passed
+            if (plugin.patchStatus.pdfInternals) return resolve(true);
 
-    plugin.register(around(pdfView.constructor.prototype, {
-        getState(old) {
-            return function () {
-                const ret = old.call(this);
-                const self = this as PDFView;
-                const child = self.viewer.child;
-                const pdfViewer = child?.pdfViewer?.pdfViewer;
-                if (pdfViewer) {
-                    ret.page = pdfViewer.currentPageNumber;
-                    ret.left = pdfViewer._location?.left;
-                    ret.top = pdfViewer._location?.top;
-                    ret.zoom = pdfViewer.currentScale;
-                }
-                return ret;
-            }
-        },
-        setState(old) {
-            return function (state: any, result: ViewStateResult): Promise<void> {
-                if (plugin.settings.alwaysRecordHistory) {
-                    result.history = true;
-                }
-                return old.call(this, state, result).then(() => {
-                    const self = this as PDFView;
-                    const child = self.viewer.child;
-                    const pdfViewer = child?.pdfViewer?.pdfViewer;
-                    if (typeof state.page === 'number') {
-                        if (pdfViewer) {
-                            api.applyPDFViewStateToViewer(pdfViewer, state);
-                        }
-                    }
-                });
-            }
-        }
-    }));
+            patchPDFViewerComponent(plugin, pdfViewerComponent);
 
-    plugin.register(around(pdfView.viewer.constructor.prototype, {
+            // This check should be unnecessary, but just in case
+            const toolbar = child.toolbar;
+            if (!toolbar) return resolve(false);
+
+            patchPDFViewerChild(plugin, child);
+            patchPDFToolbar(plugin, toolbar);
+
+            plugin.patchStatus.pdfInternals = true;
+
+            // @ts-ignore
+            plugin.classes.PDFViewerComponent = pdfViewerComponent.constructor;
+            // @ts-ignore
+            plugin.classes.PDFViewerChild = child.constructor;
+            // @ts-ignore
+            plugin.classes.ObsidianViewer = child.pdfViewer?.constructor; // ? is unnecessary but just in case
+
+            onPDFInternalsPatchSuccess(plugin);
+
+            return resolve(true);
+        });
+    });
+}
+
+function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
+    const { api } = plugin;
+    api.workspace.iteratePDFViewerComponents(async (viewer, file) => {
+        // reflect the patch to existing PDF views
+        // especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
+        viewer.unload();
+        viewer.load();
+        if (file) viewer.loadFile(file);
+    });
+}
+
+const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent) => {
+    plugin.register(around(pdfViewerComponent.constructor.prototype, {
         onload(old) {
             return function () {
                 const ret = old.call(this);
-                const self = this as PDFViewer;
+                const self = this as PDFViewerComponent;
                 self.then((child) => {
                     if (!self.backlinkHighlighter) {
                         self.backlinkHighlighter = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
@@ -80,7 +77,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         loadFile(old) {
             return async function (file: TFile, subpath?: string) {
                 const ret = await old.call(this, file, subpath);
-                const self = this as PDFViewer;
+                const self = this as PDFViewerComponent;
                 self.then((child) => {
                     if (!self.backlinkHighlighter) {
                         self.backlinkHighlighter = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
@@ -97,6 +94,23 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             }
         }
     }));
+}
+
+const patchPDFToolbar = (plugin: PDFPlus, toolbar: PDFToolbar) => {
+    plugin.register(around(toolbar.constructor.prototype, {
+        reset(old) {
+            return function () {
+                const self = this as PDFToolbar;
+                // without setTimeout, the colorPaletteInEmbedToolbar option doesn't work for newly opened notes with PDF embeds
+                setTimeout(() => plugin.domManager.addChild(new ColorPalette(plugin, self.toolbarLeftEl)));
+                old.call(this);
+            }
+        }
+    }));
+}
+
+const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
+    const { app, api } = plugin;
 
     plugin.register(around(child.constructor.prototype, {
         load(old) {
@@ -104,6 +118,24 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 await old.call(this, ...args);
                 const self = this as PDFViewerChild;
 
+                plugin.pdfViwerChildren.set(self.containerEl.find('.pdf-viewer'), self);
+
+                if (!self.component) {
+                    self.component = new Component();
+                }
+                self.component.load();
+
+                api.registerPDFEvent('annotationlayerrendered', self.pdfViewer.eventBus, self.component!, (data) => {
+                    const { source: pageView } = data;
+
+                    if (plugin.settings.recordPDFInternalLinkHistory && !child.opts.isEmbed) {
+                        registerHistoryRecordOnPDFInternalLinkClick(plugin, pageView);
+                    }
+
+                    if (plugin.settings.enableHoverPDFInternalLink) {
+                        registerPDFInternalLinkHover(plugin, self, pageView);
+                    }
+                });
 
                 api.registerPDFEvent(
                     'outlineloaded', self.pdfViewer.eventBus, null,
@@ -143,6 +175,12 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                         registerThumbnailHover(plugin, self, file);
                     }
                 });
+
+                if (plugin.settings.noSpreadModeInEmbed && (self.opts.isEmbed || self.pdfViewer.isEmbed)) {
+                    api.registerPDFEvent('pagerendered', self.pdfViewer.eventBus, null, () => {
+                        self.pdfViewer.eventBus.dispatch('switchspreadmode', { mode: 0 });
+                    });
+                }
             }
         },
         unload(old) {
@@ -150,14 +188,6 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const self = this as PDFViewerChild;
                 self.component?.unload();
                 return old.call(this);
-            }
-        },
-        onResize(old) {
-            return function () {
-                const self = this as PDFViewerChild;
-                const ret = old.call(this);
-                plugin.pdfViwerChildren.set(self.containerEl.find('.pdf-viewer'), self);
-                return ret;
             }
         },
         getMarkdownLink(old) {
@@ -387,8 +417,8 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
         },
         destroyAnnotationPopup(old) {
             return function () {
-                const self = this as PDFViewerChild;
-                self.component?.unload();
+                // const self = this as PDFViewerChild;
+                // self.component?.unload();
                 plugin.lastAnnotationPopupChild = null;
                 return old.call(this);
             }
@@ -412,36 +442,4 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
             }
         }
     }));
-
-    plugin.register(around(Object.getPrototypeOf(viewer.constructor.prototype), {
-        initialize(old) {
-            return function () {
-                const self = this as ObsidianViewer;
-                const ret = old.call(this);
-
-                if (plugin.settings.noSpreadModeInEmbed && self.isEmbed) {
-                    api.registerPDFEvent('pagerendered', self.eventBus, null, () => {
-                        self.eventBus.dispatch('switchspreadmode', { mode: 0 });
-                    });
-                }
-
-                return ret;
-            }
-        }
-    }));
-
-    plugin.register(around(toolbar.constructor.prototype, {
-        reset(old) {
-            return function () {
-                const self = this as PDFToolbar;
-                // without setTimeout, the colorPaletteInEmbedToolbar option doesn't work for newly opened notes with PDF embeds
-                setTimeout(() => plugin.domManager.addChild(new ColorPalette(plugin, self.toolbarLeftEl)));
-                old.call(this);
-            }
-        }
-    }));
-
-    plugin.patchStatus.pdf = true;
-
-    return true;
 }

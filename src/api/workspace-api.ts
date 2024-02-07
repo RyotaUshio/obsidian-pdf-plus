@@ -1,7 +1,7 @@
 import { EditableFileView, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
-import { BacklinkView, PDFView } from 'typings';
+import { BacklinkView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 
 
 export type FineGrainedSplitDirection = 'right' | 'left' | 'down' | 'up';
@@ -16,6 +16,45 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
 
     iterateBacklinkViews(cb: (view: BacklinkView) => any) {
         this.app.workspace.getLeavesOfType('backlink').forEach((leaf) => cb(leaf.view as BacklinkView));
+    }
+
+    iteratePDFViewerComponents(callback: (pdfViewerComponent: PDFViewerComponent, file: TFile | null) => any) {
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            const view = leaf.view;
+
+            if (this.api.isPDFView(view)) {
+                callback(view.viewer, view.file);
+            } else if (view instanceof MarkdownView) {
+                this.api.getAllPDFEmbedInMarkdownView(view)
+                    .forEach((embed) => callback(embed.viewer, embed.file));
+            } else if (this.api.isCanvasView(view)) {
+                this.api.getAllPDFEmbedInCanvasView(view)
+                    .forEach((embed) => callback(embed.viewer, embed.file));
+            }
+        });
+    }
+
+    iteratePDFViewerChild(callback: (child: PDFViewerChild) => any) {
+        this.iteratePDFViewerComponents((component) => {
+            component.then((child) => callback(child));
+        });
+    }
+
+    getActivePDFView(): PDFView | null {
+        if (this.plugin.classes.PDFView) {
+            return this.app.workspace.getActiveViewOfType(this.plugin.classes.PDFView);
+        }
+        // I believe using `activeLeaf` is inevitable here.
+        const view = this.app.workspace.activeLeaf?.view;
+        if (view && this.api.isPDFView(view)) return view;
+        return null;
+    }
+
+    getActiveCanvasView() {
+        // I believe using `activeLeaf` is inevitable here.
+        const view = this.app.workspace.activeLeaf?.view;
+        if (view && this.api.isCanvasView(view)) return view;
+        return null;
     }
 
     getExistingPDFLeafOfFile(file: TFile): WorkspaceLeaf | undefined {
@@ -45,7 +84,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
         // 2. If not, create a new leaf under the same parent split as the first existing markdown leaf
         let markdownLeaf: WorkspaceLeaf | null = null;
         let markdownLeafParent: WorkspaceSplit | null = null;
-        this.app.workspace.iterateRootLeaves((leaf) => {
+        this.app.workspace.iterateAllLeaves((leaf) => {
             if (markdownLeaf) return;
 
             let createInSameParent = true;

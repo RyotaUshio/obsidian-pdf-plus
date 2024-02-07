@@ -1,7 +1,7 @@
 {
     "id": "pdf-plus",
     "name": "PDF++",
-    "version": "0.29.2",
+    "version": "0.30.0",
     "minAppVersion": "1.4.16",
     "description": "The most Obsidian-native PDF annotation tool ever.",
     "author": "Ryota Ushio",
@@ -9,7 +9,7 @@
     "fundingUrl": {
         "GitHub Sponsor": "https://github.com/sponsors/RyotaUshio",
         "Buy Me a Coffee": "https://www.buymeacoffee.com/ryotaushio",
-		"Ko-fi": "https://ko-fi.com/ryotaushio"
+        "Ko-fi": "https://ko-fi.com/ryotaushio"
     },
     "isDesktopOnly": false
 }

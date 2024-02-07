@@ -27,6 +27,10 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
                 name: 'Copy & auto-paste link to selection or annotation',
                 checkCallback: (checking) => this.copyLink(checking, true)
             }, {
+                id: 'create-canvas-card-from-selection',
+                name: 'Create canvas card from selection or annotation',
+                checkCallback: (checking) => this.createCanvasCard(checking)
+            }, {
                 id: 'copy-link-to-page-view',
                 name: 'Copy link to current page view',
                 checkCallback: (checking) => this.copyLinkToPageView(checking)
@@ -129,38 +133,27 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
         return true;
     }
 
-    copyLinkToSelection(checking: boolean, autoPaste: boolean = false) {
-        const palette = this.api.getColorPaletteAssociatedWithSelection();
-        if (!palette) return false;
-        const template = this.settings.copyCommands[palette.actionIndex].template;
+    createCanvasCard(checking: boolean) {
+        if (!this.createCanvasCardFromAnnotation(checking)) {
+            return this.createCanvasCardFromSelection(checking);
+        }
+        return true;
+    }
 
-        // get the currently selected color name
-        const colorName = palette.selectedColorName ?? undefined;
+    copyLinkToSelection(checking: boolean, autoPaste: boolean = false) {
+        const info = this.api.copyLink.getSelectionLinkInfo();
+        if (!info) return false;
+
+        const { template, colorName } = info;
 
         return this.api.copyLink.copyLinkToSelection(checking, template, colorName, autoPaste);
     }
 
     copyLinkToAnnotation(checking: boolean, autoPaste: boolean = false) {
-        const child = this.plugin.lastAnnotationPopupChild;
-        if (!child) return false;
-        const popupEl = child.activeAnnotationPopupEl;
-        if (!popupEl) return false;
-        const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon.pdf-plus-copy-annotation-link');
-        if (!copyButtonEl) return false;
+        const info = this.api.copyLink.getAnnotationLinkInfo();
+        if (!info) return false;
 
-        const palette = this.api.getColorPaletteAssociatedWithNode(copyButtonEl);
-        let template;
-        if (palette) {
-            template = this.settings.copyCommands[palette.actionIndex].template;
-        } else {
-            // If this PDF viewer is embedded in a markdown file and the "Show color palette in PDF embeds as well" is set to false,
-            // there will be no color palette in the toolbar of this PDF viewer.
-            // In this case, use the default color palette action.
-            template = this.settings.copyCommands[this.settings.defaultColorPaletteActionIndex].template;
-        }
-        const annotInfo = this.api.getAnnotationInfoFromPopupEl(popupEl);
-        if (!annotInfo) return false;
-        const { page, id } = annotInfo;
+        const { child, copyButtonEl, template, page, id } = info;
 
         const result = this.api.copyLink.copyLinkToAnnotation(child, checking, template, page, id, autoPaste);
 
@@ -182,6 +175,32 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
         const colorName = palette.selectedColorName ?? undefined;
 
         return this.api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
+    }
+
+    createCanvasCardFromSelection(checking: boolean) {
+        const canvas = this.api.workspace.getActiveCanvasView()?.canvas;
+        if (!canvas) return false;
+
+        const info = this.api.copyLink.getSelectionLinkInfo();
+        if (!info) return false;
+
+        const { template, colorName } = info;
+
+        return this.api.copyLink.makeCanvasTextNodeFromSelection(checking, canvas, template, colorName);
+    }
+
+    createCanvasCardFromAnnotation(checking: boolean) {
+        const canvas = this.api.workspace.getActiveCanvasView()?.canvas;
+        if (!canvas) return false;
+
+        const info = this.api.copyLink.getAnnotationLinkInfo();
+        if (!info) return false;
+
+        const { child, template, page, id } = info;
+
+        const result = this.api.copyLink.makeCanvasTextNodeFromAnnotation(checking, canvas, child, template, page, id);
+
+        return result;
     }
 
     copyLinkToPageView(checking: boolean) {
@@ -271,7 +290,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     setScaleValue(checking: boolean, scaleValue: 'page-width' | 'page-height') {
-        const pdfViewer = this.api.getRawPDFViewer(true);
+        const pdfViewer = this.api.getPDFViewer(true);
         if (!pdfViewer) return false;
         if (!checking) pdfViewer.currentScaleValue = scaleValue;
         return true;
