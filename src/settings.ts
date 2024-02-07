@@ -118,7 +118,10 @@ export interface PDFPlusSettings {
 	useCallout: boolean;
 	calloutType: string;
 	calloutIcon: string;
-	canvasContextMenu: boolean;
+	// canvasContextMenu: boolean;
+	highlightBacklinksInEmbed: boolean;
+	highlightBacklinksInHoverPopover: boolean;
+	highlightBacklinksInCanvas: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -259,7 +262,10 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	useCallout: true,
 	calloutType: 'PDF',
 	calloutIcon: 'highlighter',
-	canvasContextMenu: true
+	// canvasContextMenu: true
+	highlightBacklinksInEmbed: false,
+	highlightBacklinksInHoverPopover: false,
+	highlightBacklinksInCanvas: true,
 };
 
 
@@ -796,6 +802,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('dontActivateAfterOpenMD')
 			.setName('Don\'t move focus to markdown view after opening a backlink')
 			.setDesc('This option will be ignored when you open a link in a tab in the same split as the current tab.')
+		this.addDesc('Try turning off the following options if you experience performance issues.');
+		this.addToggleSetting('highlightBacklinksInEmbed')
+			.setName('Highlight backlinks in PDF embeds')
+		this.addToggleSetting('highlightBacklinksInCanvas')
+			.setName('Highlight backlinks in Canvas')
+		this.addToggleSetting('highlightBacklinksInHoverPopover')
+			.setName('Highlight backlinks in hover popover previews')
+
 
 		this.addSetting('colors')
 			.setName('Highlight colors')
@@ -1374,11 +1388,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
 
 
-		this.addHeading('Canvas', 'lucide-layout-dashboard')
-			.setDesc('Embed PDF files in Canvas and create a card from text selection or annotation using the "Create canvas card from selection or annotation" command.')
-		this.addToggleSetting('canvasContextMenu')
-			.setName('Show "Create Canvas card from ..." in the right-click menu in Canvas')
-			.setDesc('Turn this off if you don\'t want to clutter the right-click menu. You can always use the "Create canvas card from selection or annotation" command via a hotkey.');
+		// this.addHeading('Canvas', 'lucide-layout-dashboard')
+		// 	.setDesc('Embed PDF files in Canvas and create a card from text selection or annotation using the "Create canvas card from selection or annotation" command.')
+		// this.addToggleSetting('canvasContextMenu')
+		// 	.setName('Show "Create Canvas card from ..." in the right-click menu in Canvas')
+		// 	.setDesc('Turn this off if you don\'t want to clutter the right-click menu. You can always use the "Create canvas card from selection or annotation" command via a hotkey.');
 
 
 		this.addHeading('Integration with external apps (desktop-only)', 'lucide-share');

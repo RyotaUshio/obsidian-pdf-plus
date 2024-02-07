@@ -26,11 +26,13 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
                 id: 'copy-auto-paste-link-to-selection',
                 name: 'Copy & auto-paste link to selection or annotation',
                 checkCallback: (checking) => this.copyLink(checking, true)
-            }, {
-                id: 'create-canvas-card-from-selection',
-                name: 'Create canvas card from selection or annotation',
-                checkCallback: (checking) => this.createCanvasCard(checking)
-            }, {
+            },
+            // {
+            //     id: 'create-canvas-card-from-selection',
+            //     name: 'Create canvas card from selection or annotation',
+            //     checkCallback: (checking) => this.createCanvasCard(checking)
+            // },
+            {
                 id: 'copy-link-to-page-view',
                 name: 'Copy link to current page view',
                 checkCallback: (checking) => this.copyLinkToPageView(checking)

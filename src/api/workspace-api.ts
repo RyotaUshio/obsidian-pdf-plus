@@ -1,4 +1,4 @@
-import { EditableFileView, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { CanvasView, EditableFileView, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
 import { BacklinkView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
@@ -10,12 +10,22 @@ export type ExtendedPaneType = Exclude<PaneType, 'split'> | '' | FineGrainedSpli
 
 export class WorkspaceAPI extends PDFPlusAPISubmodule {
 
-    iteratePDFViews(cb: (view: PDFView) => any) {
-        this.app.workspace.getLeavesOfType('pdf').forEach((leaf) => cb(leaf.view as PDFView));
+    iteratePDFViews(callback: (view: PDFView) => any) {
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            const view = leaf.view;
+            if (this.api.isPDFView(view)) callback(view);
+        });
     }
 
     iterateBacklinkViews(cb: (view: BacklinkView) => any) {
         this.app.workspace.getLeavesOfType('backlink').forEach((leaf) => cb(leaf.view as BacklinkView));
+    }
+
+    iterateCanvasViews(callback: (view: CanvasView) => any) {
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            const view = leaf.view;
+            if (this.api.isCanvasView(view)) callback(view);
+        });
     }
 
     iteratePDFViewerComponents(callback: (pdfViewerComponent: PDFViewerComponent, file: TFile | null) => any) {

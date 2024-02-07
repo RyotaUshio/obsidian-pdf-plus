@@ -1,4 +1,4 @@
-import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from 'obsidian';
+import { App, Canvas, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusAPI } from 'api';
@@ -52,12 +52,37 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         plugin.addChild(this); // clear highlight on plugin unload
     }
 
+    isNonEmbed(): boolean {
+        return !this.viewer.isEmbed && !this.isHoverEditor();
+    }
+
+    /** This is an embed in a markdown file (not a hover popover or a canvas card). */
+    isEmbed(): boolean {
+        return this.viewer.isEmbed && !this.isCanvas() && !this.isHoverPopover();
+    }
+
     isCanvas(): boolean {
         return !!(this.viewer.dom?.containerEl.hasClass('canvas-node-content'));
     }
 
+    isHoverPopover(): boolean {
+        return !!(this.viewer.dom?.containerEl.closest('.hover-popover'));
+    }
+ 
+    isHoverEditor(): boolean {
+        // Hover Editor makes this.viewer.isEmbed false because it opens the file
+        // as a stand alone PDF view.
+        return !!(this.viewer.dom?.containerEl.closest('.hover-editor'));
+    }
+
     shouldHighlightBacklinks(): boolean {
-        return !this.viewer.isEmbed || this.isCanvas();
+        return this.plugin.settings.highlightBacklinks
+            && (
+                this.isNonEmbed() 
+                || (this.plugin.settings.highlightBacklinksInCanvas && this.isCanvas())
+                || (this.plugin.settings.highlightBacklinksInHoverPopover && this.isHoverPopover())
+                || (this.plugin.settings.highlightBacklinksInEmbed && this.isEmbed())
+            );
     }
 
     onload() {
@@ -139,7 +164,6 @@ export class BacklinkHighlighter extends Component implements HoverParent {
     _highlightBacklinks() {
         if (!this.file) return;
         if (!this.shouldHighlightBacklinks()) return;
-        if (!this.plugin.settings.highlightBacklinks) return;
 
         this.setBacklinks(this.file);
 

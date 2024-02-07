@@ -1,4 +1,5 @@
 import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, ReferenceCache, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events } from 'obsidian';
+import { CanvasData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_storage';
@@ -695,7 +696,18 @@ declare module 'obsidian' {
         setting: AppSetting;
         plugins: {
             manifests: Record<string, PluginManifest>;
-            plugins: Record<string, Plugin>;
+            plugins: {
+                dataview?: Plugin & {
+                    api: any;
+                };
+                quickadd?: Plugin & {
+                    api: any;
+                };
+                ['obsidian-hover-editor']?: Plugin & {
+                    activePopovers: { containerEl: HTMLElement }[]
+                };
+                [id: string]: Plugin | undefined;
+            }
             enabledPlugins: Set<string>;
         };
         internalPlugins: {
@@ -805,6 +817,7 @@ declare module 'obsidian' {
             focus?: boolean;
         }): CanvasTextNode;
         posCenter(): { x: number, y: number };
+        getData(): CanvasData;
     }
 
     type CanvasNode = CanvasFileNode | CanvasTextNode | CanvasLinkNode | CanvasGroupNode;
