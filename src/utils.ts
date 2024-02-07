@@ -1,4 +1,5 @@
 import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, HexString, RGB, Keymap, App } from 'obsidian';
+import { ObsidianViewer } from 'typings';
 
 
 export function isHexString(color: string) {
@@ -146,6 +147,30 @@ export function hookInternalLinkMouseEventHandlers(app: App, containerEl: HTMLEl
 
 export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
     return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
+}
+
+/** EmbedLike includes embeds, canvas cards, Obsidian's native hover popovers, and Hover Editor. */
+export function isNonEmbedLike(pdfViewer: ObsidianViewer): boolean {
+    return !pdfViewer.isEmbed && !isHoverEditor(pdfViewer);
+}
+
+/** This is a PDF embed in a markdown file (not a hover popover or a canvas card). */
+export function isEmbed(pdfViewer: ObsidianViewer): boolean {
+    return pdfViewer.isEmbed && !this.isCanvas() && !isHoverPopover(pdfViewer);
+}
+
+export function isCanvas(pdfViewer: ObsidianViewer): boolean {
+    return !!(pdfViewer.dom?.containerEl.hasClass('canvas-node-content'));
+}
+
+export function isHoverPopover(pdfViewer: ObsidianViewer): boolean {
+    return !!(pdfViewer.dom?.containerEl.closest('.hover-popover'));
+}
+
+export function isHoverEditor(pdfViewer: ObsidianViewer): boolean {
+    // Hover Editor makes this.viewer.isEmbed false because it opens the file
+    // as a stand alone PDF view.
+    return !!(pdfViewer.dom?.containerEl.closest('.hover-editor'));
 }
 
 function getCJKRegexp() {

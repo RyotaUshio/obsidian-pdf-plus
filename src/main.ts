@@ -13,7 +13,7 @@ import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { subpathToParams, OverloadParameters } from 'utils';
+import { subpathToParams, OverloadParameters, isNonEmbedLike } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 import { patchPDFInternalFromPDFEmbed } from 'pdf-embed';
 
@@ -200,17 +200,6 @@ export default class PDFPlus extends Plugin {
 			if (!this.patchStatus.pdfInternals) {
 				patchPDFInternals(this, embed.viewer);
 			}
-
-			embed.viewer.then((child) => {
-				if (child.pdfViewer) {
-					this.api.registerPDFEvent('sidebarviewchanged', child.pdfViewer.eventBus, null, (data) => {
-						const { source: pdfSidebar } = data;
-						if (this.settings.noSidebarInEmbed) {
-							pdfSidebar.close();
-						}
-					});
-				}
-			});
 
 			// Double-lick PDF embeds to open links
 			this.registerDomEvent(embed.containerEl, 'dblclick', (evt) => {

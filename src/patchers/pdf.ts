@@ -8,7 +8,7 @@ import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-mod
 import { onContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
-import { hookInternalLinkMouseEventHandlers, toSingleLine } from 'utils';
+import { hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFToolbar, PDFViewerComponent, PDFViewerChild } from 'typings';
 import { registerHistoryRecordOnPDFInternalLinkClick, registerHistoryRecordOnThumbnailClick, registerOutlineHover, registerPDFInternalLinkHover, registerThumbnailHover } from 'pdf-internal-links';
 
@@ -176,11 +176,18 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     }
                 });
 
-                if (plugin.settings.noSpreadModeInEmbed && (self.opts.isEmbed || self.pdfViewer.isEmbed)) {
+                if (plugin.settings.noSpreadModeInEmbed && !isNonEmbedLike(self.pdfViewer)) {
                     api.registerPDFEvent('pagerendered', self.pdfViewer.eventBus, null, () => {
                         self.pdfViewer.eventBus.dispatch('switchspreadmode', { mode: 0 });
                     });
                 }
+
+                api.registerPDFEvent('sidebarviewchanged', self.pdfViewer.eventBus, null, (data) => {
+                    const { source: pdfSidebar } = data;
+                    if (plugin.settings.noSidebarInEmbed && !isNonEmbedLike(self.pdfViewer)) {
+                        pdfSidebar.close();
+                    }
+                });
             }
         },
         unload(old) {

@@ -1082,7 +1082,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Selection/annotation embeds margin (px)');
 		}
 		this.addToggleSetting('noSidebarInEmbed')
-			.setName('Hide sidebar in PDF embeds by default');
+			.setName('Hide sidebar in PDF embeds embeds or PDF popover previews by default');
 		this.addToggleSetting('noSpreadModeInEmbed')
 			.setName('Don\'t display PDF embeds or PDF popover previews in "two page" layout')
 			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.')
