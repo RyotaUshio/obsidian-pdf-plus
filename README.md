@@ -97,6 +97,10 @@ Annotate PDF files with highlights just by linking to text selection. You can ea
   - Popover preview of backlink
 - **Double click a piece of highlighted text to open the corresponding backlink**
 
+#### PDF++ callouts
+
+Create [callouts](https://help.obsidian.md/Editing+and+formatting/Callouts) with the same color as the highlight color without any CSS snippet scripting.
+
 #### [Backlink pane](https://help.obsidian.md/Plugins/Backlinks) improvements
 
 These features make Obsidian a unique PDF annotation tool that tightly connects PDFs to your ideas stored as markdown files.

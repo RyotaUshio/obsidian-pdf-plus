@@ -7,10 +7,11 @@
 import { TFile } from 'obsidian';
 
 import PDFPlus from 'main';
+import { toSingleLine } from 'utils';
 import { PDFOutlineViewer, PDFViewerChild } from 'typings';
 
 
-export const hookDragHandlerToOutline = async (plugin: PDFPlus, pdfOutlineViewer: PDFOutlineViewer, child: PDFViewerChild, file: TFile) => {
+export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDFOutlineViewer, child: PDFViewerChild, file: TFile) => {
     const { app, api } = plugin;
     const promises: Promise<void>[] = [];
 
@@ -18,13 +19,18 @@ export const hookDragHandlerToOutline = async (plugin: PDFPlus, pdfOutlineViewer
         promises.push((async () => {
             const textGenerator = await api.copyLink.getTextToCopyForOutlineItemDynamic(child, file, item);
 
+            const itemTitle = toSingleLine(item.item.title);
+            const title = itemTitle
+                ? `${itemTitle.length <= 40 ? itemTitle : itemTitle.slice(0, 39).trim() + '…'}`
+                : 'PDF section';
+
             app.dragManager.handleDrag(item.selfEl, (evt) => {
                 app.dragManager.updateSource([item.selfEl], 'is-being-dragged');
                 return {
                     source: 'pdf-plus',
-                    type: 'offset-link',
-                    icon: 'lucide-link',
-                    title: 'Link to PDF heading',
+                    type: 'pdf-offset',
+                    icon: 'lucide-heading',
+                    title,
                     getText: textGenerator
                 }
             });
@@ -34,7 +40,7 @@ export const hookDragHandlerToOutline = async (plugin: PDFPlus, pdfOutlineViewer
     await Promise.all(promises);
 }
 
-export const hookDragHandlerToThumbnail = (plugin: PDFPlus, child: PDFViewerChild, file: TFile) => {
+export const registerThumbnailDrag = (plugin: PDFPlus, child: PDFViewerChild, file: TFile) => {
     const { app, api } = plugin;
 
     child.pdfViewer.pdfThumbnailViewer.container
@@ -45,15 +51,15 @@ export const hookDragHandlerToThumbnail = (plugin: PDFPlus, child: PDFViewerChil
             const pageLabel = pageView.pageLabel ?? ('' + pageNumber);
             const pageCount = child.pdfViewer.pagesCount;
             const title = ('' + pageNumber === pageLabel)
-                ? `Link to page ${pageNumber}`
-                : `Link to page ${pageLabel} (${pageNumber}/${pageCount})`;
+                ? `Page ${pageNumber}`
+                : `Page ${pageLabel} (${pageNumber}/${pageCount})`;
 
             app.dragManager.handleDrag(div, (evt) => {
                 app.dragManager.updateSource([div], 'is-being-dragged');
                 return {
                     source: 'pdf-plus',
-                    type: 'page-link',
-                    icon: 'lucide-link',
+                    type: 'pdf-page',
+                    icon: 'lucide-book-open',
                     title,
                     getText: (sourcePath: string) => {
                         return api.copyLink.getTextToCopy(
@@ -69,7 +75,7 @@ export const hookDragHandlerToThumbnail = (plugin: PDFPlus, child: PDFViewerChil
         });
 }
 
-export const hookDragHandlerToAnnotationPopup = (plugin: PDFPlus, popupEl: HTMLElement, child: PDFViewerChild, file: TFile, page: number, id: string) => {
+export const registerAnnotationPopupDrag = (plugin: PDFPlus, popupEl: HTMLElement, child: PDFViewerChild, file: TFile, page: number, id: string) => {
     const { app, api } = plugin;
 
     const pageView = child.getPage(page);
@@ -84,9 +90,9 @@ export const hookDragHandlerToAnnotationPopup = (plugin: PDFPlus, popupEl: HTMLE
 
                 return {
                     source: 'pdf-plus',
-                    type: 'annotation-link',
-                    icon: 'lucide-link',
-                    title: 'Link to PDF annotation',
+                    type: 'pdf-annotation',
+                    icon: 'lucide-highlighter',
+                    title: 'PDF annotation',
                     getText: (sourcePath: string) => {
                         return api.copyLink.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '', sourcePath);
                     }

@@ -1,21 +1,18 @@
-import { HoverParent, HoverPopover } from 'obsidian';
+import { HoverParent, HoverPopover, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFView } from 'typings';
+import { PDFOutlineViewer, PDFView, PDFViewerChild } from 'typings';
 
 
 export const enhancePDFInternalLinks = (plugin: PDFPlus) => {
+    const { app } = plugin;
+
     // record history when clicking an internal link IN a PDF file
     plugin.registerGlobalDomEvent('click', (evt) => {
         if (plugin.settings.recordPDFInternalLinkHistory
             && evt.target instanceof HTMLElement
             && evt.target.closest('section.linkAnnotation[data-internal-link]')) {
-            const targetEl = evt.target;
-            plugin.app.workspace.iterateAllLeaves((leaf) => {
-                if (leaf.view.getViewType() === 'pdf' && leaf.containerEl.contains(targetEl)) {
-                    leaf.recordHistory(leaf.getHistoryState());
-                }
-            });
+            recordLeafHistory(plugin, evt.target);
         }
     });
 
@@ -27,32 +24,93 @@ export const enhancePDFInternalLinks = (plugin: PDFPlus) => {
             const targetEl = event.target as HTMLAnchorElement;
             const destId = targetEl.getAttribute('href')!.slice(1);
 
-            plugin.app.workspace.iterateAllLeaves((leaf) => {
+            app.workspace.iterateAllLeaves((leaf) => {
                 if (leaf.view.getViewType() === 'pdf' && leaf.containerEl.contains(targetEl)) {
                     const view = leaf.view as PDFView;
                     const file = view.file;
                     if (!file) return;
 
                     view.viewer.then(async (child) => {
-                        const doc = child.pdfViewer.pdfViewer?.pdfDocument;
-                        if (!doc) return;
-
-                        const subpath = await plugin.api.destIdToSubpath(destId, doc);
-                        if (subpath === null) return;
-                        const linktext = file.path + subpath;
-
-                        plugin.app.workspace.trigger('hover-link', {
-                            event,
-                            source: 'pdf-plus',
-                            hoverParent: new PDFInternalLinkHoverParent(plugin, destId),
-                            targetEl,
-                            linktext,
-                            sourcePath: file.path
-                        });
+                        triggerHoverPDFInternalLink(plugin, child, file, destId, event, targetEl);
                     });
                 }
             });
         }
+    });
+}
+
+export const recordLeafHistory = (plugin: PDFPlus, dom: HTMLElement) => {
+    const app = plugin.app;
+
+    app.workspace.iterateAllLeaves((leaf) => {
+        if (leaf.view.getViewType() === 'pdf' && leaf.containerEl.contains(dom)) {
+            leaf.recordHistory(leaf.getHistoryState());
+        }
+    });
+}
+
+export const triggerHoverPDFInternalLink = async (plugin: PDFPlus, child: PDFViewerChild, file: TFile, destId: string, evt: MouseEvent, targetEl: HTMLElement) => {
+    const app = plugin.app;
+
+    const doc = child.pdfViewer.pdfViewer?.pdfDocument;
+    if (!doc) return;
+
+    const subpath = await plugin.api.destIdToSubpath(destId, doc);
+    if (subpath === null) return;
+    const linktext = file.path + subpath;
+
+    if (!child.pdfInternalLinkHoverParent) {
+        child.pdfInternalLinkHoverParent = new PDFInternalLinkHoverParent(plugin, destId);
+    }
+
+    app.workspace.trigger('hover-link', {
+        event: evt,
+        source: 'pdf-plus',
+        hoverParent: child.pdfInternalLinkHoverParent,
+        targetEl,
+        linktext,
+        sourcePath: file.path
+    });
+}
+
+export const registerOutlineHover = (plugin: PDFPlus, pdfOutlineViewer: PDFOutlineViewer, child: PDFViewerChild, file: TFile) => {
+    for (const item of pdfOutlineViewer.allItems) {
+        plugin.registerDomEvent(item.selfEl, 'mouseover', async (evt) => {
+            if (item.item.dest) {
+                triggerHoverPDFInternalLink(plugin, child, file, item.item.dest, evt, item.selfEl);
+            }
+        });
+    }
+}
+
+export const registerHistoryRecordOnThumbnailClick = (plugin: PDFPlus, child: PDFViewerChild) => {
+    plugin.registerDomEvent(child.pdfViewer.pdfThumbnailViewer.container, 'click', (evt) => {
+        if (evt.target instanceof HTMLElement && evt.target.closest('.pdf-thumbnail-view > a[href^="#page="]')) {
+            recordLeafHistory(plugin, child.containerEl);
+        }
+    }, { capture: true }); // capture to ensure it's called before jumping to the target page
+}
+
+export const registerThumbnailHover = (plugin: PDFPlus, child: PDFViewerChild, file: TFile) => {
+    const app = plugin.app;
+
+    plugin.registerDomEvent(child.pdfViewer.pdfThumbnailViewer.container, 'mouseover', (evt) => {
+        if (!(evt.target instanceof HTMLElement)) return;
+
+        const anchor = evt.target.closest('.pdf-thumbnail-view > a[href^="#page="]');
+        if (!anchor) return;
+
+        const subpath = anchor.getAttribute('href');
+        if (!subpath) return;
+
+        app.workspace.trigger('hover-link', {
+            event: evt,
+            source: 'pdf-plus',
+            hoverParent: child,
+            targetEl: anchor,
+            linktext: subpath,
+            sourcePath: file.path
+        });
     });
 }
 

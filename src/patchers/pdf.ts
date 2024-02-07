@@ -6,10 +6,11 @@ import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
 import { onContextMenu, onThumbnailContextMenu } from 'context-menu';
-import { hookDragHandlerToAnnotationPopup, hookDragHandlerToOutline, hookDragHandlerToThumbnail } from 'drag';
+import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { hookInternalLinkMouseEventHandlers, toSingleLine } from 'utils';
 import { AnnotationElement, ObsidianViewer, PDFOutlineViewer, PDFToolbar, PDFView, PDFViewer, PDFViewerChild } from 'typings';
+import { registerHistoryRecordOnThumbnailClick, registerOutlineHover, registerThumbnailHover } from 'pdf-internal-links';
 
 
 export const patchPDF = (plugin: PDFPlus): boolean => {
@@ -31,7 +32,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 const ret = old.call(this);
                 const self = this as PDFView;
                 const child = self.viewer.child;
-                const pdfViewer = child?.pdfViewer.pdfViewer;
+                const pdfViewer = child?.pdfViewer?.pdfViewer;
                 if (pdfViewer) {
                     ret.page = pdfViewer.currentPageNumber;
                     ret.left = pdfViewer._location?.left;
@@ -49,7 +50,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 return old.call(this, state, result).then(() => {
                     const self = this as PDFView;
                     const child = self.viewer.child;
-                    const pdfViewer = child?.pdfViewer.pdfViewer;
+                    const pdfViewer = child?.pdfViewer?.pdfViewer;
                     if (typeof state.page === 'number') {
                         if (pdfViewer) {
                             api.applyPDFViewStateToViewer(pdfViewer, state);
@@ -103,34 +104,45 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 await old.call(this, ...args);
                 const self = this as PDFViewerChild;
 
-                if (plugin.settings.outlineDrag) {
-                    api.registerPDFEvent(
-                        'outlineloaded', self.pdfViewer.eventBus, null,
-                        async (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => {
-                            const pdfOutlineViewer = data.source;
 
-                            if (!plugin.patchStatus.pdfOutlineViewer) {
-                                const success = patchPDFOutlineViewer(plugin, pdfOutlineViewer);
-                                plugin.patchStatus.pdfOutlineViewer = success;
-                            }
+                api.registerPDFEvent(
+                    'outlineloaded', self.pdfViewer.eventBus, null,
+                    async (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => {
+                        const pdfOutlineViewer = data.source;
 
-                            if (!data.outlineCount) return;
-
-                            const file = self.file;
-                            if (!file) return;
-
-                            await hookDragHandlerToOutline(plugin, pdfOutlineViewer, self, file);
+                        if (!plugin.patchStatus.pdfOutlineViewer) {
+                            const success = patchPDFOutlineViewer(plugin, pdfOutlineViewer);
+                            plugin.patchStatus.pdfOutlineViewer = success;
                         }
-                    );
-                }
 
-                if (plugin.settings.thumbnailDrag) {
-                    api.registerPDFEvent('thumbnailrendered', self.pdfViewer.eventBus, null, () => {
+                        if (!data.outlineCount) return;
+
                         const file = self.file;
                         if (!file) return;
-                        hookDragHandlerToThumbnail(plugin, self, file);
-                    });
-                }
+
+                        if (plugin.settings.outlineDrag) {
+                            await registerOutlineDrag(plugin, pdfOutlineViewer, self, file);
+                        }
+                        if (plugin.settings.popoverPreviewOnOutlineHover) {
+                            registerOutlineHover(plugin, pdfOutlineViewer, self, file);
+                        }
+                        // See src/patchers/pdf-outline-viewer.ts for the `recordHistoryOnOutlineClick` option
+                    }
+                );
+
+                api.registerPDFEvent('thumbnailrendered', self.pdfViewer.eventBus, null, () => {
+                    const file = self.file;
+                    if (!file) return;
+                    if (plugin.settings.thumbnailDrag) {
+                        registerThumbnailDrag(plugin, self, file);
+                    }
+                    if (plugin.settings.recordHistoryOnThumbnailClick) {
+                        registerHistoryRecordOnThumbnailClick(plugin, self);
+                    }
+                    if (plugin.settings.popoverPreviewOnThumbnailHover) {
+                        registerThumbnailHover(plugin, self, file);
+                    }
+                });
             }
         },
         unload(old) {
@@ -366,7 +378,7 @@ export const patchPDF = (plugin: PDFPlus): boolean => {
                 if (plugin.settings.annotationPopupDrag && self.activeAnnotationPopupEl && self.file) {
                     const el = self.activeAnnotationPopupEl;
                     const file = self.file;
-                    hookDragHandlerToAnnotationPopup(plugin, el, self, file, page, id);
+                    registerAnnotationPopupDrag(plugin, el, self, file, page, id);
                     el.addClass('pdf-plus-draggable');
                 }
 

@@ -36,12 +36,16 @@ export class DomManager extends Component {
 
 		this.updateStyleEl();
 
-		document.body.toggleClass('pdf-plus-click-embed-to-open-link', this.plugin.settings.dblclickEmbedToOpenLink);
-		this.register(() => document.body.removeClass('pdf-plus-click-embed-to-open-link'));
+		this.updateClass('pdf-plus-click-embed-to-open-link', this.plugin.settings.dblclickEmbedToOpenLink);
 
 		this.setCSSColorVariables();
 
 		this.app.workspace.trigger('css-change');
+	}
+
+	updateClass(className: string, condition: boolean) {
+		document.body.toggleClass(className, condition);
+		this.register(() => document.body.removeClass(className));
 	}
 
 	updateStyleEl() {
@@ -95,6 +99,45 @@ export class DomManager extends Component {
 			`	opacity: ${settings.existingTabHighlightOpacity};`,
 			`}`
 		].join('\n');
+
+		this.updateCalloutStyle();
+	}
+
+	updateCalloutStyle() {
+		if (!this.plugin.settings.useCallout) return;
+
+		const calloutType = this.plugin.settings.calloutType.toLowerCase();
+
+		for (const colorName of Object.keys(this.plugin.settings.colors)) {
+			const varName = this.toCSSVariableName(colorName) ?? '--pdf-plus-default-color-rgb';
+
+			this.styleEl.textContent += [
+				`.callout[data-callout="${calloutType}"][data-callout-metadata="${colorName.toLowerCase()}"] {`,
+				`	--callout-color: var(${varName});`,
+				`}`
+			].join('\n');
+		}
+
+		this.styleEl.textContent += [
+			`.callout[data-callout="${calloutType}"] {`,
+			`	--callout-color: var(--pdf-plus-default-color-rgb);`,
+			`}`
+		].join('\n');
+
+		const iconName = this.plugin.settings.calloutIcon;
+		if (iconName) {
+			this.styleEl.textContent += [
+				`.callout[data-callout="${calloutType}"] {`,
+				`   --callout-icon: lucide-${iconName};`,
+				`}`
+			].join('\n');
+		} else {
+			this.styleEl.textContent += [
+				`.callout[data-callout="${calloutType}"] .callout-icon {`,
+				`   display: none;`,
+				`}`
+			].join('\n');
+		}
 	}
 
 	setCSSColorVariables() {

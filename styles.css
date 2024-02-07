@@ -107,6 +107,10 @@ settings:
     }
 }
 
+.pdf-plus-settings .setting-item-heading:not(.normal-margin-top) {
+    margin-top: 2.4em;
+}
+
 .pdf-plus-settings .setting-item-description {
     &>p:first-child {
         margin-top: 0;
@@ -169,7 +173,7 @@ settings:
     }
 
     /* Arrange two children of .setting-item, namely .setting-item-info and .setting-item-contrl, vertically */
-    .setting-item:last-child:has( textarea) {
+    .setting-item:last-child:has(textarea) {
         display: flex;
         flex-direction: column;
         justify-content: left;

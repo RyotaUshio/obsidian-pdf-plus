@@ -108,6 +108,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             pageCount: child.pdfViewer.pagesCount,
             text,
             colorName,
+            calloutType: this.settings.calloutType,
             ...this.api.copyLink.getLinkTemplateVariables(child, displayTextFormat, file, subpath, page, text, sourcePath)
         });
 

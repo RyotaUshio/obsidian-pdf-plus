@@ -6,6 +6,7 @@ import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_stora
 import PDFPlus from 'main';
 import { BacklinkHighlighter } from 'highlight';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
+import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
 
 
 declare global {
@@ -88,6 +89,7 @@ interface PDFViewerChild {
     /** Added by this plugin */
     backlinkHighlighter?: BacklinkHighlighter;
     component?: Component;
+    pdfInternalLinkHoverParent: PDFInternalLinkHoverParent;
 }
 
 interface PDFHighlight {
@@ -152,6 +154,7 @@ interface PDFOutlineViewer {
     reset(): void;
     setPageNumber(pageNumber: number): void;
     recurseTree(): PDFOutlineTreeNode[];
+    onItemClick(item: PDFOutlineTreeNode): void;
     onItemContextMenu(item: PDFOutlineTreeNode, evt: MouseEvent): Promise<void>;
 }
 
