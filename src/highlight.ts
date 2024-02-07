@@ -52,8 +52,16 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         plugin.addChild(this); // clear highlight on plugin unload
     }
 
+    isCanvas(): boolean {
+        return !!(this.viewer.dom?.containerEl.hasClass('canvas-node-content'));
+    }
+
+    shouldHighlightBacklinks(): boolean {
+        return !this.viewer.isEmbed || this.isCanvas();
+    }
+
     onload() {
-        if (!this.viewer.isEmbed) {
+        if (this.shouldHighlightBacklinks()) {
             this.highlightBacklinks();
             this.registerEvent(this.app.metadataCache.on('resolved', () => {
                 this.highlightBacklinks();
@@ -130,7 +138,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
 
     _highlightBacklinks() {
         if (!this.file) return;
-        if (this.viewer.isEmbed) return;
+        if (!this.shouldHighlightBacklinks()) return;
         if (!this.plugin.settings.highlightBacklinks) return;
 
         this.setBacklinks(this.file);

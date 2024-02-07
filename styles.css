@@ -149,6 +149,7 @@ settings:
     margin: calc(var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) * -1) calc(var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em)) * -1);
     border-radius: var(--radius-s);
     pointer-events: auto;
+    cursor: text;
 }
 
 .pdf-plus-annotation-edit-modal {
