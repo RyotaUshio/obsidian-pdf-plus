@@ -137,7 +137,7 @@ settings:
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 1; /* the same value as .pdf-viewer .canvasWrapper */
+    z-index: 2;
     pointer-events: none;
 }
 

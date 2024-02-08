@@ -13,7 +13,7 @@ import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { subpathToParams, OverloadParameters, isNonEmbedLike } from 'utils';
+import { subpathToParams, OverloadParameters } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 import { patchPDFInternalFromPDFEmbed } from 'pdf-embed';
 
@@ -246,8 +246,6 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private registerGlobalDomEvents() {
-		// enhancePDFInternalLinks(this);
-
 		// Make PDF embeds with a subpath unscrollable
 		this.registerGlobalDomEvent('wheel', (evt) => {
 			if (this.settings.embedUnscrollable
