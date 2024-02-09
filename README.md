@@ -42,6 +42,21 @@ https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/72072345-3537-42
 
 https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/8ef3bc62-70d7-449a-b6a7-0370a2b4a8d8
 
+### Seamless integration with other community plugins
+
+#### Blazing fast workflow with [Hover Editor](https://github.com/nothingislost/obsidian-hover-editor)
+
+It's also friendly to laptops with small display sizes.
+See [here](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Tips:-My-display-is-too-small!#blazingly-fast--smooth-workflow-with-hover-editor) for the details.
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/cb292049-bd89-4cd1-9d72-a02828d765e0
+
+#### Transform the [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) into [ZotLit](https://zotlit.aidenlx.top/)-like annotation view with [Better Search Views](https://github.com/ivan-lednev/better-search-views) & PDF++ callouts
+
+See [here](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Tips:-backlinks-pane) for the details.
+
+![image](https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/0c1c8ad7-1194-408f-bb47-5a847f960025)
+
 ### Highly customizable copy formats
 
 https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/fb624769-4cc3-4d4e-9898-b17d0a5591e3
