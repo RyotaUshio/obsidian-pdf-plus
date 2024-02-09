@@ -44,7 +44,7 @@ https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/8ef3bc62-70d7-44
 
 ### Seamless integration with other community plugins
 
-#### Blazing fast workflow with [Hover Editor](https://github.com/nothingislost/obsidian-hover-editor)
+#### Blazingly fast workflow with [Hover Editor](https://github.com/nothingislost/obsidian-hover-editor)
 
 It's also friendly to laptops with small display sizes.
 See [here](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Tips:-My-display-is-too-small!#blazingly-fast--smooth-workflow-with-hover-editor) for the details.
@@ -101,7 +101,7 @@ Annotate PDF files with highlights just by linking to text selection. You can ea
 - **Custom highlight colors**: Append `&color=<COLOR NAME>` to a link text to highlight the selection with a specified color.
   - `<COLOR NAME>` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
   - Color names are case-insensitive, i.e. all of `&color=red`, `&color=RED` and even `&color=rEd` work the same.
-  - You can ues the color palette in PDF toolbars to easily copy links with `&color=...` appended automatically. See the "Color palette" section for the details.
+  - You can use the color palette in PDF toolbars to easily copy links with `&color=...` appended automatically. See the "Color palette" section for the details.
   - You can also opt not to use this plugin-dependent notation and apply a single color (the "default highlight color" setting) to all highlights.
 - **Easily navigate to backlinks by pressing `Ctrl`/`Cmd` (by default) while hovering over a highlighted text in PDF viewer**: you can choose what happens when you hover over a highlighted text between the following:
   - Open backlink
@@ -118,12 +118,12 @@ These features make Obsidian a unique PDF annotation tool that tightly connects 
 
 - **Filter backlinks by page**: Show only backlinks to the page that is currently opened in the PDF viewer.
 - **Hover sync (PDF viewer → Backlinks pane)**: Hovering over highlighted text or annotation will also highlight the corresponding item in the [backlink pane](https://help.obsidian.md/Plugins/Backlinks).
-- **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer.
+- **Hover sync (Backlinks pane → PDF viewer)**: In the backlinks pane, hover your mouse over a backlink item to highlight the corresponding text or annotation in the PDF viewer.
 
 ### Editing PDF files directly (experimental)
 
-Add, edit and delete highlights and links in PDF files.
-Added annotations will be visible even outside Obsidian unlike backlink highlights.
+Add, edit, and delete highlights and links in PDF files.
+Added annotations will be visible even outside Obsidian, unlike backlink highlights.
 
 PDF++ will not modify PDF files themselves unless you explicitly allow it. ***The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
 
@@ -141,9 +141,9 @@ Make it easier to work with internal links embedded in PDF files.
 
 #### Open PDF links cleverly
 
-- **Don\'t open a single PDF file in multiple tabs**: When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the same file has already been opened in another tab.  Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.
+- **Don't open a single PDF file in multiple tabs**: When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the same file has already been opened in another tab.  Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF on one side and a markdown file on another.
   - You can optionally highlight the existing tab to enhance visual feedback.
-- **Open PDF links next to the existing PDF tab**: If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side.
+- **Open PDF links next to the existing PDF tab**: If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are splitting the workspace vertically or horizontally and want PDF files to be always opened on one side.
 - **Don't move focus to PDF viewer after opening a PDF link**
 - **Open PDF links with an external app**: See [below](#integration-with-external-apps-desktop-only) for the details.
 
