@@ -4,19 +4,20 @@ import PDFPlus from 'main';
 
 
 export class SelectToCopyMode extends Component {
-    iconEl: HTMLElement;
+    iconEl: HTMLElement | null;
 
     constructor(public plugin: PDFPlus) {
         super();
-        this.iconEl = plugin.addRibbonIcon(
-            'lucide-highlighter',
-            `${plugin.manifest.name}: Toggle "select text to copy" mode`,
-            () => this.toggle()
-        );
+        this.iconEl = plugin.settings.selectToCopyToggleRibbonIcon
+            ? plugin.addRibbonIcon(
+                'lucide-highlighter',
+                `${plugin.manifest.name}: Toggle "select text to copy" mode`,
+                () => this.toggle()
+            ) : null;
     }
 
     toggle() {
-        this.iconEl.hasClass('is-active') ? this.unload() : this.load();
+        this._loaded ? this.unload() : this.load();
     }
 
     onload() {
@@ -28,10 +29,10 @@ export class SelectToCopyMode extends Component {
             }
         });
 
-        this.iconEl.addClass('is-active');
+        this.iconEl?.addClass('is-active');
     }
 
     onunload() {
-        this.iconEl.removeClass('is-active');
+        this.iconEl?.removeClass('is-active');
     }
 }

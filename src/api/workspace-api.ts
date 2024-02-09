@@ -282,6 +282,18 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
         return markdownLeaf ?? null;
     }
 
+    getExistingVisibleMarkdownView(): MarkdownView | null {
+        let view: MarkdownView | undefined;
+
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            if (leaf.view instanceof MarkdownView && leaf.isVisible()) {
+                view = leaf.view;
+            }
+        });
+
+        return view ?? null;
+    }
+
     isMarkdownFileOpened(file: TFile): boolean {
         return this.getExistingLeafForMarkdownFile(file) !== null;
     }

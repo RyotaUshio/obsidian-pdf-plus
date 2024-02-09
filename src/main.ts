@@ -28,6 +28,8 @@ export default class PDFPlus extends Plugin {
 	domManager: DomManager;
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
 	selectToCopyMode: SelectToCopyMode;
+	/** A ribbon icon to toggle auto-focus mode */
+	autoFocusToggleIconEl: HTMLElement;
 	/** PDF++ relies on monkey-patching several aspects of Obsidian's internals. This property keeps track of the patching status (succeeded or not). */
 	patchStatus = {
 		workspace: false,
@@ -69,8 +71,7 @@ export default class PDFPlus extends Plugin {
 
 		this.domManager = this.addChild(new DomManager(this));
 
-		this.selectToCopyMode = this.addChild(new SelectToCopyMode(this));
-		this.selectToCopyMode.unload(); // disabled by default
+		this.registerRibbonIcons();
 
 		this.patchObsidian();
 
@@ -130,6 +131,18 @@ export default class PDFPlus extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	private registerRibbonIcons() {
+		this.selectToCopyMode = this.addChild(new SelectToCopyMode(this));
+		this.selectToCopyMode.unload(); // disabled by default
+
+		if (this.settings.autoFocusToggleRibbonIcon) {
+			this.autoFocusToggleIconEl = this.addRibbonIcon('lucide-zap', `${this.manifest.name}: Toggle auto-focus`, () => {
+				this.api.commands.toggleAutoFocus();
+			});
+			this.autoFocusToggleIconEl.toggleClass('is-active', this.settings.autoFocusLastPasteFileAfterCopy);
+		}
 	}
 
 	private patchObsidian() {

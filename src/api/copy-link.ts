@@ -310,25 +310,36 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     async autoPaste(text: string): Promise<boolean> {
-        return this.autoPasteOrAutoFocus((file) => this.pasteTextToFile(text, file));
+        return this.autoPasteOrAutoFocus(this.settings.useVisibleMDForAutoPaste, (file) => this.pasteTextToFile(text, file));
     }
 
     async autoFocus(): Promise<boolean> {
-        return this.autoPasteOrAutoFocus(async (file) => {
+        return this.autoPasteOrAutoFocus(this.settings.useVisibleMDForAutoFocus, async (file) => {
             const leaf = await this.prepareMarkdownLeafForPaste(file);
 
             if (leaf) {
                 this.app.workspace.revealLeaf(leaf);
                 this.app.workspace.setActiveLeaf(leaf);
+                if (leaf.view instanceof MarkdownView) {
+                    leaf.view.editor.focus();
+                }
             }
         });
     }
 
-    async autoPasteOrAutoFocus(onFileIdentified: (file: TFile) => Promise<any>): Promise<boolean> {
+    async autoPasteOrAutoFocus(useVisibleMarkdownWhenNoLastPasteFile: boolean, onFileIdentified: (file: TFile) => Promise<any>): Promise<boolean> {
         const lastPasteFile = this.plugin.lastPasteFile;
         if (lastPasteFile && lastPasteFile.extension === 'md') {
             await onFileIdentified(lastPasteFile);
             return true;
+        }
+
+        if (useVisibleMarkdownWhenNoLastPasteFile) {
+            const visibleMDFile = this.api.workspace.getExistingVisibleMarkdownView()?.file;
+            if (visibleMDFile) {
+                await onFileIdentified(visibleMDFile);
+                return true;
+            }    
         }
 
         const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenFirstPaste);

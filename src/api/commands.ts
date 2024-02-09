@@ -84,6 +84,14 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
                 id: 'disable-pdf-edit',
                 name: 'Disable PDF edit',
                 checkCallback: (checking) => this.setWriteFile(checking, false)
+            }, {
+                id: 'toggle-auto-focus',
+                name: 'Toggle auto focus',
+                callback: () => this.toggleAutoFocus()
+            }, {
+                id: 'toggle-select-to-copy',
+                name: 'Toggle "select text to copy" mode',
+                callback: () => this.plugin.selectToCopyMode.toggle()
             }
         ];
 
@@ -362,5 +370,12 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
             palette.setWriteFile(writeFile);
         }
         return true;
+    }
+
+    toggleAutoFocus() {
+        const iconEl = this.plugin.autoFocusToggleIconEl;
+        iconEl.toggleClass('is-active', !iconEl.hasClass('is-active'));
+		this.settings.autoFocusLastPasteFileAfterCopy = iconEl.hasClass('is-active');
+		this.plugin.saveSettings();
     }
 }

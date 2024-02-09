@@ -134,7 +134,11 @@ export interface PDFPlusSettings {
 	howToOpenLastPasteFileIfNotOpened: ExtendedPaneType | 'hover-editor';
 	closeHoverEditorWhenLostFocus: boolean;
 	openLastPasteFileInEditingView: boolean;
+	useVisibleMDForAutoFocus: boolean;
+	useVisibleMDForAutoPaste: boolean;
 	commandToExecuteWhenFirstPaste: string;
+	selectToCopyToggleRibbonIcon: boolean;
+	autoFocusToggleRibbonIcon: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -289,7 +293,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	howToOpenLastPasteFileIfNotOpened: 'right',
 	closeHoverEditorWhenLostFocus: true,
 	openLastPasteFileInEditingView: true,
-	commandToExecuteWhenFirstPaste: 'switcher:open'
+	useVisibleMDForAutoFocus: true,
+	useVisibleMDForAutoPaste: false,
+	commandToExecuteWhenFirstPaste: 'switcher:open',
+	selectToCopyToggleRibbonIcon: true,
+	autoFocusToggleRibbonIcon: true,
 };
 
 
@@ -1174,8 +1182,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'2. **Copy & auto-paste link to selection or annotation:**',
 					'  In addition to copying the link, it automatically pastes the copied link at the end of the note where you last pasted a link. Note that Canvas is not supported.',
 					'',
-					'Also check out the **Toggle "select text to copy" mode** icon in the left ribbon menu. While it\'s turned on, the **Copy link to selection or annotation** command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link.',
-					'',
 					'The third command is very different from the first two:',
 					'',
 					'3. **Copy link to current page view:** Copies a link, clicking which will open the PDF file at the current scroll position and zoom level.',
@@ -1184,12 +1190,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				], setting.descEl);
 			})
 			.then((setting) => this.addHotkeySettingButton(setting));
+		this.addToggleSetting('selectToCopyToggleRibbonIcon')
+			.setName('Show an icon to toggle "select text to copy" mode in the left ribbon menu')
+			.setDesc('While the "select text to copy" mode is turned on, the **Copy link to selection or annotation** command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link. You can also toggle this mode via a command. Reload the plugin after changing this setting to take effect.');
 		this.addSetting()
 			.setName('More options')
 			.setDesc('You can find more options related to the auto-pasting command in the "Auto-focus / auto-paste" section below.')
-		// this.addToggleSetting('focusEditorAfterAutoPaste')
-		// 	.setName('Focus editor after auto-pasting a link')
-		// 	.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
 
 
 		this.addHeading('Other shortcut commands', 'lucide-layers-2')
@@ -1228,9 +1234,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Auto-focus / auto-paste', 'lucide-zap');
-		this.addToggleSetting('autoFocusLastPasteFileAfterCopy')
+		this.addToggleSetting('autoFocusLastPasteFileAfterCopy', () => {
+			this.plugin.autoFocusToggleIconEl.toggleClass('is-active', this.plugin.settings.autoFocusLastPasteFileAfterCopy);
+		})
 			.setName('Auto-focus the last-pasted markdown file after copying a link')
 			.setDesc('If enabled, the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation".');
+		this.addToggleSetting('autoFocusToggleRibbonIcon')
+			.setName('Show an icon to toggle auto-focus in the left ribbon menu')
+			.setDesc('You can also toggle auto-focus via a command. Reload the plugin after changing this setting to take effect.')
 		this.addToggleSetting('focusEditorAfterAutoPaste')
 			.setName('Focus editor after auto-pasting a link')
 			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
@@ -1263,8 +1274,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Always open in editing view')
 				.setDesc('This option can be useful especially when you set the previous optiont to "Hover Editor".');
 		}
+		this.addToggleSetting('useVisibleMDForAutoFocus')
+			.setName('Auto-focus: when there is no last-pasted markdown file, focus on a visible markdown file if any')
+			this.addToggleSetting('useVisibleMDForAutoPaste')
+			.setName('Auto-paste: when there is no last-pasted markdown file, paste to a visible markdown file if any')
 		this.addSetting('commandToExecuteWhenFirstPaste')
-			.setName('Command to execute when pasting a link for the first time with auto-focus or auto-paste')
+			.setName('Command to execute when target file cannot be determined')
 			.then((setting) => {
 				this.renderMarkdown([
 					'When PDF++ cannot determine which markdown file to focus on or paste to, it will execute this command to let you specify the target file. Here\'s some examples of useful commands:',
@@ -1540,10 +1555,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Insert link to annotation by drag & drop', 'lucide-message-square');
+		this.addHeading('Annotation popup', 'lucide-message-square');
 		this.addToggleSetting('annotationPopupDrag')
 			.setName('Drag & drop annotation popup to insert a link to the annotation')
 			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
+		this.addToggleSetting('renderMarkdownInStickyNote')
+			.setName('Render markdown in annotation popups when the annotation has text contents');
 
 
 		// this.addHeading('Canvas', 'lucide-layout-dashboard')
@@ -1574,8 +1591,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('showStatusInToolbar')
 			.setName('Show status in PDF toolbar')
 			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');
-		this.addToggleSetting('renderMarkdownInStickyNote')
-			.setName('Render markdown in annotation popups when the annotation has text contents');
 
 
 		this.addHeading('Style settings', 'lucide-external-link')
