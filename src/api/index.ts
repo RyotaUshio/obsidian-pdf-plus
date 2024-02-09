@@ -230,6 +230,10 @@ export class PDFPlusAPI {
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
         const dest = await doc.getDestination(destId) as PDFjsDestArray;
         if (!dest) return null;
+        return this.pdfJsDestArrayToSubpath(dest, doc);
+    }
+
+    async pdfJsDestArrayToSubpath(dest: PDFjsDestArray, doc: PDFDocumentProxy) {
         const page = await doc.getPageIndex(dest[0]);
         return this.destArrayToSubpath(this.normalizePDFjsDestArray(page + 1, dest));
     }

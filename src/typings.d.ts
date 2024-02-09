@@ -7,7 +7,6 @@ import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_stora
 import PDFPlus from 'main';
 import { BacklinkHighlighter } from 'highlight';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
-import { PDFInternalLinkHoverParent } from 'pdf-internal-links';
 
 
 declare global {
@@ -90,7 +89,6 @@ interface PDFViewerChild {
     /** Added by this plugin */
     backlinkHighlighter?: BacklinkHighlighter;
     component?: Component;
-    pdfInternalLinkHoverParent: PDFInternalLinkHoverParent;
 }
 
 interface PDFHighlight {
@@ -293,6 +291,7 @@ type PDFjsDestArray = [pageRef: { num: number, gen: number }, destType: { name: 
 interface AnnotationElement {
     annotationStorage: AnnotationStorage;
     layer: HTMLElement; // div.annotationLayer
+    container: HTMLElement; // section
     parent: AnnotationLayer;
     data: {
         subtype: string;
@@ -704,7 +703,8 @@ declare module 'obsidian' {
                     api: any;
                 };
                 ['obsidian-hover-editor']?: Plugin & {
-                    activePopovers: { containerEl: HTMLElement }[]
+                    activePopovers: (HoverPopover & { toggleMinimized(): void, togglePin(value?: boolean): void })[];
+                    spawnPopover(initiatingEl?: HTMLElement, onShowCallback?: () => unknown): WorkspaceLeaf;
                 };
                 [id: string]: Plugin | undefined;
             }
@@ -725,6 +725,7 @@ declare module 'obsidian' {
             }
         };
         commands: {
+            commands: Record<string, Command>;
             executeCommandById(id: string): boolean;
             findCommand(id: string): Command | undefined;
         }
@@ -850,5 +851,9 @@ declare module 'obsidian' {
     interface Component {
         _loaded: boolean;
         _children: Component[];
+    }
+
+    interface HoverPopover {
+        hide(): void;
     }
 }

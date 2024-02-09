@@ -323,7 +323,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     });
                     return;
                 }
-                this.api.workspace.openMarkdownLink(sourcePath, this.file?.path ?? '', line);
+                this.api.workspace.openMarkdownLinkFromPDF(sourcePath, this.file?.path ?? '', line);
             }
         });
     }

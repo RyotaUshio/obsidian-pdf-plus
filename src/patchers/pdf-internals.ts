@@ -10,7 +10,7 @@ import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFToolbar, PDFViewerComponent, PDFViewerChild } from 'typings';
-import { registerHistoryRecordOnPDFInternalLinkClick, registerHistoryRecordOnThumbnailClick, registerOutlineHover, registerPDFInternalLinkHover, registerThumbnailHover } from 'pdf-internal-links';
+import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -128,13 +128,17 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 api.registerPDFEvent('annotationlayerrendered', self.pdfViewer.eventBus, self.component!, (data) => {
                     const { source: pageView } = data;
 
-                    if (plugin.settings.recordPDFInternalLinkHistory && !child.opts.isEmbed) {
-                        registerHistoryRecordOnPDFInternalLinkClick(plugin, pageView);
-                    }
+                    pageView.annotationLayer?.div
+                        .querySelectorAll<HTMLElement>('section.linkAnnotation[data-internal-link][data-annotation-id]')
+                        .forEach((el) => {
+                            const annotationId = el.dataset.annotationId;
+                            if (!annotationId) return;
 
-                    if (plugin.settings.enableHoverPDFInternalLink) {
-                        registerPDFInternalLinkHover(plugin, self, pageView);
-                    }
+                            const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(annotationId);
+                            if (!annot) return;
+
+                            PDFInternalLinkPostProcessor.registerEvents(plugin, self, annot);
+                        });
                 });
 
                 api.registerPDFEvent(
@@ -155,10 +159,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         if (plugin.settings.outlineDrag) {
                             await registerOutlineDrag(plugin, pdfOutlineViewer, self, file);
                         }
-                        if (plugin.settings.popoverPreviewOnOutlineHover) {
-                            registerOutlineHover(plugin, pdfOutlineViewer, self, file);
-                        }
-                        // See src/patchers/pdf-outline-viewer.ts for the `recordHistoryOnOutlineClick` option
+                      
+                        pdfOutlineViewer.allItems.forEach((item) => PDFOutlineItemPostProcessor.registerEvents(plugin, self, item));
                     }
                 );
 
@@ -168,12 +170,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     if (plugin.settings.thumbnailDrag) {
                         registerThumbnailDrag(plugin, self, file);
                     }
-                    if (plugin.settings.recordHistoryOnThumbnailClick) {
-                        registerHistoryRecordOnThumbnailClick(plugin, self);
-                    }
-                    if (plugin.settings.popoverPreviewOnThumbnailHover) {
-                        registerThumbnailHover(plugin, self, file);
-                    }
+
+                    PDFThumbnailItemPostProcessor.registerEvents(plugin, self);
                 });
 
                 if (plugin.settings.noSpreadModeInEmbed && !isNonEmbedLike(self.pdfViewer)) {

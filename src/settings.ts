@@ -1,4 +1,4 @@
-import { Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, Setting, TextAreaComponent, TextComponent, setIcon, setTooltip } from 'obsidian';
+import { AbstractInputSuggest, Command, Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResult, SearchResultContainer, Setting, TextAreaComponent, TextComponent, prepareFuzzySearch, setIcon, setTooltip, sortSearchResults } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType } from 'api/workspace-api';
@@ -18,6 +18,8 @@ const PANE_TYPE: Record<ExtendedPaneType, string> = {
 	'down': 'Split down',
 	'up': 'Split up',
 	'window': 'New window',
+	'right-sidebar': 'Right sidebar',
+	'left-sidebar': 'Left sidebar'
 };
 
 export interface namedTemplate {
@@ -73,6 +75,8 @@ export interface PDFPlusSettings {
 	doubleClickHighlightToOpenBacklink: boolean;
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
 	paneTypeForFirstMDLeaf: ExtendedPaneType;
+	singleMDLeafInSidebar: boolean;
+	alwaysUseSidebar: boolean;
 	defaultColorPaletteActionIndex: number,
 	syncColorPaletteAction: boolean;
 	proxyMDProperty: string;
@@ -83,7 +87,6 @@ export interface PDFPlusSettings {
 	recordPDFInternalLinkHistory: boolean;
 	alwaysRecordHistory: boolean;
 	renderMarkdownInStickyNote: boolean;
-	focusEditorAfterAutoPaste: boolean;
 	enalbeWriteHighlightToFile: boolean;
 	author: string;
 	writeHighlightToFileOpacity: number;
@@ -122,6 +125,16 @@ export interface PDFPlusSettings {
 	highlightBacklinksInEmbed: boolean;
 	highlightBacklinksInHoverPopover: boolean;
 	highlightBacklinksInCanvas: boolean;
+	clickPDFInternalLinkWithModifierKey: boolean;
+	clickOutlineItemWithModifierKey: boolean;
+	clickThumbnailWithModifierKey: boolean;
+	focusEditorAfterAutoPaste: boolean;
+	autoFocusLastPasteFileAfterCopy: boolean;
+	openLastPasteFileIfNotOpened: boolean;
+	howToOpenLastPasteFileIfNotOpened: ExtendedPaneType | 'hover-editor';
+	closeHoverEditorWhenLostFocus: boolean;
+	openLastPasteFileInEditingView: boolean;
+	commandToExecuteWhenFirstPaste: string;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -217,6 +230,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'preview',
 	paneTypeForFirstMDLeaf: 'right',
+	singleMDLeafInSidebar: true,
+	alwaysUseSidebar: true,
 	defaultColorPaletteActionIndex: 4,
 	syncColorPaletteAction: true,
 	proxyMDProperty: 'PDF',
@@ -227,7 +242,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	recordPDFInternalLinkHistory: true,
 	alwaysRecordHistory: true,
 	renderMarkdownInStickyNote: true,
-	focusEditorAfterAutoPaste: true,
 	enalbeWriteHighlightToFile: false,
 	author: '',
 	writeHighlightToFileOpacity: 0.2,
@@ -266,6 +280,16 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightBacklinksInEmbed: false,
 	highlightBacklinksInHoverPopover: false,
 	highlightBacklinksInCanvas: true,
+	clickPDFInternalLinkWithModifierKey: true,
+	clickOutlineItemWithModifierKey: true,
+	clickThumbnailWithModifierKey: true,
+	focusEditorAfterAutoPaste: true,
+	autoFocusLastPasteFileAfterCopy: false,
+	openLastPasteFileIfNotOpened: true,
+	howToOpenLastPasteFileIfNotOpened: 'right',
+	closeHoverEditorWhenLostFocus: true,
+	openLastPasteFileInEditingView: true,
+	commandToExecuteWhenFirstPaste: 'switcher:open'
 };
 
 
@@ -279,6 +303,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.component = new Component();
 		this.items = {};
 		this.promises = [];
+	}
+
+	get(settingName: keyof PDFPlusSettings) {
+		return this.plugin.settings[settingName];
 	}
 
 	addSetting(settingName?: keyof PDFPlusSettings) {
@@ -450,21 +478,40 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	addFundingButton() {
 		return this.addHeading('Support development', 'lucide-heart')
-			.setDesc('If you find PDF++ helpful, please consider supporting the development to help me keep this plugin alive.')
-			.addExtraButton((button) => {
+			.setDesc('If you find PDF++ helpful, please consider supporting the development to help me keep this plugin alive.\n\nIf you prefer PayPal, please make donations via Ko-fi. Thank you!')
+			.then((setting) => {
+				const infoEl = setting.infoEl;
+				const iconEl = setting.settingEl.firstElementChild;
+				if (!iconEl) return;
+
+				const container = setting.settingEl.createDiv();
+				container.appendChild(iconEl);
+				container.appendChild(infoEl);
+				setting.settingEl.prepend(container);
+
+				setting.settingEl.id = 'pdf-plus-funding';
+				container.id = 'pdf-plus-funding-icon-info-container';
+				iconEl.id = 'pdf-plus-funding-icon';
+			})
+			.addButton((button) => {
 				button
-					.setIcon('lucide-github')
-					.setTooltip('GitHub Sponsors')
+					.setButtonText('GitHub Sponsors')
 					.onClick(() => {
 						open('https://github.com/sponsors/RyotaUshio');
 					});
 			})
-			.addExtraButton((button) => {
+			.addButton((button) => {
 				button
-					.setIcon('lucide-coffee')
-					.setTooltip('Buy Me a Coffee')
+					.setButtonText('Buy Me a Coffee')
 					.onClick(() => {
 						open('https://www.buymeacoffee.com/ryotaushio');
+					});
+			})
+			.addButton((button) => {
+				button
+					.setButtonText('Ko-fi')
+					.onClick(() => {
+						open('https://ko-fi.com/ryotaushio');
 					});
 			});
 	}
@@ -774,6 +821,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.component.load();
 
 
+		// @ts-ignore
+		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
+		const hoverCmd = `hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`;
+
+
 		this.addDesc('Note: some of the settings below require reopening tabs to take effect.')
 
 
@@ -797,8 +849,17 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
 			.setName('Double click highlighted text to open the corresponding backlink');
-		this.addDropdownSetting('paneTypeForFirstMDLeaf', PANE_TYPE)
-			.setName(`How to open a markdown file by ${getModifierNameInPlatform('Mod').toLowerCase()}+hovering over or doulbe-clicking highlighted text when there is no open markdown file`);
+		this.addDropdownSetting('paneTypeForFirstMDLeaf', PANE_TYPE, () => this.redisplay())
+			.setName(`How to open a markdown file by ${getModifierNameInPlatform('Mod').toLowerCase()}+hovering over or double-clicking highlighted text when there is no open markdown file`);
+		if (this.plugin.settings.paneTypeForFirstMDLeaf === 'left-sidebar' || this.plugin.settings.paneTypeForFirstMDLeaf === 'right-sidebar') {
+			this.addToggleSetting('alwaysUseSidebar')
+				.setName('Always use sidebar to open markdown files from highlighted text')
+				.setDesc(`If turned on, the ${this.plugin.settings.paneTypeForFirstMDLeaf === 'left-sidebar' ? 'left' : 'right'} sidebar will be used whether there is existing markdown tabs or not.`)
+			this.addToggleSetting('singleMDLeafInSidebar')
+				.setName('Don\'t open multiple panes in sidebar')
+				.setDesc('Turn this on if you want to open markdown files in a single pane in the sidebar.');
+		}
+
 		this.addToggleSetting('dontActivateAfterOpenMD')
 			.setName('Don\'t move focus to markdown view after opening a backlink')
 			.setDesc('This option will be ignored when you open a link in a tab in the same split as the current tab.')
@@ -972,36 +1033,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('PDF internal links enhancement', 'link')
-			.setDesc('Make it easier to work with internal links embedded in PDF files.');
-		this.addToggleSetting('recordPDFInternalLinkHistory')
-			.setName('Enable history navigation for PDF internal links')
-			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.');
-		// @ts-ignore
-		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
-		this.addToggleSetting('enableHoverPDFInternalLink', () => this.redisplay())
-			.setName(`Show a popover preview of PDF internal links by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`);
-		this.addSetting()
-			.setName('Copy PDF link as Obsidian link')
-			.setDesc('(Requires custom right-click menu enabled) In the PDF viewer, right-click a PDF-embedded link and then click "Copy PDF link as Obsidian link". It will copy the PDF link as an Obsidian link that you can paste into markdown files. Clicking the pasted link will take you to the same destination as the original PDF link.');
-		this.addSetting()
-			.setName('"Copy link to current page view" command')
-			.setDesc('Running this command while viewing a PDF file will copy a link, clicking which will open the PDF file at the current scroll position and zoom level.');
-		this.addSetting()
-			.setName('Paste copied link to a text selection in a PDF file')
-			.setDesc('(Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".');
-		if (this.plugin.settings.replaceContextMenu && this.plugin.settings.enalbeWriteHighlightToFile) {
-			this.addToggleSetting('pdfLinkBorder', () => this.redisplay())
-				.setName('Draw borders around internal links')
-				.setDesc('Specify whether PDF internal links that you create by "Paste copied link to selection" should be surrounded by borders.');
-			if (this.plugin.settings.pdfLinkBorder) {
-				this.addColorPickerSetting('pdfLinkColor')
-					.setName('Border color of internal links')
-					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
-			}
-		}
-
-
 		this.addHeading('Opening links to PDF files', 'lucide-book-open');
 		this.addToggleSetting('alwaysRecordHistory')
 			.setName('Always record to history when opening PDF links')
@@ -1153,12 +1184,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				], setting.descEl);
 			})
 			.then((setting) => this.addHotkeySettingButton(setting));
-		this.addToggleSetting('focusEditorAfterAutoPaste')
-			.setName('Focus editor after auto-pasting a link')
-			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
+		this.addSetting()
+			.setName('More options')
+			.setDesc('You can find more options related to the auto-pasting command in the "Auto-focus / auto-paste" section below.')
+		// this.addToggleSetting('focusEditorAfterAutoPaste')
+		// 	.setName('Focus editor after auto-pasting a link')
+		// 	.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
 
 
-		this.addHeading('Other shortcut commands', 'lucide-zap')
+		this.addHeading('Other shortcut commands', 'lucide-layers-2')
 		this.addSetting()
 			.then((setting) => {
 				this.renderMarkdown([
@@ -1193,12 +1227,75 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
+		this.addHeading('Auto-focus / auto-paste', 'lucide-zap');
+		this.addToggleSetting('autoFocusLastPasteFileAfterCopy')
+			.setName('Auto-focus the last-pasted markdown file after copying a link')
+			.setDesc('If enabled, the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation".');
+		this.addToggleSetting('focusEditorAfterAutoPaste')
+			.setName('Focus editor after auto-pasting a link')
+			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
+		this.addToggleSetting('openLastPasteFileIfNotOpened', () => this.redisplay())
+			.setName('Open the last-pasted markdown file if it is not opened');
+		if (this.plugin.settings.openLastPasteFileIfNotOpened) {
+			this.addDropdownSetting(
+				'howToOpenLastPasteFileIfNotOpened',
+				{ ...PANE_TYPE, 'hover-editor': 'Hover Editor' },
+				() => this.redisplay()
+			)
+				.setName('How to open the last-pasted markdown file if it is not opened')
+				.then((setting) => {
+					this.renderMarkdown(
+						'The "Hover Editor" option is available if the [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor) plugin is enabled.',
+						setting.descEl
+					);
+					if (this.plugin.settings.howToOpenLastPasteFileIfNotOpened === 'hover-editor') {
+						if (!this.app.plugins.plugins['obsidian-hover-editor']) {
+							setting.descEl.addClass('error');
+						}
+					}
+				});
+			if (this.plugin.settings.howToOpenLastPasteFileIfNotOpened === 'hover-editor') {
+				this.addToggleSetting('closeHoverEditorWhenLostFocus')
+					.setName('Close Hover Editor when it loses focus')
+					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.')
+			}
+			this.addToggleSetting('openLastPasteFileInEditingView')
+				.setName('Always open in editing view')
+				.setDesc('This option can be useful especially when you set the previous optiont to "Hover Editor".');
+		}
+		this.addSetting('commandToExecuteWhenFirstPaste')
+			.setName('Command to execute when pasting a link for the first time with auto-focus or auto-paste')
+			.then((setting) => {
+				this.renderMarkdown([
+					'When PDF++ cannot determine which markdown file to focus on or paste to, it will execute this command to let you specify the target file. Here\'s some examples of useful commands:',
+					'',
+					`- ${this.app.commands.findCommand('file-explorer:new-file')?.name ?? 'Create new note'}`,
+					`- ${this.app.commands.findCommand('file-explorer:new-file-in-new-pane')?.name ?? 'Create note to the right'}`,
+					`- ${this.app.commands.findCommand('switcher:open')?.name ?? 'Quick switcher: Open quick switcher'}`,
+					'- [Omnisearch](obsidian://show-plugin?id=omnisearch): Vault search',
+					'- [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor): Open new Hover Editor',
+				], setting.descEl);
+			})
+			.addText((text) => {
+				const id = this.plugin.settings.commandToExecuteWhenFirstPaste;
+				const command = this.app.commands.findCommand(id);
+				if (command) {
+					text.setValue(command.name);
+				} else {
+					text.inputEl.addClass('error');
+					text.setPlaceholder('Command not found');
+				}
+				text.inputEl.size = 30;
+				new CommandSuggest(this, text.inputEl);
+			});
+
+
 		this.addHeading('Link copy templates', 'lucide-copy')
 			.setDesc('The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ')
 		this.addSetting()
 			.then((setting) => this.renderMarkdown([
 				// 'The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ',
-				'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.',
+				'Each `{{ ...}}` will be evaluated as a JavaScript expression given the variables listed below.',
 				'',
 				'Available variables are:',
 				'',
@@ -1216,7 +1313,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'- and other global variables such as:',
 				'  - [`moment`](https://momentjs.com/docs/#/displaying/): For exampe, use `moment().format("YYYY-MM-DD")` to get the current date in the "YYYY-MM-DD" format.',
 				'',
-				`Additionally, you have access to the following variables when the PDF file has a corresponding markdown file specified via the "${this.plugin.settings.proxyMDProperty}" property (see the "Property to associate a markdown file to a PDF file" setting below):`,
+				`Additionally, you have access to the following variables when the PDF file has a corresponding markdown file specified via the "${this.plugin.settings.proxyMDProperty}" property(see the "Property to associate a markdown file to a PDF file" setting below): `,
 				'',
 				'- `md`: The markdown file associated with the PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). If there is no such file, this is `null`.',
 				'- `properties`: The properties of `md` as an `Object` mapping each property name to the corresponding value. If `md` is `null` or the `md` has no properties, this is an empty object `{}`.',
@@ -1243,7 +1340,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addSetting('displayTextFormats')
 			.setName('Display text format')
 			.then((setting) => this.renderMarkdown([
-				// 'For example, the default format is `{{file.basename}}, page {{page}}`. Another example of a useful format is `{{file.basename}}, p.{{pageLabel}}`. ',
+				// 'For example, the default format is `{{ file.basename }}, page { { page } } `. Another example of a useful format is `{ { file.basename } }, p.{ { pageLabel } } `. ',
 				'This format will be also used when copying a link to a selection or an annotation from the right-click context menu.'
 			], setting.descEl))
 			.addButton((button) => {
@@ -1276,12 +1373,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'',
 				'In addition to the variables listed above, here you can use',
 				'',
-				'- `link`: The link without display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red]]`,',
-				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red|file, page 1]]`,',
-				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page=1&selection=0,1,2,3&color=red` <br>(if the "Use \\[\\[Wikilinks\\]\\]" setting is turned off, `linktext` will be properly encoded for use in markdown links),',
+				'- `link`: The link without display text, e.g. `[[file.pdf#page = 1 & selection=0, 1, 2, 3 & color=red]]`,',
+				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page = 1 & selection=0, 1, 2, 3 & color=red | file, page 1]]`,',
+				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page = 1 & selection=0, 1, 2, 3 & color=red` <br>(if the "Use \\[\\[Wikilinks\\]\\]" setting is turned off, `linktext` will be properly encoded for use in markdown links),',
 				'- `display`: The display text formatted according to the above setting, e.g. `file, page 1`,',
-				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page=1]]`,',
-				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page=1|file, page 1]]`,',
+				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page = 1]]`,',
+				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page = 1 | file, page 1]]`,',
 				'- `calloutType`: The callout type you specify in the "Callout type name" setting above, in this case, ' + `"${this.plugin.settings.calloutType}", and`,
 				'- `colorName`: The name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string.',
 			], setting.descEl))
@@ -1316,7 +1413,63 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
+		this.addHeading('PDF internal links', 'link')
+			.setDesc('Make it easier to work with internal links embedded in PDF files.');
+		this.addToggleSetting('clickPDFInternalLinkWithModifierKey')
+			.then((setting) => {
+				this.renderMarkdown(
+					'Use [modifier keys](https://help.obsidian.md/User+interface/Tabs#Open+a+link) to open PDF internal links in various ways',
+					setting.nameEl
+				)
+			})
+			.then((setting) => {
+				if (!noModKey) setting.setDesc(`You may want to turn this off to avoid conflicts with ${hoverCmd}.`);
+				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
+			});
+		this.addToggleSetting('enableHoverPDFInternalLink', () => this.redisplay())
+			.setName(`Show a popover preview of PDF internal links by ${hoverCmd} `);
+		this.addToggleSetting('recordPDFInternalLinkHistory')
+			.setName('Enable history navigation for PDF internal links')
+			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.');
+		this.addSetting()
+			.setName('Copy PDF link as Obsidian link')
+			.setDesc('(Requires custom right-click menu enabled) In the PDF viewer, right-click a PDF-embedded link and then click "Copy PDF link as Obsidian link". It will copy the PDF link as an Obsidian link that you can paste into markdown files. Clicking the pasted link will take you to the same destination as the original PDF link.');
+		this.addSetting()
+			.setName('"Copy link to current page view" command')
+			.setDesc('Running this command while viewing a PDF file will copy a link, clicking which will open the PDF file at the current scroll position and zoom level.');
+		this.addSetting()
+			.setName('Paste copied link to a text selection in a PDF file')
+			.setDesc('(Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".');
+		if (this.plugin.settings.replaceContextMenu && this.plugin.settings.enalbeWriteHighlightToFile) {
+			this.addToggleSetting('pdfLinkBorder', () => this.redisplay())
+				.setName('Draw borders around internal links')
+				.setDesc('Specify whether PDF internal links that you create by "Paste copied link to selection" should be surrounded by borders.');
+			if (this.plugin.settings.pdfLinkBorder) {
+				this.addColorPickerSetting('pdfLinkColor')
+					.setName('Border color of internal links')
+					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
+			}
+		}
+
+
 		this.addHeading('PDF outline (table of contents)', 'lucide-list')
+		this.addToggleSetting('clickOutlineItemWithModifierKey')
+			.then((setting) => {
+				this.renderMarkdown(
+					'Click PDF outline with [modifier keys](https://help.obsidian.md/User+interface/Tabs#Open+a+link) to open target section in various ways',
+					setting.nameEl
+				)
+			})
+			.then((setting) => {
+				if (!noModKey) setting.setDesc(`You may want to turn this off to avoid conflicts with ${hoverCmd}.`);
+				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
+			});
+		this.addToggleSetting('popoverPreviewOnOutlineHover')
+			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())} `)
+			.setDesc('Reopen the tabs or reload the app after changing this option.');
+		this.addToggleSetting('recordHistoryOnOutlineClick')
+			.setName('Record to history when clicking an outline item')
+			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('outlineContextMenu')
 			.setName('Replace the built-in right-click menu in the outline with a custom one')
 			.setDesc('This enables you to insert a section link with a custom format by right-clicking an item in the outline.')
@@ -1338,15 +1491,26 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					textarea.inputEl.cols = 30;
 				});
 		}
-		this.addToggleSetting('popoverPreviewOnOutlineHover')
-			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`)
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
-		this.addToggleSetting('recordHistoryOnOutlineClick')
-			.setName('Record to history when clicking an outline item')
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
 
 
 		this.addHeading('PDF thumbnails', 'lucide-gallery-thumbnails')
+		this.addToggleSetting('clickThumbnailWithModifierKey')
+			.then((setting) => {
+				this.renderMarkdown(
+					'Click PDF thumbnails with [modifier keys](https://help.obsidian.md/User+interface/Tabs#Open+a+link) to open target page in various ways',
+					setting.nameEl
+				)
+			})
+			.then((setting) => {
+				if (!noModKey) setting.setDesc(`You may want to turn this off to avoid conflicts with ${hoverCmd}.`);
+				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
+			});
+		this.addToggleSetting('popoverPreviewOnThumbnailHover')
+			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())} `)
+			.setDesc('Reopen the tabs or reload the app after changing this option.');
+		this.addToggleSetting('recordHistoryOnThumbnailClick')
+			.setName('Record to history when clicking a thumbnail')
+			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('thumbnailContextMenu')
 			.setName('Replace the built-in right-click menu in thumbnails with a custom one')
 			.setDesc('This enables you to insert a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail.');
@@ -1374,12 +1538,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					textarea.inputEl.cols = 30;
 				});
 		}
-		this.addToggleSetting('popoverPreviewOnThumbnailHover')
-			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`)
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
-		this.addToggleSetting('recordHistoryOnThumbnailClick')
-			.setName('Record to history when clicking a thumbnail')
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
 
 
 		this.addHeading('Insert link to annotation by drag & drop', 'lucide-message-square');
@@ -1468,5 +1626,47 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.promises = [];
 		this.component.unload();
 		this.containerEl.empty();
+	}
+}
+
+
+class CommandSuggest extends AbstractInputSuggest<Command> {
+	plugin: PDFPlus;
+	inputEl: HTMLInputElement;
+	tab: PDFPlusSettingTab;
+
+	constructor(tab: PDFPlusSettingTab, inputEl: HTMLInputElement) {
+		super(tab.plugin.app, inputEl);
+		this.inputEl = inputEl;
+		this.plugin = tab.plugin;
+		this.tab = tab;
+	}
+
+	getSuggestions(query: string) {
+		const search = prepareFuzzySearch(query);
+		const commands = Object.values(this.plugin.app.commands.commands);
+
+		const results: (SearchResultContainer & { command: Command })[] = [];
+
+		for (const command of commands) {
+			const match = search(command.name);
+			if (match) results.push({ match, command });
+		}
+
+		sortSearchResults(results);
+
+		return results.map(({ command }) => command);
+	}
+
+	renderSuggestion(command: Command, el: HTMLElement) {
+		el.setText(command.name);
+	}
+
+	selectSuggestion(command: Command) {
+		this.inputEl.blur();
+		this.plugin.settings.commandToExecuteWhenFirstPaste = command.id;
+		this.inputEl.value = command.name;
+		this.close();
+		this.plugin.saveSettings();
 	}
 }

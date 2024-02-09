@@ -3,7 +3,7 @@ import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
 import { PDFView } from 'typings';
-import { patchPDFInternals } from './pdf';
+import { patchPDFInternals } from './pdf-internals';
 
 
 export const patchPDFView = (plugin: PDFPlus): boolean => {

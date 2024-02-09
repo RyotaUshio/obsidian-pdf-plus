@@ -1,5 +1,5 @@
 import PDFPlus from 'main';
-import { patchPDFInternals } from 'patchers/pdf';
+import { patchPDFInternals } from 'patchers/pdf-internals';
 
 
 export const patchPDFInternalFromPDFEmbed = (plugin: PDFPlus): boolean => {

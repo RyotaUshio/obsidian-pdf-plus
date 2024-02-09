@@ -3,7 +3,7 @@ import * as pdflib from '@cantoo/pdf-lib';
 // import * as pdfAnnotate from 'annotpdf';
 
 import { patchPDFView } from 'patchers/pdf-view';
-import { patchPDFInternals } from 'patchers/pdf';
+import { patchPDFInternals } from 'patchers/pdf-internals';
 import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
@@ -276,6 +276,13 @@ export default class PDFPlus extends Plugin {
 				}
 			}));
 		}
+
+		// Keep the last-pasted file up-to-date
+		this.registerEvent(this.app.vault.on('delete', (file) => {
+			if (file instanceof TFile && file === this.lastPasteFile) {
+				this.lastPasteFile = null;
+			}
+		}));
 	}
 
 	registerOneTimeEvent<T extends Events>(events: T, ...[evt, callback, ctx]: OverloadParameters<T['on']>) {

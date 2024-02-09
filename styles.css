@@ -71,6 +71,10 @@ settings:
     border-color: var(--background-modifier-error);
 }
 
+.setting-item-description.error {
+    color: var(--background-modifier-error);
+}
+
 .is-mobile,
 .is-tablet {
     .pdf-plus-color-palette .pdf-plus-color-palette-item-inner {
@@ -193,4 +197,26 @@ settings:
 
 .pdf-plus-draggable .popup {
     cursor: default;
+}
+
+#pdf-plus-funding {
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    align-items: flex-end;
+
+    .setting-item-control {
+        padding-top: var(--size-4-4);
+    }
+}
+
+#pdf-plus-funding-icon-info-container {
+    display: flex;
+    flex-direction: row;
+    /* justify-content: left; */
+    align-items: center;
+}
+
+#pdf-plus-funding-icon {
+    margin-right: var(--size-4-4);
 }

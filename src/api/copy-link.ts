@@ -1,9 +1,10 @@
-import { Canvas, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
+import { Canvas, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
 import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
+import { ColorPalette } from 'color-palette';
 
 
 export class copyLinkAPI extends PDFPlusAPISubmodule {
@@ -187,11 +188,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
                 const palette = this.api.getColorPaletteFromChild(child);
                 palette?.setStatus('Link copied', this.statusDurationMs);
-                if (autoPaste) {
-                    this.autoPaste(evaluated).then((success) => {
-                        if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
-                    });
-                }
+                this.afterCopy(evaluated, autoPaste, palette ?? undefined);
             }
 
             return true;
@@ -215,11 +212,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                     const palette = this.api.getColorPaletteFromChild(child);
                     // This can be redundant because the copy button already shows the status.
                     if (shouldShowStatus) palette?.setStatus('Link copied', this.statusDurationMs);
-                    if (autoPaste) {
-                        this.autoPaste(evaluated).then((success) => {
-                            if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
-                        });
-                    }
+                    this.afterCopy(evaluated, autoPaste, palette ?? undefined);
                 });
         }
 
@@ -234,11 +227,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
             const palette = this.api.getColorPaletteFromChild(child);
             palette?.setStatus('Link copied', this.statusDurationMs);
-            if (autoPaste) {
-                this.autoPaste(evaluated).then((success) => {
-                    if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
-                });
-            }
+            this.afterCopy(evaluated, autoPaste, palette ?? undefined);
         }
 
         return true;
@@ -321,44 +310,124 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     async autoPaste(text: string): Promise<boolean> {
-        if (this.plugin.lastPasteFile && this.plugin.lastPasteFile.extension === 'md') {
-            const lastPasteFile = this.plugin.lastPasteFile;
-            const isLastPasteFileOpened = this.api.workspace.isMarkdownFileOpened(lastPasteFile);
+        return this.autoPasteOrAutoFocus((file) => this.pasteTextToFile(text, file));
+    }
 
-            // Use vault, not editor, so that we can auto-paste even when the file is not opened
-            await this.app.vault.process(this.plugin.lastPasteFile, (data) => {
-                // If the file does not end with a blank line, add one
-                data = data.trimEnd()
-                if (data) data += '\n\n';
-                data += text;
-                return data;
-            });
+    async autoFocus(): Promise<boolean> {
+        return this.autoPasteOrAutoFocus(async (file) => {
+            const leaf = await this.prepareMarkdownLeafForPaste(file);
 
-            if (this.plugin.settings.focusEditorAfterAutoPaste && isLastPasteFileOpened) {
-                // If the file opened in some tab, focus the tab and move the cursor to the end of the file.
-                // To this end, we listen to the editor-change event so that we can detect when the editor update
-                // triggered by the auto-paste is done.
-                const eventRef = this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-                    if (info.file?.path === lastPasteFile.path) {
-                        this.app.workspace.offref(eventRef);
-
-                        if (info instanceof MarkdownView) {
-                            this.app.workspace.revealLeaf(info.leaf);
-                        }
-
-                        if (!editor.hasFocus()) editor.focus();
-                        editor.exec('goEnd');
-                    }
-                });
-
-                this.plugin.registerEvent(eventRef);
+            if (leaf) {
+                this.app.workspace.revealLeaf(leaf);
+                this.app.workspace.setActiveLeaf(leaf);
             }
+        });
+    }
 
+    async autoPasteOrAutoFocus(onFileIdentified: (file: TFile) => Promise<any>): Promise<boolean> {
+        const lastPasteFile = this.plugin.lastPasteFile;
+        if (lastPasteFile && lastPasteFile.extension === 'md') {
+            await onFileIdentified(lastPasteFile);
             return true;
         }
 
-        new Notice(`${this.plugin.manifest.name}: Cannot auto-paste because this is the first time. Please manually paste the link.`)
-        return false;
+        const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenFirstPaste);
+        if (!command) {
+            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenFirstPaste}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
+            return false;
+        }
+
+        let isResolved = false;
+
+        return new Promise<boolean>((resolve) => {
+            const eventRef = this.app.workspace.on('file-open', async (file) => {
+                if (file && file.extension === 'md') {
+                    this.app.workspace.offref(eventRef);
+                    await onFileIdentified(file);
+                    this.plugin.lastPasteFile = file;
+                    resolve(true);
+                }
+            });
+
+            this.app.commands.executeCommandById(command.id);
+
+            // For commands such as "Create new note", the file-open will be triggered before long.
+            // However, for commands such as "Quick switcher: Open quick switcher", the file-open will be triggered after a long time.
+            activeWindow.setTimeout(() => {
+                if (!isResolved) {
+                    new Notice(`${this.plugin.manifest.name}: The link will be pasted into the first markdown file you open within the next 20 seconds.`);
+                    activeWindow.setTimeout(() => {
+                        this.app.workspace.offref(eventRef);
+                        resolve(false);
+                    }, 20000);
+                }
+            }, 3000);
+        })
+            .then((success) => {
+                isResolved = true;
+                return success;
+            });
+    }
+
+    async prepareMarkdownLeafForPaste(file: TFile) {
+        let leaf = this.api.workspace.getExistingLeafForMarkdownFile(file);
+
+        if (!leaf && this.settings.openLastPasteFileIfNotOpened) {
+            const paneType = this.settings.howToOpenLastPasteFileIfNotOpened;
+
+            if (paneType === 'hover-editor') {
+                const hoverLeaf = await this.api.workspace.hoverEditor.createNewHoverEditorLeaf({ hoverPopover: null }, null, file.path, '');
+                if (hoverLeaf) leaf = hoverLeaf;
+            } else {
+                leaf = this.api.workspace.getLeaf(paneType);
+                await leaf.openFile(file, { active: false });
+            }
+
+            if (leaf && this.settings.openLastPasteFileInEditingView) {
+                const view = leaf.view;
+                if (view instanceof MarkdownView) {
+                    view.setState({ mode: 'source' }, { history: false });
+                    view.setEphemeralState({ focus: false });
+                }
+            }
+        }
+
+        if (leaf) this.api.workspace.hoverEditor.postProcessHoverEditorLeaf(leaf);
+
+        return leaf;
+    }
+
+    async pasteTextToFile(text: string, file: TFile) {
+        const leaf = await this.prepareMarkdownLeafForPaste(file);
+
+        // Use vault, not editor, so that we can auto-paste even when the file is not opened
+        await this.app.vault.process(file, (data) => {
+            // If the file does not end with a blank line, add one
+            data = data.trimEnd()
+            if (data) data += '\n\n';
+            data += text;
+            return data;
+        });
+
+        if (this.plugin.settings.focusEditorAfterAutoPaste && leaf) {
+            // If the file opened in some tab, focus the tab and move the cursor to the end of the file.
+            // To this end, we listen to the editor-change event so that we can detect when the editor update
+            // triggered by the auto-paste is done.
+            const eventRef = this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+                if (info.file?.path === file.path) {
+                    this.app.workspace.offref(eventRef);
+
+                    if (info instanceof MarkdownView) {
+                        this.app.workspace.revealLeaf(info.leaf);
+                    }
+
+                    if (!editor.hasFocus()) editor.focus();
+                    editor.exec('goEnd');
+                }
+            });
+
+            this.plugin.registerEvent(eventRef);
+        }
     }
 
     watchPaste(text: string) {
@@ -374,5 +443,16 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         this.watchPaste(text);
         // update this.lastCopiedDestArray
         this.plugin.lastCopiedDestInfo = null;
+    }
+
+    async afterCopy(evaluated: string, autoPaste?: boolean, palette?: ColorPalette) {
+        if (autoPaste) {
+            const success = await this.autoPaste(evaluated);
+            if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
+        } else {
+            if (this.settings.autoFocusLastPasteFileAfterCopy) {
+                await this.autoFocus();
+            }
+        }
     }
 }
