@@ -1,4 +1,4 @@
-import { Canvas, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
+import { Canvas, Command, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
@@ -310,37 +310,10 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     async autoPaste(text: string): Promise<boolean> {
-        return this.autoPasteOrAutoFocus(this.settings.useVisibleMDForAutoPaste, (file) => this.pasteTextToFile(text, file));
-    }
+        const success = await this.autoPasteOrAutoFocusIfFileIdentified(this.settings.useVisibleMDForAutoPaste, (file) => this.pasteTextToFile(text, file));
+        if (success) return true;
 
-    async autoFocus(): Promise<boolean> {
-        return this.autoPasteOrAutoFocus(this.settings.useVisibleMDForAutoFocus, async (file) => {
-            const leaf = await this.prepareMarkdownLeafForPaste(file);
-
-            if (leaf) {
-                this.app.workspace.revealLeaf(leaf);
-                this.app.workspace.setActiveLeaf(leaf);
-                if (leaf.view instanceof MarkdownView) {
-                    leaf.view.editor.focus();
-                }
-            }
-        });
-    }
-
-    async autoPasteOrAutoFocus(useVisibleMarkdownWhenNoLastPasteFile: boolean, onFileIdentified: (file: TFile) => Promise<any>): Promise<boolean> {
-        const lastPasteFile = this.plugin.lastPasteFile;
-        if (lastPasteFile && lastPasteFile.extension === 'md') {
-            await onFileIdentified(lastPasteFile);
-            return true;
-        }
-
-        if (useVisibleMarkdownWhenNoLastPasteFile) {
-            const visibleMDFile = this.api.workspace.getExistingVisibleMarkdownView()?.file;
-            if (visibleMDFile) {
-                await onFileIdentified(visibleMDFile);
-                return true;
-            }    
-        }
+        if (!this.settings.executeCommandWhenFirstPasteAutoPaste) return false;
 
         const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenFirstPaste);
         if (!command) {
@@ -354,7 +327,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             const eventRef = this.app.workspace.on('file-open', async (file) => {
                 if (file && file.extension === 'md') {
                     this.app.workspace.offref(eventRef);
-                    await onFileIdentified(file);
+                    await this.pasteTextToFile(text, file);
                     this.plugin.lastPasteFile = file;
                     resolve(true);
                 }
@@ -378,6 +351,50 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                 isResolved = true;
                 return success;
             });
+    }
+
+    async autoFocus(): Promise<boolean> {
+        const success = await this.autoPasteOrAutoFocusIfFileIdentified(this.settings.useVisibleMDForAutoFocus, async (file) => {
+            const leaf = await this.prepareMarkdownLeafForPaste(file);
+
+            if (leaf) {
+                this.app.workspace.revealLeaf(leaf);
+                this.app.workspace.setActiveLeaf(leaf);
+                if (leaf.view instanceof MarkdownView) {
+                    leaf.view.editor.focus();
+                }
+            }
+        });
+
+        if (success) return success;
+
+        if (!this.settings.executeCommandWhenFirstPasteAutoFocus) return false;
+
+        const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenFirstPaste);
+        if (!command) {
+            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenFirstPaste}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
+            return false;
+        }
+
+        return this.app.commands.executeCommandById(command.id);
+    }
+
+    async autoPasteOrAutoFocusIfFileIdentified(useVisibleMarkdownWhenNoLastPasteFile: boolean, onFileIdentified: (file: TFile) => Promise<any>): Promise<boolean> {
+        const lastPasteFile = this.plugin.lastPasteFile;
+        if (lastPasteFile && lastPasteFile.extension === 'md') {
+            await onFileIdentified(lastPasteFile);
+            return true;
+        }
+
+        if (useVisibleMarkdownWhenNoLastPasteFile) {
+            const visibleMDFile = this.api.workspace.getExistingVisibleMarkdownView()?.file;
+            if (visibleMDFile) {
+                await onFileIdentified(visibleMDFile);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     async prepareMarkdownLeafForPaste(file: TFile) {
@@ -460,9 +477,11 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         if (autoPaste) {
             const success = await this.autoPaste(evaluated);
             if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
+            else palette?.setStatus('Link copied but paste target not identified', this.statusDurationMs);
         } else {
             if (this.settings.autoFocusLastPasteFileAfterCopy) {
-                await this.autoFocus();
+                const success = await this.autoFocus();
+                if (!success) palette?.setStatus('Link copied but paste target not identified', this.statusDurationMs);
             }
         }
     }

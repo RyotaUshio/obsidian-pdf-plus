@@ -13,7 +13,7 @@ import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { subpathToParams, OverloadParameters } from 'utils';
+import { subpathToParams, OverloadParameters, focusObsidian } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 import { patchPDFInternalFromPDFEmbed } from 'pdf-embed';
 
@@ -284,7 +284,7 @@ export default class PDFPlus extends Plugin {
 					const file = leaf.view.file;
 					this.app.openWithDefaultApp(file.path);
 					if (this.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
-						open('obsidian://'); // move focus back to Obsidian
+						focusObsidian();
 					}
 				}
 			}));

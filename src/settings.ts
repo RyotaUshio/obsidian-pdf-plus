@@ -136,6 +136,8 @@ export interface PDFPlusSettings {
 	openLastPasteFileInEditingView: boolean;
 	useVisibleMDForAutoFocus: boolean;
 	useVisibleMDForAutoPaste: boolean;
+	executeCommandWhenFirstPasteAutoFocus: boolean;
+	executeCommandWhenFirstPasteAutoPaste: boolean;
 	commandToExecuteWhenFirstPaste: string;
 	selectToCopyToggleRibbonIcon: boolean;
 	autoFocusToggleRibbonIcon: boolean;
@@ -295,6 +297,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	openLastPasteFileInEditingView: true,
 	useVisibleMDForAutoFocus: true,
 	useVisibleMDForAutoPaste: false,
+	executeCommandWhenFirstPasteAutoFocus: true,
+	executeCommandWhenFirstPasteAutoPaste: true,
 	commandToExecuteWhenFirstPaste: 'switcher:open',
 	selectToCopyToggleRibbonIcon: true,
 	autoFocusToggleRibbonIcon: true,
@@ -1276,34 +1280,39 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 		this.addToggleSetting('useVisibleMDForAutoFocus')
 			.setName('Auto-focus: when there is no last-pasted markdown file, focus on a visible markdown file if any')
-			this.addToggleSetting('useVisibleMDForAutoPaste')
+		this.addToggleSetting('useVisibleMDForAutoPaste')
 			.setName('Auto-paste: when there is no last-pasted markdown file, paste to a visible markdown file if any')
-		this.addSetting('commandToExecuteWhenFirstPaste')
-			.setName('Command to execute when target file cannot be determined')
-			.then((setting) => {
-				this.renderMarkdown([
-					'When PDF++ cannot determine which markdown file to focus on or paste to, it will execute this command to let you specify the target file. Here\'s some examples of useful commands:',
-					'',
-					`- ${this.app.commands.findCommand('file-explorer:new-file')?.name ?? 'Create new note'}`,
-					`- ${this.app.commands.findCommand('file-explorer:new-file-in-new-pane')?.name ?? 'Create note to the right'}`,
-					`- ${this.app.commands.findCommand('switcher:open')?.name ?? 'Quick switcher: Open quick switcher'}`,
-					'- [Omnisearch](obsidian://show-plugin?id=omnisearch): Vault search',
-					'- [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor): Open new Hover Editor',
-				], setting.descEl);
-			})
-			.addText((text) => {
-				const id = this.plugin.settings.commandToExecuteWhenFirstPaste;
-				const command = this.app.commands.findCommand(id);
-				if (command) {
-					text.setValue(command.name);
-				} else {
-					text.inputEl.addClass('error');
-					text.setPlaceholder('Command not found');
-				}
-				text.inputEl.size = 30;
-				new CommandSuggest(this, text.inputEl);
-			});
-
+		this.addToggleSetting('executeCommandWhenFirstPasteAutoFocus', () => this.redisplay())
+			.setName('Auto-focus: execute command when target file cannot be determined')
+		this.addToggleSetting('executeCommandWhenFirstPasteAutoPaste', () => this.redisplay())
+			.setName('Auto-paste: execute command when target file cannot be determined')
+		if (this.plugin.settings.executeCommandWhenFirstPasteAutoFocus || this.plugin.settings.executeCommandWhenFirstPasteAutoPaste) {
+			this.addSetting('commandToExecuteWhenFirstPaste')
+				.setName('Command to execute')
+				.then((setting) => {
+					this.renderMarkdown([
+						'When PDF++ cannot determine which markdown file to focus on or paste to, it will execute this command to let you specify the target file. Here\'s some examples of useful commands:',
+						'',
+						`- ${this.app.commands.findCommand('file-explorer:new-file')?.name ?? 'Create new note'}`,
+						`- ${this.app.commands.findCommand('file-explorer:new-file-in-new-pane')?.name ?? 'Create note to the right'}`,
+						`- ${this.app.commands.findCommand('switcher:open')?.name ?? 'Quick switcher: Open quick switcher'}`,
+						'- [Omnisearch](obsidian://show-plugin?id=omnisearch): Vault search',
+						'- [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor): Open new Hover Editor',
+					], setting.descEl);
+				})
+				.addText((text) => {
+					const id = this.plugin.settings.commandToExecuteWhenFirstPaste;
+					const command = this.app.commands.findCommand(id);
+					if (command) {
+						text.setValue(command.name);
+					} else {
+						text.inputEl.addClass('error');
+						text.setPlaceholder('Command not found');
+					}
+					text.inputEl.size = 30;
+					new CommandSuggest(this, text.inputEl);
+				});
+		}
 
 		this.addHeading('Link copy templates', 'lucide-copy')
 			.setDesc('The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ')

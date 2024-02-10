@@ -173,6 +173,10 @@ export function isHoverEditor(pdfViewer: ObsidianViewer): boolean {
     return !!(pdfViewer.dom?.containerEl.closest('.hover-editor'));
 }
 
+export function focusObsidian() {
+    activeWindow.open('obsidian://');
+}
+
 function getCJKRegexp() {
     let pattern = ''
 

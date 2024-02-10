@@ -2,6 +2,7 @@ import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platf
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
+import { focusObsidian } from 'utils';
 
 
 export const patchWorkspace = (plugin: PDFPlus) => {
@@ -23,7 +24,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                             }
                             const promise = app.openWithDefaultApp(file.path);
                             if (plugin.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
-                                open('obsidian://'); // move focus back to Obsidian
+                                focusObsidian();
                             }
                             if (!plugin.settings.openPDFWithDefaultAppAndObsidian) {
                                 return promise;
