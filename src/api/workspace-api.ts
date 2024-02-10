@@ -139,7 +139,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
 
     getMarkdownLeafInSidebar(sidebarType: SidebarType) {
         if (this.settings.singleMDLeafInSidebar) {
-            return this.api.workspace.getExistingLeafInSidebar(sidebarType)
+            return this.api.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
                 ?? this.api.workspace.getNewLeafInSidebar(sidebarType)
         } else {
             return this.api.workspace.getNewLeafInSidebar(sidebarType);
@@ -190,7 +190,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
                 && this.settings.singleMDLeafInSidebar
                 && markdownLeafParent
                 && this.isInSidebar(markdownLeafParent)) {
-                markdownLeaf = this.getExistingLeafInSidebar(this.settings.paneTypeForFirstMDLeaf)
+                markdownLeaf = this.getExistingMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf)
                     ?? this.api.workspace.getNewLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
             } else {
                 markdownLeaf = markdownLeafParent
@@ -234,7 +234,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
         return this.getNewLeafInSidebar(sidebarType);
     }
 
-    getExistingLeafInSidebar(sidebarType: SidebarType): WorkspaceLeaf | null {
+    getExistingMarkdownLeafInSidebar(sidebarType: SidebarType): WorkspaceLeaf | null {
         let sidebarLeaf: WorkspaceLeaf | undefined;
         const root = sidebarType === 'right-sidebar'
             ? this.app.workspace.rightSplit

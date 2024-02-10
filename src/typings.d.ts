@@ -690,6 +690,16 @@ interface ClipboardManager {
     insertAttachmentEmbed(file: TFile, newLine: boolean): void;
 }
 
+interface RecentFileTracker {
+    getRecentFiles(options: {
+        showMarkdown: boolean;
+        showCanvas: boolean;
+        showNonImageAttachments: boolean;
+        showImages: boolean;
+        maxCount: number;
+    }): string[];
+}
+
 declare module 'obsidian' {
     interface App {
         setting: AppSetting;
@@ -751,6 +761,7 @@ declare module 'obsidian' {
     }
 
     interface Workspace {
+        recentFileTracker: RecentFileTracker;
         getActiveFileView(): FileView | null;
         trigger(name: string, ...data: any[]): void;
         trigger(name: 'hover-link', ctx: {

@@ -1,7 +1,8 @@
-import { AbstractInputSuggest, Command, Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResult, SearchResultContainer, Setting, TextAreaComponent, TextComponent, prepareFuzzySearch, setIcon, setTooltip, sortSearchResults } from 'obsidian';
+import { AbstractInputSuggest, Command, Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TextAreaComponent, TextComponent, prepareFuzzySearch, setIcon, setTooltip, sortSearchResults } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType } from 'api/workspace-api';
+import { AutoFocusTarget } from 'api/copy-link';
 import { KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
 
 
@@ -20,6 +21,14 @@ const PANE_TYPE: Record<ExtendedPaneType, string> = {
 	'window': 'New window',
 	'right-sidebar': 'Right sidebar',
 	'left-sidebar': 'Left sidebar'
+};
+
+const AUTO_FOCUS_TARGETS: Record<AutoFocusTarget, string> = {
+	'last-paste': 'Last pasted .md',
+	'last-active': 'Last active .md',
+	'last-active-and-open': 'Last active & open .md',
+	'last-paste-then-last-active': 'Last pasted .md if any, otherwise last active .md',
+	'last-paste-then-last-active-and-open': 'Last pasted .md if any, otherwise last active & open .md',
 };
 
 export interface namedTemplate {
@@ -129,16 +138,15 @@ export interface PDFPlusSettings {
 	clickOutlineItemWithModifierKey: boolean;
 	clickThumbnailWithModifierKey: boolean;
 	focusEditorAfterAutoPaste: boolean;
-	autoFocusLastPasteFileAfterCopy: boolean;
-	openLastPasteFileIfNotOpened: boolean;
-	howToOpenLastPasteFileIfNotOpened: ExtendedPaneType | 'hover-editor';
+	autoFocus: boolean;
+	autoFocusTarget: AutoFocusTarget;
+	autoPasteTarget: AutoFocusTarget;
+	openAutoFocusTargetIfNotOpened: boolean;
+	howToOpenAutoFocusTargetIfNotOpened: ExtendedPaneType | 'hover-editor';
 	closeHoverEditorWhenLostFocus: boolean;
-	openLastPasteFileInEditingView: boolean;
-	useVisibleMDForAutoFocus: boolean;
-	useVisibleMDForAutoPaste: boolean;
-	executeCommandWhenFirstPasteAutoFocus: boolean;
-	executeCommandWhenFirstPasteAutoPaste: boolean;
-	commandToExecuteWhenFirstPaste: string;
+	openAutoFocusTargetInEditingView: boolean;
+	executeCommandWhenTargetNotIdentified: boolean;
+	commandToExecuteWhenTargetNotIdentified: string;
 	selectToCopyToggleRibbonIcon: boolean;
 	autoFocusToggleRibbonIcon: boolean;
 }
@@ -290,16 +298,15 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	clickOutlineItemWithModifierKey: true,
 	clickThumbnailWithModifierKey: true,
 	focusEditorAfterAutoPaste: true,
-	autoFocusLastPasteFileAfterCopy: false,
-	openLastPasteFileIfNotOpened: true,
-	howToOpenLastPasteFileIfNotOpened: 'right',
+	autoFocus: false,
+	autoFocusTarget: 'last-paste-then-last-active-and-open',
+	autoPasteTarget: 'last-paste-then-last-active-and-open',
+	openAutoFocusTargetIfNotOpened: true,
+	howToOpenAutoFocusTargetIfNotOpened: 'right',
 	closeHoverEditorWhenLostFocus: true,
-	openLastPasteFileInEditingView: true,
-	useVisibleMDForAutoFocus: true,
-	useVisibleMDForAutoPaste: false,
-	executeCommandWhenFirstPasteAutoFocus: true,
-	executeCommandWhenFirstPasteAutoPaste: true,
-	commandToExecuteWhenFirstPaste: 'switcher:open',
+	openAutoFocusTargetInEditingView: true,
+	executeCommandWhenTargetNotIdentified: true,
+	commandToExecuteWhenTargetNotIdentified: 'switcher:open',
 	selectToCopyToggleRibbonIcon: true,
 	autoFocusToggleRibbonIcon: true,
 };
@@ -1184,7 +1191,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'   Copies a link to the text selection or focused annotation in the PDF viewer, which is formatted according to the options specified in the PDF toolbar.',
 					'   <br>If the "write to file directly" toggle switch in the PDF toolbar is on, it first adds a highlight annotation directly to the PDF file, and then copies the link to the created annotation.',
 					'2. **Copy & auto-paste link to selection or annotation:**',
-					'  In addition to copying the link, it automatically pastes the copied link at the end of the note where you last pasted a link. Note that Canvas is not supported.',
+					'  In addition to copying the link, it automatically pastes the copied link at the end of the last active note or the note where you last pasted a link. Note that Canvas is not supported.',
 					'',
 					'The third command is very different from the first two:',
 					'',
@@ -1238,60 +1245,59 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Auto-focus / auto-paste', 'lucide-zap');
-		this.addToggleSetting('autoFocusLastPasteFileAfterCopy', () => {
-			this.plugin.autoFocusToggleIconEl.toggleClass('is-active', this.plugin.settings.autoFocusLastPasteFileAfterCopy);
+		this.addToggleSetting('autoFocus', () => {
+			this.plugin.autoFocusToggleIconEl.toggleClass('is-active', this.plugin.settings.autoFocus);
 		})
-			.setName('Auto-focus the last-pasted markdown file after copying a link')
-			.setDesc('If enabled, the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation".');
+			.setName('Auto-focus markdown after copying link from PDF')
+			.setDesc('If enabled, the last active note or the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation".');
 		this.addToggleSetting('autoFocusToggleRibbonIcon')
 			.setName('Show an icon to toggle auto-focus in the left ribbon menu')
 			.setDesc('You can also toggle auto-focus via a command. Reload the plugin after changing this setting to take effect.')
+		this.addDropdownSetting('autoFocusTarget', AUTO_FOCUS_TARGETS)
+			.setName('Auto-focus target');
+		this.addDropdownSetting('autoPasteTarget', AUTO_FOCUS_TARGETS)
+			.setName('Auto-paste target');
 		this.addToggleSetting('focusEditorAfterAutoPaste')
-			.setName('Focus editor after auto-pasting a link')
+			.setName('Focus editor after auto-paste')
 			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
-		this.addToggleSetting('openLastPasteFileIfNotOpened', () => this.redisplay())
-			.setName('Open the last-pasted markdown file if it is not opened');
-		if (this.plugin.settings.openLastPasteFileIfNotOpened) {
+		this.addToggleSetting('openAutoFocusTargetIfNotOpened', () => this.redisplay())
+			.setName('Open target markdown file if not opened');
+		if (this.plugin.settings.openAutoFocusTargetIfNotOpened) {
 			this.addDropdownSetting(
-				'howToOpenLastPasteFileIfNotOpened',
+				'howToOpenAutoFocusTargetIfNotOpened',
 				{ ...PANE_TYPE, 'hover-editor': 'Hover Editor' },
 				() => this.redisplay()
 			)
-				.setName('How to open the last-pasted markdown file if it is not opened')
+				.setName('How to open target markdown file when not opened')
 				.then((setting) => {
 					this.renderMarkdown(
 						'The "Hover Editor" option is available if the [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor) plugin is enabled.',
 						setting.descEl
 					);
-					if (this.plugin.settings.howToOpenLastPasteFileIfNotOpened === 'hover-editor') {
+					if (this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor') {
 						if (!this.app.plugins.plugins['obsidian-hover-editor']) {
 							setting.descEl.addClass('error');
 						}
 					}
 				});
-			if (this.plugin.settings.howToOpenLastPasteFileIfNotOpened === 'hover-editor') {
+			if (this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor') {
 				this.addToggleSetting('closeHoverEditorWhenLostFocus')
 					.setName('Close Hover Editor when it loses focus')
 					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.')
 			}
-			this.addToggleSetting('openLastPasteFileInEditingView')
+			this.addToggleSetting('openAutoFocusTargetInEditingView')
 				.setName('Always open in editing view')
-				.setDesc('This option can be useful especially when you set the previous optiont to "Hover Editor".');
+				.setDesc('This option can be useful especially when you set the previous option to "Hover Editor".');
 		}
-		this.addToggleSetting('useVisibleMDForAutoFocus')
-			.setName('Auto-focus: when there is no last-pasted markdown file, focus on a visible markdown file if any')
-		this.addToggleSetting('useVisibleMDForAutoPaste')
-			.setName('Auto-paste: when there is no last-pasted markdown file, paste to a visible markdown file if any')
-		this.addToggleSetting('executeCommandWhenFirstPasteAutoFocus', () => this.redisplay())
-			.setName('Auto-focus: execute command when target file cannot be determined')
-		this.addToggleSetting('executeCommandWhenFirstPasteAutoPaste', () => this.redisplay())
-			.setName('Auto-paste: execute command when target file cannot be determined')
-		if (this.plugin.settings.executeCommandWhenFirstPasteAutoFocus || this.plugin.settings.executeCommandWhenFirstPasteAutoPaste) {
-			this.addSetting('commandToExecuteWhenFirstPaste')
+		this.addToggleSetting('executeCommandWhenTargetNotIdentified', () => this.redisplay())
+			.setName('Execute command when target file cannot be determined')
+			.setDesc('When PDF++ cannot determine which markdown file to focus on or paste to, it will execute the command specified in the next option to let you pick a target file.');
+		if (this.plugin.settings.executeCommandWhenTargetNotIdentified) {
+			this.addSetting('commandToExecuteWhenTargetNotIdentified')
 				.setName('Command to execute')
 				.then((setting) => {
 					this.renderMarkdown([
-						'When PDF++ cannot determine which markdown file to focus on or paste to, it will execute this command to let you specify the target file. Here\'s some examples of useful commands:',
+						'Here\'s some examples of useful commands:',
 						'',
 						`- ${this.app.commands.findCommand('file-explorer:new-file')?.name ?? 'Create new note'}`,
 						`- ${this.app.commands.findCommand('file-explorer:new-file-in-new-pane')?.name ?? 'Create note to the right'}`,
@@ -1301,7 +1307,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					], setting.descEl);
 				})
 				.addText((text) => {
-					const id = this.plugin.settings.commandToExecuteWhenFirstPaste;
+					const id = this.plugin.settings.commandToExecuteWhenTargetNotIdentified;
 					const command = this.app.commands.findCommand(id);
 					if (command) {
 						text.setValue(command.name);
@@ -1688,7 +1694,7 @@ class CommandSuggest extends AbstractInputSuggest<Command> {
 
 	selectSuggestion(command: Command) {
 		this.inputEl.blur();
-		this.plugin.settings.commandToExecuteWhenFirstPaste = command.id;
+		this.plugin.settings.commandToExecuteWhenTargetNotIdentified = command.id;
 		this.inputEl.value = command.name;
 		this.close();
 		this.plugin.saveSettings();

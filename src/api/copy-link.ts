@@ -1,4 +1,4 @@
-import { Canvas, Command, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
+import { Canvas, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
@@ -6,6 +6,8 @@ import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 import { ColorPalette } from 'color-palette';
 
+
+export type AutoFocusTarget = 'last-paste' | 'last-active' | 'last-active-and-open' | 'last-paste-then-last-active' | 'last-paste-then-last-active-and-open';
 
 export class copyLinkAPI extends PDFPlusAPISubmodule {
     statusDurationMs = 2000;
@@ -316,14 +318,14 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     async autoPaste(text: string): Promise<boolean> {
-        const success = await this.autoPasteOrAutoFocusIfFileIdentified(this.settings.useVisibleMDForAutoPaste, (file) => this.pasteTextToFile(text, file));
+        const success = await this.autoPasteOrAutoFocusIfFileIdentified(this.settings.autoPasteTarget, (file) => this.pasteTextToFile(text, file));
         if (success) return true;
 
-        if (!this.settings.executeCommandWhenFirstPasteAutoPaste) return false;
+        if (!this.settings.executeCommandWhenTargetNotIdentified) return false;
 
-        const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenFirstPaste);
+        const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenTargetNotIdentified);
         if (!command) {
-            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenFirstPaste}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
+            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenTargetNotIdentified}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
             return false;
         }
 
@@ -336,6 +338,17 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                     await this.pasteTextToFile(text, file);
                     this.plugin.lastPasteFile = file;
                     resolve(true);
+                }
+            });
+
+            // This is a workaround for the problem where the `closeHoverEditorWhenLostFocus` option
+            // cannot affect hover editor leafs opened by the "Hover Editor: Open new Hover Editor" command.
+            const hoverEditorAPI = this.api.workspace.hoverEditor;
+            // TypeScript complains for some reason that I don't understand
+            // @ts-ignore
+            this.plugin.registerOneTimeEvent(this.app.workspace, 'active-leaf-change', (leaf) => {
+                if (leaf && hoverEditorAPI.isHoverEditorLeaf(leaf)) {
+                    hoverEditorAPI.postProcessHoverEditorLeaf(leaf);
                 }
             });
 
@@ -360,7 +373,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     async autoFocus(): Promise<boolean> {
-        const success = await this.autoPasteOrAutoFocusIfFileIdentified(this.settings.useVisibleMDForAutoFocus, async (file) => {
+        const success = await this.autoPasteOrAutoFocusIfFileIdentified(this.settings.autoFocusTarget, async (file) => {
             const leaf = await this.prepareMarkdownLeafForPaste(file);
 
             if (leaf) {
@@ -374,30 +387,51 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
 
         if (success) return success;
 
-        if (!this.settings.executeCommandWhenFirstPasteAutoFocus) return false;
+        if (!this.settings.executeCommandWhenTargetNotIdentified) return false;
 
-        const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenFirstPaste);
+        const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenTargetNotIdentified);
         if (!command) {
-            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenFirstPaste}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
+            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenTargetNotIdentified}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
             return false;
         }
+        
+        // This is a workaround for the problem where the `closeHoverEditorWhenLostFocus` option
+        // cannot affect hover editor leafs opened by the "Hover Editor: Open new Hover Editor" command.
+        const hoverEditorAPI = this.api.workspace.hoverEditor;
+        // TypeScript complains for some reason that I don't understand
+        // @ts-ignore
+        this.plugin.registerOneTimeEvent(this.app.workspace, 'active-leaf-change', (leaf) => {
+            if (leaf && hoverEditorAPI.isHoverEditorLeaf(leaf)) {
+                hoverEditorAPI.postProcessHoverEditorLeaf(leaf);
+            }
+        });
 
         return this.app.commands.executeCommandById(command.id);
     }
 
-    async autoPasteOrAutoFocusIfFileIdentified(useVisibleMarkdownWhenNoLastPasteFile: boolean, onFileIdentified: (file: TFile) => Promise<any>): Promise<boolean> {
+    async autoPasteOrAutoFocusIfFileIdentified(target: AutoFocusTarget, onFileIdentified: (file: TFile) => Promise<any>): Promise<boolean> {
+        const lastActiveFile = this.plugin.lastActiveMarkdownFile;
         const lastPasteFile = this.plugin.lastPasteFile;
-        if (lastPasteFile && lastPasteFile.extension === 'md') {
-            await onFileIdentified(lastPasteFile);
-            return true;
+        let targetFile: TFile | null = null;
+
+        if (target === 'last-paste') targetFile = lastPasteFile;
+        else if (target === 'last-active') targetFile = lastActiveFile;
+        else if (target === 'last-active-and-open') {
+            if (lastActiveFile && this.api.workspace.isMarkdownFileOpened(lastActiveFile)) {
+                targetFile = lastActiveFile;
+            }
+        }
+        else if (target === 'last-paste-then-last-active') targetFile = lastPasteFile ?? lastActiveFile;
+        else if (target === 'last-paste-then-last-active-and-open') {
+            if (lastPasteFile) targetFile = lastPasteFile;
+            else if (lastActiveFile && this.api.workspace.isMarkdownFileOpened(lastActiveFile)) {
+                targetFile = lastActiveFile;
+            }
         }
 
-        if (useVisibleMarkdownWhenNoLastPasteFile) {
-            const visibleMDFile = this.api.workspace.getExistingVisibleMarkdownView()?.file;
-            if (visibleMDFile) {
-                await onFileIdentified(visibleMDFile);
-                return true;
-            }
+        if (targetFile && targetFile.extension === 'md') {
+            await onFileIdentified(targetFile);
+            return true;
         }
 
         return false;
@@ -406,8 +440,8 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     async prepareMarkdownLeafForPaste(file: TFile) {
         let leaf = this.api.workspace.getExistingLeafForMarkdownFile(file);
 
-        if (!leaf && this.settings.openLastPasteFileIfNotOpened) {
-            const paneType = this.settings.howToOpenLastPasteFileIfNotOpened;
+        if (!leaf && this.settings.openAutoFocusTargetIfNotOpened) {
+            const paneType = this.settings.howToOpenAutoFocusTargetIfNotOpened;
 
             if (paneType === 'hover-editor') {
                 const hoverLeaf = await this.api.workspace.hoverEditor.createNewHoverEditorLeaf({ hoverPopover: null }, null, file.path, '');
@@ -417,7 +451,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                 await leaf.openFile(file, { active: false });
             }
 
-            if (leaf && this.settings.openLastPasteFileInEditingView) {
+            if (leaf && this.settings.openAutoFocusTargetInEditingView) {
                 const view = leaf.view;
                 if (view instanceof MarkdownView) {
                     view.setState({ mode: 'source' }, { history: false });
@@ -485,7 +519,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
             else palette?.setStatus('Link copied but paste target not identified', this.statusDurationMs);
         } else {
-            if (this.settings.autoFocusLastPasteFileAfterCopy) {
+            if (this.settings.autoFocus) {
                 const success = await this.autoFocus();
                 if (!success) palette?.setStatus('Link copied but paste target not identified', this.statusDurationMs);
             }

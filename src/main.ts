@@ -8,6 +8,7 @@ import { patchBacklink } from 'patchers/backlink';
 import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
 import { patchClipboardManager } from 'patchers/clipboard-manager';
+import { patchPDFInternalFromPDFEmbed } from 'patchers/pdf-embed';
 import { PDFPlusAPI } from 'api';
 import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
@@ -15,7 +16,6 @@ import { DomManager } from 'dom-manager';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters, focusObsidian } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
-import { patchPDFInternalFromPDFEmbed } from 'pdf-embed';
 
 
 export default class PDFPlus extends Plugin {
@@ -51,6 +51,7 @@ export default class PDFPlus extends Plugin {
 	 * Used for auto-pasting.
 	 */
 	lastPasteFile: TFile | null = null;
+	lastActiveMarkdownFile: TFile | null = null;
 	/** Tracks the PDFViewerChild instance that an annotation popup was rendered on for the last time. */
 	lastAnnotationPopupChild: PDFViewerChild | null = null;
 	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
@@ -89,6 +90,8 @@ export default class PDFPlus extends Plugin {
 		this.registerGlobalDomEvents();
 
 		this.registerEvents();
+
+		this.startTrackingActiveMarkdownFile();
 	}
 
 	private checkVersion() {
@@ -141,7 +144,7 @@ export default class PDFPlus extends Plugin {
 			this.autoFocusToggleIconEl = this.addRibbonIcon('lucide-zap', `${this.manifest.name}: Toggle auto-focus`, () => {
 				this.api.commands.toggleAutoFocus();
 			});
-			this.autoFocusToggleIconEl.toggleClass('is-active', this.settings.autoFocusLastPasteFileAfterCopy);
+			this.autoFocusToggleIconEl.toggleClass('is-active', this.settings.autoFocus);
 		}
 	}
 
@@ -296,6 +299,7 @@ export default class PDFPlus extends Plugin {
 				this.lastPasteFile = null;
 			}
 		}));
+		// See also: api.copyLink.watchPaste()
 	}
 
 	registerOneTimeEvent<T extends Events>(events: T, ...[evt, callback, ctx]: OverloadParameters<T['on']>) {
@@ -308,6 +312,40 @@ export default class PDFPlus extends Plugin {
 
 	private registerCommands() {
 		this.api.commands.registerCommands();
+	}
+
+	private startTrackingActiveMarkdownFile() {
+		const { workspace, vault } = this.app;
+
+		workspace.onLayoutReady(() => {
+			// initialize lastActiveMarkdownFile
+			const activeFile = workspace.getActiveFile();
+			if (activeFile && activeFile.extension === 'md') {
+				this.lastActiveMarkdownFile = activeFile;
+			} else {
+				const lastActiveMarkdownPath = workspace.recentFileTracker.getRecentFiles({
+					showMarkdown: true, showCanvas: false, showNonImageAttachments: false, showImages: false, maxCount: 1
+				}).first();
+				if (lastActiveMarkdownPath) {
+					const lastActiveMarkdownFile = vault.getAbstractFileByPath(lastActiveMarkdownPath);
+					if (lastActiveMarkdownFile instanceof TFile && lastActiveMarkdownFile.extension === 'md') {
+						this.lastActiveMarkdownFile = lastActiveMarkdownFile;
+					}
+				}
+			}
+
+			// track active markdown file
+			this.registerEvent(workspace.on('file-open', (file) => {
+				if (file instanceof TFile && file.extension === 'md') {
+					this.lastActiveMarkdownFile = file;
+				}
+			}));
+			this.registerEvent(vault.on('delete', (file) => {
+				if (file instanceof TFile && file === this.lastActiveMarkdownFile) {
+					this.lastActiveMarkdownFile = null;
+				}
+			}));
+		});
 	}
 
 	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
