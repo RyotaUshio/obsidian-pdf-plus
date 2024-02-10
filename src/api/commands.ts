@@ -375,7 +375,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     toggleAutoFocus() {
         const iconEl = this.plugin.autoFocusToggleIconEl;
         iconEl.toggleClass('is-active', !iconEl.hasClass('is-active'));
-		this.settings.autoFocusLastPasteFileAfterCopy = iconEl.hasClass('is-active');
-		this.plugin.saveSettings();
+        this.settings.autoFocusLastPasteFileAfterCopy = iconEl.hasClass('is-active');
+        this.plugin.saveSettings();
     }
 }

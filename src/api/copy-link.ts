@@ -179,7 +179,13 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         if (variables) {
             const { child, file, subpath, page, text } = variables;
 
-            if (!text) return false;
+            if (!text) {
+                if (this.settings.useAnotherCopyTemplateWhenNoSelection) {
+                    template = this.settings.copyTemplateWhenNoSelection;
+                } else {
+                    return false;
+                }
+            }
 
             if (!checking) {
                 const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text, colorName?.toLowerCase() ?? '');

@@ -93,7 +93,10 @@ export function parsePDFSubpath(subpath: string): { page: number } | { page: num
 }
 
 export function paramsToSubpath(params: Record<string, any>) {
-    return '#' + Object.entries(params).map(([k, v]) => k && (v || v === 0) ? `${k}=${v}` : '').join('&');
+    return '#' + Object.entries(params)
+        .filter(([k, v]) => k && (v || v === 0))
+        .map(([k, v]) => `${k}=${v}`)
+        .join('&');
 }
 
 export function formatAnnotationID(obj: number, generation: number) {
