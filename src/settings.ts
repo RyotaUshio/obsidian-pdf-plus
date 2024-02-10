@@ -29,6 +29,7 @@ const AUTO_FOCUS_TARGETS: Record<AutoFocusTarget, string> = {
 	'last-active-and-open': 'Last active & open .md',
 	'last-paste-then-last-active': 'Last pasted .md if any, otherwise last active .md',
 	'last-paste-then-last-active-and-open': 'Last pasted .md if any, otherwise last active & open .md',
+	'last-active-and-open-then-last-paste': 'Last active & open .md if any, otherwise last pasted .md',
 };
 
 export interface namedTemplate {
@@ -299,8 +300,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	clickThumbnailWithModifierKey: true,
 	focusEditorAfterAutoPaste: true,
 	autoFocus: false,
-	autoFocusTarget: 'last-paste-then-last-active-and-open',
-	autoPasteTarget: 'last-paste-then-last-active-and-open',
+	autoFocusTarget: 'last-active-and-open-then-last-paste',
+	autoPasteTarget: 'last-active-and-open-then-last-paste',
 	openAutoFocusTargetIfNotOpened: true,
 	howToOpenAutoFocusTargetIfNotOpened: 'right',
 	closeHoverEditorWhenLostFocus: true,
