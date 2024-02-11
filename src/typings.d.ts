@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, ReferenceCache, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, ReferenceCache, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView } from 'obsidian';
 import { CanvasData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -700,6 +700,55 @@ interface RecentFileTracker {
     }): string[];
 }
 
+interface CanvasView extends TextFileView {
+    canvas: Canvas;
+}
+
+interface Canvas {
+    nodes: Map<string, CanvasNode>;
+    createTextNode(config: {
+        pos: { x: number, y: number };
+        position?: 'center' | 'top' | 'right' | 'bottom' | 'left';
+        size?: unknown;
+        text?: string;
+        save?: boolean;
+        focus?: boolean;
+    }): CanvasTextNode;
+    createFileNode(config: {
+        pos: { x: number, y: number },
+        file: TFile,
+        subpath?: string,
+        position?: 'center' | 'top' | 'right' | 'bottom' | 'left',
+        size?: unknown,
+        save?: boolean,
+        focus?: boolean
+    }): CanvasFileNode;
+    posCenter(): { x: number, y: number };
+    getData(): CanvasData;
+}
+
+type CanvasNode = CanvasFileNode | CanvasTextNode | CanvasLinkNode | CanvasGroupNode;
+
+interface CanvasFileNode {
+    app: App;
+    file: TFile | null;
+    subpath: string
+    child: Embed;
+}
+
+interface CanvasTextNode {
+    app: App;
+    text: string;
+}
+
+interface CanvasLinkNode {
+    app: App;
+}
+
+interface CanvasGroupNode {
+    app: App;
+}
+
 declare module 'obsidian' {
     interface App {
         setting: AppSetting;
@@ -812,46 +861,6 @@ declare module 'obsidian' {
 
     interface ItemView {
         handleDrop: DropEventListener;
-    }
-
-    interface CanvasView extends TextFileView {
-        canvas: Canvas;
-    }
-
-    interface Canvas {
-        nodes: Map<string, CanvasNode>;
-        createTextNode(config: {
-            pos: { x: number, y: number };
-            position?: 'center' | 'top' | 'right' | 'bottom' | 'left';
-            size?: unknown;
-            text?: string;
-            save?: boolean;
-            focus?: boolean;
-        }): CanvasTextNode;
-        posCenter(): { x: number, y: number };
-        getData(): CanvasData;
-    }
-
-    type CanvasNode = CanvasFileNode | CanvasTextNode | CanvasLinkNode | CanvasGroupNode;
-
-    interface CanvasFileNode {
-        app: App;
-        file: TFile | null;
-        subpath: string
-        child: Embed;
-    }
-
-    interface CanvasTextNode {
-        app: App;
-        text: string;
-    }
-
-    interface CanvasLinkNode {
-        app: App;
-    }
-
-    interface CanvasGroupNode {
-        app: App;
     }
 
     interface Vault {

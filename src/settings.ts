@@ -150,6 +150,7 @@ export interface PDFPlusSettings {
 	commandToExecuteWhenTargetNotIdentified: string;
 	selectToCopyToggleRibbonIcon: boolean;
 	autoFocusToggleRibbonIcon: boolean;
+	viewSyncFollowPageNumber: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -310,6 +311,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	commandToExecuteWhenTargetNotIdentified: 'switcher:open',
 	selectToCopyToggleRibbonIcon: true,
 	autoFocusToggleRibbonIcon: true,
+	viewSyncFollowPageNumber: true,
 };
 
 
@@ -666,7 +668,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						text.inputEl.removeClass('error');
 						setName(item, newName);
 
-						const setting = this.items.defaultColorPaletteActionIndex;
+						const setting = this.items[defaultIndexKey];
 						if (setting) {
 							const optionEl = (setting.components[0] as DropdownComponent).selectEl.querySelector<HTMLOptionElement>(`:scope > option:nth-child(${index + 1})`);
 							if (optionEl) {
@@ -1601,6 +1603,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('focusObsidianAfterOpenPDFWithDefaultApp')
 			.setName('Focus Obsidian after opening a PDF file with an external app')
 			.setDesc('Otherwise, the focus will be moved to the external app.');
+
+
+		this.addHeading('View Sync', 'lucide-eye')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Integrate more seamlessly with the [View Sync](https://github.com/RyotaUshio/obsidian-view-sync) plugin.'
+				], setting.descEl);
+			});
+		this.addToggleSetting('viewSyncFollowPageNumber')
+			.setName('Sync page number');
 
 
 		this.addHeading('Misc', 'lucide-more-horizontal');

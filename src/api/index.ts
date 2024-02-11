@@ -1,4 +1,4 @@
-import { App, CanvasFileNode, CanvasNode, CanvasView, Component, EditableFileView, MarkdownView, TFile, TextFileView, View, parseLinktext } from 'obsidian';
+import { App, Component, EditableFileView, MarkdownView, TFile, TextFileView, View, parseLinktext } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
@@ -7,7 +7,7 @@ import { copyLinkAPI } from './copy-link';
 import { HighlightAPI } from './highlights';
 import { WorkspaceAPI } from './workspace-api';
 import { encodeLinktext, parsePDFSubpath } from 'utils';
-import { AnnotationElement, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed } from 'typings';
 import { PDFDocument } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
 

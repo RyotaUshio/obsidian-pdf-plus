@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, TFile, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, TFile, debounce, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -159,7 +159,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         if (plugin.settings.outlineDrag) {
                             await registerOutlineDrag(plugin, pdfOutlineViewer, self, file);
                         }
-                      
+
                         pdfOutlineViewer.allItems.forEach((item) => PDFOutlineItemPostProcessor.registerEvents(plugin, self, item));
                     }
                 );
@@ -186,6 +186,24 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         pdfSidebar.close();
                     }
                 });
+
+                // For https://github.com/RyotaUshio/obsidian-view-sync
+                if (isNonEmbedLike(self.pdfViewer)) {
+                    api.registerPDFEvent(
+                        'pagechanging',
+                        self.pdfViewer.eventBus,
+                        self.component,
+                        debounce(({ pageNumber }) => {
+                            if (plugin.settings.viewSyncFollowPageNumber) {
+                                const view = api.workspace.getActivePDFView();
+                                if (view && view.viewer.child === self) {
+                                    const override = { state: { file: self.file!.path, page: pageNumber } };
+                                    this.app.workspace.trigger('view-sync:state-change', view, override);
+                                }
+                            }
+                        }, 1000)
+                    );
+                }
             }
         },
         unload(old) {

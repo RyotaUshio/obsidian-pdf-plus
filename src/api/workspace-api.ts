@@ -1,7 +1,7 @@
-import { CanvasView, EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
-import { BacklinkView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
+import { BacklinkView, CanvasView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 
 
 // Split right, left, down, or up

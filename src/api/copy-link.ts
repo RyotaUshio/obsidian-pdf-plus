@@ -1,9 +1,9 @@
-import { Canvas, Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
+import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
 
 import { PDFPlusAPISubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
 import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
-import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
+import { Canvas, PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 import { ColorPalette } from 'color-palette';
 
 
