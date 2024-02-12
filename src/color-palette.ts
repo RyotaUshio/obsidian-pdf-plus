@@ -1,7 +1,7 @@
 import { App, Component, Menu, ToggleComponent, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusAPI } from 'api';
+import { PDFPlusLib } from 'lib';
 import { KeysOfType, isHexString } from 'utils';
 
 
@@ -13,7 +13,7 @@ export class ColorPalette extends Component {
     static elInstanceMap = new Map<HTMLElement, ColorPalette>();
 
     app: App;
-    api: PDFPlusAPI;
+    lib: PDFPlusLib;
 
     spacerEl: HTMLElement | null;
     paletteEl: HTMLElement | null;
@@ -34,7 +34,7 @@ export class ColorPalette extends Component {
     constructor(public plugin: PDFPlus, public toolbarLeftEl: HTMLElement) {
         super();
         this.app = plugin.app;
-        this.api = plugin.api;
+        this.lib = plugin.lib;
 
         this.spacerEl = null;
         this.paletteEl = null;
@@ -122,9 +122,9 @@ export class ColorPalette extends Component {
             const template = this.plugin.settings.copyCommands[this.actionIndex].template;
 
             if (this.writeFile) {
-                this.api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, name ?? undefined);
+                this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, name ?? undefined);
             } else {
-                this.api.copyLink.copyLinkToSelection(false, template, name ?? undefined);
+                this.lib.copyLink.copyLinkToSelection(false, template, name ?? undefined);
             }
 
             evt.preventDefault();

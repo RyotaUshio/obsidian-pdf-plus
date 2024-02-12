@@ -7,7 +7,7 @@ import { focusObsidian } from 'utils';
 
 export const patchWorkspace = (plugin: PDFPlus) => {
     const app = plugin.app;
-    const api = plugin.api;
+    const lib = plugin.lib;
 
     plugin.register(around(Workspace.prototype, {
         openLinkText(old) {
@@ -32,7 +32,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                         }
 
                         if (plugin.settings.singleTabForSinglePDF) {
-                            const sameFileLeaf = api.workspace.getExistingPDFLeafOfFile(file);
+                            const sameFileLeaf = lib.workspace.getExistingPDFLeafOfFile(file);
                             if (sameFileLeaf) {
                                 // Ignore the "dontActivateAfterOpenPDF" option when opening a link in a tab in the same split as the current tab
                                 // I believe using activeLeaf (which is deprecated) is inevitable here
@@ -46,20 +46,20 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                                     setTimeout(() => sameFileLeaf.containerEl.removeClass('pdf-plus-link-opened', 'is-highlighted'), plugin.settings.existingTabHighlightDuration * 1000);
                                 }
 
-                                return api.workspace.openPDFLinkTextInLeaf(sameFileLeaf, linktext, sourcePath, openViewState);
+                                return lib.workspace.openPDFLinkTextInLeaf(sameFileLeaf, linktext, sourcePath, openViewState);
                             }
                         }
 
                         if (plugin.settings.openLinkNextToExistingPDFTab || plugin.settings.paneTypeForFirstPDFLeaf) {
-                            const pdfLeaf = api.getPDFView()?.leaf;
+                            const pdfLeaf = lib.getPDFView()?.leaf;
                             if (pdfLeaf) {
                                 if (plugin.settings.openLinkNextToExistingPDFTab) {
                                     const newLeaf = app.workspace.createLeafInParent(pdfLeaf.parentSplit, -1);
-                                    return api.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState)
+                                    return lib.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState)
                                 }
                             } else if (plugin.settings.paneTypeForFirstPDFLeaf) {
-                                const newLeaf = api.workspace.getLeaf(plugin.settings.paneTypeForFirstPDFLeaf);
-                                return api.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState);
+                                const newLeaf = lib.workspace.getLeaf(plugin.settings.paneTypeForFirstPDFLeaf);
+                                return lib.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState);
                             }
                         }
                     }

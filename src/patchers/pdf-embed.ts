@@ -5,9 +5,9 @@ import { patchPDFInternals } from 'patchers/pdf-internals';
 export const patchPDFInternalFromPDFEmbed = (plugin: PDFPlus): boolean => {
     if (plugin.patchStatus.pdfInternals) return true;
 
-    const { api } = plugin;
+    const { lib } = plugin;
 
-    const pdfEmbed = api.getPDFEmbed();
+    const pdfEmbed = lib.getPDFEmbed();
     if (pdfEmbed) patchPDFInternals(plugin, pdfEmbed.viewer);
 
     // don't return true here; if the patch is successful, plugin.patchStatus.pdfInternals

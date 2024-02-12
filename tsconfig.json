@@ -23,6 +23,6 @@
     "**/*.ts"
   ],
   "exclude": [
-    "src/api/highlights/write-file/pdfAnnotate.ts"
+    "src/lib/highlights/write-file/pdfAnnotate.ts"
   ]
 }

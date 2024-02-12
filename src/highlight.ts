@@ -1,7 +1,7 @@
 import { App, Component, HoverParent, HoverPopover, Keymap, LinkCache, Notice, SectionCache, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusAPI } from 'api';
+import { PDFPlusLib } from 'lib';
 import { getSubpathWithoutHash, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { BacklinkView, ObsidianViewer } from 'typings';
 
@@ -32,7 +32,7 @@ interface AnnotationBacklinkInfo extends BacklinkInfo {
 
 export class BacklinkHighlighter extends Component implements HoverParent {
     app: App;
-    api: PDFPlusAPI;
+    lib: PDFPlusLib;
     file: TFile | null;
     hoverPopover: HoverPopover | null;
     eventManager: Component;
@@ -45,7 +45,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
     constructor(public plugin: PDFPlus, public viewer: ObsidianViewer) {
         super();
         this.app = plugin.app;
-        this.api = plugin.api;
+        this.lib = plugin.lib;
         this.file = null;
         this.hoverPopover = null;
         this.eventManager = this.addChild(new Component());
@@ -152,7 +152,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
         this.clearTextHighlight();
 
         // register a callback that highlights backlinks when the text layer for the page is ready
-        this.api.onTextLayerReady(this.viewer, this.eventManager, (pageView, pageNumber, newlyRendered) => {
+        this.lib.onTextLayerReady(this.viewer, this.eventManager, (pageView, pageNumber, newlyRendered) => {
             if (newlyRendered) this.clearTextHighlightOnPage(pageNumber);
 
             for (const backlink of this.backlinks[pageNumber]?.selection ?? []) {
@@ -173,7 +173,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             }
         });
 
-        this.api.onAnnotationLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
+        this.lib.onAnnotationLayerReady(this.viewer, this.eventManager, (pageView, pageNumber) => {
             for (const backlink of this.backlinks[pageNumber]?.annotation ?? []) {
                 const { id } = backlink;
 
@@ -195,10 +195,12 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
                 const { textDivs } = pageView.textLayer;
 
-                const results = this.api.highlight.geometry.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
+                if (!textDivs.length) return;
+
+                const results = this.lib.highlight.geometry.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
 
                 for (const { rect, indices } of results) {
-                    const highlightedEl = this.api.highlight.viewer.highlightRectInPage(rect, pageView);
+                    const highlightedEl = this.lib.highlight.viewer.highlightRectInPage(rect, pageView);
 
                     // font-size is used to set the padding of this highlight in em unit
                     const textDiv = textDivs[indices[0]];
@@ -323,7 +325,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
                     });
                     return;
                 }
-                this.api.workspace.openMarkdownLinkFromPDF(sourcePath, this.file?.path ?? '', line);
+                this.lib.workspace.openMarkdownLinkFromPDF(sourcePath, this.file?.path ?? '', line);
             }
         });
     }

@@ -9,7 +9,7 @@ import { patchWorkspace } from 'patchers/workspace';
 import { patchPagePreview } from 'patchers/page-preview';
 import { patchClipboardManager } from 'patchers/clipboard-manager';
 import { patchPDFInternalFromPDFEmbed } from 'patchers/pdf-embed';
-import { PDFPlusAPI } from 'api';
+import { PDFPlusLib } from 'lib';
 import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
@@ -19,8 +19,8 @@ import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewer
 
 
 export default class PDFPlus extends Plugin {
-	/** This API is not intended to be used by other plugins. */
-	api: PDFPlusAPI = new PDFPlusAPI(this);
+	/** Not intended to be used by other plugins. */
+	lib: PDFPlusLib = new PDFPlusLib(this);
 	/** User's preferences. */
 	settings: PDFPlusSettings;
 	events: Events = new Events();
@@ -57,7 +57,7 @@ export default class PDFPlus extends Plugin {
 	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
 	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
 	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object. */
-	// In most use cases of this map, the goal is also achieved by using api.workspace.iteratePDFViewerChild.
+	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
 	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
 	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 
@@ -142,7 +142,7 @@ export default class PDFPlus extends Plugin {
 
 		if (this.settings.autoFocusToggleRibbonIcon) {
 			this.autoFocusToggleIconEl = this.addRibbonIcon('lucide-zap', `${this.manifest.name}: Toggle auto-focus`, () => {
-				this.api.commands.toggleAutoFocus();
+				this.lib.commands.toggleAutoFocus();
 			});
 			this.autoFocusToggleIconEl.toggleClass('is-active', this.settings.autoFocus);
 		}
@@ -156,7 +156,7 @@ export default class PDFPlus extends Plugin {
 		this.tryPatchUntilSuccess(patchPDFView);
 		this.tryPatchUntilSuccess(patchPDFInternalFromPDFEmbed);
 		this.tryPatchUntilSuccess(patchBacklink, () => {
-			this.api.workspace.iterateBacklinkViews((view) => {
+			this.lib.workspace.iterateBacklinkViews((view) => {
 				// reflect the patch to existing backlink views
 				if (view.file?.extension === 'pdf') {
 					view.onLoadFile(view.file);
@@ -258,7 +258,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
-		this.api.registerGlobalDomEvent(this, type, callback, options);
+		this.lib.registerGlobalDomEvent(this, type, callback, options);
 	}
 
 	private registerGlobalDomEvents() {
@@ -299,7 +299,7 @@ export default class PDFPlus extends Plugin {
 				this.lastPasteFile = null;
 			}
 		}));
-		// See also: api.copyLink.watchPaste()
+		// See also: lib.copyLink.watchPaste()
 	}
 
 	registerOneTimeEvent<T extends Events>(events: T, ...[evt, callback, ctx]: OverloadParameters<T['on']>) {
@@ -311,7 +311,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private registerCommands() {
-		this.api.commands.registerCommands();
+		this.lib.commands.registerCommands();
 	}
 
 	private startTrackingActiveMarkdownFile() {

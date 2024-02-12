@@ -2,7 +2,7 @@ import { App, FileView, getLinkpath, TFile } from 'obsidian';
 import * as obsidian from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusAPI } from 'api';
+import { PDFPlusLib } from 'lib';
 
 
 export class TemplateProcessor {
@@ -28,7 +28,7 @@ export class TemplateProcessor {
 
 export class PDFPlusTemplateProcessor extends TemplateProcessor {
     app: App;
-    api: PDFPlusAPI;
+    lib: PDFPlusLib;
 
     constructor(plugin: PDFPlus, variables: {
         file: TFile,
@@ -50,7 +50,7 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
         });
 
         this.app = app;
-        this.api = plugin.api;
+        this.lib = plugin.lib;
 
         const md = this.findMarkdownFileAssociatedToPDF(variables.file);
         const properties = (md && app.metadataCache.getFileCache(md)?.frontmatter) ?? {};
@@ -115,7 +115,7 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
     findLinkedFile(pdf: TFile) {
         // find a file opened in a linked tab
         let linkedFile: TFile | null = null;
-        const groupLeaves = this.api.workspace.getActiveGroupLeaves();
+        const groupLeaves = this.lib.workspace.getActiveGroupLeaves();
         if (groupLeaves) {
             for (const leaf of groupLeaves) {
                 if (leaf.view instanceof FileView && leaf.view.file && leaf.view.file !== pdf) {

@@ -1,20 +1,20 @@
 import { Component, Modal, Setting, TFile, TextAreaComponent, MarkdownRenderer, RGB } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusAPI } from 'api';
+import { PDFPlusLib } from 'lib';
 import { hexToRgb, hookInternalLinkMouseEventHandlers } from 'utils';
 import { PDFDict } from '@cantoo/pdf-lib';
 
 
 class PDFPlusModal extends Modal {
     plugin: PDFPlus;
-    api: PDFPlusAPI;
+    lib: PDFPlusLib;
     component: Component;
 
     constructor(plugin: PDFPlus) {
         super(plugin.app);
         this.plugin = plugin;
-        this.api = plugin.api;
+        this.lib = plugin.lib;
         this.component = new Component();
     }
 
@@ -106,7 +106,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     }
 
     async readOldValues() {
-        const pdflibAPI = this.api.highlight.writeFile.pdflib;
+        const pdflibAPI = this.lib.highlight.writeFile.pdflib;
 
         const annot = await pdflibAPI.getAnnotation(this.file, this.page, this.id);
         if (!annot) {
@@ -135,7 +135,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     }
 
     async writeNewValues() {
-        const pdflibAPI = this.api.highlight.writeFile.pdflib;
+        const pdflibAPI = this.lib.highlight.writeFile.pdflib;
 
         const writers: ((annot: PDFDict) => void)[] = [];
 
@@ -403,12 +403,12 @@ export class PDFAnnotationDeleteModal extends PDFAnnotationModal {
     shouldOpen() {
         return this.plugin.settings.warnEveryAnnotationDelete
             || (this.plugin.settings.warnBacklinkedAnnotationDelete
-                && this.api.isBacklinked(this.file, {
+                && this.lib.isBacklinked(this.file, {
                     page: this.page, annotation: this.id
                 }));
     }
 
     deleteAnnotation() {
-        this.api.highlight.writeFile.deleteAnnotation(this.file, this.page, this.id);
+        this.lib.highlight.writeFile.deleteAnnotation(this.file, this.page, this.id);
     }
 }

@@ -3,12 +3,12 @@ import { Notice, TFile } from 'obsidian';
 import PDFPlus from 'main';
 // import { PdfAnnotateIO } from './pdfAnnotate';
 import { PdfLibIO } from './pdf-lib';
-import { PDFPlusAPISubmodule } from 'api/submodule';
+import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { parsePDFSubpath } from 'utils';
 import { DestArray, PDFViewerChild, Rect } from 'typings';
 
 
-export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
+export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
     pdflib: PdfLibIO;
     // pdfAnnotate: PdfAnnotateIO;
 
@@ -43,7 +43,7 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
 
     async addAnnotationToSelection(annotator: Annotator) {
         // TODO: separate logic for getting page number and selection range
-        const variables = this.api.copyLink.getTemplateVariables({});
+        const variables = this.lib.copyLink.getTemplateVariables({});
         if (!variables) return;
         const { subpath, child } = variables;
         const result = parsePDFSubpath(subpath);
@@ -66,7 +66,7 @@ export class AnnotationWriteFileAPI extends PDFPlusAPISubmodule {
         if (1 <= pageNumber && pageNumber <= child.pdfViewer.pagesCount) {
             const pageView = child.getPage(pageNumber);
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
-                const results = this.api.highlight.geometry.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
+                const results = this.lib.highlight.geometry.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
                 const rects = results.map(({ rect }) => rect);
                 let annotationID;
                 try {

@@ -1,13 +1,13 @@
 import { Notice, RGB, TFile } from 'obsidian';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
 
-import { PDFPlusAPISubmodule } from 'api/submodule';
+import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { formatAnnotationID, getBorderRadius, hexToRgb } from 'utils';
 import { Rect, DestArray } from 'typings';
 import { IPdfIo } from '.';
 
 
-export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
+export class PdfLibIO extends PDFPlusLibSubmodule implements IPdfIo {
 
     async addHighlightAnnotation(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string) {
         if (!this.plugin.settings.author) {
@@ -18,7 +18,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
             const page = pdfDoc.getPage(pageNumber - 1);
             const { r, g, b } = this.plugin.domManager.getRgb(colorName);
             const borderRadius = getBorderRadius();
-            const geometry = this.api.highlight.geometry;
+            const geometry = this.lib.highlight.geometry;
 
             // Since pdf-lib does not provide a high-level API to add annotation to a PDF file,
             // we have to interact with some low-level objects.
@@ -51,7 +51,7 @@ export class PdfLibIO extends PDFPlusAPISubmodule implements IPdfIo {
             const page = pdfDoc.getPage(pageNumber - 1);
             const rgb = hexToRgb(this.plugin.settings.pdfLinkColor);
             const { r, g, b } = rgb ?? { r: 0, g: 0, b: 0 };
-            const geometry = this.api.highlight.geometry;
+            const geometry = this.lib.highlight.geometry;
 
             let Dest;
             if (typeof dest === 'string') {

@@ -12,12 +12,12 @@ import { PDFOutlineViewer, PDFViewerChild } from 'typings';
 
 
 export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDFOutlineViewer, child: PDFViewerChild, file: TFile) => {
-    const { app, api } = plugin;
+    const { app, lib } = plugin;
     const promises: Promise<void>[] = [];
 
     for (const item of pdfOutlineViewer.allItems) {
         promises.push((async () => {
-            const textGenerator = await api.copyLink.getTextToCopyForOutlineItemDynamic(child, file, item);
+            const textGenerator = await lib.copyLink.getTextToCopyForOutlineItemDynamic(child, file, item);
 
             const itemTitle = toSingleLine(item.item.title);
             const title = itemTitle
@@ -41,7 +41,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
 }
 
 export const registerThumbnailDrag = (plugin: PDFPlus, child: PDFViewerChild, file: TFile) => {
-    const { app, api } = plugin;
+    const { app, lib } = plugin;
 
     child.pdfViewer.pdfThumbnailViewer.container
         .querySelectorAll<HTMLElement>('div.thumbnail[data-page-number]')
@@ -62,7 +62,7 @@ export const registerThumbnailDrag = (plugin: PDFPlus, child: PDFViewerChild, fi
                     icon: 'lucide-book-open',
                     title,
                     getText: (sourcePath: string) => {
-                        return api.copyLink.getTextToCopy(
+                        return lib.copyLink.getTextToCopy(
                             child,
                             plugin.settings.thumbnailLinkCopyFormat,
                             plugin.settings.thumbnailLinkDisplayTextFormat,
@@ -76,7 +76,7 @@ export const registerThumbnailDrag = (plugin: PDFPlus, child: PDFViewerChild, fi
 }
 
 export const registerAnnotationPopupDrag = (plugin: PDFPlus, popupEl: HTMLElement, child: PDFViewerChild, file: TFile, page: number, id: string) => {
-    const { app, api } = plugin;
+    const { app, lib } = plugin;
 
     const pageView = child.getPage(page);
 
@@ -84,7 +84,7 @@ export const registerAnnotationPopupDrag = (plugin: PDFPlus, popupEl: HTMLElemen
         .then((text): void => {
             app.dragManager.handleDrag(popupEl, (evt) => {
                 app.dragManager.updateSource([popupEl], 'is-being-dragged');
-                const palette = api.getColorPaletteFromChild(child);
+                const palette = lib.getColorPaletteFromChild(child);
                 if (!palette) return null;
                 const template = plugin.settings.copyCommands[palette.actionIndex].template;
 
@@ -94,7 +94,7 @@ export const registerAnnotationPopupDrag = (plugin: PDFPlus, popupEl: HTMLElemen
                     icon: 'lucide-highlighter',
                     title: 'PDF annotation',
                     getText: (sourcePath: string) => {
-                        return api.copyLink.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '', sourcePath);
+                        return lib.copyLink.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '', sourcePath);
                     }
                 }
             });

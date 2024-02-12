@@ -1,7 +1,7 @@
 import { App, HoverParent, HoverPopover, Keymap } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusAPI } from 'api';
+import { PDFPlusLib } from 'lib';
 import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
 
 
@@ -18,14 +18,14 @@ import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray }
 abstract class PDFLinkLikePostProcessor {
     app: App;
     plugin: PDFPlus;
-    api: PDFPlusAPI;
+    lib: PDFPlusLib;
     child: PDFViewerChild;
     targetEl: HTMLElement;
 
     protected constructor(plugin: PDFPlus, child: PDFViewerChild, targetEl: HTMLElement) {
         this.plugin = plugin;
         this.app = plugin.app;
-        this.api = plugin.api;
+        this.lib = plugin.lib;
         this.child = child;
         this.targetEl = targetEl;
 
@@ -99,7 +99,7 @@ abstract class PDFLinkLikePostProcessor {
     }
 
     private recordLeafHistory() {
-        this.api.workspace.iteratePDFViews((view) => {
+        this.lib.workspace.iteratePDFViews((view) => {
             if (view.containerEl.contains(this.targetEl)) {
                 const leaf = view.leaf;
                 leaf.recordHistory(leaf.getHistoryState());
@@ -117,7 +117,7 @@ abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcesso
     abstract getDest(evt: MouseEvent): string | PDFjsDestArray;
 
     async getLinkText(evt: MouseEvent) {
-        const { api, child } = this;
+        const { lib, child } = this;
 
         const doc = child.pdfViewer.pdfViewer?.pdfDocument;
         if (!doc) return null;
@@ -125,9 +125,9 @@ abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcesso
         const dest = this.getDest(evt);
         let subpath: string | null = null;
         if (typeof dest === 'string') {
-            subpath = await api.destIdToSubpath(dest, doc);
+            subpath = await lib.destIdToSubpath(dest, doc);
         } else {
-            subpath = await api.pdfJsDestArrayToSubpath(dest, doc);
+            subpath = await lib.pdfJsDestArrayToSubpath(dest, doc);
         }
         if (subpath === null) return null;
 

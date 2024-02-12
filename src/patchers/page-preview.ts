@@ -7,7 +7,7 @@ import { BacklinkHighlighter } from 'highlight';
 
 export const patchPagePreview = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
-    const api = plugin.api;
+    const lib = plugin.lib;
     const pagePreview = app.internalPlugins.plugins['page-preview'].instance;
 
     // Patch the instance instead of the prototype to avoid conflicts with Hover Editor
@@ -20,13 +20,13 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
                 const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
                 if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof BacklinkHighlighter) {
-                    api.workspace.openMarkdownLinkFromPDF(linktext, sourcePath, state.scroll);
+                    lib.workspace.openMarkdownLinkFromPDF(linktext, sourcePath, state.scroll);
                     return;
                 }
 
                 if (file?.extension === 'pdf' && sourcePath.endsWith('.md')) {
                     if (plugin.settings.hoverPDFLinkToOpen) {
-                        const leaf = api.workspace.getExistingPDFLeafOfFile(file);
+                        const leaf = lib.workspace.getExistingPDFLeafOfFile(file);
                         if (leaf) {
                             leaf.openLinkText(linktext, sourcePath, {
                                 active: !plugin.settings.dontActivateAfterOpenPDF

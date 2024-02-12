@@ -47,8 +47,8 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
 }
 
 function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
-    const { api } = plugin;
-    api.workspace.iteratePDFViewerComponents(async (viewer, file) => {
+    const { lib } = plugin;
+    lib.workspace.iteratePDFViewerComponents(async (viewer, file) => {
         // reflect the patch to existing PDF views
         // especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
         viewer.unload();
@@ -110,7 +110,7 @@ const patchPDFToolbar = (plugin: PDFPlus, toolbar: PDFToolbar) => {
 }
 
 const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
-    const { app, api } = plugin;
+    const { app, lib } = plugin;
 
     plugin.register(around(child.constructor.prototype, {
         load(old) {
@@ -125,7 +125,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
                 self.component.load();
 
-                api.registerPDFEvent('annotationlayerrendered', self.pdfViewer.eventBus, self.component!, (data) => {
+                lib.registerPDFEvent('annotationlayerrendered', self.pdfViewer.eventBus, self.component!, (data) => {
                     const { source: pageView } = data;
 
                     pageView.annotationLayer?.div
@@ -141,7 +141,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         });
                 });
 
-                api.registerPDFEvent(
+                lib.registerPDFEvent(
                     'outlineloaded', self.pdfViewer.eventBus, null,
                     async (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => {
                         const pdfOutlineViewer = data.source;
@@ -164,7 +164,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     }
                 );
 
-                api.registerPDFEvent('thumbnailrendered', self.pdfViewer.eventBus, null, () => {
+                lib.registerPDFEvent('thumbnailrendered', self.pdfViewer.eventBus, null, () => {
                     const file = self.file;
                     if (!file) return;
                     if (plugin.settings.thumbnailDrag) {
@@ -175,12 +175,12 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 });
 
                 if (plugin.settings.noSpreadModeInEmbed && !isNonEmbedLike(self.pdfViewer)) {
-                    api.registerPDFEvent('pagerendered', self.pdfViewer.eventBus, null, () => {
+                    lib.registerPDFEvent('pagerendered', self.pdfViewer.eventBus, null, () => {
                         self.pdfViewer.eventBus.dispatch('switchspreadmode', { mode: 0 });
                     });
                 }
 
-                api.registerPDFEvent('sidebarviewchanged', self.pdfViewer.eventBus, null, (data) => {
+                lib.registerPDFEvent('sidebarviewchanged', self.pdfViewer.eventBus, null, (data) => {
                     const { source: pdfSidebar } = data;
                     if (plugin.settings.noSidebarInEmbed && !isNonEmbedLike(self.pdfViewer)) {
                         pdfSidebar.close();
@@ -189,13 +189,13 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                 // For https://github.com/RyotaUshio/obsidian-view-sync
                 if (isNonEmbedLike(self.pdfViewer)) {
-                    api.registerPDFEvent(
+                    lib.registerPDFEvent(
                         'pagechanging',
                         self.pdfViewer.eventBus,
                         self.component,
                         debounce(({ pageNumber }) => {
                             if (plugin.settings.viewSyncFollowPageNumber) {
-                                const view = api.workspace.getActivePDFView();
+                                const view = lib.workspace.getActivePDFView();
                                 if (view && view.viewer.child === self) {
                                     const override = { state: { file: self.file!.path, page: pageNumber } };
                                     this.app.workspace.trigger('view-sync:state-change', view, override);
@@ -217,7 +217,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             return function (subpath?: string, alias?: string, embed?: boolean): string {
                 const self = this as PDFViewerChild;
                 if (!self.file) return old.call(this, subpath, alias, embed);
-                const embedLink = api.generateMarkdownLink(self.file, '', subpath, alias);
+                const embedLink = lib.generateMarkdownLink(self.file, '', subpath, alias);
                 if (embed) return embedLink;
                 return embedLink.slice(1);
             }
@@ -227,7 +227,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 const self = this as PDFViewerChild;
 
                 if (self.file) {
-                    const alias = api.copyLink.getDisplayText(self, undefined, self.file, page, toSingleLine(activeWindow.getSelection()?.toString() ?? ''));
+                    const alias = lib.copyLink.getDisplayText(self, undefined, self.file, page, toSingleLine(activeWindow.getSelection()?.toString() ?? ''));
                     if (alias) return alias;
                 }
 
@@ -350,14 +350,14 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                 const self = this as PDFViewerChild;
                 plugin.lastAnnotationPopupChild = self;
-                const { page, id } = api.getAnnotationInfoFromAnnotationElement(annotationElement);
+                const { page, id } = lib.getAnnotationInfoFromAnnotationElement(annotationElement);
 
                 if (plugin.settings.renderMarkdownInStickyNote && self.file) {
                     const contentEl = self.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupContent');
                     if (contentEl) {
                         contentEl.textContent = '';
                         // we can use contentEl.textContent, but it has backslashes escaped
-                        api.highlight.writeFile.getAnnotationContents(self.file, page, id)
+                        lib.highlight.writeFile.getAnnotationContents(self.file, page, id)
                             .then(async (markdown) => {
                                 if (!markdown) return;
                                 contentEl.addClass('markdown-rendered');
@@ -384,11 +384,11 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             setIcon(iconEl, 'lucide-copy');
                             setTooltip(iconEl, 'Copy link');
                             iconEl.addEventListener('click', async () => {
-                                const palette = api.getColorPaletteAssociatedWithNode(popupMetaEl)
+                                const palette = lib.getColorPaletteAssociatedWithNode(popupMetaEl)
                                 if (!palette) return;
                                 const template = plugin.settings.copyCommands[palette.actionIndex].template;
 
-                                api.copyLink.copyLinkToAnnotation(self, false, template, page, id);
+                                lib.copyLink.copyLinkToAnnotation(self, false, template, page, id);
 
                                 setIcon(iconEl, 'lucide-check');
                             });

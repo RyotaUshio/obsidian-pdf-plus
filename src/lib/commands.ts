@@ -1,14 +1,14 @@
 import { Command, Notice, setIcon } from 'obsidian';
 
-import { PDFPlusAPISubmodule } from './submodule';
+import { PDFPlusLibSubmodule } from './submodule';
 import { DestArray } from 'typings';
 
 
-export class PDFPlusCommands extends PDFPlusAPISubmodule {
+export class PDFPlusCommands extends PDFPlusLibSubmodule {
     commands: Record<string, Command>;
     copyCommandIds: string[];
 
-    constructor(...args: ConstructorParameters<typeof PDFPlusAPISubmodule>) {
+    constructor(...args: ConstructorParameters<typeof PDFPlusLibSubmodule>) {
         super(...args);
 
         this.copyCommandIds = [
@@ -151,21 +151,21 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     copyLinkToSelection(checking: boolean, autoPaste: boolean = false) {
-        const info = this.api.copyLink.getSelectionLinkInfo();
+        const info = this.lib.copyLink.getSelectionLinkInfo();
         if (!info) return false;
 
         const { template, colorName } = info;
 
-        return this.api.copyLink.copyLinkToSelection(checking, template, colorName, autoPaste);
+        return this.lib.copyLink.copyLinkToSelection(checking, template, colorName, autoPaste);
     }
 
     copyLinkToAnnotation(checking: boolean, autoPaste: boolean = false) {
-        const info = this.api.copyLink.getAnnotationLinkInfo();
+        const info = this.lib.copyLink.getAnnotationLinkInfo();
         if (!info) return false;
 
         const { child, copyButtonEl, template, page, id } = info;
 
-        const result = this.api.copyLink.copyLinkToAnnotation(child, checking, template, page, id, autoPaste);
+        const result = this.lib.copyLink.copyLinkToAnnotation(child, checking, template, page, id, autoPaste);
 
         if (!checking && result) setIcon(copyButtonEl, 'lucide-check');
 
@@ -174,7 +174,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
 
     // TODO: A better, more concise function name 😅
     writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking: boolean, autoPaste: boolean = false) {
-        const palette = this.api.getColorPaletteAssociatedWithSelection();
+        const palette = this.lib.getColorPaletteAssociatedWithSelection();
         if (!palette) return false;
 
         if (!palette.writeFile) return false;
@@ -184,37 +184,37 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
         // get the currently selected color name
         const colorName = palette.selectedColorName ?? undefined;
 
-        return this.api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
+        return this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
     }
 
     createCanvasCardFromSelection(checking: boolean) {
-        const canvas = this.api.workspace.getActiveCanvasView()?.canvas;
+        const canvas = this.lib.workspace.getActiveCanvasView()?.canvas;
         if (!canvas) return false;
 
-        const info = this.api.copyLink.getSelectionLinkInfo();
+        const info = this.lib.copyLink.getSelectionLinkInfo();
         if (!info) return false;
 
         const { template, colorName } = info;
 
-        return this.api.copyLink.makeCanvasTextNodeFromSelection(checking, canvas, template, colorName);
+        return this.lib.copyLink.makeCanvasTextNodeFromSelection(checking, canvas, template, colorName);
     }
 
     createCanvasCardFromAnnotation(checking: boolean) {
-        const canvas = this.api.workspace.getActiveCanvasView()?.canvas;
+        const canvas = this.lib.workspace.getActiveCanvasView()?.canvas;
         if (!canvas) return false;
 
-        const info = this.api.copyLink.getAnnotationLinkInfo();
+        const info = this.lib.copyLink.getAnnotationLinkInfo();
         if (!info) return false;
 
         const { child, template, page, id } = info;
 
-        const result = this.api.copyLink.makeCanvasTextNodeFromAnnotation(checking, canvas, child, template, page, id);
+        const result = this.lib.copyLink.makeCanvasTextNodeFromAnnotation(checking, canvas, child, template, page, id);
 
         return result;
     }
 
     copyLinkToPageView(checking: boolean) {
-        const view = this.api.getPDFView(true);
+        const view = this.lib.getPDFView(true);
         if (!view || !view.file) return false;
 
         const state = view.getState();
@@ -232,7 +232,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
                 destArray = [state.page - 1, 'XYZ', state.left, state.top, state.zoom ?? 0];
             }
             const display = view.viewer.child?.getPageLinkAlias(state.page);
-            const link = this.api.generateMarkdownLink(view.file, '', subpath, display).slice(1);
+            const link = this.lib.generateMarkdownLink(view.file, '', subpath, display).slice(1);
             navigator.clipboard.writeText(link);
             new Notice(`${this.plugin.manifest.name}: Link copied to clipboard`);
 
@@ -243,7 +243,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     showOutline(checking: boolean) {
-        const sidebar = this.api.getObsidianViewer(true)?.pdfSidebar;
+        const sidebar = this.lib.getObsidianViewer(true)?.pdfSidebar;
         if (sidebar) {
             if (!sidebar.haveOutline) return false;
             if (sidebar.isOpen && sidebar.active === 2) {
@@ -274,7 +274,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     showThumbnail(checking: boolean) {
-        const sidebar = this.api.getObsidianViewer(true)?.pdfSidebar;
+        const sidebar = this.lib.getObsidianViewer(true)?.pdfSidebar;
         if (!sidebar) return false;
         if (sidebar.isOpen && sidebar.active === 1) {
             if (this.settings.closeSidebarWithShowCommandIfExist) {
@@ -291,7 +291,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     closeSidebar(checking: boolean) {
-        const sidebar = this.api.getObsidianViewer(true)?.pdfSidebar;
+        const sidebar = this.lib.getObsidianViewer(true)?.pdfSidebar;
         if (!sidebar) return false;
         if (!checking) {
             sidebar.close();
@@ -300,14 +300,14 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     setScaleValue(checking: boolean, scaleValue: 'page-width' | 'page-height') {
-        const pdfViewer = this.api.getPDFViewer(true);
+        const pdfViewer = this.lib.getPDFViewer(true);
         if (!pdfViewer) return false;
         if (!checking) pdfViewer.currentScaleValue = scaleValue;
         return true;
     }
 
     zoom(checking: boolean, zoomIn: boolean) {
-        const pdfViewer = this.api.getObsidianViewer(true);
+        const pdfViewer = this.lib.getObsidianViewer(true);
         if (pdfViewer) {
             if (!checking) {
                 zoomIn ? pdfViewer.zoomIn() : pdfViewer.zoomOut();
@@ -334,7 +334,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     focusAndSelectPageNumberEl(checking: boolean) {
-        const toolbar = this.api.getToolbar(true);
+        const toolbar = this.lib.getToolbar(true);
         if (!toolbar) return false;
         if (!checking) {
             toolbar.pageInputEl.focus();
@@ -344,7 +344,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     showCopyFormatMenu(checking: boolean) {
-        const palette = this.api.getColorPalette();
+        const palette = this.lib.getColorPalette();
         if (!palette || !palette.actionMenuEl) return false;
         if (!checking) {
             palette.actionMenuEl.click();
@@ -353,7 +353,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
     }
 
     showDisplayTextFormatMenu(checking: boolean) {
-        const palette = this.api.getColorPalette();
+        const palette = this.lib.getColorPalette();
         if (!palette || !palette.displayTextFormatMenuEl) return false;
         if (!checking) {
             palette.displayTextFormatMenuEl.click();
@@ -363,7 +363,7 @@ export class PDFPlusCommands extends PDFPlusAPISubmodule {
 
     setWriteFile(checking: boolean, writeFile: boolean) {
         if (!this.settings.enalbeWriteHighlightToFile) return false;
-        const palette = this.api.getColorPalette();
+        const palette = this.lib.getColorPalette();
         if (!palette) return false;
         if (palette.writeFile === writeFile) return false;
         if (!checking) {

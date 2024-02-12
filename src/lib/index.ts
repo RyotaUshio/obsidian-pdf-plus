@@ -3,33 +3,33 @@ import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
-import { copyLinkAPI } from './copy-link';
-import { HighlightAPI } from './highlights';
-import { WorkspaceAPI } from './workspace-api';
+import { copyLinkLib } from './copy-link';
+import { HighlightLib } from './highlights';
+import { WorkspaceLib } from './workspace-lib';
 import { encodeLinktext, parsePDFSubpath } from 'utils';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed } from 'typings';
 import { PDFDocument } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
 
 
-export class PDFPlusAPI {
+export class PDFPlusLib {
     app: App;
     plugin: PDFPlus
 
     /** Sub-modules */
     commands: PDFPlusCommands;
-    copyLink: copyLinkAPI;
-    highlight: HighlightAPI;
-    workspace: WorkspaceAPI;
+    copyLink: copyLinkLib;
+    highlight: HighlightLib;
+    workspace: WorkspaceLib;
 
     constructor(plugin: PDFPlus) {
         this.app = plugin.app;
         this.plugin = plugin;
 
         this.commands = new PDFPlusCommands(plugin);
-        this.copyLink = new copyLinkAPI(plugin);
-        this.highlight = new HighlightAPI(plugin);
-        this.workspace = new WorkspaceAPI(plugin);
+        this.copyLink = new copyLinkLib(plugin);
+        this.highlight = new HighlightLib(plugin);
+        this.workspace = new WorkspaceLib(plugin);
     }
 
     /** 

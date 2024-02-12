@@ -21,11 +21,11 @@ export class SelectToCopyMode extends Component {
     }
 
     onload() {
-        const api = this.plugin.api;
+        const lib = this.plugin.lib;
 
-        api.registerGlobalDomEvent(this, 'pointerup', () => {
+        lib.registerGlobalDomEvent(this, 'pointerup', () => {
             if (activeWindow.getSelection()?.toString()) {
-                api.commands.copyLinkToSelection(false);
+                lib.commands.copyLinkToSelection(false);
             }
         });
 

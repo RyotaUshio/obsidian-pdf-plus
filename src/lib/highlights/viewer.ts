@@ -1,11 +1,11 @@
 import { Component } from 'obsidian';
 
-import { PDFPlusAPISubmodule } from 'api/submodule';
+import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFViewerChild } from 'typings';
 
 
 /** Adding text highlight in PDF viewers without writing into files */
-export class ViewerHighlightAPI extends PDFPlusAPISubmodule {
+export class ViewerHighlightLib extends PDFPlusLibSubmodule {
     /**
      * @param pageDiv div.page
      */
@@ -40,7 +40,7 @@ export class ViewerHighlightAPI extends PDFPlusAPISubmodule {
             const component = new Component();
             component.load();
 
-            this.api.onTextLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
+            this.lib.onTextLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
                 if (!child.subpathHighlight) return;
                 const { page, range } = child.subpathHighlight as PDFTextHighlight;
                 if (page !== pageNumber) return;
@@ -58,7 +58,7 @@ export class ViewerHighlightAPI extends PDFPlusAPISubmodule {
             const component = new Component();
             component.load();
 
-            this.api.onAnnotationLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
+            this.lib.onAnnotationLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
                 if (!child.subpathHighlight) return;
                 const { page, id } = child.subpathHighlight as PDFAnnotationHighlight;
                 if (page !== pageNumber) return;

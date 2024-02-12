@@ -1,8 +1,8 @@
 import { AbstractInputSuggest, Command, Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TextAreaComponent, TextComponent, prepareFuzzySearch, setIcon, setTooltip, sortSearchResults } from 'obsidian';
 
 import PDFPlus from 'main';
-import { ExtendedPaneType } from 'api/workspace-api';
-import { AutoFocusTarget } from 'api/copy-link';
+import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
+import { AutoFocusTarget } from 'lib/copy-link';
 import { KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
 
 
@@ -145,6 +145,7 @@ export interface PDFPlusSettings {
 	openAutoFocusTargetIfNotOpened: boolean;
 	howToOpenAutoFocusTargetIfNotOpened: ExtendedPaneType | 'hover-editor';
 	closeHoverEditorWhenLostFocus: boolean;
+	closeSidebarWhenLostFocus: boolean;
 	openAutoFocusTargetInEditingView: boolean;
 	executeCommandWhenTargetNotIdentified: boolean;
 	commandToExecuteWhenTargetNotIdentified: string;
@@ -306,6 +307,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	openAutoFocusTargetIfNotOpened: true,
 	howToOpenAutoFocusTargetIfNotOpened: 'right',
 	closeHoverEditorWhenLostFocus: true,
+	closeSidebarWhenLostFocus: true,
 	openAutoFocusTargetInEditingView: true,
 	executeCommandWhenTargetNotIdentified: true,
 	commandToExecuteWhenTargetNotIdentified: 'switcher:open',
@@ -1287,6 +1289,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addToggleSetting('closeHoverEditorWhenLostFocus')
 					.setName('Close Hover Editor when it loses focus')
 					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.')
+			} else if (isSidebarType(this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened)) {
+				this.addToggleSetting('closeSidebarWhenLostFocus')
+					.setName('Auto-hide sidebar when it loses focus');
 			}
 			this.addToggleSetting('openAutoFocusTargetInEditingView')
 				.setName('Always open in editing view')

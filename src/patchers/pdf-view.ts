@@ -9,9 +9,9 @@ import { patchPDFInternals } from './pdf-internals';
 export const patchPDFView = (plugin: PDFPlus): boolean => {
     if (plugin.patchStatus.pdfView && plugin.patchStatus.pdfInternals) return true;
 
-    const api = plugin.api;
+    const lib = plugin.lib;
 
-    const pdfView = api.getPDFView();
+    const pdfView = lib.getPDFView();
     if (!pdfView) return false;
 
     if (!plugin.patchStatus.pdfView) {
@@ -42,7 +42,7 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
                         const pdfViewer = child?.pdfViewer?.pdfViewer;
                         if (typeof state.page === 'number') {
                             if (pdfViewer) {
-                                api.applyPDFViewStateToViewer(pdfViewer, state);
+                                lib.applyPDFViewStateToViewer(pdfViewer, state);
                             }
                         }
                     });

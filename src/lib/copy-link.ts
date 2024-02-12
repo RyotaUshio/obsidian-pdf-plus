@@ -1,6 +1,6 @@
 import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
 
-import { PDFPlusAPISubmodule } from './submodule';
+import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
 import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild } from 'typings';
@@ -15,16 +15,16 @@ export type AutoFocusTarget =
     | 'last-paste-then-last-active-and-open'
     | 'last-active-and-open-then-last-paste';
 
-export class copyLinkAPI extends PDFPlusAPISubmodule {
+export class copyLinkLib extends PDFPlusLibSubmodule {
     statusDurationMs = 2000;
 
     getTemplateVariables(subpathParams: Record<string, any>) {
         const selection = activeWindow.getSelection();
         if (!selection) return null;
-        const pageEl = this.api.getPageElFromSelection(selection);
+        const pageEl = this.lib.getPageElFromSelection(selection);
         if (!pageEl || pageEl.dataset.pageNumber === undefined) return null;
 
-        const child = this.api.getPDFViewerChildAssociatedWithNode(pageEl);
+        const child = this.lib.getPDFViewerChildAssociatedWithNode(pageEl);
         const file = child?.file;
         if (!file) return null;
 
@@ -61,12 +61,12 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         const display = this.getDisplayText(child, displayTextFormat, file, page, text);
         // https://github.com/obsidianmd/obsidian-api/issues/154
         // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
-        const linkWithDisplay = this.api.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
+        const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
 
         const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
         // https://github.com/obsidianmd/obsidian-api/issues/154
         // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
-        const linkToPageWithDisplay = this.api.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
+        const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
 
         return {
             link,
@@ -81,7 +81,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     getDisplayText(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, page: number, text: string) {
         if (!displayTextFormat) {
             // read display text format from color palette
-            const palette = this.api.getColorPaletteFromChild(child);
+            const palette = this.lib.getColorPaletteFromChild(child);
             if (palette) {
                 displayTextFormat = this.settings.displayTextFormats[palette.displayTextFormatIndex].template;
             } else {
@@ -115,7 +115,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             text,
             colorName,
             calloutType: this.settings.calloutType,
-            ...this.api.copyLink.getLinkTemplateVariables(child, displayTextFormat, file, subpath, page, text, sourcePath)
+            ...this.lib.copyLink.getLinkTemplateVariables(child, displayTextFormat, file, subpath, page, text, sourcePath)
         });
 
         const evaluated = processor.evalTemplate(template);
@@ -129,8 +129,8 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     async getTextToCopyForOutlineItemDynamic(child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode) {
         const dest = await item.getExplicitDestination();
         const pageNumber = await item.getPageNumber();
-        const destArray = this.api.normalizePDFjsDestArray(pageNumber, dest);
-        const subpath = this.api.destArrayToSubpath(destArray);
+        const destArray = this.lib.normalizePDFjsDestArray(pageNumber, dest);
+        const subpath = this.lib.destArrayToSubpath(destArray);
 
         return (sourcePath?: string) => this.getTextToCopy(
             child,
@@ -141,7 +141,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     getSelectionLinkInfo() {
-        const palette = this.api.getColorPaletteAssociatedWithSelection();
+        const palette = this.lib.getColorPaletteAssociatedWithSelection();
         if (!palette) return null;
 
         const template = this.settings.copyCommands[palette.actionIndex].template;
@@ -162,7 +162,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon.pdf-plus-copy-annotation-link');
         if (!copyButtonEl) return null;
 
-        const palette = this.api.getColorPaletteAssociatedWithNode(copyButtonEl);
+        const palette = this.lib.getColorPaletteAssociatedWithNode(copyButtonEl);
         let template;
         if (palette) {
             template = this.settings.copyCommands[palette.actionIndex].template;
@@ -173,7 +173,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             template = this.settings.copyCommands[this.settings.defaultColorPaletteActionIndex].template;
         }
 
-        const annotInfo = this.api.getAnnotationInfoFromPopupEl(popupEl);
+        const annotInfo = this.lib.getAnnotationInfoFromPopupEl(popupEl);
         if (!annotInfo) return null;
 
         const { page, id } = annotInfo;
@@ -200,7 +200,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                 navigator.clipboard.writeText(evaluated);
                 this.onCopyFinish(evaluated);
 
-                const palette = this.api.getColorPaletteFromChild(child);
+                const palette = this.lib.getColorPaletteFromChild(child);
                 palette?.setStatus('Link copied', this.statusDurationMs);
                 this.afterCopy(evaluated, autoPaste, palette ?? undefined);
             }
@@ -223,7 +223,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                     navigator.clipboard.writeText(evaluated);
                     this.onCopyFinish(evaluated);
 
-                    const palette = this.api.getColorPaletteFromChild(child);
+                    const palette = this.lib.getColorPaletteFromChild(child);
                     // This can be redundant because the copy button already shows the status.
                     if (shouldShowStatus) palette?.setStatus('Link copied', this.statusDurationMs);
                     this.afterCopy(evaluated, autoPaste, palette ?? undefined);
@@ -239,7 +239,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             navigator.clipboard.writeText(evaluated);
             this.onCopyFinish(evaluated);
 
-            const palette = this.api.getColorPaletteFromChild(child);
+            const palette = this.lib.getColorPaletteFromChild(child);
             palette?.setStatus('Link copied', this.statusDurationMs);
             this.afterCopy(evaluated, autoPaste, palette ?? undefined);
         }
@@ -258,9 +258,9 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         if (!text) return false;
 
         if (!checking) {
-            const palette = this.api.getColorPaletteAssociatedWithSelection();
+            const palette = this.lib.getColorPaletteAssociatedWithSelection();
             palette?.setStatus('Writing highlight annotation into file...', 10000);
-            this.api.highlight.writeFile.addHighlightAnnotationToSelection(colorName)
+            this.lib.highlight.writeFile.addHighlightAnnotationToSelection(colorName)
                 .then((result) => {
                     if (!result) return;
 
@@ -270,7 +270,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
                     setTimeout(() => {
                         // After the file modification, the PDF viewer DOM is reloaded, so we need to 
                         // get the new DOM to access the newly loaded color palette instance.
-                        const newPalette = this.api.getColorPaletteFromChild(child);
+                        const newPalette = this.lib.getColorPaletteFromChild(child);
                         newPalette?.setStatus('Link copied', this.statusDurationMs);
                         this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, colorName?.toLowerCase() ?? '', autoPaste);
                     }, 300);
@@ -356,7 +356,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             // Hook a one-time active-leaf-change event handler before executing the command.
             // This is a workaround for the problem where the `closeHoverEditorWhenLostFocus` option
             // cannot affect hover editor leafs opened by the "Hover Editor: Open new Hover Editor" command.
-            const hoverEditorAPI = this.api.workspace.hoverEditor;
+            const hoverEditorAPI = this.lib.workspace.hoverEditor;
             // TypeScript complains for some reason that I don't understand
             // @ts-ignore
             this.plugin.registerOneTimeEvent(this.app.workspace, 'active-leaf-change', (leaf) => {
@@ -417,7 +417,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
         // Hook a one-time active-leaf-change event handler before executing the command.
         // This is a workaround for the problem where the `closeHoverEditorWhenLostFocus` option
         // cannot affect hover editor leafs opened by the "Hover Editor: Open new Hover Editor" command.
-        const hoverEditorAPI = this.api.workspace.hoverEditor;
+        const hoverEditorAPI = this.lib.workspace.hoverEditor;
         // TypeScript complains for some reason that I don't understand
         // @ts-ignore
         this.plugin.registerOneTimeEvent(this.app.workspace, 'active-leaf-change', (leaf) => {
@@ -432,7 +432,7 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     getAutoFocusOrAutoPasteTarget(target: AutoFocusTarget): TFile | null {
         const lastActiveFile = this.plugin.lastActiveMarkdownFile;
         const lastPasteFile = this.plugin.lastPasteFile;
-        const isLastActiveFileOpened = !!(lastActiveFile && this.api.workspace.isMarkdownFileOpened(lastActiveFile));
+        const isLastActiveFileOpened = !!(lastActiveFile && this.lib.workspace.isMarkdownFileOpened(lastActiveFile));
         let targetFile: TFile | null = null;
 
         if (target === 'last-paste') targetFile = lastPasteFile;
@@ -457,16 +457,16 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
     }
 
     async prepareMarkdownLeafForPaste(file: TFile) {
-        let leaf = this.api.workspace.getExistingLeafForMarkdownFile(file);
+        let leaf = this.lib.workspace.getExistingLeafForMarkdownFile(file);
 
         if (!leaf && this.settings.openAutoFocusTargetIfNotOpened) {
             const paneType = this.settings.howToOpenAutoFocusTargetIfNotOpened;
 
             if (paneType === 'hover-editor') {
-                const hoverLeaf = await this.api.workspace.hoverEditor.createNewHoverEditorLeaf({ hoverPopover: null }, null, file.path, '');
+                const hoverLeaf = await this.lib.workspace.hoverEditor.createNewHoverEditorLeaf({ hoverPopover: null }, null, file.path, '');
                 if (hoverLeaf) leaf = hoverLeaf;
             } else {
-                leaf = this.api.workspace.getLeaf(paneType);
+                leaf = this.lib.workspace.getLeaf(paneType);
                 await leaf.openFile(file, { active: false });
             }
 
@@ -479,7 +479,12 @@ export class copyLinkAPI extends PDFPlusAPISubmodule {
             }
         }
 
-        if (leaf) this.api.workspace.hoverEditor.postProcessHoverEditorLeaf(leaf);
+        if (leaf) {
+            this.lib.workspace.hoverEditor.postProcessHoverEditorLeaf(leaf);
+            if (this.settings.closeSidebarWhenLostFocus) {
+                this.lib.workspace.registerHideSidebar(leaf);
+            }
+        }
 
         return leaf;
     }

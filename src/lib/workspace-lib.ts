@@ -1,6 +1,6 @@
-import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceMobileDrawer, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
 
-import { PDFPlusAPISubmodule } from './submodule';
+import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 
 
@@ -30,18 +30,18 @@ export function isExtendedPaneType(arg: string): arg is ExtendedPaneType {
 }
 
 
-export class WorkspaceAPI extends PDFPlusAPISubmodule {
-    hoverEditor: HoverEditorAPI;
+export class WorkspaceLib extends PDFPlusLibSubmodule {
+    hoverEditor: HoverEditorLib;
 
-    constructor(...args: ConstructorParameters<typeof PDFPlusAPISubmodule>) {
+    constructor(...args: ConstructorParameters<typeof PDFPlusLibSubmodule>) {
         super(...args);
-        this.hoverEditor = new HoverEditorAPI(...args);
+        this.hoverEditor = new HoverEditorLib(...args);
     }
 
     iteratePDFViews(callback: (view: PDFView) => any): void {
         this.app.workspace.iterateAllLeaves((leaf) => {
             const view = leaf.view;
-            if (this.api.isPDFView(view)) callback(view);
+            if (this.lib.isPDFView(view)) callback(view);
         });
     }
 
@@ -52,7 +52,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
     iterateCanvasViews(callback: (view: CanvasView) => any): void {
         this.app.workspace.iterateAllLeaves((leaf) => {
             const view = leaf.view;
-            if (this.api.isCanvasView(view)) callback(view);
+            if (this.lib.isCanvasView(view)) callback(view);
         });
     }
 
@@ -60,13 +60,13 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
         this.app.workspace.iterateAllLeaves((leaf) => {
             const view = leaf.view;
 
-            if (this.api.isPDFView(view)) {
+            if (this.lib.isPDFView(view)) {
                 callback(view.viewer, view.file);
             } else if (view instanceof MarkdownView) {
-                this.api.getAllPDFEmbedInMarkdownView(view)
+                this.lib.getAllPDFEmbedInMarkdownView(view)
                     .forEach((embed) => callback(embed.viewer, embed.file));
-            } else if (this.api.isCanvasView(view)) {
-                this.api.getAllPDFEmbedInCanvasView(view)
+            } else if (this.lib.isCanvasView(view)) {
+                this.lib.getAllPDFEmbedInCanvasView(view)
                     .forEach((embed) => callback(embed.viewer, embed.file));
             }
         });
@@ -84,14 +84,14 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
         }
         // I believe using `activeLeaf` is inevitable here.
         const view = this.app.workspace.activeLeaf?.view;
-        if (view && this.api.isPDFView(view)) return view;
+        if (view && this.lib.isPDFView(view)) return view;
         return null;
     }
 
     getActiveCanvasView(): CanvasView | null {
         // I believe using `activeLeaf` is inevitable here.
         const view = this.app.workspace.activeLeaf?.view;
-        if (view && this.api.isCanvasView(view)) return view;
+        if (view && this.lib.isCanvasView(view)) return view;
         return null;
     }
 
@@ -139,10 +139,10 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
 
     getMarkdownLeafInSidebar(sidebarType: SidebarType) {
         if (this.settings.singleMDLeafInSidebar) {
-            return this.api.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
-                ?? this.api.workspace.getNewLeafInSidebar(sidebarType)
+            return this.lib.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
+                ?? this.lib.workspace.getNewLeafInSidebar(sidebarType)
         } else {
-            return this.api.workspace.getNewLeafInSidebar(sidebarType);
+            return this.lib.workspace.getNewLeafInSidebar(sidebarType);
         }
     }
 
@@ -191,7 +191,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
                 && markdownLeafParent
                 && this.isInSidebar(markdownLeafParent)) {
                 markdownLeaf = this.getExistingMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf)
-                    ?? this.api.workspace.getNewLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
+                    ?? this.lib.workspace.getNewLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
             } else {
                 markdownLeaf = markdownLeafParent
                     ? this.app.workspace.createLeafInParent(markdownLeafParent, -1)
@@ -263,7 +263,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
             view.viewer.then((child) => {
                 const duration = this.plugin.settings.highlightDuration;
                 const { subpath } = parseLinktext(linktext);
-                this.api.highlight.viewer.highlightSubpath(child, subpath, duration);
+                this.lib.highlight.viewer.highlightSubpath(child, subpath, duration);
             });
         });
     }
@@ -297,6 +297,22 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
     isMarkdownFileOpened(file: TFile): boolean {
         return this.getExistingLeafForMarkdownFile(file) !== null;
     }
+
+    registerHideSidebar(leaf: WorkspaceLeaf) {
+        const root = leaf.getRoot();
+        // "if (root instanceof WorkspaceSidedock || root instanceof WorkspaceMobileDrawer)"
+        // causes the following error: TypeError: Right-hand side of 'instanceof' is not an object.
+        // The following is a workaround for this problem.
+        if (root === this.app.workspace.leftSplit || root === this.app.workspace.rightSplit) {
+            const sidebar = root as (typeof this.app.workspace.leftSplit | typeof this.app.workspace.rightSplit);
+            const eventRef = this.app.workspace.on('active-leaf-change', (anotherLeaf) => {
+                if (anotherLeaf && anotherLeaf.getRoot() !== sidebar) {
+                    sidebar.collapse();
+                    this.app.workspace.offref(eventRef);
+                }
+            });
+        }        
+    }
 }
 
 
@@ -304,7 +320,7 @@ export class WorkspaceAPI extends PDFPlusAPISubmodule {
  * We could have use Hover Editor's internal APIs such as `spawnPopover` and `activePopovers`,
  * but it's better to use the public APIs if possible.
  */
-class HoverEditorAPI extends PDFPlusAPISubmodule {
+class HoverEditorLib extends PDFPlusLibSubmodule {
 
     get hoverEditorPlugin() {
         return this.app.plugins.plugins['obsidian-hover-editor'] ?? null;

@@ -5,19 +5,19 @@
 import { TFile } from 'obsidian';
 import { AnnotationFactory } from 'annotpdf';
 
-import { PDFPlusAPISubmodule } from 'api/submodule';
+import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { IPdfIo } from '.';
 import { formatAnnotationID, getBorderRadius } from 'utils';
 import { Rect } from 'typings';
 
 
-export class PdfAnnotateIO extends PDFPlusAPISubmodule implements IPdfIo {
+export class PdfAnnotateIO extends PDFPlusLibSubmodule implements IPdfIo {
 
     async addHighlightAnnotations(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string) {
         return await this.process(file, (factory) => {
             const rgbColor = this.plugin.domManager.getRgb(colorName);
             const borderRadius = getBorderRadius();
-            const geometry = this.api.highlight.geometry;
+            const geometry = this.lib.highlight.geometry;
 
             const annot = factory.createHighlightAnnotation({
                 page: pageNumber - 1,

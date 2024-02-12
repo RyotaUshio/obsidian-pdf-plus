@@ -1,9 +1,9 @@
-import { PDFPlusAPISubmodule } from 'api/submodule';
+import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { PropRequired } from 'utils';
 import { TextLayerBuilder, Rect, TextContentItem } from 'typings';
 
 
-export class HighlightGeometryAPI extends PDFPlusAPISubmodule {
+export class HighlightGeometryLib extends PDFPlusLibSubmodule {
 
     /**
      * Returns an array of rectangles that cover the background of the text selection speficied by the given parameters.

@@ -1,7 +1,7 @@
 import { App, Menu, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusAPI } from 'api';
+import { PDFPlusLib } from 'lib';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
 import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
@@ -59,7 +59,7 @@ export const onThumbnailContextMenu = (child: PDFViewerChild, evt: MouseEvent): 
 }
 
 export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode, evt: MouseEvent) => {
-    const { api } = plugin;
+    const { lib } = plugin;
 
     if (child.pdfViewer.isEmbed) evt.preventDefault();
 
@@ -74,7 +74,7 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
                 .setTitle(title)
                 .setIcon('lucide-copy')
                 .onClick(async () => {
-                    const evaluated = await api.copyLink.getTextToCopyForOutlineItem(child, file, item);
+                    const evaluated = await lib.copyLink.getTextToCopyForOutlineItem(child, file, item);
                     (evt.view ?? activeWindow).navigator.clipboard.writeText(evaluated);
                 })
         })
@@ -84,14 +84,14 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
 export class PDFPlusContextMenu extends Menu {
     app: App
     plugin: PDFPlus
-    api: PDFPlusAPI;
+    lib: PDFPlusLib;
     child: PDFViewerChild
 
     constructor(plugin: PDFPlus, child: PDFViewerChild) {
         super();
         this.app = plugin.app;
         this.plugin = plugin;
-        this.api = plugin.api;
+        this.lib = plugin.lib;
         this.child = child;
     }
 
@@ -104,14 +104,14 @@ export class PDFPlusContextMenu extends Menu {
 
     // TODO: divide into smaller methods
     async addItems(evt: MouseEvent) {
-        const { child, plugin, api, app } = this;
+        const { child, plugin, lib, app } = this;
 
-        // const canvas = api.workspace.getActiveCanvasView()?.canvas;
+        // const canvas = lib.workspace.getActiveCanvasView()?.canvas;
 
         const selection = toSingleLine(evt.win.getSelection()?.toString() ?? '');
 
         // Get page number
-        const pageNumber = api.getPageNumberFromEvent(evt);
+        const pageNumber = lib.getPageNumberFromEvent(evt);
         if (pageNumber === null) return;
 
         // If macOS, add "look up selection" action
@@ -148,7 +148,7 @@ export class PDFPlusContextMenu extends Menu {
             // copy with custom formats //
 
             // get the currently selected color name
-            const palette = api.getColorPaletteFromChild(child);
+            const palette = lib.getColorPaletteFromChild(child);
             const colorName = palette?.selectedColorName ?? undefined;
             // check whether to write highlight to file or not
             // const writeFile = palette?.writeFile;
@@ -162,7 +162,7 @@ export class PDFPlusContextMenu extends Menu {
                         .setTitle(`Copy link to selection with format "${name}"`)
                         .setIcon('lucide-copy')
                         .onClick(() => {
-                            api.copyLink.copyLinkToSelection(false, template, colorName);
+                            lib.copyLink.copyLinkToSelection(false, template, colorName);
                         });
                 });
             }
@@ -176,7 +176,7 @@ export class PDFPlusContextMenu extends Menu {
             //                 .setTitle(`Create Canvas card from selection with format "${name}"`)
             //                 .setIcon('lucide-sticky-note')
             //                 .onClick(() => {
-            //                     api.copyLink.makeCanvasTextNodeFromSelection(false, canvas, template, colorName);
+            //                     lib.copyLink.makeCanvasTextNodeFromSelection(false, canvas, template, colorName);
             //                 });
             //         });
             //     }
@@ -191,7 +191,7 @@ export class PDFPlusContextMenu extends Menu {
                             .setTitle(`Write highlight to PDF & copy link with format "${name}"`)
                             .setIcon('lucide-save')
                             .onClick(() => {
-                                api.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
+                                lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
                             });
                     });
                 }
@@ -205,7 +205,7 @@ export class PDFPlusContextMenu extends Menu {
 
         await (async () => {
             if (annot) {
-                const { id } = api.getAnnotationInfoFromAnnotationElement(annot);
+                const { id } = lib.getAnnotationInfoFromAnnotationElement(annot);
                 const annotatedText = await child.getAnnotatedText(pageView, id);
 
                 if (annot.data.subtype === 'Link') {
@@ -220,13 +220,13 @@ export class PDFPlusContextMenu extends Menu {
                                 .setTitle('Copy PDF link as Obsidian link')
                                 .setIcon('lucide-copy')
                                 .onClick(async () => {
-                                    const subpath = await api.destIdToSubpath(destId, doc);
+                                    const subpath = await lib.destIdToSubpath(destId, doc);
                                     if (typeof subpath === 'string') {
                                         let display = annotatedText;
                                         if (!display && annot.data.rect) {
                                             display = child.getTextByRect(pageView, annot.data.rect);
                                         }
-                                        const link = api.generateMarkdownLink(file, '', subpath, display).slice(1);
+                                        const link = lib.generateMarkdownLink(file, '', subpath, display).slice(1);
                                         // How does the electron version differ?
                                         navigator.clipboard.writeText(link);
                                         plugin.lastCopiedDestInfo = { file, destName: destId };
@@ -258,7 +258,7 @@ export class PDFPlusContextMenu extends Menu {
                             .setTitle(`Copy link to annotation with format "${name}"`)
                             .setIcon('lucide-copy')
                             .onClick(() => {
-                                api.copyLink.copyLinkToAnnotation(child, false, template, pageNumber, id, false, true);
+                                lib.copyLink.copyLinkToAnnotation(child, false, template, pageNumber, id, false, true);
                             });
                     });
                 }
@@ -272,7 +272,7 @@ export class PDFPlusContextMenu extends Menu {
                 //                 .setTitle(`Create Canvas card from annotation with format "${name}"`)
                 //                 .setIcon('lucide-sticky-note')
                 //                 .onClick(() => {
-                //                     api.copyLink.makeCanvasTextNodeFromAnnotation(false, canvas, child, template, pageNumber, id);
+                //                     lib.copyLink.makeCanvasTextNodeFromAnnotation(false, canvas, child, template, pageNumber, id);
                 //                 });
                 //         });
                 //     }
@@ -328,7 +328,7 @@ export class PDFPlusContextMenu extends Menu {
                         .setTitle('Paste copied link to selection')
                         .setIcon('lucide-paste')
                         .onClick(() => {
-                            api.highlight.writeFile.addLinkAnnotationToSelection(destArray);
+                            lib.highlight.writeFile.addLinkAnnotationToSelection(destArray);
                         });
                 });
             } else if ('destName' in plugin.lastCopiedDestInfo) {
@@ -339,7 +339,7 @@ export class PDFPlusContextMenu extends Menu {
                         .setTitle('Paste copied link to selection')
                         .setIcon('lucide-paste')
                         .onClick(() => {
-                            api.highlight.writeFile.addLinkAnnotationToSelection(destName);
+                            lib.highlight.writeFile.addLinkAnnotationToSelection(destName);
                         });
                 });
             }
