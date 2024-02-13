@@ -4,7 +4,7 @@ import { around } from 'monkey-around';
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
-import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
+import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { onContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
@@ -201,7 +201,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                     this.app.workspace.trigger('view-sync:state-change', view, override);
                                 }
                             }
-                        }, 1000)
+                        }, plugin.settings.viewSyncPageDebounceInterval * 1000)
                     );
                 }
             }

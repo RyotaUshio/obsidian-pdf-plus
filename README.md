@@ -97,7 +97,7 @@ Annotate PDF files with highlights just by linking to text selection. You can ea
 
 - **Highlight backlinks in PDF viewer**: In the PDF viewer, any referenced text will be highlighted for easy identification.
   - By default, all backlinks are highlighted. However, there is an option that allows you to highlight only backlinks with colors specified in the link text (see below).
-  - It does not modify the PDF file itself. It just changes how the file content is displayed in Obsidian. Exporting highlights into an actual PDF file is a planned feature, but it's not supported yet.
+  - It does not modify the PDF file itself. It just changes how the file content is displayed in Obsidian. PDF++ also offers an option to [add highlights to PDFs directly](#editing-pdf-files-directly-experimental).
 - **Custom highlight colors**: Append `&color=<COLOR NAME>` to a link text to highlight the selection with a specified color.
   - `<COLOR NAME>` is one of the colors that you register in the plugin settings. e.g `[[file.pdf#page=1&selection=4,0,5,20&color=red]]`
   - Color names are case-insensitive, i.e. all of `&color=red`, `&color=RED` and even `&color=rEd` work the same.
@@ -127,7 +127,7 @@ Added annotations will be visible even outside Obsidian, unlike backlink highlig
 
 PDF++ will not modify PDF files themselves unless you explicitly allow it. ***The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
 
-#### PDF page manipulation
+#### PDF page composer: PDF counterpart of the "Note Composer" core plugin
 
 Add, insert, remove or extract PDF pages via commands and **automatically update related links** in the entire vault.
 

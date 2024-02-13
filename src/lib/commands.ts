@@ -2,6 +2,7 @@ import { Command, Notice, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { DestArray } from 'typings';
+import { PDFPageDeleteModal } from 'modals/pdf-composer-modals';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -101,9 +102,9 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 name: 'Insert page here',
                 checkCallback: (checking) => this.insertPage(checking)
             }, {
-                id: 'remove-page',
-                name: 'Remove this page',
-                checkCallback: (checking) => this.removePage(checking)
+                id: 'delete-page',
+                name: 'Delete this page',
+                checkCallback: (checking) => this.deletePage(checking)
             }, {
                 id: 'extract-this-page',
                 name: 'Extract this page to a new file',
@@ -400,44 +401,47 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     addPage(checking: boolean) {
-        if (!this.lib.manipulate.isEnabled()) return false;
+        if (!this.lib.composer.isEnabled()) return false;
 
         const file = this.app.workspace.getActiveFile();
         if (!file || file.extension !== 'pdf') return false;
 
-        if (!checking) this.lib.manipulate.addPage(file);
+        if (!checking) this.lib.composer.addPage(file);
 
         return true;
     }
 
     insertPage(checking: boolean) {
-        if (!this.lib.manipulate.isEnabled()) return false;
+        if (!this.lib.composer.isEnabled()) return false;
 
         const view = this.lib.workspace.getActivePDFView();
         if (!view || !view.file) return false;
 
         const page = view.getState().page;
 
-        if (!checking) this.lib.manipulate.insertPage(view.file, page);
+        if (!checking) this.lib.composer.insertPage(view.file, page);
 
         return true;
     }
 
-    removePage(checking: boolean) {
-        if (!this.lib.manipulate.isEnabled()) return false;
+    deletePage(checking: boolean) {
+        if (!this.lib.composer.isEnabled()) return false;
 
         const view = this.lib.workspace.getActivePDFView();
         if (!view || !view.file) return false;
 
         const page = view.getState().page;
 
-        if (!checking) this.lib.manipulate.removePage(view.file, page);
+        if (!checking) {
+            new PDFPageDeleteModal(view.file, page, this.plugin)
+                .openIfNeccessary();
+        }
 
         return true;
     }
 
     extractThisPage(checking: boolean) {
-        if (!this.lib.manipulate.isEnabled()) return false;
+        if (!this.lib.composer.isEnabled()) return false;
 
         const view = this.lib.workspace.getActivePDFView();
         if (!view) return false;
@@ -447,7 +451,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!checking) {
             const page = view.getState().page;
             const dstPath = this.lib.getAvailablePathForCopy(file);
-            this.lib.manipulate.extractPages(file, [page], dstPath, false)
+            this.lib.composer.extractPages(file, [page], dstPath, false)
                 .then(async (file) => {
                     if (!file) {
                         new Notice(`${this.plugin.manifest.name}: Failed to extract page.`);
@@ -465,7 +469,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     divide(checking: boolean) {
-        if (!this.lib.manipulate.isEnabled()) return false;
+        if (!this.lib.composer.isEnabled()) return false;
 
         const view = this.lib.workspace.getActivePDFView();
         if (!view) return false;
@@ -475,7 +479,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!checking) {
             const page = view.getState().page;
             const dstPath = this.lib.getAvailablePathForCopy(file);
-            this.lib.manipulate.extractPages(file, { from: page }, dstPath, false)
+            this.lib.composer.extractPages(file, { from: page }, dstPath, false)
                 .then(async (file) => {
                     if (!file) {
                         new Notice(`${this.plugin.manifest.name}: Failed to divide PDF.`);

@@ -6,10 +6,12 @@ import { range, encodeLinktext } from 'utils';
 
 
 /**
+ * A PDF counterpart of the core "Note Composer" plugin.
+ * 
  * Manipulate PDF pages (e.g. add, insert, remove, merge, and extract etc) 
  * and auto-update the links to the pages in the vault.
  */
-export class PDFPageManipulator extends PDFPlusLibSubmodule {
+export class PDFComposer extends PDFPlusLibSubmodule {
     fileOperator: PDFFileOperator;
     linkUpdater: PDFLinkUpdater;
 
@@ -236,7 +238,9 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
 
         await Promise.all(promises);
 
-        new Notice(`${this.plugin.manifest.name}: Updated ${counts.links} links in ${counts.files} files.`)
+        if (counts.links) {
+            new Notice(`${this.plugin.manifest.name}: Updated ${counts.links} links in ${counts.files} files.`)
+        }
 
         return newFile;
     }

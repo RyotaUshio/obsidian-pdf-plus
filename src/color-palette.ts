@@ -111,7 +111,7 @@ export class ColorPalette extends Component {
         itemEl.addEventListener('click', (evt) => {
             const colorChanged = !itemEl.hasClass('is-active');
             this.setActiveItem(name);
-            if (this.plugin.settings.syncColorPaletteItem) {
+            if (this.plugin.settings.syncColorPaletteItem && this.plugin.settings.syncDefaultColorPaletteItem) {
                 this.plugin.settings.defaultColorPaletteItemIndex = name ? (Object.keys(this.plugin.settings.colors).indexOf(name) + 1) : 0;
             }
 
@@ -209,7 +209,7 @@ export class ColorPalette extends Component {
             tooltip,
             () => {
                 this.updateTooltips();
-                if (this.plugin.settings.syncColorPaletteAction) {
+                if (this.plugin.settings.syncColorPaletteAction && this.plugin.settings.syncDefaultColorPaletteAction) {
                     this.plugin.settings.defaultColorPaletteActionIndex = this.actionIndex;
                 }
             }
@@ -225,7 +225,7 @@ export class ColorPalette extends Component {
             'displayTextFormatIndex',
             `${this.plugin.manifest.name}: Link display text format`,
             () => {
-                if (this.plugin.settings.syncDisplayTextFormat) {
+                if (this.plugin.settings.syncDisplayTextFormat && this.plugin.settings.syncDefaultDisplayTextFormat) {
                     this.plugin.settings.defaultDisplayTextFormatIndex = this.displayTextFormatIndex;
                 }
             }
@@ -242,7 +242,7 @@ export class ColorPalette extends Component {
             .onChange((value) => {
                 this.writeFile = value;
 
-                if (this.plugin.settings.syncWriteFileToggle) {
+                if (this.plugin.settings.syncWriteFileToggle && this.plugin.settings.syncDefaultWriteFileToggle) {
                     this.plugin.settings.defaultWriteFileToggle = value;
                 }
 

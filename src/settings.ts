@@ -43,6 +43,7 @@ export interface PDFPlusSettings {
 	displayTextFormats: namedTemplate[];
 	defaultDisplayTextFormatIndex: number,
 	syncDisplayTextFormat: boolean;
+	syncDefaultDisplayTextFormat: boolean;
 	copyCommands: namedTemplate[];
 	useAnotherCopyTemplateWhenNoSelection: boolean;
 	copyTemplateWhenNoSelection: string;
@@ -77,6 +78,7 @@ export interface PDFPlusSettings {
 	defaultColor: string;
 	defaultColorPaletteItemIndex: number;
 	syncColorPaletteItem: boolean;
+	syncDefaultColorPaletteItem: boolean;
 	colorPaletteInToolbar: boolean;
 	noColorButtonInColorPalette: boolean;
 	colorPaletteInEmbedToolbar: boolean;
@@ -89,6 +91,7 @@ export interface PDFPlusSettings {
 	alwaysUseSidebar: boolean;
 	defaultColorPaletteActionIndex: number,
 	syncColorPaletteAction: boolean;
+	syncDefaultColorPaletteAction: boolean;
 	proxyMDProperty: string;
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
@@ -102,6 +105,7 @@ export interface PDFPlusSettings {
 	writeHighlightToFileOpacity: number;
 	defaultWriteFileToggle: boolean;
 	syncWriteFileToggle: boolean;
+	syncDefaultWriteFileToggle: boolean;
 	// writeFileLibrary: 'pdf-lib' | 'pdfAnnotate';
 	enableAnnotationContentEdit: boolean;
 	warnEveryAnnotationDelete: boolean;
@@ -152,8 +156,11 @@ export interface PDFPlusSettings {
 	selectToCopyToggleRibbonIcon: boolean;
 	autoFocusToggleRibbonIcon: boolean;
 	viewSyncFollowPageNumber: boolean;
+	viewSyncPageDebounceInterval: number;
 	openAfterExtractPages: boolean;
 	howToOpenExtractedPDF: ExtendedPaneType;
+	warnEveryPageDelete: boolean;
+	warnBacklinkedPageDelete: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -177,6 +184,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	],
 	defaultDisplayTextFormatIndex: 0,
 	syncDisplayTextFormat: true,
+	syncDefaultDisplayTextFormat: false,
 	copyCommands: [
 		{
 			name: 'Quote',
@@ -241,6 +249,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	defaultColor: '',
 	defaultColorPaletteItemIndex: 0,
 	syncColorPaletteItem: true,
+	syncDefaultColorPaletteItem: false,
 	colorPaletteInToolbar: true,
 	noColorButtonInColorPalette: true,
 	colorPaletteInEmbedToolbar: false,
@@ -253,6 +262,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	alwaysUseSidebar: true,
 	defaultColorPaletteActionIndex: 4,
 	syncColorPaletteAction: true,
+	syncDefaultColorPaletteAction: false,
 	proxyMDProperty: 'PDF',
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
@@ -266,6 +276,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	writeHighlightToFileOpacity: 0.2,
 	defaultWriteFileToggle: false,
 	syncWriteFileToggle: true,
+	syncDefaultWriteFileToggle: false,
 	// writeFileLibrary: 'pdfAnnotate',
 	enableAnnotationDeletion: true,
 	warnEveryAnnotationDelete: false,
@@ -316,8 +327,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	selectToCopyToggleRibbonIcon: true,
 	autoFocusToggleRibbonIcon: true,
 	viewSyncFollowPageNumber: true,
+	viewSyncPageDebounceInterval: 0.3,
 	openAfterExtractPages: true,
 	howToOpenExtractedPDF: 'tab',
+	warnEveryPageDelete: false,
+	warnBacklinkedPageDelete: true,
 };
 
 
@@ -1034,6 +1048,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addToggleSetting('syncWriteFileToggle')
 				.setName('Share the same toggle state among all PDF viewers')
 				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
+			if (this.plugin.settings.syncWriteFileToggle) {
+				this.addToggleSetting('syncDefaultWriteFileToggle')
+					.setName('Share the state with newly opened PDF viewers as well')
+			}
 			// this.addDropdownSetting('writeFileLibrary', ['pdf-lib', 'pdfAnnotate'])
 			// 	.setName('Library to write highlights')
 			// 	.then((setting) => {
@@ -1061,8 +1079,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('PDF page manipulation (experimental)', 'lucide-blocks')
-			.setDesc(`Add, insert, remove or extract PDF pages via commands and automatically update related links in the entire vault. The "Editing PDF files directly" option has to be enabled to use these features.`)
+		this.addHeading('PDF page composer (experimental)', 'lucide-blocks')
+			.then((setting) => {
+				this.renderMarkdown([
+					`Add, insert, delete or extract PDF pages via commands and **automatically update all the related links in the entire vault**. The "Editing PDF files directly" option has to be enabled to use these features.`
+				], setting.descEl);
+			});
+		this.addToggleSetting('warnEveryPageDelete', () => this.redisplay())
+			.setName('Always warn when deleting a page');
+		if (!this.plugin.settings.warnEveryPageDelete) {
+			this.addToggleSetting('warnBacklinkedPageDelete')
+				.setName('Warn when deleting a page with backlinks');
+		}
 		this.addToggleSetting('openAfterExtractPages', () => this.redisplay())
 			.setName('Open extracted PDF file')
 			.setDesc('If enabled, the newly created PDF file will be opened after running the commands "Extract this page to a new file" or "Divide this PDF into two files at this page".');
@@ -1193,9 +1221,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Show color palette in PDF embeds as well');
 			this.addIndexDropdownSetting('defaultColorPaletteItemIndex', ['', ...Object.keys(this.plugin.settings.colors)], (option) => option || 'Don\'t specify')
 				.setName('Default color selected in color palette')
-			this.addToggleSetting('syncColorPaletteItem')
+				.setDesc('This color will be selected in the color palette in a newly opened PDF viewer.');
+			this.addToggleSetting('syncColorPaletteItem', () => this.redisplay())
 				.setName('Share a single color among all color palettes')
 				.setDesc('If disabled, you can specify a different color for each color palette.');
+			if (this.plugin.settings.syncColorPaletteItem) {
+				this.addToggleSetting('syncDefaultColorPaletteItem')
+					.setName('Share the color with newly opened color palettes as well');
+			}
 		}
 
 
@@ -1268,7 +1301,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.plugin.autoFocusToggleIconEl.toggleClass('is-active', this.plugin.settings.autoFocus);
 		})
 			.setName('Auto-focus markdown after copying link from PDF')
-			.setDesc('If enabled, the last active note or the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation".');
+			.setDesc('If enabled, the last active note or the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation" command.');
 		this.addToggleSetting('autoFocusToggleRibbonIcon')
 			.setName('Show an icon to toggle auto-focus in the left ribbon menu')
 			.setDesc('You can also toggle auto-focus via a command. Reload the plugin after changing this setting to take effect.')
@@ -1417,6 +1450,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('syncDisplayTextFormat')
 			.setName('Share a single display text format among all PDF viewers')
 			.setDesc('If disabled, you can specify a different display text format for each PDF viewer from the dropdown menu in the PDF toolbar.');
+		if (this.plugin.settings.syncDisplayTextFormat) {
+			this.addToggleSetting('syncDefaultDisplayTextFormat')
+				.setName('Share the display text format with newly opened PDF viewers as well');
+		}
 
 		this.addSetting('copyCommands')
 			.setName('Custom color palette actions')
@@ -1456,6 +1493,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('syncColorPaletteAction')
 			.setName('Share a single action among all PDF viewers')
 			.setDesc('If disabled, you can specify a different action for each PDF viewer from the dropdown menu in the PDF toolbar.');
+		if (this.plugin.settings.syncColorPaletteAction) {
+			this.addToggleSetting('syncDefaultColorPaletteAction')
+				.setName('Share the action with newly opened PDF viewers as well');
+		}
 		this.addToggleSetting('useAnotherCopyTemplateWhenNoSelection', () => this.redisplay())
 			.setName('Use another template when no text is selected')
 			.setDesc('For example, you can use this to copy a link to the page when there is no selection.');
@@ -1630,8 +1671,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'Integrate more seamlessly with the [View Sync](https://github.com/RyotaUshio/obsidian-view-sync) plugin.'
 				], setting.descEl);
 			});
-		this.addToggleSetting('viewSyncFollowPageNumber')
+		this.addToggleSetting('viewSyncFollowPageNumber', () => this.redisplay())
 			.setName('Sync page number');
+		if (this.plugin.settings.viewSyncFollowPageNumber) {
+			this.addSliderSetting('viewSyncPageDebounceInterval', 0.1, 1, 0.05)
+				.setName('Minimum update interval of the View Sync file (sec)');
+		}
 
 
 		this.addHeading('Misc', 'lucide-more-horizontal');

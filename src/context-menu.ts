@@ -2,7 +2,7 @@ import { App, Menu, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
-import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'annotation-modals';
+import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 

@@ -10,7 +10,7 @@ import { encodeLinktext, parsePDFSubpath, removeExtension } from 'utils';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed } from 'typings';
 import { PDFDocument } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
-import { PDFPageManipulator } from './pages';
+import { PDFComposer } from './composer';
 
 
 export class PDFPlusLib {
@@ -22,7 +22,7 @@ export class PDFPlusLib {
     copyLink: copyLinkLib;
     highlight: HighlightLib;
     workspace: WorkspaceLib;
-    manipulate: PDFPageManipulator;
+    composer: PDFComposer;
 
     constructor(plugin: PDFPlus) {
         this.app = plugin.app;
@@ -32,7 +32,7 @@ export class PDFPlusLib {
         this.copyLink = new copyLinkLib(plugin);
         this.highlight = new HighlightLib(plugin);
         this.workspace = new WorkspaceLib(plugin);
-        this.manipulate = new PDFPageManipulator(plugin);
+        this.composer = new PDFComposer(plugin);
     }
 
     /** 
