@@ -127,6 +127,10 @@ Added annotations will be visible even outside Obsidian, unlike backlink highlig
 
 PDF++ will not modify PDF files themselves unless you explicitly allow it. ***The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
 
+#### PDF page manipulation
+
+Add, insert, remove or extract PDF pages via commands and **automatically update related links** in the entire vault.
+
 ### PDF internal links enhancement
 
 Make it easier to work with internal links embedded in PDF files.
