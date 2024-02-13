@@ -129,7 +129,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     const { source: pageView } = data;
 
                     pageView.annotationLayer?.div
-                        .querySelectorAll<HTMLElement>('section.linkAnnotation[data-internal-link][data-annotation-id]')
+                        ?.querySelectorAll<HTMLElement>('section.linkAnnotation[data-internal-link][data-annotation-id]')
                         .forEach((el) => {
                             const annotationId = el.dataset.annotationId;
                             if (!annotationId) return;

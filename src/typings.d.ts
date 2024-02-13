@@ -866,6 +866,11 @@ declare module 'obsidian' {
     interface Vault {
         getConfig(name: string): any;
         getConfig(name: 'useMarkdownLinks'): boolean;
+        getAvailablePath(pathWithoutExtension: string, extension: string): string;
+    }
+
+    interface MetadataCache {
+        onCleanCache(callback: () => any): void;
     }
 
     interface Component {

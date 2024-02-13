@@ -2,6 +2,11 @@ import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLin
 import { ObsidianViewer } from 'typings';
 
 
+/** Return an array of numbers from `from` (inclusive) to `to` (exclusive). */
+export function range(from: number, to: number): number[] {
+    return Array.from({ length: to - from }, (_, i) => from + i);
+}
+
 export function isHexString(color: string) {
     // It's actually /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i
     // but it will be overkill
@@ -61,6 +66,14 @@ export function getModifierNameInPlatform(mod: Modifier): string {
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
     return cache.links?.find((link) => start <= link.position.start.offset && link.position.end.offset <= end)
         ?? cache.embeds?.find((embed) => start <= embed.position.start.offset && embed.position.end.offset <= end);
+}
+
+export function removeExtension(path: string) {
+    const index = path.lastIndexOf(".");
+    if (-1 === index || index === path.length - 1 || 0 === index) {
+        return path;
+    }
+    return path.slice(0, index);
 }
 
 export function getSubpathWithoutHash(linktext: string): string {

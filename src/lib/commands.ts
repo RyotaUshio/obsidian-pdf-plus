@@ -92,6 +92,26 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'toggle-select-to-copy',
                 name: 'Toggle "select text to copy" mode',
                 callback: () => this.plugin.selectToCopyMode.toggle()
+            }, {
+                id: 'add-page',
+                name: 'Add new page at the end',
+                checkCallback: (checking) => this.addPage(checking)
+            }, {
+                id: 'insert-page',
+                name: 'Insert page here',
+                checkCallback: (checking) => this.insertPage(checking)
+            }, {
+                id: 'remove-page',
+                name: 'Remove this page',
+                checkCallback: (checking) => this.removePage(checking)
+            }, {
+                id: 'extract-this-page',
+                name: 'Extract this page to a new file',
+                checkCallback: (checking) => this.extractThisPage(checking)
+            }, {
+                id: 'divide',
+                name: 'Divide this PDF into two files at this page',
+                checkCallback: (checking) => this.divide(checking)
             }
         ];
 
@@ -377,5 +397,98 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         iconEl.toggleClass('is-active', !iconEl.hasClass('is-active'));
         this.settings.autoFocus = iconEl.hasClass('is-active');
         this.plugin.saveSettings();
+    }
+
+    addPage(checking: boolean) {
+        if (!this.lib.manipulate.isEnabled()) return false;
+
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== 'pdf') return false;
+
+        if (!checking) this.lib.manipulate.addPage(file);
+
+        return true;
+    }
+
+    insertPage(checking: boolean) {
+        if (!this.lib.manipulate.isEnabled()) return false;
+
+        const view = this.lib.workspace.getActivePDFView();
+        if (!view || !view.file) return false;
+
+        const page = view.getState().page;
+
+        if (!checking) this.lib.manipulate.insertPage(view.file, page);
+
+        return true;
+    }
+
+    removePage(checking: boolean) {
+        if (!this.lib.manipulate.isEnabled()) return false;
+
+        const view = this.lib.workspace.getActivePDFView();
+        if (!view || !view.file) return false;
+
+        const page = view.getState().page;
+
+        if (!checking) this.lib.manipulate.removePage(view.file, page);
+
+        return true;
+    }
+
+    extractThisPage(checking: boolean) {
+        if (!this.lib.manipulate.isEnabled()) return false;
+
+        const view = this.lib.workspace.getActivePDFView();
+        if (!view) return false;
+        const file = view.file;
+        if (!file) return false;
+
+        if (!checking) {
+            const page = view.getState().page;
+            const dstPath = this.lib.getAvailablePathForCopy(file);
+            this.lib.manipulate.extractPages(file, [page], dstPath, false)
+                .then(async (file) => {
+                    if (!file) {
+                        new Notice(`${this.plugin.manifest.name}: Failed to extract page.`);
+                        return;
+                    }
+                    if (this.settings.openAfterExtractPages) {
+                        const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
+                        await leaf.openFile(file);
+                        this.app.workspace.revealLeaf(leaf);
+                    }
+                });
+        }
+
+        return true;
+    }
+
+    divide(checking: boolean) {
+        if (!this.lib.manipulate.isEnabled()) return false;
+
+        const view = this.lib.workspace.getActivePDFView();
+        if (!view) return false;
+        const file = view.file;
+        if (!file) return false;
+
+        if (!checking) {
+            const page = view.getState().page;
+            const dstPath = this.lib.getAvailablePathForCopy(file);
+            this.lib.manipulate.extractPages(file, { from: page }, dstPath, false)
+                .then(async (file) => {
+                    if (!file) {
+                        new Notice(`${this.plugin.manifest.name}: Failed to divide PDF.`);
+                        return;
+                    }
+                    if (this.settings.openAfterExtractPages) {
+                        const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
+                        await leaf.openFile(file);
+                        this.app.workspace.revealLeaf(leaf);
+                    }
+                });
+        }
+
+        return true;
     }
 }

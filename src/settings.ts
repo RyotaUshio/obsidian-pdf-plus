@@ -152,6 +152,8 @@ export interface PDFPlusSettings {
 	selectToCopyToggleRibbonIcon: boolean;
 	autoFocusToggleRibbonIcon: boolean;
 	viewSyncFollowPageNumber: boolean;
+	openAfterExtractPages: boolean;
+	howToOpenExtractedPDF: ExtendedPaneType;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -314,6 +316,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	selectToCopyToggleRibbonIcon: true,
 	autoFocusToggleRibbonIcon: true,
 	viewSyncFollowPageNumber: true,
+	openAfterExtractPages: true,
+	howToOpenExtractedPDF: 'tab',
 };
 
 
@@ -1057,6 +1061,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
+		this.addHeading('PDF page manipulation (experimental)', 'lucide-blocks')
+			.setDesc(`Add, insert, remove or extract PDF pages via commands and automatically update related links in the entire vault. The "Editing PDF files directly" option has to be enabled to use these features.`)
+		this.addToggleSetting('openAfterExtractPages', () => this.redisplay())
+			.setName('Open extracted PDF file')
+			.setDesc('If enabled, the newly created PDF file will be opened after running the commands "Extract this page to a new file" or "Divide this PDF into two files at this page".');
+		if (this.plugin.settings.openAfterExtractPages) {
+			this.addDropdownSetting('howToOpenExtractedPDF', PANE_TYPE)
+				.setName('How to open');
+		}
+
 		this.addHeading('Opening links to PDF files', 'lucide-book-open');
 		this.addToggleSetting('alwaysRecordHistory')
 			.setName('Always record to history when opening PDF links')
@@ -1716,5 +1730,6 @@ class CommandSuggest extends AbstractInputSuggest<Command> {
 		this.inputEl.value = command.name;
 		this.close();
 		this.plugin.saveSettings();
+		this.tab.redisplay();
 	}
 }
