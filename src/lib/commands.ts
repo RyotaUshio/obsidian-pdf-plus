@@ -3,6 +3,7 @@ import { Command, Notice, setIcon } from 'obsidian';
 import { PDFPlusLibSubmodule } from './submodule';
 import { DestArray } from 'typings';
 import { PDFPageDeleteModal } from 'modals/pdf-composer-modals';
+import { PDFPageLabelEditModal, PDFPageLabelUpdateModal } from 'modals/page-label-modals';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -98,9 +99,14 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 name: 'Add new page at the end',
                 checkCallback: (checking) => this.addPage(checking)
             }, {
-                id: 'insert-page',
-                name: 'Insert page here',
-                checkCallback: (checking) => this.insertPage(checking)
+                id: 'insert-page-before',
+                name: 'Insert page before this page',
+                checkCallback: (checking) => this.insertPage(checking, true)
+            },
+            {
+                id: 'insert-page-after',
+                name: 'Insert page after this page',
+                checkCallback: (checking) => this.insertPage(checking, false)
             }, {
                 id: 'delete-page',
                 name: 'Delete this page',
@@ -113,6 +119,10 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'divide',
                 name: 'Divide this PDF into two files at this page',
                 checkCallback: (checking) => this.divide(checking)
+            }, {
+                id: 'edit-page-labels',
+                name: 'Edit page labels',
+                checkCallback: (checking) => this.editPageLabels(checking)
             }
         ];
 
@@ -411,15 +421,26 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         return true;
     }
 
-    insertPage(checking: boolean) {
+    insertPage(checking: boolean, before: boolean) {
         if (!this.lib.composer.isEnabled()) return false;
 
         const view = this.lib.workspace.getActivePDFView();
         if (!view || !view.file) return false;
+        const file = view.file;
 
-        const page = view.getState().page;
+        const page = view.getState().page + (before ? 0 : 1);
 
-        if (!checking) this.lib.composer.insertPage(view.file, page);
+        if (!checking) {
+            new PDFPageLabelUpdateModal(
+                this.plugin,
+                this.settings.askPageLabelUpdateWhenInsertPage,
+                this.settings.pageLabelUpdateWhenInsertPage
+            )
+                .askIfKeepLabels()
+                .then((answer) => {
+                    this.lib.composer.insertPage(file, page, answer);
+                });
+        }
 
         return true;
     }
@@ -429,12 +450,24 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
         const view = this.lib.workspace.getActivePDFView();
         if (!view || !view.file) return false;
+        const file = view.file;
 
         const page = view.getState().page;
 
         if (!checking) {
-            new PDFPageDeleteModal(view.file, page, this.plugin)
-                .openIfNeccessary();
+            new PDFPageDeleteModal(file, page, this.plugin)
+                .openIfNeccessary()
+                .then(() => {
+                    new PDFPageLabelUpdateModal(
+                        this.plugin,
+                        this.settings.askPageLabelUpdateWhenDeletePage,
+                        this.settings.pageLabelUpdateWhenDeletePage
+                    )
+                        .askIfKeepLabels()
+                        .then((answer) => {
+                            this.lib.composer.removePage(file, page, answer);
+                        });
+                });
         }
 
         return true;
@@ -451,17 +484,26 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!checking) {
             const page = view.getState().page;
             const dstPath = this.lib.getAvailablePathForCopy(file);
-            this.lib.composer.extractPages(file, [page], dstPath, false)
-                .then(async (file) => {
-                    if (!file) {
-                        new Notice(`${this.plugin.manifest.name}: Failed to extract page.`);
-                        return;
-                    }
-                    if (this.settings.openAfterExtractPages) {
-                        const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
-                        await leaf.openFile(file);
-                        this.app.workspace.revealLeaf(leaf);
-                    }
+
+            new PDFPageLabelUpdateModal(
+                this.plugin,
+                this.settings.askPageLabelUpdateWhenExtractPage,
+                this.settings.pageLabelUpdateWhenExtractPage
+            )
+                .askIfKeepLabels()
+                .then((answer) => {
+                    this.lib.composer.extractPages(file, [page], dstPath, false, answer)
+                        .then(async (file) => {
+                            if (!file) {
+                                new Notice(`${this.plugin.manifest.name}: Failed to extract page.`);
+                                return;
+                            }
+                            if (this.settings.openAfterExtractPages) {
+                                const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
+                                await leaf.openFile(file);
+                                this.app.workspace.revealLeaf(leaf);
+                            }
+                        });
                 });
         }
 
@@ -479,18 +521,40 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!checking) {
             const page = view.getState().page;
             const dstPath = this.lib.getAvailablePathForCopy(file);
-            this.lib.composer.extractPages(file, { from: page }, dstPath, false)
-                .then(async (file) => {
-                    if (!file) {
-                        new Notice(`${this.plugin.manifest.name}: Failed to divide PDF.`);
-                        return;
-                    }
-                    if (this.settings.openAfterExtractPages) {
-                        const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
-                        await leaf.openFile(file);
-                        this.app.workspace.revealLeaf(leaf);
-                    }
+
+            new PDFPageLabelUpdateModal(
+                this.plugin,
+                this.settings.askPageLabelUpdateWhenDividePDFs,
+                this.settings.pageLabelUpdateWhenDividePDFs
+            )
+                .askIfKeepLabels()
+                .then((answer) => {
+                    this.lib.composer.extractPages(file, { from: page }, dstPath, false, answer)
+                        .then(async (file) => {
+                            if (!file) {
+                                new Notice(`${this.plugin.manifest.name}: Failed to divide PDF.`);
+                                return;
+                            }
+                            if (this.settings.openAfterExtractPages) {
+                                const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
+                                await leaf.openFile(file);
+                                this.app.workspace.revealLeaf(leaf);
+                            }
+                        });
                 });
+        }
+
+        return true;
+    }
+
+    editPageLabels(checking: boolean) {
+        const view = this.lib.workspace.getActivePDFView();
+        if (!view) return false;
+        const file = view.file;
+        if (!file) return false;
+
+        if (!checking) {
+            new PDFPageLabelEditModal(this.plugin, file).open();
         }
 
         return true;

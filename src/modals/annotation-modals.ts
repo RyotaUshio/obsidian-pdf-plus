@@ -1,10 +1,9 @@
-import { Component, Modal, Setting, TFile, TextAreaComponent, MarkdownRenderer, RGB } from 'obsidian';
+import { Setting, TFile, TextAreaComponent, MarkdownRenderer, RGB } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusLib } from 'lib';
 import { hexToRgb, hookInternalLinkMouseEventHandlers } from 'utils';
 import { PDFDict } from '@cantoo/pdf-lib';
-import { PDFPlusModal } from 'index';
+import { PDFPlusModal } from 'modals';
 
 
 class PDFAnnotationModal extends PDFPlusModal {

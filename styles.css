@@ -111,11 +111,12 @@ settings:
     }
 }
 
-.pdf-plus-settings .setting-item-heading:not(.normal-margin-top) {
+.pdf-plus-settings .pdf-plus-setting-heading:not(.normal-margin-top) {
     margin-top: 2.4em;
 }
 
-.pdf-plus-settings .setting-item-description {
+.pdf-plus-settings .setting-item-description,
+.pdf-plus-modal .setting-item-description {
     &>p:first-child {
         margin-top: 0;
     }
@@ -219,4 +220,16 @@ settings:
 
 #pdf-plus-funding-icon {
     margin-right: var(--size-4-4);
+}
+
+.page-label-range:first-of-type {
+    margin-top: var(--size-4-4);
+}
+
+.page-label-range:not(:first-of-type) {
+    margin-top: var(--size-4-9);
+}
+
+.pdf-plus-page-label-modal {
+    z-index: var(--layer-popover);
 }

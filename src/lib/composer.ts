@@ -1,8 +1,9 @@
 import { TFile, normalizePath, parseLinktext, Pos, ReferenceCache, Notice } from 'obsidian';
-import { PDFDocument } from '@cantoo/pdf-lib';
+import { PDFDocument, PDFPage } from '@cantoo/pdf-lib';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { range, encodeLinktext } from 'utils';
+import { PDFPageLabels } from './page-labels';
 
 
 /**
@@ -33,27 +34,27 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         );
     }
 
-    async insertPage(file: TFile, pageNumber: number) {
+    async insertPage(file: TFile, pageNumber: number, keepLabels: boolean) {
         return await this.linkUpdater.updateLinks(
-            () => this.fileOperator.insertPage(file, pageNumber),
+            () => this.fileOperator.insertPage(file, pageNumber, keepLabels),
             [file],
             (f, n) => { return { pageNumber: typeof n === 'number' && n >= pageNumber ? n + 1 : n } }
         );
     }
 
-    async removePage(file: TFile, pageNumber: number) {
+    async removePage(file: TFile, pageNumber: number, keepLabels: boolean) {
         return await this.linkUpdater.updateLinks(
-            () => this.fileOperator.removePage(file, pageNumber),
+            () => this.fileOperator.removePage(file, pageNumber, keepLabels),
             [file],
             (f, n) => { return { pageNumber: typeof n === 'number' && n > pageNumber ? n - 1 : n } }
         );
     }
 
     /** Merge file2 into file1 by appending all pages from file2 to file1. */
-    async mergeFiles(file1: TFile, file2: TFile) {
+    async mergeFiles(file1: TFile, file2: TFile, keepLabels: boolean) {
         const pageCount = (await this.fileOperator.read(file1)).getPageCount();
         return await this.linkUpdater.updateLinks(
-            () => this.fileOperator.mergeFiles(file1, file2),
+            () => this.fileOperator.mergeFiles(file1, file2, keepLabels),
             [file1, file2],
             (f, n) => {
                 if (f === file1) return {};
@@ -62,7 +63,7 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         );
     }
 
-    async extractPages(srcFile: TFile, pages: number[] | { from?: number, to?: number }, dstPath: string, existOk: boolean) {
+    async extractPages(srcFile: TFile, pages: number[] | { from?: number, to?: number }, dstPath: string, existOk: boolean, keepLabels: boolean) {
         let pageNumbers: number[];
 
         if (!Array.isArray(pages)) {
@@ -76,7 +77,7 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         }
 
         return await this.linkUpdater.updateLinks(
-            () => this.fileOperator.extractPages(srcFile, pageNumbers, dstPath, existOk),
+            () => this.fileOperator.extractPages(srcFile, pageNumbers, dstPath, existOk, keepLabels),
             [srcFile],
             (f, n) => {
                 if (n === undefined) return {};
@@ -89,6 +90,12 @@ export class PDFComposer extends PDFPlusLibSubmodule {
 
 
 export class PDFFileOperator extends PDFPlusLibSubmodule {
+    pageLabelUpdater: PageLabelUpdater;
+
+    constructor(...args: ConstructorParameters<typeof PDFPlusLibSubmodule>) {
+        super(...args);
+        this.pageLabelUpdater = new PageLabelUpdater(this.plugin);
+    }
 
     async read(file: TFile): Promise<PDFDocument> {
         return await PDFDocument.load(await this.app.vault.readBinary(file));
@@ -123,24 +130,28 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         return await this.write(file.path, doc, true);
     }
 
-    async insertPage(file: TFile, pageNumber: number) {
+    async insertPage(file: TFile, pageNumber: number, keepLabels: boolean) {
         const doc = await this.read(file);
+        this.pageLabelUpdater.insertPage(doc, pageNumber, keepLabels);
         doc.insertPage(pageNumber - 1);
         return await this.write(file.path, doc, true);
     }
 
-    async removePage(file: TFile, pageNumber: number) {
+    async removePage(file: TFile, pageNumber: number, keepLabels: boolean) {
         const doc = await this.read(file);
+        this.pageLabelUpdater.removePage(doc, pageNumber, keepLabels);
         doc.removePage(pageNumber - 1);
         return await this.write(file.path, doc, true);
     }
 
     /** Merge file2 into file1 by appending all pages from file2 to file1. */
-    async mergeFiles(file1: TFile, file2: TFile): Promise<TFile | null> {
+    async mergeFiles(file1: TFile, file2: TFile, keepLabels: boolean): Promise<TFile | null> {
         const [doc1, doc2] = await Promise.all([
             this.read(file1),
             this.read(file2)
         ]);
+
+        this.pageLabelUpdater.mergeFiles(doc1, doc2, keepLabels);
 
         const pagesToAdd = await doc1.copyPages(doc2, doc2.getPageIndices());
 
@@ -148,28 +159,33 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
 
         const resultFile = await this.write(file1.path, doc1, true);
         if (resultFile === null) return null;
+
         await this.app.vault.delete(file2);
+
         return resultFile;
     }
 
-    async extractPages(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean) {
+    async extractPages(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean, keepLabels: boolean) {
+        // Create two different copies of the source file
         const [srcDoc, dstDoc] = await Promise.all([
             this.read(srcFile),
-            PDFDocument.create()
+            this.read(srcFile)
         ]);
 
-        pages = pages.map(p => p - 1); // convert to 0-based index
-        pages.sort((a, b) => b - a);
-        const pagesToAdd = await dstDoc.copyPages(srcDoc, pages);
+        // Get the pages to keep in the source file (pages not in the `pages` array)
+        const srcPages = []
+        for (let page = 1; page <= srcDoc.getPageCount(); page++) {
+            if (!pages.includes(page)) srcPages.push(page);
+        }
 
-        if (pagesToAdd.length !== pages.length) throw new Error(`${this.plugin.manifest.name}: Some pages could not be copied.`);
+        // Update page labels before actually removing pages
+        this.pageLabelUpdater.removePages(srcDoc, pages, keepLabels);
+        this.pageLabelUpdater.removePages(dstDoc, srcPages, keepLabels);
 
-        for (let i = 0; i < pagesToAdd.length; i++) {
-            const page = pagesToAdd[i];
-            const pageNumber = pages[i];
-
-            dstDoc.insertPage(0, page);
-            srcDoc.removePage(pageNumber);
+        // From the last page to the first page, so that the page numbers don't change
+        for (let page = srcDoc.getPageCount(); page >= 1; page--) {
+            if (pages.includes(page)) srcDoc.removePage(page - 1);
+            else dstDoc.removePage(page - 1);
         }
 
         const [_, dstFile] = await Promise.all([
@@ -180,7 +196,6 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         return dstFile;
     }
 }
-
 
 
 type LinkInfoUpdater = (file: TFile, pageNumber?: number) => {
@@ -303,5 +318,65 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
         if (isEmbed) newLink = '!' + newLink;
 
         return newLink;
+    }
+}
+
+
+/**
+ * In terms of this functionality, PDF++ is superior to PDF Expert, macOS's Preview app, etc.
+ * 
+ * One thing to note: "keep page labels" actually updates the page labels!
+ * This is because of how PDF page labels work: see the PDF spec, section 12.4.2 "Page Labels".
+ */
+export class PageLabelUpdater extends PDFPlusLibSubmodule {
+
+    addPage(doc: PDFDocument) {
+        // We don't have to do anything!
+    }
+
+    insertPage(doc: PDFDocument, pageNumber: number, keepLabels: boolean) {
+        PDFPageLabels.processDocument(doc, labels => {
+            if (keepLabels) {
+                labels
+                    .divideRangeAtPage(pageNumber, true)
+                    .shiftRangesAfterPage(pageNumber, 1)
+                    .divideRangeAtPage(pageNumber, false, (newDict) => {
+                        delete newDict.prefix;
+                        delete newDict.style;
+                    });
+                return;
+            }
+
+            labels.shiftRangesAfterPage(pageNumber, 1);
+        });
+    }
+
+    removePage(doc: PDFDocument, pageNumber: number, keepLabels: boolean) {
+        this.removePages(doc, [pageNumber], keepLabels);
+    }
+
+    removePages(doc: PDFDocument, pageNumbers: number[], keepLabels: boolean) {
+        PDFPageLabels.processDocument(doc, labels => {
+            pageNumbers
+                .sort((a, b) => b - a) // From the last page to the first page, so that the page numbers don't change
+                .forEach(pageNumber => {
+                    this.removePageFromLabels(labels, pageNumber, keepLabels);
+                });
+        });
+    }
+
+    removePageFromLabels(labels: PDFPageLabels, pageNumber: number, keepLabels: boolean) {
+        if (keepLabels) {
+            labels
+                .divideRangeAtPage(pageNumber + 1, true)
+                .shiftRangesAfterPage(pageNumber + 1, -1);
+            return;
+        }
+
+        labels.shiftRangesAfterPage(pageNumber + 1, -1);
+    }
+
+    mergeFiles(doc1: PDFDocument, doc2: PDFDocument, keepLabels: boolean) {
+        // Not implemented yet
     }
 }

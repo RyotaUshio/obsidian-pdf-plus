@@ -369,4 +369,10 @@ export default class PDFPlus extends Plugin {
 	trigger(evt: string, ...args: any[]): void {
 		this.events.trigger(evt, ...args);
 	}
+
+	requireModKeyForLinkHover() {
+		// @ts-ignore
+		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
+		return !noModKey;
+	}
 }

@@ -14,6 +14,7 @@ export class PDFPlusModal extends Modal {
         this.plugin = plugin;
         this.lib = plugin.lib;
         this.component = new Component();
+        this.contentEl.addClass('pdf-plus-modal');
     }
 
     onOpen() {

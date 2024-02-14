@@ -4,6 +4,7 @@ import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
 import { KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
+import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals/page-label-modals';
 
 
 const HOVER_HIGHLIGHT_ACTIONS = {
@@ -161,6 +162,14 @@ export interface PDFPlusSettings {
 	howToOpenExtractedPDF: ExtendedPaneType;
 	warnEveryPageDelete: boolean;
 	warnBacklinkedPageDelete: boolean;
+	pageLabelUpdateWhenInsertPage: PageLabelUpdateMethod;
+	pageLabelUpdateWhenDeletePage: PageLabelUpdateMethod;
+	pageLabelUpdateWhenExtractPage: PageLabelUpdateMethod;
+	pageLabelUpdateWhenDividePDFs: PageLabelUpdateMethod;
+	askPageLabelUpdateWhenInsertPage: boolean;
+	askPageLabelUpdateWhenDeletePage: boolean;
+	askPageLabelUpdateWhenExtractPage: boolean;
+	askPageLabelUpdateWhenDividePDFs: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -332,6 +341,14 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	howToOpenExtractedPDF: 'tab',
 	warnEveryPageDelete: false,
 	warnBacklinkedPageDelete: true,
+	pageLabelUpdateWhenInsertPage: 'keep',
+	pageLabelUpdateWhenDeletePage: 'keep',
+	pageLabelUpdateWhenExtractPage: 'keep',
+	pageLabelUpdateWhenDividePDFs: 'keep',
+	askPageLabelUpdateWhenInsertPage: true,
+	askPageLabelUpdateWhenDeletePage: true,
+	askPageLabelUpdateWhenExtractPage: true,
+	askPageLabelUpdateWhenDividePDFs: true,
 };
 
 
@@ -370,6 +387,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					const iconEl = createDiv();
 					setting.settingEl.prepend(iconEl)
 					setIcon(iconEl, icon);
+					setting.settingEl.addClass('pdf-plus-setting-heading');
 				}
 			});
 	}
@@ -412,7 +430,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				text.setValue('' + this.plugin.settings[settingName])
 					.setPlaceholder('' + DEFAULT_SETTINGS[settingName])
-					.then((text) => text.inputEl.type = "number")
+					.then((text) => text.inputEl.type = 'number')
 					.onChange(async (value) => {
 						// @ts-ignore
 						this.plugin.settings[settingName] = value === '' ? DEFAULT_SETTINGS[settingName] : +value;
@@ -850,7 +868,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	/** Refresh the setting tab and then scroll back to the original position. */
-	async redisplay() {
+	redisplay() {
 		const scrollTop = this.containerEl.scrollTop;
 		this.display();
 		this.containerEl.scroll({ top: scrollTop });
@@ -1098,6 +1116,42 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addDropdownSetting('howToOpenExtractedPDF', PANE_TYPE)
 				.setName('How to open');
 		}
+
+
+		this.addHeading('Page labels')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Each page in a PDF document can be assigned a ***page label***, which can be different from the page indices.',
+					'For example, a book might have a preface numbered as "i", "ii", "iii", ... and the main content numbered as "1", "2", "3", ...',
+					'',
+					'PDF++ allows you to choose whether page labels should be kept unchanged or updated when inserting/removing/extracting pages. [Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels)',
+					'',
+					'You can also modify page labels directly using the command "Edit page labels".'
+				], setting.descEl);
+			});
+		this.addDropdownSetting('pageLabelUpdateWhenInsertPage', PAGE_LABEL_UPDATE_METHODS)
+			.setName('Insert: default page label processing')
+			.setDesc('Applies to the commands "Insert page before/after this page".');
+		this.addToggleSetting('askPageLabelUpdateWhenInsertPage')
+			.setName('Insert: ask whether to update');
+		this.addDropdownSetting('pageLabelUpdateWhenDeletePage', PAGE_LABEL_UPDATE_METHODS)
+			.setName('Delete: default page label processing')
+			.setDesc('Applies to the command "Delete this page".');
+		this.addToggleSetting('askPageLabelUpdateWhenDeletePage')
+			.setName('Delete: ask whether to update');
+		this.addDropdownSetting('pageLabelUpdateWhenExtractPage', PAGE_LABEL_UPDATE_METHODS)
+			.setName('Extract: default page label processing')
+			.setDesc('Applies to the command "Extract this page to a new file".');
+		this.addToggleSetting('askPageLabelUpdateWhenExtractPage')
+			.setName('Extract: ask whether to update');
+		this.addDropdownSetting('pageLabelUpdateWhenDividePDFs', PAGE_LABEL_UPDATE_METHODS)
+			.setName('Divide: default page label processing')
+			.setDesc('Applies to the command "Divide this PDF into two files at this page".');
+		this.addToggleSetting('askPageLabelUpdateWhenDividePDFs')
+			.setName('Divide: ask whether to update');
+
+
+
 
 		this.addHeading('Opening links to PDF files', 'lucide-book-open');
 		this.addToggleSetting('alwaysRecordHistory')
@@ -1387,6 +1441,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'- `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.',
 				'- `page`: The page number (`Number`). The first page is always page 1.',
 				'- `pageLabel`: The page number displayed in the counter in the toolbar (`String`). This can be different from `page`.',
+				'    - **Tip**: You can modify page labels with PDF++\'s "Edit page labels" command.',
 				'- `pageCount`: The total number of pages (`Number`).',
 				'- `text` or `selection`: The selected text (`String`).',
 				'- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.',

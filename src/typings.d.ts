@@ -776,6 +776,8 @@ declare module 'obsidian' {
                         onLinkHover(hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void;
                     }
                     enabled: boolean;
+                    enable(): void;
+                    disable(): void;
                 },
                 [id: string]: {
                     instance: any;

@@ -8,12 +8,13 @@ import { BacklinkHighlighter } from 'highlight';
 export const patchPagePreview = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
     const lib = plugin.lib;
-    const pagePreview = app.internalPlugins.plugins['page-preview'].instance;
+    const pagePreview = app.internalPlugins.plugins['page-preview'];
+    const pagePreviewInstance = app.internalPlugins.plugins['page-preview'].instance;
 
     // Patch the instance instead of the prototype to avoid conflicts with Hover Editor
     // https://github.com/nothingislost/obsidian-hover-editor/issues/259
 
-    plugin.register(around(pagePreview, {
+    plugin.register(around(pagePreviewInstance, {
         onLinkHover(old) {
             return function (hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void {
                 const { path: linkpath, subpath } = parseLinktext(linktext);
