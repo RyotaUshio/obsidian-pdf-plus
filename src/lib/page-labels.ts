@@ -66,32 +66,34 @@ export class PDFPageLabels {
     }
 
     normalize() {
-        // From the PDF spec 7.9.7, "Number Trees": "keys ... shall be sorted in ascending numerical order"
-        this.ranges.sort((a, b) => a.pageFrom - b.pageFrom);
+        if (this.ranges.length) {
+            // From the PDF spec 7.9.7, "Number Trees": "keys ... shall be sorted in ascending numerical order"
+            this.ranges.sort((a, b) => a.pageFrom - b.pageFrom);
 
-        // From the PDF spec 12.4.2, "Page Labels": "The tree shall include a value for page index 0."
-        this.ranges[0].pageFrom = 1; // this class uses 1-based page indices
+            // From the PDF spec 12.4.2, "Page Labels": "The tree shall include a value for page index 0."
+            this.ranges[0].pageFrom = 1; // this class uses 1-based page indices
 
-        for (let i = this.ranges.length - 1; i >= 0; i--) {
-            const pageFrom = this.getStartOfRange(i);
-            const pageTo = this.getEndOfRange(i);
+            for (let i = this.ranges.length - 1; i >= 0; i--) {
+                const pageFrom = this.getStartOfRange(i);
+                const pageTo = this.getEndOfRange(i);
 
-            // Remove empty ranges
-            if (pageFrom > pageTo) {
-                this.ranges.splice(i, 1);
-                continue;
-            }
-
-            // Remove redundant ranges
-            const range = this.ranges[i];
-            const prevRange = this.ranges[i - 1];
-            if (prevRange
-                && typeof range.dict.start === 'number'
-                && range.dict.prefix === prevRange.dict.prefix
-                && range.dict.style === prevRange.dict.style) {
-                if (range.pageFrom - prevRange.pageFrom === range.dict.start - (prevRange.dict.start ?? 1)) {
+                // Remove empty ranges
+                if (pageFrom > pageTo) {
                     this.ranges.splice(i, 1);
                     continue;
+                }
+
+                // Remove redundant ranges
+                const range = this.ranges[i];
+                const prevRange = this.ranges[i - 1];
+                if (prevRange
+                    && typeof range.dict.start === 'number'
+                    && range.dict.prefix === prevRange.dict.prefix
+                    && range.dict.style === prevRange.dict.style) {
+                    if (range.pageFrom - prevRange.pageFrom === range.dict.start - (prevRange.dict.start ?? 1)) {
+                        this.ranges.splice(i, 1);
+                        continue;
+                    }
                 }
             }
         }
@@ -217,5 +219,9 @@ export class PDFPageLabels {
     then(fn: (labels: PDFPageLabels) => any) {
         fn(this);
         return this;
+    }
+
+    rangeCount() {
+        return this.ranges.length;
     }
 }

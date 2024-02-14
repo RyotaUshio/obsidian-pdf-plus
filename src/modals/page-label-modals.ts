@@ -44,10 +44,7 @@ abstract class PDFPageLabelModal extends PDFPlusModal {
     }
 
     abstract display(): void;
-
-    redisplay() {
-        this.display();
-    }
+    abstract redisplay(): void;
 }
 
 class PDFPageLabelSettingsForRange {
@@ -112,6 +109,8 @@ class PDFPageLabelSettingsForRange {
 
 
 export class PDFPageLabelEditModal extends PDFPageLabelModal {
+    buttonSetting: Setting | null = null;
+
     async onOpen() {
         super.onOpen();
 
@@ -121,7 +120,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                 MarkdownRenderer.render(
                     this.app,
                     [
-                        'Each page in a PDF document can be assigned a ***page label***, which can be different from the page indices.',
+                        'Each page in a PDF document can be assigned a ***page label***, which can be different from the page index.',
                         'For example, a book might have a preface numbered as "i", "ii", "iii", ... and the main content numbered as "1", "2", "3", ...',
                     ].join(' '),
                     setting.descEl,
@@ -133,7 +132,12 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
 
         await this.docLoadingPromise;
         this.display();
-        if (this.pageLabels) this.addButtons();
+        this.addButtons();
+    }
+
+    redisplay() {
+        this.display();
+        // this.toggleButtonVisibility();
     }
 
     display() {
@@ -142,7 +146,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
 
         this.controlEl.empty();
 
-        if (pageLabels === null) {
+        if (pageLabels === null || pageLabels.rangeCount() === 0) {
             this.addHeading(this.controlEl, 'No page labels found', 'lucide-info')
                 .setDesc('This PDF document does not have any page labels.')
                 .addButton((button) => {
@@ -273,28 +277,43 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
     }
 
     addButtons() {
-        return new Setting(this.contentEl)
-            .addButton((button) => {
-                button
-                    .setButtonText('Save')
-                    .setCta()
-                    .onClick(async () => {
-                        if (this.pageLabels && this.doc) {
-                            if (this.pageLabels.ranges.length > 0) {
-                                this.pageLabels.setToDocument(this.doc)
-                            } else PDFPageLabels.removeFromDocument(this.doc);
-                            await this.app.vault.modifyBinary(this.file, await this.doc.save());
-                        } else {
-                            new Notice(`${this.plugin.manifest.name}: Something went wrong.`);
-                        }
-                        this.close();
-                    });
-            })
-            .addButton((button) => {
-                button
-                    .setButtonText('Cancel')
-                    .onClick(() => this.close());
-            });
+        return this.buttonSetting
+            ?? new Setting(this.contentEl)
+                .addButton((button) => {
+                    button
+                        .setButtonText('Save')
+                        .setCta()
+                        .onClick(async () => {
+                            if (this.pageLabels && this.doc) {
+                                if (this.pageLabels.rangeCount() > 0) {
+                                    this.pageLabels.setToDocument(this.doc)
+                                } else PDFPageLabels.removeFromDocument(this.doc);
+                                await this.app.vault.modifyBinary(this.file, await this.doc.save());
+                            } else {
+                                new Notice(`${this.plugin.manifest.name}: Something went wrong.`);
+                            }
+                            this.close();
+                        });
+                })
+                .addButton((button) => {
+                    button
+                        .setButtonText('Cancel')
+                        .onClick(() => this.close());
+                })
+                .then((setting) => {
+                    this.buttonSetting = setting;
+                    this.toggleButtonVisibility();
+                });
+    }
+
+    toggleButtonVisibility() {
+        if (!this.buttonSetting) return;
+
+        if (this.pageLabels && this.pageLabels.rangeCount() > 0) {
+            this.buttonSetting.settingEl.show();
+        } else {
+            this.buttonSetting.settingEl.hide();
+        }
     }
 }
 
