@@ -548,6 +548,8 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     editPageLabels(checking: boolean) {
+        if (!this.settings.enalbeWriteHighlightToFile) return false;
+
         const view = this.lib.workspace.getActivePDFView();
         if (!view) return false;
         const file = view.file;
