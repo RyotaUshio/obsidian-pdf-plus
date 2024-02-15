@@ -1,7 +1,7 @@
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
-import { onOutlineContextMenu } from 'context-menu';
+import { onOutlineItemContextMenu } from 'context-menu';
 import { PDFOutlineTreeNode, PDFOutlineViewer } from 'typings';
 
 
@@ -17,7 +17,7 @@ export const patchPDFOutlineViewer = (plugin: PDFPlus, pdfOutlineViewer: PDFOutl
                     return await old.call(self, item, evt);
                 }
 
-                onOutlineContextMenu(plugin, child, file, item, evt);
+                onOutlineItemContextMenu(plugin, child, file, item, evt);
             }
         }
     }));

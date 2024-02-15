@@ -7,8 +7,8 @@ import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
 import { encodeLinktext, parsePDFSubpath, removeExtension } from 'utils';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed } from 'typings';
-import { PDFDocument } from '@cantoo/pdf-lib';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PdfLibDestArray, PDFViewState } from 'typings';
+import { PDFArray, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
@@ -17,6 +17,8 @@ import { PDFOutlines } from './outlines';
 export class PDFPlusLib {
     app: App;
     plugin: PDFPlus
+
+    PDFOutlines = PDFOutlines;
 
     /** Sub-modules */
     commands: PDFPlusCommands;
@@ -239,15 +241,15 @@ export class PDFPlusLib {
 
     async pdfJsDestArrayToSubpath(dest: PDFjsDestArray, doc: PDFDocumentProxy) {
         const page = await doc.getPageIndex(dest[0]);
-        return this.destArrayToSubpath(this.normalizePDFjsDestArray(page + 1, dest));
+        return this.destArrayToSubpath(this.normalizePDFjsDestArray(dest, page + 1));
     }
 
     /**
      * 
-     * @param pageNumber 1-based page number
      * @param dest 
+     * @param pageNumber 1-based page number
      */
-    normalizePDFjsDestArray(pageNumber: number, dest: PDFjsDestArray): DestArray {
+    normalizePDFjsDestArray(dest: PDFjsDestArray, pageNumber: number): DestArray {
         return [
             pageNumber - 1,
             dest[1].name,
@@ -255,6 +257,26 @@ export class PDFPlusLib {
                 .slice(2)
                 .filter((param: number | null): param is number => typeof param === 'number')
         ]
+    }
+
+    normalizePdfLibDestArray(dest: PDFArray, doc: PDFDocument): DestArray | null {
+        const pageRef = dest.get(0);
+        if (!(pageRef instanceof PDFRef)) return null;
+
+        const page = doc.getPages().findIndex((page) => page.ref === pageRef);
+        if (page === -1) return null;
+
+        const destType = dest.get(1);
+        if (!(destType instanceof PDFName)) return null;
+
+        return [
+            page,
+            destType.decodeText(),
+            ...dest.asArray()
+                .slice(2)
+                .filter((param): param is PDFNumber => param instanceof PDFNumber)
+                .map((num) => num.asNumber())
+        ];
     }
 
     /**
@@ -281,6 +303,30 @@ export class PDFPlusLib {
         const subpath = `#page=${pageNumber + 1}&offset=${left},${top},${zoom}`;
 
         return subpath;
+    }
+
+    viewStateToSubpath(state: PDFViewState, fitBH: boolean = false) {
+        if (typeof state.left === 'number' && typeof state.top === 'number') {
+            let subpath = `#page=${state.page}`;
+            if (fitBH) { // Destination type = "FitBH"
+                subpath += `&offset=,${state.top},`;
+            } else { // Destination type = "XYZ"
+                subpath += `&offset=${state.left},${state.top},${state.zoom ?? 0}`;
+            }
+            return subpath;
+        }
+        return null;
+    }
+
+    viewStateToDestArray(state: PDFViewState, fitBH: boolean = false): DestArray | null {
+        if (typeof state.left === 'number' && typeof state.top === 'number') {
+            if (fitBH) { // Destination type = "FitBH"
+                return [state.page - 1, 'FitBH', state.top];
+            } else { // Destination type = "XYZ"
+                return [state.page - 1, 'XYZ', state.left, state.top, state.zoom ?? 0];
+            }
+        }
+        return null;
     }
 
     getAnnotationInfoFromAnnotationElement(annot: AnnotationElement) {
@@ -540,9 +586,18 @@ export class PDFPlusLib {
 
     async getPDFOutlines() {
         const doc = await this.getPdfLibDocument();
-        if (doc) {
-            return await PDFOutlines.fromDocument(doc);
+        const pdfJsDoc = this.getPDFDocument();
+        if (doc && pdfJsDoc) {
+            return new PDFOutlines(this.plugin, doc, pdfJsDoc);
         }
+    }
+
+    getPDFViewFromChild(child: PDFViewerChild): PDFView | null {
+        let view: PDFView | null = null;
+        this.workspace.iteratePDFViews((v) => {
+            if (v.viewer.child === child) view = v;
+        })
+        return view;
     }
 
     isPDFView(view: View): view is PDFView {

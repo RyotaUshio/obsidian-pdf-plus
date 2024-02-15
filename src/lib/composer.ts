@@ -144,7 +144,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         this.pageLabelUpdater.removePage(doc, pageNumber, keepLabels);
         doc.removePage(pageNumber - 1);
 
-        const outlines = await PDFOutlines.fromDocument(doc);
+        const outlines = await PDFOutlines.fromDocument(doc, this.plugin);
         await outlines.prune();
         outlines.setToDocument();
 
@@ -201,7 +201,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         await Promise.all(
             [srcDoc, dstDoc]
                 .map(async (doc) => {
-                    const outlines = await PDFOutlines.fromDocument(doc);
+                    const outlines = await PDFOutlines.fromDocument(doc, this.plugin);
                     await outlines.prune();
                     outlines.setToDocument();
                 })

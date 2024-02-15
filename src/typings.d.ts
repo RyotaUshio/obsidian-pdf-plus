@@ -3,6 +3,7 @@ import { CanvasData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_storage';
+import { PDFName, PDFNumber, PDFRef, PDFNull } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
 import { BacklinkHighlighter } from 'highlight';
@@ -147,7 +148,7 @@ interface PDFSidebar {
 interface PDFOutlineViewer {
     viewer: PDFViewerChild;
     eventBus: EventBus;
-    container: HTMLElement;
+    childrenEl: HTMLElement;
     allItems: PDFOutlineTreeNode[];
     highlighted: PDFOutlineTreeNode | null;
     reset(): void;
@@ -170,10 +171,11 @@ interface PDFOutlineTreeNode {
         bold: boolean;
         italic: boolean;
         color: Uint8ClampedArray;
-        dest: string;
+        dest: string | PDFjsDestArray;
         url: string | null;
         items: PDFOutlineTreeNode[];
     };
+    owner: PDFOutlineViewer;
     getPageNumber(): Promise<number>; // return this.pageNumber if set, otherwise newly fetch it
     getExplicitDestination(): Promise<PDFjsDestArray>; // return this.explicitDest if set, otherwise newly fetch it
     getMarkdownLink(): Promise<string>;
@@ -287,6 +289,7 @@ type Rect = [number, number, number, number];
  */
 type DestArray = [page: number, destType: string, ...params: number[]];
 type PDFjsDestArray = [pageRef: { num: number, gen: number }, destType: { name: string }, ...params: (number | null)[]];
+type PdfLibDestArray = [pageRef: PDFRef, destType: PDFName, ...params: (PDFNumber | typeof PDFNull)[]];
 
 interface AnnotationElement {
     annotationStorage: AnnotationStorage;

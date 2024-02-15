@@ -129,7 +129,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     async getTextToCopyForOutlineItemDynamic(child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode) {
         const dest = await item.getExplicitDestination();
         const pageNumber = await item.getPageNumber();
-        const destArray = this.lib.normalizePDFjsDestArray(pageNumber, dest);
+        const destArray = this.lib.normalizePDFjsDestArray(dest, pageNumber);
         const subpath = this.lib.destArrayToSubpath(destArray);
 
         return (sourcePath?: string) => this.getTextToCopy(

@@ -1,26 +1,58 @@
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFNumber, PDFObject, PDFPageLeaf, PDFRef, PDFString } from '@cantoo/pdf-lib';
+import PDFPlus from 'main';
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFPageLeaf, PDFRef, PDFString, PDFNumber } from '@cantoo/pdf-lib';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
-import { DestArray, PDFjsDestArray } from 'typings';
+import { DestArray, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
 
 
 export class PDFOutlines {
+    plugin: PDFPlus;
     doc: PDFDocument;
     pdfJsDoc: PDFDocumentProxy;
     _root?: PDFOutlineItem | null;
     _destinationsPromise: Promise<Record<string, PDFjsDestArray>>;
 
-    constructor(doc: PDFDocument, pdfJsDoc: PDFDocumentProxy) {
+    constructor(plugin: PDFPlus, doc: PDFDocument, pdfJsDoc: PDFDocumentProxy) {
+        this.plugin = plugin;
         this.doc = doc;
         this.pdfJsDoc = pdfJsDoc;
         // @ts-ignore
         this._destinationsPromise = this.pdfJsDoc.getDestinations();
     }
 
-    static async fromDocument(doc: PDFDocument) {
+    static async fromDocument(doc: PDFDocument, plugin: PDFPlus) {
         const buffer = await doc.save();
         const pdfJsDoc = await window.pdfjsLib.getDocument(buffer).promise;
-        return new PDFOutlines(doc, pdfJsDoc);
+        return new PDFOutlines(plugin, doc, pdfJsDoc);
+    }
+
+    static async fromChild(child: PDFViewerChild, plugin: PDFPlus) {
+        const { app, lib } = plugin;;
+
+        let pdfJsDoc = child.pdfViewer.pdfViewer?.pdfDocument;
+        let doc: PDFDocument | undefined;
+        if (pdfJsDoc) {
+            doc = await PDFDocument.load(await pdfJsDoc.getData());
+        } else if (child.file) {
+            const buffer = await app.vault.readBinary(child.file);
+            pdfJsDoc = await lib.loadPDFDocumentFromArrayBuffer(buffer);
+            doc = await PDFDocument.load(buffer);
+        }
+
+        if (pdfJsDoc && doc) {
+            return new PDFOutlines(plugin, doc, pdfJsDoc);
+        }
+
+        return null;
+    }
+
+    // TODO
+    // static async fromMarkdownList(markdown: string, plugin: PDFPlus, doc: PDFDocument) {
+
+    // }
+
+    get lib() {
+        return this.plugin.lib;
     }
 
     async getDestForName(name: string): Promise<PDFjsDestArray | null> {
@@ -34,9 +66,35 @@ export class PDFOutlines {
         if (!ref) return null;
 
         const dict = this.doc.context.lookup(ref);
-        this._root = dict instanceof PDFDict ? new PDFOutlineItem(this, dict, null, true, 0) : null;
+        this._root = dict instanceof PDFDict ? new PDFOutlineItem(this, dict, null, 0) : null;
 
         return this._root;
+    }
+
+    set root(item: PDFOutlineItem | null) {
+        this._root = item;
+
+        if (item) {
+            let ref = this.doc.context.getObjectRef(item.dict);
+            if (!ref) {
+                ref = this.doc.context.register(item.dict);
+            }
+
+            this.doc.catalog.set(PDFName.of('Outlines'), ref);
+            return;
+        }
+
+        this.doc.catalog.delete(PDFName.of('Outlines'));
+    }
+
+    ensureRoot() {
+        if (!this.root) {
+            const rootDict = this.doc.context.obj({ Type: 'Outlines' });
+            this.doc.context.register(rootDict);
+            this.root = new PDFOutlineItem(this, rootDict, null, 0);
+        }
+
+        return this.root;
     }
 
     getLeaves(): PDFOutlineItem[] {
@@ -98,6 +156,35 @@ export class PDFOutlines {
         return str;
     }
 
+    /** Iterate over the outline items and find the matching one from the tree. */
+    async findPDFjsOutlineTreeNode(node: PDFOutlineTreeNode): Promise<PDFOutlineItem | null> {
+        let found: PDFOutlineItem | null = null;
+
+        await this.iterAsync({
+            enter: async (outlineItem) => {
+                if (found || outlineItem.isRoot()) return;
+
+                if (node.item.title === outlineItem.title) {
+                    const dest = node.item.dest;
+                    const outlineDest = outlineItem.getNormalizedDestination();
+                    if (typeof dest === 'string') {
+                        if (typeof outlineDest === 'string' && dest === outlineDest) {
+                            found = outlineItem;
+                        }
+                    } else {
+                        const pageNumber = node.pageNumber
+                            ?? (await this.pdfJsDoc!.getPageIndex(dest[0]) + 1);
+                        if (JSON.stringify(this.lib.normalizePDFjsDestArray(dest, pageNumber)) === JSON.stringify(outlineDest)) {
+                            found = outlineItem;
+                        }
+                    }
+                }
+            }
+        });
+
+        return found;
+    }
+
     setToDocument() {
         if (this.root) {
             const ref = this.doc.context.getObjectRef(this.root.dict);
@@ -117,7 +204,6 @@ export class PDFOutlineItem {
     outlines: PDFOutlines;
     dict: PDFDict;
     _depth: number;
-    _isRoot: boolean;
     _firstChild?: PDFOutlineItem | null;
     _lastChild?: PDFOutlineItem | null;
     _nextSibling?: PDFOutlineItem | null;
@@ -125,10 +211,9 @@ export class PDFOutlineItem {
     _parent: PDFOutlineItem | null;
     _title?: string;
 
-    constructor(outlines: PDFOutlines, dict: PDFDict, parent: PDFOutlineItem | null, isRoot: boolean, depth: number) {
+    constructor(outlines: PDFOutlines, dict: PDFDict, parent: PDFOutlineItem | null, depth: number) {
         this.outlines = outlines;
         this.dict = dict;
-        this._isRoot = isRoot;
         this._depth = depth;
         this._parent = parent;
     }
@@ -139,6 +224,10 @@ export class PDFOutlineItem {
 
     get doc() {
         return this.outlines.doc;
+    }
+
+    get lib() {
+        return this.outlines.plugin.lib;
     }
 
     getValue(key: string): PDFObject | null {
@@ -162,7 +251,7 @@ export class PDFOutlineItem {
         const isChild = propName === '_firstChild' || propName === '_lastChild';
         const depth = isChild ? this._depth + 1 : this._depth;
         const parent = isChild ? this : this._parent;
-        const newValue = dict ? new PDFOutlineItem(this.outlines, dict, parent, false, depth) : null;
+        const newValue = dict ? new PDFOutlineItem(this.outlines, dict, parent, depth) : null;
         this[propName] = newValue
 
         return newValue;
@@ -184,14 +273,18 @@ export class PDFOutlineItem {
         return this.fetchIfNotFetched('Prev', '_prevSibling');
     }
 
+    is(another: PDFOutlineItem | null): boolean {
+        return another !== null && this.dict === another.dict;
+    }
+
     set firstChild(item: PDFOutlineItem | null) {
         if (item && item.parent !== this) throw new Error('Item is not a child of this item');
 
         this._firstChild = item;
 
         if (item) {
-            const ref = this.doc.context.getObjectRef(item.dict);
-            if (!ref) throw new Error('Could not get ref for item');
+            let ref = this.doc.context.getObjectRef(item.dict);
+            if (!ref) ref = this.doc.context.register(item.dict);
 
             this.dict.set(PDFName.of('First'), ref);
             return;
@@ -206,8 +299,8 @@ export class PDFOutlineItem {
         this._lastChild = item;
 
         if (item) {
-            const ref = this.doc.context.getObjectRef(item.dict);
-            if (!ref) throw new Error('Could not get ref for item');
+            let ref = this.doc.context.getObjectRef(item.dict);
+            if (!ref) ref = this.doc.context.register(item.dict);
 
             this.dict.set(PDFName.of('Last'), ref);
             return;
@@ -222,8 +315,8 @@ export class PDFOutlineItem {
         this._nextSibling = item;
 
         if (item) {
-            const ref = this.doc.context.getObjectRef(item.dict);
-            if (!ref) throw new Error('Could not get ref for item');
+            let ref = this.doc.context.getObjectRef(item.dict);
+            if (!ref) ref = this.doc.context.register(item.dict);
 
             this.dict.set(PDFName.of('Next'), ref);
             return;
@@ -238,8 +331,8 @@ export class PDFOutlineItem {
         this._prevSibling = item;
 
         if (item) {
-            const ref = this.doc.context.getObjectRef(item.dict);
-            if (!ref) throw new Error('Could not get ref for item');
+            let ref = this.doc.context.getObjectRef(item.dict);
+            if (!ref) ref = this.doc.context.register(item.dict);
 
             this.dict.set(PDFName.of('Prev'), ref);
             return;
@@ -252,8 +345,8 @@ export class PDFOutlineItem {
         return this._parent;
     }
 
-    get title(): string | null {
-        if (this.isRoot()) return null;
+    get title(): string {
+        if (this.isRoot()) throw new Error('Root of outline does not have a title');
 
         if (this._title !== undefined) return this._title;
 
@@ -266,12 +359,83 @@ export class PDFOutlineItem {
         throw new Error('Title is not a string');
     }
 
+    set title(title: string) {
+        if (this.isRoot()) throw new Error('Cannot set title of the root of outline');
+
+        this._title = title;
+
+        this.dict.set(PDFName.of('Title'), PDFHexString.fromText(title));
+        return;
+    }
+
+    get count(): number | null {
+        const count = this.dict.get(PDFName.of('Count'));
+        if (count instanceof PDFNumber) {
+            return count.asNumber();
+        }
+        return null;
+    }
+
+    set count(count: number | null) {
+        if (count === null) {
+            this.dict.delete(PDFName.of('Count'));
+            return;
+        }
+
+        this.dict.set(PDFName.of('Count'), PDFNumber.of(count));
+    }
+
+    createChildItem(title: string, dest: string | DestArray): PDFOutlineItem {
+        // There are two options for specifying the destination of an outline item:
+        // one is using the "Dest" entry, and another is using the "A" entry with a go-to action.
+        //
+        // Many application, including Adobe Acrobat, use the "A" entry. However, the PDF spec (ISO 32000-1:2008)
+        // states that using the "Dest" entry is preferable:
+        //
+        // > Specifying a go-to action in the A entry of a link annotation or outline item (see Table 173 and Table 153)
+        // > has the same effect as specifying the destination directly with the Dest entry. 
+        // > ...
+        // > However, the go-to action is less compact and is not compatible with PDF 1.0;
+        // > therefore, using a direct destination is preferable.
+        // 
+        // (Quoted from the NOTE after Table 199)
+        let Dest: PDFHexString | PDFArray;
+        if (typeof dest === 'string') {
+            Dest = PDFHexString.fromText(dest);
+        } else {
+            Dest = PDFArray.withContext(this.doc.context);
+            Dest.push(this.doc.getPage(dest[0]).ref);
+            Dest.push(PDFName.of(dest[1]));
+            for (const num of dest.slice(2)) {
+                Dest.push(PDFNumber.of(num as number));
+            }
+        }
+
+        const Parent = this.doc.context.getObjectRef(this.dict);
+        if (!Parent) throw new Error('Could not get ref for parent');
+
+        const obj = { Title: PDFHexString.fromText(title), Dest, Parent };
+
+        if (this.lastChild) {
+            Object.assign(obj, { Prev: this.doc.context.getObjectRef(this.lastChild.dict) });
+            const item = new PDFOutlineItem(this.outlines, this.doc.context.obj(obj), this, this.depth + 1);
+            this.lastChild.nextSibling = item;
+            this.lastChild = item;
+        } else {
+            const item = new PDFOutlineItem(this.outlines, this.doc.context.obj(obj), this, this.depth + 1);
+            this.firstChild = item;
+            this.lastChild = item;
+        }
+
+        return this.lastChild;
+    }
+
     isLeaf(): boolean {
         return !this.firstChild;
     }
 
     isRoot(): boolean {
-        return this._isRoot;
+        return this.parent === null;
     }
 
     detach() {
@@ -282,10 +446,10 @@ export class PDFOutlineItem {
             this.nextSibling.prevSibling = this.prevSibling;
         }
         if (this.parent) {
-            if (this.parent.firstChild === this) {
+            if (this.is(this.parent.firstChild)) {
                 this.parent.firstChild = this.nextSibling;
             }
-            if (this.parent.lastChild === this) {
+            if (this.is(this.parent.lastChild)) {
                 this.parent.lastChild = this.prevSibling;
             }
         }
@@ -298,7 +462,10 @@ export class PDFOutlineItem {
             return dest;
         }
 
-        const action = this.dict.get(PDFName.of('A'));
+        const actionRef = this.dict.get(PDFName.of('A'));
+        if (!actionRef) return null;
+
+        const action = this.doc.context.lookup(actionRef);
         if (action instanceof PDFDict) {
             const type = action.get(PDFName.of('S'));
             if (type instanceof PDFName && type.decodeText() === 'GoTo') {
@@ -306,6 +473,8 @@ export class PDFOutlineItem {
                 return d;
             }
         }
+
+        return null;
     }
 
     getNormalizedDestination(): string | DestArray | null {
@@ -316,11 +485,7 @@ export class PDFOutlineItem {
         }
 
         if (dest instanceof PDFArray) {
-            const destArray = dest.asArray();
-            const pageNumber = this.doc.getPages().findIndex((page) => page.ref === destArray[0]);
-            if (pageNumber === -1) return null;
-            // need double check
-            return [pageNumber, destArray[1].toString(), ...destArray.slice(2).map(x => x instanceof PDFNumber ? x.asNumber() : 0)];
+            return this.lib.normalizePdfLibDestArray(dest, this.doc);
         }
 
         return null;
@@ -372,5 +537,35 @@ export class PDFOutlineItem {
         }
 
         return true;
+    }
+
+    /** Compute the value of the "Count" entry following the algirithm described in Table 153 of the PDF spec. */
+    countVisibleDescendants(): number {
+        let count = 0;
+        this.iterChildren(() => count++);
+        this.iterChildren((child) => {
+            if (typeof child.count === 'number' && child.count > 0) {
+                count += child.countVisibleDescendants();
+            }
+        });
+        return count;
+    }
+
+    updateCount(opened: boolean) {
+        const count = this.countVisibleDescendants();
+
+        if (this.isRoot() && !opened) {
+            throw new Error('Cannot close the root outline');
+        }
+
+        this.count = opened ? count : -count;
+    }
+
+    updateCountForAllAncestors() {
+        let parent = this.parent;
+        while (parent) {
+            parent.updateCount(parent.isRoot());
+            parent = parent.parent;
+        }
     }
 }

@@ -1611,6 +1611,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('PDF outline (table of contents)', 'lucide-list')
+			.setDesc('Power up the outline view of the built-in PDF viewer: add, rename, or delete items via the right-click menu and the "Add to outline" command, drag & drop items to insert a section link, and more.');
 		this.addToggleSetting('clickOutlineItemWithModifierKey')
 			.then((setting) => {
 				this.renderMarkdown(
@@ -1630,7 +1631,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('outlineContextMenu')
 			.setName('Replace the built-in right-click menu in the outline with a custom one')
-			.setDesc('This enables you to insert a section link with a custom format by right-clicking an item in the outline.')
+			.setDesc('This enables you to insert a section link with a custom format by right-clicking an item in the outline. Moreover, you will be able to add, rename, or delete outline items if PDF modification is enabled.')
 		this.addToggleSetting('outlineDrag')
 			.setName('Drag & drop outline item to insert link to section')
 			.setDesc('Grab an item in the outline and drop it to a markdown file to insert a section link. Changing this option requires reopening the tabs or reloading the app.');

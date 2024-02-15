@@ -6,6 +6,8 @@ import { PDFPageDeleteModal } from 'modals/pdf-composer-modals';
 import { PDFPageLabelEditModal, PDFPageLabelUpdateModal } from 'modals/page-label-modals';
 import { PDFOutlines } from './outlines';
 import { parsePDFSubpath } from 'utils';
+import { PDFDocument } from '@cantoo/pdf-lib';
+import { PDFOutlineTitleModal } from 'modals/outline-modals';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -133,6 +135,10 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'copy-outline-as-headings',
                 name: 'Copy PDF outline as markdown headings',
                 checkCallback: (checking) => this.copyOutline(checking, 'heading')
+            }, {
+                id: 'add-outline-item',
+                name: 'Add to outline (bookmark)',
+                checkCallback: (checking) => this.addOutlineItem(checking)
             }
         ];
 
@@ -262,6 +268,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (typeof state.left !== 'number' || typeof state.top !== 'number') return false;
 
         if (!checking) {
+            // TODO: rewrite using lib.viewStateToSubpath and lib.viewStateToDestArray
             let subpath = `#page=${state.page}`;
             let destArray: DestArray;
             const scaleValue = view.viewer.child?.pdfViewer.pdfViewer?.currentScaleValue;
@@ -573,7 +580,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     copyOutline(checking: boolean, type: 'list' | 'heading') {
-        const child = this.lib.getPDFViewerChild();
+        const child = this.lib.getPDFViewerChild(true);
         const file = child?.file;
         if (!child || !file) return false;
 
@@ -586,15 +593,15 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             const minHeadingLevel = this.settings.copyOutlineAsHeadingsMinLevel;
 
             (async () => {
-                const doc = await this.lib.getPdfLibDocument();
-                const pdfJsDoc = this.lib.getPDFDocument();
+                const doc = await this.lib.getPdfLibDocument(true);
+                const pdfJsDoc = this.lib.getPDFDocument(true);
 
                 if (!doc || !pdfJsDoc) {
                     new Notice(`${this.plugin.manifest.name}: Failed to load PDF document.`);
                     return;
                 }
 
-                const outlines = new PDFOutlines(doc, pdfJsDoc);
+                const outlines = new PDFOutlines(this.plugin, doc, pdfJsDoc);
                 let text = '';
 
                 const useTab = this.app.vault.getConfig('useTab');
@@ -633,6 +640,39 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 navigator.clipboard.writeText(text);
                 new Notice(`${this.plugin.manifest.name}: Outline copied to clipboard.`);
             })();
+        }
+
+        return true;
+    }
+
+    addOutlineItem(checking: boolean) {
+        if (!this.settings.enalbeWriteHighlightToFile) return false;
+
+        const view = this.lib.workspace.getActivePDFView();
+        const file = view?.file;
+        if (!view || !file) return false;
+
+        const state = view.getState();
+        const destArray = this.lib.viewStateToDestArray(state, true);
+        if (!destArray) return false;
+
+        const pdfJsDoc = this.lib.getPDFDocument(true);
+        if (!pdfJsDoc) return false;
+
+        if (!checking) {
+            new PDFOutlineTitleModal(this.plugin, 'Add to outline')
+                .askTitle()
+                .then(async (title) => {
+                    const doc = await PDFDocument.load(await pdfJsDoc.getData());
+                    const outlines = new PDFOutlines(this.plugin, doc, pdfJsDoc);
+
+                    outlines.ensureRoot()
+                        .createChildItem(title, destArray)
+                        .updateCountForAllAncestors();
+
+                    outlines.setToDocument();
+                    await this.app.vault.modifyBinary(file, await doc.save());
+                });
         }
 
         return true;

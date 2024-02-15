@@ -5,7 +5,7 @@ import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { BacklinkHighlighter } from 'highlight';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
-import { onContextMenu, onThumbnailContextMenu } from 'context-menu';
+import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
@@ -124,6 +124,24 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     self.component = new Component();
                 }
                 self.component.load();
+            }
+        },
+        unload(old) {
+            return function () {
+                const self = this as PDFViewerChild;
+                self.component?.unload();
+                return old.call(this);
+            }
+        },
+        loadFile(old) {
+            return async function (file: TFile, subpath?: string) {
+                await old.call(this, file, subpath);
+                const self = this as PDFViewerChild;
+
+                if (!self.component) {
+                    self.component = new Component();
+                }
+                self.component.load();
 
                 lib.registerPDFEvent('annotationlayerrendered', self.pdfViewer.eventBus, self.component!, (data) => {
                     const { source: pageView } = data;
@@ -161,6 +179,14 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         }
 
                         pdfOutlineViewer.allItems.forEach((item) => PDFOutlineItemPostProcessor.registerEvents(plugin, self, item));
+
+                        if (plugin.settings.outlineContextMenu) {
+                            plugin.registerDomEvent(pdfOutlineViewer.childrenEl, 'contextmenu', (evt) => {
+                                if (evt.target === evt.currentTarget) {
+                                    onOutlineContextMenu(plugin, self, file, evt);
+                                }
+                            });
+                        }
                     }
                 );
 
@@ -204,13 +230,6 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         }, plugin.settings.viewSyncPageDebounceInterval * 1000)
                     );
                 }
-            }
-        },
-        unload(old) {
-            return function () {
-                const self = this as PDFViewerChild;
-                self.component?.unload();
-                return old.call(this);
             }
         },
         getMarkdownLink(old) {

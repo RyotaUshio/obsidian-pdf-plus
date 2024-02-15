@@ -1,10 +1,13 @@
-import { App, Menu, Platform, TFile } from 'obsidian';
+import { App, Menu, Notice, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
+import { PDFDocument } from '@cantoo/pdf-lib';
+import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
+import { PDFOutlineTitleModal } from 'modals/outline-modals';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
@@ -58,8 +61,9 @@ export const onThumbnailContextMenu = (child: PDFViewerChild, evt: MouseEvent): 
     }
 }
 
-export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode, evt: MouseEvent) => {
-    const { lib } = plugin;
+// TODO: split into smaller methods
+export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode, evt: MouseEvent) => {
+    const { app, lib } = plugin;
 
     if (child.pdfViewer.isEmbed) evt.preventDefault();
 
@@ -68,7 +72,7 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
         ? `Copy link to "${itemTitle.length <= 40 ? itemTitle : itemTitle.slice(0, 39).trim() + '…'}"`
         : 'Copy link to section';
 
-    new Menu()
+    const menu = new Menu()
         .addItem((menuItem) => {
             menuItem
                 .setTitle(title)
@@ -77,8 +81,140 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
                     const evaluated = await lib.copyLink.getTextToCopyForOutlineItem(child, file, item);
                     (evt.view ?? activeWindow).navigator.clipboard.writeText(evaluated);
                 })
+        });
+
+    if (plugin.settings.enalbeWriteHighlightToFile) {
+        menu.addItem((menuItem) => {
+            menuItem
+                .setTitle('Add subitem')
+                .setIcon('lucide-plus')
+                .onClick(() => {
+                    new PDFOutlineTitleModal(plugin, 'Add subitem to outline')
+                        .askTitle()
+                        .then(async (title) => {
+                            const view = lib.getPDFViewFromChild(child);
+                            if (view) {
+                                const state = view.getState();
+                                const destArray = lib.viewStateToDestArray(state, true);
+                                if (destArray) {
+                                    await findAndProcessOutlineItem(item, (outlineItem) => {
+                                        outlineItem
+                                            .createChildItem(title, destArray)
+                                            .updateCountForAllAncestors();
+                                    }, child, file, plugin);
+                                    return;
+                                }
+                            }
+                            new Notice(`${plugin.manifest.name}: Failed to add the subitem.`);
+                        });
+                });
         })
-        .showAtMouseEvent(evt);
+            .addItem((menuItem) => {
+                menuItem
+                    .setTitle('Rename')
+                    .setIcon('lucide-pencil')
+                    .onClick(() => {
+                        new PDFOutlineTitleModal(plugin, 'Rename outline item')
+                            .presetTitle(item.item.title)
+                            .askTitle()
+                            .then(async (title) => {
+                                await findAndProcessOutlineItem(item, (outlineItem) => {
+                                    outlineItem.title = title;
+                                }, child, file, plugin);
+                            });
+                    });
+            })
+            .addItem((menuItem) => {
+                menuItem
+                    .setTitle('Delete')
+                    .setIcon('lucide-trash')
+                    .onClick(async () => {
+                        // For future reference, child === item.owner.viewer
+                        await findAndProcessOutlineItem(item, (outlineItem) => {
+                            // Remove the found outline item from the tree
+                            outlineItem.detach();
+                            outlineItem.updateCountForAllAncestors();
+                        }, child, file, plugin);
+                    });
+
+            })
+    }
+
+    menu.showAtMouseEvent(evt);
+}
+
+
+export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, evt: MouseEvent) => {
+    const { lib } = plugin;
+
+    if (plugin.settings.enalbeWriteHighlightToFile) {
+        new Menu()
+            .addItem((menuItem) => {
+                menuItem
+                    .setTitle('Add top-level item')
+                    .setIcon('lucide-plus')
+                    .onClick(() => {
+                        new PDFOutlineTitleModal(plugin, 'Add item to outline')
+                            .askTitle()
+                            .then(async (title) => {
+                                const view = lib.getPDFViewFromChild(child);
+                                if (view) {
+                                    const state = view.getState();
+                                    const destArray = lib.viewStateToDestArray(state, true);
+                                    if (destArray) {
+                                        await processOutlineRoot((root) => {
+                                            root.createChildItem(title, destArray)
+                                                .updateCountForAllAncestors();
+                                        }, child, file, plugin);
+                                        return;
+                                    }
+                                }
+                                new Notice(`${plugin.manifest.name}: Failed to add the item.`);
+                            });
+                    });
+            })
+            .showAtMouseEvent(evt);
+    }
+}
+
+async function processOutlineRoot(processor: (root: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
+    const { app } = plugin;
+    const outlines = await PDFOutlines.fromChild(child, plugin);
+
+    if (!outlines) {
+        new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
+        return;
+    }
+
+    processor(outlines.ensureRoot());
+
+    // Save the modified PDF document
+    const buffer = await outlines.doc.save();
+    await app.vault.modifyBinary(file, buffer);
+}
+
+
+async function findAndProcessOutlineItem(item: PDFOutlineTreeNode, processor: (item: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
+    const { app } = plugin;
+    const outlines = await PDFOutlines.fromChild(child, plugin);
+
+    if (!outlines) {
+        new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
+        return;
+    }
+
+    const found = await outlines.findPDFjsOutlineTreeNode(item);
+
+    if (!found) {
+        new Notice(`${plugin.manifest.name}: Failed to delete the outline item.`);
+        return;
+    }
+
+    processor(found);
+
+    // Save the modified PDF document
+    const buffer = await outlines.doc.save();
+    await app.vault.modifyBinary(file, buffer);
 }
 
 export class PDFPlusContextMenu extends Menu {
@@ -167,7 +303,7 @@ export class PDFPlusContextMenu extends Menu {
                 });
             }
 
-            // // Createa a Canvas card
+            // // Create a Canvas card
             // if (canvas && plugin.settings.canvasContextMenu) {
             //     for (const { name, template } of formats) {
             //         this.addItem((item) => {
