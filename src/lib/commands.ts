@@ -666,9 +666,13 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                     const doc = await PDFDocument.load(await pdfJsDoc.getData());
                     const outlines = new PDFOutlines(this.plugin, doc, pdfJsDoc);
 
-                    outlines.ensureRoot()
+                    outlines
+                        .ensureRoot()
                         .createChildItem(title, destArray)
                         .updateCountForAllAncestors();
+                    outlines
+                        .ensureRoot()
+                        .sortChildren();
 
                     outlines.setToDocument();
                     await this.app.vault.modifyBinary(file, await doc.save());

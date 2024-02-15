@@ -8,7 +8,8 @@ import { TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { toSingleLine } from 'utils';
-import { PDFOutlineViewer, PDFViewerChild } from 'typings';
+import { PDFOutlineTreeNode, PDFOutlineViewer, PDFViewerChild } from 'typings';
+import { PDFOutlines } from 'lib/outlines';
 
 
 export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDFOutlineViewer, child: PDFViewerChild, file: TFile) => {
@@ -31,9 +32,51 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                     type: 'pdf-offset',
                     icon: 'lucide-heading',
                     title,
-                    getText: textGenerator
+                    getText: textGenerator,
+                    item
                 }
             });
+
+            // app.dragManager.handleDrop(item.selfEl, (evt, draggable, noOpen) => {
+            //     // @ts-ignore
+            //     let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
+
+            //     if (draggedItem) {
+            //         if (!noOpen) {
+            //             (async () => {
+            //                 const outlines = await PDFOutlines.fromChild(child, plugin);
+            //                 if (!outlines) return;
+
+            //                 const [targetItem, sourceItem] = await Promise.all([
+            //                     outlines.findPDFjsOutlineTreeNode(item),
+            //                     outlines.findPDFjsOutlineTreeNode(draggedItem)
+            //                 ]);
+
+            //                 if (!targetItem || !sourceItem) return;
+
+            //                 const dest = sourceItem.getNormalizedDestination();
+            //                 if (!dest) return;
+
+            //                 sourceItem.detach();
+            //                 targetItem.createChildItem(sourceItem.title, dest);
+            //                 sourceItem.updateCountForAllAncestors();
+            //                 targetItem
+            //                     .updateCountForAllAncestors()
+            //                     .sortChildren();
+
+            //                 const buffer = await outlines.doc.save();
+            //                 await app.vault.modifyBinary(file, buffer);
+            //             })();
+            //         }
+
+            //         return {
+            //             action: `Move into "${title}"`,
+            //             dropEffect: 'move',
+            //             hoverEl: item.el,
+            //             hoverClass: 'is-being-dragged-over',
+            //         }
+            //     }
+            // }, false);
         })())
     }
 

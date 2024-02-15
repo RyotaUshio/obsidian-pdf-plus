@@ -2,12 +2,12 @@ import { App, Menu, Notice, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
+import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
+import { PDFOutlineTitleModal } from 'modals/outline-modals';
+import { PDFPageLabelUpdateModal } from 'modals/page-label-modals';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
-import { PDFDocument } from '@cantoo/pdf-lib';
-import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
-import { PDFOutlineTitleModal } from 'modals/outline-modals';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
@@ -97,10 +97,12 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                 const state = view.getState();
                                 const destArray = lib.viewStateToDestArray(state, true);
                                 if (destArray) {
-                                    await findAndProcessOutlineItem(item, (outlineItem) => {
+                                    await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                                         outlineItem
                                             .createChildItem(title, destArray)
                                             .updateCountForAllAncestors();
+                                        outlineItem
+                                            .sortChildren();
                                     }, child, file, plugin);
                                     return;
                                 }
@@ -118,7 +120,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                             .presetTitle(item.item.title)
                             .askTitle()
                             .then(async (title) => {
-                                await findAndProcessOutlineItem(item, (outlineItem) => {
+                                await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                                     outlineItem.title = title;
                                 }, child, file, plugin);
                             });
@@ -130,7 +132,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                     .setIcon('lucide-trash')
                     .onClick(async () => {
                         // For future reference, child === item.owner.viewer
-                        await findAndProcessOutlineItem(item, (outlineItem) => {
+                        await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                             // Remove the found outline item from the tree
                             outlineItem.detach();
                             outlineItem.updateCountForAllAncestors();
@@ -138,6 +140,71 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                     });
 
             })
+            .addItem((menuItem) => {
+                menuItem
+                    .setTitle('Extract to new file')
+                    .setIcon('lucide-file-output')
+                    .onClick(async () => {
+                        const { app, lib, settings } = plugin;
+                        const outlines = await PDFOutlines.fromChild(child, plugin);
+
+                        if (!outlines) {
+                            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
+                            return;
+                        }
+
+                        const found = await outlines.findPDFjsOutlineTreeNode(item);
+
+                        if (!found) {
+                            new Notice(`${plugin.manifest.name}: Failed to process the outline item.`);
+                            return;
+                        }
+
+                        const { doc, pdfJsDoc } = outlines;
+
+                        const dest = found.getNormalizedDestination();
+                        const pageNumber = dest ? await lib.destToPageNumber(dest, pdfJsDoc) : null;
+
+                        let nextPageNumber: number | null = null;
+
+                        if (found.nextSibling) {
+                            const nextDest = found.nextSibling.getNormalizedDestination();
+                            if (nextDest) {
+                                nextPageNumber = await lib.destToPageNumber(nextDest, pdfJsDoc);
+                            }
+                        } else {
+                            nextPageNumber = doc.getPageCount() + 1;
+                        }
+
+                        if (pageNumber === null || nextPageNumber === null) {
+                            new Notice(`${plugin.manifest.name}: Failed to fetch page numbers from the outline item.`);
+                            return;
+                        }
+
+                        const dstPath = lib.getAvailablePathForCopy(file);
+
+                        new PDFPageLabelUpdateModal(
+                            plugin,
+                            settings.askPageLabelUpdateWhenDividePDFs,
+                            settings.pageLabelUpdateWhenDividePDFs
+                        )
+                            .askIfKeepLabels()
+                            .then((answer) => {
+                                lib.composer.extractPages(file, { from: pageNumber, to: nextPageNumber! - 1 }, dstPath, false, answer)
+                                    .then(async (file) => {
+                                        if (!file) {
+                                            new Notice(`${plugin.manifest.name}: Failed to extract section from PDF.`);
+                                            return;
+                                        }
+                                        if (settings.openAfterExtractPages) {
+                                            const leaf = lib.workspace.getLeaf(settings.howToOpenExtractedPDF);
+                                            await leaf.openFile(file);
+                                            app.workspace.revealLeaf(leaf);
+                                        }
+                                    });
+                            });
+                    });
+            });
     }
 
     menu.showAtMouseEvent(evt);
@@ -162,9 +229,10 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
                                     const state = view.getState();
                                     const destArray = lib.viewStateToDestArray(state, true);
                                     if (destArray) {
-                                        await processOutlineRoot((root) => {
+                                        await PDFOutlines.processOutlineRoot((root) => {
                                             root.createChildItem(title, destArray)
                                                 .updateCountForAllAncestors();
+                                            root.sortChildren();
                                         }, child, file, plugin);
                                         return;
                                     }
@@ -175,46 +243,6 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
             })
             .showAtMouseEvent(evt);
     }
-}
-
-async function processOutlineRoot(processor: (root: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
-    const { app } = plugin;
-    const outlines = await PDFOutlines.fromChild(child, plugin);
-
-    if (!outlines) {
-        new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
-        return;
-    }
-
-    processor(outlines.ensureRoot());
-
-    // Save the modified PDF document
-    const buffer = await outlines.doc.save();
-    await app.vault.modifyBinary(file, buffer);
-}
-
-
-async function findAndProcessOutlineItem(item: PDFOutlineTreeNode, processor: (item: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
-    const { app } = plugin;
-    const outlines = await PDFOutlines.fromChild(child, plugin);
-
-    if (!outlines) {
-        new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
-        return;
-    }
-
-    const found = await outlines.findPDFjsOutlineTreeNode(item);
-
-    if (!found) {
-        new Notice(`${plugin.manifest.name}: Failed to delete the outline item.`);
-        return;
-    }
-
-    processor(found);
-
-    // Save the modified PDF document
-    const buffer = await outlines.doc.save();
-    await app.vault.modifyBinary(file, buffer);
 }
 
 export class PDFPlusContextMenu extends Menu {

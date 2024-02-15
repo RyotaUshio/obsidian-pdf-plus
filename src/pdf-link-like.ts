@@ -75,7 +75,15 @@ abstract class PDFLinkLikePostProcessor {
         const { app, plugin, targetEl } = this;
 
         plugin.registerDomEvent(targetEl, 'mouseover', async (event) => {
-            const linktext = await this.getLinkText(event);
+            let linktext;
+            try {
+                linktext = await this.getLinkText(event);
+            } catch (e) {
+                if (e.name === 'UnknownErrorException') {
+                    return console.warn(`${this.plugin.manifest.name}: The destination was not found in this document.`)
+                }
+                throw e;
+            }
 
             if (linktext === null) return;
 

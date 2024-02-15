@@ -3,6 +3,7 @@ import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFPa
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
 import { DestArray, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
+import { Notice, TFile } from 'obsidian';
 
 
 export class PDFOutlines {
@@ -197,6 +198,45 @@ export class PDFOutlines {
 
         this.doc.catalog.delete(PDFName.of('Outlines'));
     }
+
+    static async processOutlineRoot(processor: (root: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
+        const { app } = plugin;
+        const outlines = await PDFOutlines.fromChild(child, plugin);
+    
+        if (!outlines) {
+            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
+            return;
+        }
+    
+        processor(outlines.ensureRoot());
+    
+        // Save the modified PDF document
+        const buffer = await outlines.doc.save();
+        await app.vault.modifyBinary(file, buffer);
+    }
+    
+    static async findAndProcessOutlineItem(item: PDFOutlineTreeNode, processor: (item: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
+        const { app } = plugin;
+        const outlines = await PDFOutlines.fromChild(child, plugin);
+    
+        if (!outlines) {
+            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
+            return;
+        }
+    
+        const found = await outlines.findPDFjsOutlineTreeNode(item);
+    
+        if (!found) {
+            new Notice(`${plugin.manifest.name}: Failed to process the outline item.`);
+            return;
+        }
+    
+        processor(found);
+    
+        // Save the modified PDF document
+        const buffer = await outlines.doc.save();
+        await app.vault.modifyBinary(file, buffer);
+    }
 }
 
 
@@ -278,7 +318,7 @@ export class PDFOutlineItem {
     }
 
     set firstChild(item: PDFOutlineItem | null) {
-        if (item && item.parent !== this) throw new Error('Item is not a child of this item');
+        if (item && !this.is(item.parent)) throw new Error('Item is not a child of this item');
 
         this._firstChild = item;
 
@@ -294,7 +334,7 @@ export class PDFOutlineItem {
     }
 
     set lastChild(item: PDFOutlineItem | null) {
-        if (item && item.parent !== this) throw new Error('Item is not a child of this item');
+        if (item && !this.is(item.parent)) throw new Error('Item is not a child of this item');
 
         this._lastChild = item;
 
@@ -453,6 +493,8 @@ export class PDFOutlineItem {
                 this.parent.lastChild = this.prevSibling;
             }
         }
+
+        return this;
     }
 
     getDestination() {
@@ -566,6 +608,46 @@ export class PDFOutlineItem {
         while (parent) {
             parent.updateCount(parent.isRoot());
             parent = parent.parent;
+        }
+        return this;
+    }
+
+    async sortChildren() {
+        const children: { child: PDFOutlineItem, page: number, top?: number }[] = [];
+        await this.iterChildrenAsync(async (child) => {
+            const dest = child.getNormalizedDestination();
+            if (dest === null) return 0;
+
+            const destArray = await this.lib.ensureDestArray(dest, this.outlines.pdfJsDoc);
+            if (destArray === null) return 0;
+
+            const page = destArray[0];
+            const top =
+                destArray[1] === 'XYZ' ? destArray[3]
+                    : destArray[1] === 'FitBH' || destArray[1] === 'FitH' ? destArray[2]
+                        : undefined;
+
+            children.push({ child, page, top });
+        });
+        children.sort((a, b) => a.page - b.page || (a.top ?? 0) - (b.top ?? 0));
+
+        let prev: PDFOutlineItem | null = null;
+
+        const first = children.first();
+        if (first) {
+            first.child.prevSibling = null;
+            this.firstChild = first.child;
+        }
+        for (const { child } of children) {
+            if (prev) {
+                prev.nextSibling = child;
+                child.prevSibling = prev;
+            }
+            prev = child;
+        }
+        if (prev) {
+            prev.nextSibling = null;
+            this.lastChild = prev;
         }
     }
 }

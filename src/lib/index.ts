@@ -279,6 +279,27 @@ export class PDFPlusLib {
         ];
     }
 
+    async ensureDestArray(dest: string | DestArray, doc: PDFDocumentProxy) {
+        if (typeof dest === 'string') {
+            const destArray = await doc.getDestination(dest) as PDFjsDestArray;
+            if (!destArray) return null;
+            dest = this.normalizePDFjsDestArray(destArray, await doc.getPageIndex(destArray[0]) + 1);
+        }
+
+        return dest;
+    }
+
+    async destToPageNumber(dest: string | DestArray, doc: PDFDocumentProxy) {
+        if (typeof dest === 'string') {
+            const pdfJsDestArray = await doc.getDestination(dest);
+            if (!pdfJsDestArray) return null;
+            const page = await doc.getPageIndex(pdfJsDestArray[0]);
+            return page + 1;
+        }
+
+        return dest[0] + 1;
+    }
+
     /**
      * page: a 0-based page number
      * destType.name: Obsidian only supports "XYZ" and "FitBH"
