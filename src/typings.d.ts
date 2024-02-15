@@ -868,6 +868,8 @@ declare module 'obsidian' {
     interface Vault {
         getConfig(name: string): any;
         getConfig(name: 'useMarkdownLinks'): boolean;
+        getConfig(name: 'useTab'): boolean;
+        getConfig(name: 'tabSize'): number;
         getAvailablePath(pathWithoutExtension: string, extension: string): string;
     }
 

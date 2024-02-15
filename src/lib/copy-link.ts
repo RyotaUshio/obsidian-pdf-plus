@@ -61,12 +61,12 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         const display = this.getDisplayText(child, displayTextFormat, file, page, text);
         // https://github.com/obsidianmd/obsidian-api/issues/154
         // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
-        const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
+        const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display || undefined).slice(1);
 
         const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
         // https://github.com/obsidianmd/obsidian-api/issues/154
         // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
-        const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
+        const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined).slice(1);
 
         return {
             link,

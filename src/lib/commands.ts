@@ -4,6 +4,8 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { DestArray } from 'typings';
 import { PDFPageDeleteModal } from 'modals/pdf-composer-modals';
 import { PDFPageLabelEditModal, PDFPageLabelUpdateModal } from 'modals/page-label-modals';
+import { PDFOutlines } from './outlines';
+import { parsePDFSubpath } from 'utils';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -123,6 +125,14 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'edit-page-labels',
                 name: 'Edit page labels',
                 checkCallback: (checking) => this.editPageLabels(checking)
+            }, {
+                id: 'copy-outline-as-list',
+                name: 'Copy PDF outline as markdown list',
+                checkCallback: (checking) => this.copyOutline(checking, 'list')
+            }, {
+                id: 'copy-outline-as-headings',
+                name: 'Copy PDF outline as markdown headings',
+                checkCallback: (checking) => this.copyOutline(checking, 'heading')
             }
         ];
 
@@ -557,6 +567,72 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
         if (!checking) {
             new PDFPageLabelEditModal(this.plugin, file).open();
+        }
+
+        return true;
+    }
+
+    copyOutline(checking: boolean, type: 'list' | 'heading') {
+        const child = this.lib.getPDFViewerChild();
+        const file = child?.file;
+        if (!child || !file) return false;
+
+        const haveOutline = child.pdfViewer.pdfSidebar.haveOutline;
+        if (!haveOutline) return false;
+
+        if (!checking) {
+            const copyFormat = type === 'list' ? this.settings.copyOutlineAsListFormat : this.settings.copyOutlineAsHeadingsFormat;
+            const displayTextFormat = type === 'list' ? this.settings.copyOutlineAsListDisplayTextFormat : this.settings.copyOutlineAsHeadingsDisplayTextFormat;
+            const minHeadingLevel = this.settings.copyOutlineAsHeadingsMinLevel;
+
+            (async () => {
+                const doc = await this.lib.getPdfLibDocument();
+                const pdfJsDoc = this.lib.getPDFDocument();
+
+                if (!doc || !pdfJsDoc) {
+                    new Notice(`${this.plugin.manifest.name}: Failed to load PDF document.`);
+                    return;
+                }
+
+                const outlines = new PDFOutlines(doc, pdfJsDoc);
+                let text = '';
+
+                const useTab = this.app.vault.getConfig('useTab');
+                const tabSize = this.app.vault.getConfig('tabSize');
+                const indent = useTab ? '\t' : ' '.repeat(tabSize);
+
+                await outlines.iterAsync({
+                    enter: async (item) => {
+                        if (!item.isRoot()) {
+                            let subpath: string | null = null;
+                            const dest = item.getNormalizedDestination();
+                            if (dest) {
+                                if (typeof dest === 'string') {
+                                    subpath = await this.lib.destIdToSubpath(dest, pdfJsDoc);
+                                } else if (dest) {
+                                    subpath = await this.lib.destArrayToSubpath(dest);
+                                }
+                            }
+
+                            const pageNumber = subpath ? parsePDFSubpath(subpath)?.page : undefined;
+
+                            // item.title should be non-null for non-root items by the PDF spec
+                            const evaluated = subpath && pageNumber !== undefined
+                                ? this.lib.copyLink.getTextToCopy(child, copyFormat, displayTextFormat, file, pageNumber, subpath, item.title!, '', '')
+                                : item.title!;
+
+                            if (type === 'list') {
+                                text += `${indent.repeat(item.depth - 1)}- ${evaluated}\n`;
+                            } else if (type === 'heading') {
+                                text += `#`.repeat(item.depth + minHeadingLevel - 1) + ` ${evaluated}\n`;
+                            }
+                        }
+                    }
+                });
+
+                navigator.clipboard.writeText(text);
+                new Notice(`${this.plugin.manifest.name}: Outline copied to clipboard.`);
+            })();
         }
 
         return true;

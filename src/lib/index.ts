@@ -11,6 +11,7 @@ import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, E
 import { PDFDocument } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
+import { PDFOutlines } from './outlines';
 
 
 export class PDFPlusLib {
@@ -270,7 +271,7 @@ export class PDFPlusLib {
         if (destArray[1] === 'XYZ') {
             left = '' + destArray[2];
             top = '' + destArray[3];
-            // Obsidian recognizes the `offset` parameter as "FitHB" if the third parameter is omitted.
+            // Obsidian recognizes the `offset` parameter as "FitBH" if the third parameter is omitted.
             // from the PDF spec: "A zoom value of 0 has the same meaning as a null value."
             zoom = '' + (destArray[4] ?? 0);
         } else if (destArray[1] === 'FitBH') {
@@ -504,6 +505,21 @@ export class PDFPlusLib {
         return this.getPDFViewer(activeOnly)?.pdfDocument;
     }
 
+    async loadPDFDocument(file: TFile): Promise<PDFDocumentProxy> {
+        const buffer = await this.app.vault.readBinary(file);
+        return await this.loadPDFDocumentFromArrayBuffer(buffer);
+    }
+
+    async loadPDFDocumentFromArrayBuffer(buffer: ArrayBuffer): Promise<PDFDocumentProxy> {
+        const loadingTask = window.pdfjsLib.getDocument({
+            data: buffer,
+            cMapPacked: true,
+            cMapUrl: '/lib/pdfjs/cmaps/',
+            standardFontDataUrl: '/lib/pdfjs/standard_fonts/',
+        });
+        return await loadingTask.promise;
+    }
+
     async getPdfLibDocument(activeOnly: boolean = false) {
         const doc = this.getPDFDocument(activeOnly);
         if (doc) {
@@ -519,6 +535,13 @@ export class PDFPlusLib {
         const doc = await PDFDocument.load(await pdfViewer.pdfDocument.getData());
         if (doc) {
             return doc.getPage(pageNumber - 1);
+        }
+    }
+
+    async getPDFOutlines() {
+        const doc = await this.getPdfLibDocument();
+        if (doc) {
+            return await PDFOutlines.fromDocument(doc);
         }
     }
 

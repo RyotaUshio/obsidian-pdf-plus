@@ -170,6 +170,11 @@ export interface PDFPlusSettings {
 	askPageLabelUpdateWhenDeletePage: boolean;
 	askPageLabelUpdateWhenExtractPage: boolean;
 	askPageLabelUpdateWhenDividePDFs: boolean;
+	copyOutlineAsListFormat: string;
+	copyOutlineAsListDisplayTextFormat: string;
+	copyOutlineAsHeadingsFormat: string;
+	copyOutlineAsHeadingsDisplayTextFormat: string;
+	copyOutlineAsHeadingsMinLevel: number;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -349,6 +354,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	askPageLabelUpdateWhenDeletePage: true,
 	askPageLabelUpdateWhenExtractPage: true,
 	askPageLabelUpdateWhenDividePDFs: true,
+	copyOutlineAsListFormat: '{{linkWithDisplay}}',
+	copyOutlineAsListDisplayTextFormat: '{{text}}',
+	copyOutlineAsHeadingsFormat: '{{text}}\n\n{{linkWithDisplay}}',
+	copyOutlineAsHeadingsDisplayTextFormat: 'p.{{pageLabel}}',
+	copyOutlineAsHeadingsMinLevel: 2,
 };
 
 
@@ -1639,6 +1649,39 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					textarea.inputEl.cols = 30;
 				});
 		}
+		this.addHeading('Copy outline as markdown')
+			.setDesc('You can copy PDF outline as a markdown list or headings using the commands "Copy outline as markdown list" and "Copy outline as markdown headings".');
+		this.addTextSetting('copyOutlineAsListDisplayTextFormat')
+			.setName('List: display text format')
+			.then((setting) => {
+				const text = setting.components[0] as TextComponent;
+				text.inputEl.size = 30;
+			});
+		this.addTextAreaSetting('copyOutlineAsListFormat')
+			.setName('List: link copy format')
+			.setDesc('You don\'t need to include leading hyphens in the template.')
+			.then((setting) => {
+				const textarea = setting.components[0] as TextAreaComponent;
+				textarea.inputEl.rows = 3;
+				textarea.inputEl.cols = 30;
+			});
+		this.addTextSetting('copyOutlineAsHeadingsDisplayTextFormat')
+			.setName('Headings: display text format')
+			.then((setting) => {
+				const text = setting.components[0] as TextComponent;
+				text.inputEl.size = 30;
+			});
+		this.addTextAreaSetting('copyOutlineAsHeadingsFormat')
+			.setName('Headings: link copy format')
+			.setDesc('You don\'t need to include leading hashes in the template.')
+			.then((setting) => {
+				const textarea = setting.components[0] as TextAreaComponent;
+				textarea.inputEl.rows = 3;
+				textarea.inputEl.cols = 30;
+			});
+		this.addSliderSetting('copyOutlineAsHeadingsMinLevel', 1, 6, 1)
+			.setName('Headings: minimum level')
+			.setDesc('The copied headings will start at this level.');
 
 
 		this.addHeading('PDF thumbnails', 'lucide-gallery-thumbnails')

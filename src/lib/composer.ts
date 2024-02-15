@@ -4,6 +4,7 @@ import { PDFDocument, PDFPage } from '@cantoo/pdf-lib';
 import { PDFPlusLibSubmodule } from './submodule';
 import { range, encodeLinktext } from 'utils';
 import { PDFPageLabels } from './page-labels';
+import { PDFOutlines } from './outlines';
 
 
 /**
@@ -139,8 +140,14 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
 
     async removePage(file: TFile, pageNumber: number, keepLabels: boolean) {
         const doc = await this.read(file);
+
         this.pageLabelUpdater.removePage(doc, pageNumber, keepLabels);
         doc.removePage(pageNumber - 1);
+
+        const outlines = await PDFOutlines.fromDocument(doc);
+        await outlines.prune();
+        outlines.setToDocument();
+
         return await this.write(file.path, doc, true);
     }
 
@@ -151,11 +158,14 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
             this.read(file2)
         ]);
 
+        // TODO: implement this
         this.pageLabelUpdater.mergeFiles(doc1, doc2, keepLabels);
 
         const pagesToAdd = await doc1.copyPages(doc2, doc2.getPageIndices());
 
         for (const page of pagesToAdd) doc1.addPage(page);
+
+        // TODO: update outlines
 
         const resultFile = await this.write(file1.path, doc1, true);
         if (resultFile === null) return null;
@@ -187,6 +197,15 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
             if (pages.includes(page)) srcDoc.removePage(page - 1);
             else dstDoc.removePage(page - 1);
         }
+
+        await Promise.all(
+            [srcDoc, dstDoc]
+                .map(async (doc) => {
+                    const outlines = await PDFOutlines.fromDocument(doc);
+                    await outlines.prune();
+                    outlines.setToDocument();
+                })
+        );
 
         const [_, dstFile] = await Promise.all([
             this.write(srcFile.path, srcDoc, true),
