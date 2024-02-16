@@ -113,19 +113,6 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
     const { app, lib } = plugin;
 
     plugin.register(around(child.constructor.prototype, {
-        load(old) {
-            return async function (...args: any[]): Promise<void> {
-                await old.call(this, ...args);
-                const self = this as PDFViewerChild;
-
-                plugin.pdfViwerChildren.set(self.containerEl.find('.pdf-viewer'), self);
-
-                if (!self.component) {
-                    self.component = new Component();
-                }
-                self.component.load();
-            }
-        },
         unload(old) {
             return function () {
                 const self = this as PDFViewerChild;
@@ -133,10 +120,27 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 return old.call(this);
             }
         },
+        onResize(old) {
+            return function () {
+                const self = this as PDFViewerChild;
+
+                const viewerEl = self.containerEl.querySelector<HTMLElement>('.pdf-viewer');
+                if (viewerEl) {
+                    plugin.pdfViewerChildren.set(viewerEl, self);
+                }
+
+                return old.call(this);
+            }
+        },
         loadFile(old) {
             return async function (file: TFile, subpath?: string) {
                 await old.call(this, file, subpath);
                 const self = this as PDFViewerChild;
+
+                const viewerEl = self.containerEl.querySelector<HTMLElement>('.pdf-viewer');
+                if (viewerEl) {
+                    plugin.pdfViewerChildren.set(viewerEl, self);
+                }
 
                 if (!self.component) {
                     self.component = new Component();

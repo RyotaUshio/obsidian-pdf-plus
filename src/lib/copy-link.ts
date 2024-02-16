@@ -183,7 +183,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
     copyLinkToSelection(checking: boolean, template: string, colorName?: string, autoPaste?: boolean): boolean {
         const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
-
+        
         if (variables) {
             const { child, file, subpath, page, text } = variables;
 

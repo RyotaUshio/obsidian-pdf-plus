@@ -1,7 +1,6 @@
 import { Notice, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-// import { PdfAnnotateIO } from './pdfAnnotate';
 import { PdfLibIO } from './pdf-lib';
 import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { parsePDFSubpath } from 'utils';
@@ -10,17 +9,13 @@ import { DestArray, PDFViewerChild, Rect } from 'typings';
 
 export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
     pdflib: PdfLibIO;
-    // pdfAnnotate: PdfAnnotateIO;
 
     constructor(plugin: PDFPlus) {
         super(plugin);
         this.pdflib = new PdfLibIO(plugin);
-        // this.pdfAnnotate = new PdfAnnotateIO(plugin);
     }
 
     private getPdfIo(): IPdfIo {
-        // if (this.plugin.settings.writeFileLibrary === 'pdfAnnotate') return this.pdfAnnotate;
-        // else 
         return this.pdflib;
     }
 

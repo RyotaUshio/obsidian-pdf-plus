@@ -267,7 +267,7 @@ interface PDFPageView {
 interface TextLayerBuilder {
     div: HTMLDivElement; // div.textLayer
     textDivs: HTMLElement[];
-    textContentItems: TextContentItem[];
+    textContentItems: TextContentItem[]; // Specific to Obsidian's customized PDF.js
     render(): Promise<any>;
 }
 
@@ -309,10 +309,14 @@ interface AnnotationElement {
 
 interface TextContentItem {
     str: string;
+    /** 
+     * This property is specific to Obsidian's customized PDF.js. We can get this by calling
+     * page.getTextContent() with an option called `includeChars` set to `true`.
+     */
     chars?: {
         c: string;
         u: string;
-        r: Rect; // bounding rect
+        r: Rect; // Character-level bounding box
     }[];
     dir: string;
     width: number;

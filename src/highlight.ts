@@ -307,7 +307,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             this.app.workspace.trigger('hover-link', {
                 event,
                 source: 'pdf-plus',
-                hoverParent: this,
+                hoverParent: {},//this,
                 targetEl: annotationEl,
                 linktext: sourcePath,
                 sourcePath: this.file?.path ?? '',

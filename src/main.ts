@@ -58,7 +58,7 @@ export default class PDFPlus extends Plugin {
 	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object. */
 	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
 	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
-	pdfViwerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
+	pdfViewerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 
 	async onload() {
 		this.checkVersion();
@@ -253,7 +253,6 @@ export default class PDFPlus extends Plugin {
 	private registerGlobalVariables() {
 		this.registerGlobalVariable('pdfPlus', this, false);
 		this.registerGlobalVariable('pdflib', pdflib, false);
-		// this.registerGlobalVariable('pdfAnnotate', pdfAnnotate, false);
 	}
 
 	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
@@ -274,8 +273,8 @@ export default class PDFPlus extends Plugin {
 	private registerEvents() {
 		// keep this.pdfViewerChildren up-to-date
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
-			for (const viewerEl of this.pdfViwerChildren.keys()) {
-				if (!viewerEl?.isShown()) this.pdfViwerChildren.delete(viewerEl);
+			for (const viewerEl of this.pdfViewerChildren.keys()) {
+				if (!viewerEl?.isShown()) this.pdfViewerChildren.delete(viewerEl);
 			}
 		}));
 

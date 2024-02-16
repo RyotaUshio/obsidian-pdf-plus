@@ -204,11 +204,25 @@ export class PDFPlusLib {
         // for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
         //     if (viewerEl.contains(node)) return child;
         // }
+        let child: PDFViewerChild | undefined;
+
         const el = node.instanceOf(HTMLElement) ? node : node.parentElement;
-        if (!el) return null;
-        const viewerEl = el.closest<HTMLElement>('.pdf-viewer');
-        if (!viewerEl) return null;
-        return this.plugin.pdfViwerChildren.get(viewerEl);
+        if (el) {
+            const viewerEl = el.closest<HTMLElement>('.pdf-viewer');
+            if (viewerEl) {
+                child = this.plugin.pdfViewerChildren.get(viewerEl);
+            }
+        }
+
+        if (!child) {
+            this.workspace.iteratePDFViewerChild((c) => {
+                if (!child && c.containerEl.contains(node)) {
+                    child = c;
+                }
+            })
+        }
+
+        return child ?? null;
     }
 
     /** 

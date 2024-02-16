@@ -107,7 +107,6 @@ export interface PDFPlusSettings {
 	defaultWriteFileToggle: boolean;
 	syncWriteFileToggle: boolean;
 	syncDefaultWriteFileToggle: boolean;
-	// writeFileLibrary: 'pdf-lib' | 'pdfAnnotate';
 	enableAnnotationContentEdit: boolean;
 	warnEveryAnnotationDelete: boolean;
 	warnBacklinkedAnnotationDelete: boolean;
@@ -291,7 +290,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	defaultWriteFileToggle: false,
 	syncWriteFileToggle: true,
 	syncDefaultWriteFileToggle: false,
-	// writeFileLibrary: 'pdfAnnotate',
 	enableAnnotationDeletion: true,
 	warnEveryAnnotationDelete: false,
 	warnBacklinkedAnnotationDelete: true,
@@ -1088,14 +1086,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addToggleSetting('syncDefaultWriteFileToggle')
 					.setName('Share the state with newly opened PDF viewers as well')
 			}
-			// this.addDropdownSetting('writeFileLibrary', ['pdf-lib', 'pdfAnnotate'])
-			// 	.setName('Library to write highlights')
-			// 	.then((setting) => {
-			// 		this.renderMarkdown([
-			// 			'- **pdf-lib**: A JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.',
-			// 			'- **[pdfAnnotate](https://github.com/highkite/pdfAnnotate)**: A JavaScript library for creating PDF annotations by Thomas Osterland.'
-			// 		], setting.descEl);
-			// 	});
 			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
 				.setName('Enable editing annotation contents')
 				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
