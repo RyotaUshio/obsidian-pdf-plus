@@ -1,6 +1,5 @@
-import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EditorPosition, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
-// import * as pdfAnnotate from 'annotpdf';
 
 import { patchPDFView } from 'patchers/pdf-view';
 import { patchPDFInternals } from 'patchers/pdf-internals';

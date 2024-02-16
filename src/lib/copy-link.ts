@@ -389,7 +389,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         const file = this.getAutoFocusOrAutoPasteTarget(this.settings.autoFocusTarget);
 
         if (file) { // auto-focus target found
-            const leaf = await this.prepareMarkdownLeafForPaste(file);
+            const { leaf, isExistingLeaf } = await this.prepareMarkdownLeafForPaste(file);
             if (leaf) {
                 this.app.workspace.revealLeaf(leaf);
                 this.app.workspace.setActiveLeaf(leaf);
@@ -397,7 +397,10 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 if (view instanceof MarkdownView) {
                     const editor = view.editor;
                     editor.focus();
-                    editor.exec('goEnd');
+                    // Don't goEnd if this is an existing leaf; preserve the previous cursor position
+                    if (!isExistingLeaf) {
+                        editor.exec('goEnd');
+                    }
                 }
             }
 
@@ -458,6 +461,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
     async prepareMarkdownLeafForPaste(file: TFile) {
         let leaf = this.lib.workspace.getExistingLeafForMarkdownFile(file);
+        const isExistingLeaf = !!leaf;
 
         if (!leaf && this.settings.openAutoFocusTargetIfNotOpened) {
             const paneType = this.settings.howToOpenAutoFocusTargetIfNotOpened;
@@ -473,7 +477,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             if (leaf && this.settings.openAutoFocusTargetInEditingView) {
                 const view = leaf.view;
                 if (view instanceof MarkdownView) {
-                    view.setState({ mode: 'source' }, { history: false });
+                    await view.setState({ mode: 'source' }, { history: false });
                     view.setEphemeralState({ focus: false });
                 }
             }
@@ -486,11 +490,11 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             }
         }
 
-        return leaf;
+        return { leaf, isExistingLeaf };
     }
 
     async pasteTextToFile(text: string, file: TFile) {
-        const leaf = await this.prepareMarkdownLeafForPaste(file);
+        const { leaf } = await this.prepareMarkdownLeafForPaste(file);
 
         // Use vault, not editor, so that we can auto-paste even when the file is not opened
         await this.app.vault.process(file, (data) => {

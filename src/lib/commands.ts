@@ -1,4 +1,4 @@
-import { Command, Notice, setIcon } from 'obsidian';
+import { Command, MarkdownView, Notice, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { DestArray } from 'typings';
@@ -139,6 +139,10 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'add-outline-item',
                 name: 'Add to outline (bookmark)',
                 checkCallback: (checking) => this.addOutlineItem(checking)
+            }, {
+                id: 'create-new-note',
+                name: 'Create new note for auto-focus or auto-paste',
+                callback: () => this.createNewNote()
             }
         ];
 
@@ -680,5 +684,42 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         }
 
         return true;
+    }
+
+    async createNewNote() {
+        const activeFilePath = this.app.workspace.getActiveFile()?.path ?? '';
+        const folder = this.app.fileManager.getNewFileParent(activeFilePath, '');
+        const file = await this.app.fileManager.createNewMarkdownFile(folder, '');
+
+        const openFile = async () => {
+            const { leaf, isExistingLeaf } = await this.lib.copyLink.prepareMarkdownLeafForPaste(file);
+            if (leaf) {
+                this.app.workspace.revealLeaf(leaf);
+                this.app.workspace.setActiveLeaf(leaf);
+                const view = leaf.view;
+                if (view instanceof MarkdownView) {
+                    const editor = view.editor;
+                    editor.focus();
+                    if (!isExistingLeaf) editor.exec('goEnd');
+                }
+            }
+        };
+
+        const paneType = this.settings.howToOpenAutoFocusTargetIfNotOpened;
+
+        if (paneType !== 'hover-editor') {
+            await openFile();
+            return;
+        }
+
+        // In the case of hover editor, we have to wait until the metadata is updated for the newly created file
+        // because we need to resolve a link in `onLinkHover`.
+        const eventRef = this.app.metadataCache.on('resolve', async (resolvedFile) => {
+            if (resolvedFile === file) {
+                this.app.metadataCache.offref(eventRef);
+                // I don't understand why, but without setTimeout (or with a shorter timeout like 50 ms), the file is not opened.
+                setTimeout(() => openFile(), 100);
+            }
+        });
     }
 }

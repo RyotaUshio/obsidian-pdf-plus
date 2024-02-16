@@ -337,7 +337,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	closeSidebarWhenLostFocus: true,
 	openAutoFocusTargetInEditingView: true,
 	executeCommandWhenTargetNotIdentified: true,
-	commandToExecuteWhenTargetNotIdentified: 'switcher:open',
+	commandToExecuteWhenTargetNotIdentified: 'pdf-plus:create-new-note',
 	selectToCopyToggleRibbonIcon: true,
 	autoFocusToggleRibbonIcon: true,
 	viewSyncFollowPageNumber: true,
@@ -1423,6 +1423,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						`- ${this.app.commands.findCommand('switcher:open')?.name ?? 'Quick switcher: Open quick switcher'}`,
 						'- [Omnisearch](obsidian://show-plugin?id=omnisearch): Vault search',
 						'- [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor): Open new Hover Editor',
+						`- **${this.app.commands.findCommand(`${this.plugin.manifest.id}:create-new-note`)?.name ?? 'PDF++: Create new note for auto-focus or auto-paste'}**: Creates a new note and opens it in a new pane specified in the "How to open target markdown file when not opened" option.`
 					], setting.descEl);
 				})
 				.addText((text) => {

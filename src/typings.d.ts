@@ -804,6 +804,11 @@ declare module 'obsidian' {
         getObsidianUrl(file: TFile): string;
     }
 
+    interface FileManager {
+        getNewFileParent(activeFilePath: string, name: string): TFolder;
+        createNewMarkdownFile(folder: TFolder, name: string, data?: string): Promise<TFile>;
+    }
+
     interface PluginSettingTab {
         id: string;
     }
