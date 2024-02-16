@@ -99,7 +99,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
     }
 
     async read(file: TFile): Promise<PDFDocument> {
-        return await PDFDocument.load(await this.app.vault.readBinary(file));
+        return await this.lib.loadPdfLibDocument(file);
     }
 
     /** Write the content of `pdfDoc` into the specified file. If the file does not exist, it will be created. */

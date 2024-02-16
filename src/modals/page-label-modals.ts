@@ -34,7 +34,7 @@ abstract class PDFPageLabelModal extends PDFPlusModal {
         this.doc = null;
         this.pageLabels = null;
         this.docLoadingPromise = (async () => {
-            this.doc = await PDFDocument.load(await this.app.vault.readBinary(this.file));
+            this.doc = await plugin.lib.loadPdfLibDocument(file);
             this.pageLabels = PDFPageLabels.fromDocument(this.doc);
 
             return { doc: this.doc, pageLabels: this.pageLabels };

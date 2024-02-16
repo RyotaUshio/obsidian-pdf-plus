@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, MarkdownView, TFile, TextFileView, View, parseLinktext } from 'obsidian';
+import { App, Component, EditableFileView, MarkdownView, Notice, TFile, TextFileView, View, parseLinktext } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
@@ -8,7 +8,7 @@ import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
 import { encodeLinktext, parsePDFSubpath, removeExtension } from 'utils';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PdfLibDestArray, PDFViewState } from 'typings';
-import { PDFArray, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
+import { EncryptedPDFError, PDFArray, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
@@ -587,10 +587,26 @@ export class PDFPlusLib {
         return await loadingTask.promise;
     }
 
+    async loadPdfLibDocument(file: TFile, readonly: boolean = false): Promise<PDFDocument> {
+        const buffer = await this.app.vault.readBinary(file);
+        return await this.loadPdfLibDocumentFromArrayBuffer(buffer);
+    }
+
+    async loadPdfLibDocumentFromArrayBuffer(buffer: ArrayBuffer, readonly: boolean = false): Promise<PDFDocument> {
+        try {
+            return await PDFDocument.load(buffer, { ignoreEncryption: readonly || this.plugin.settings.enableEditEncryptedPDF });
+        } catch (e) {
+            if (e instanceof EncryptedPDFError && !this.plugin.settings.enableEditEncryptedPDF) {
+                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. Please consider enabling "Enable editing encrypted PDF files" in the plugin settings.`);
+            }
+            throw e;
+        }
+    }
+
     async getPdfLibDocument(activeOnly: boolean = false) {
         const doc = this.getPDFDocument(activeOnly);
         if (doc) {
-            return await PDFDocument.load(await doc.getData());
+            return await this.loadPdfLibDocumentFromArrayBuffer(await doc.getData());
         }
     }
 
@@ -599,7 +615,7 @@ export class PDFPlusLib {
         if (!pdfViewer) return;
         const pageNumber = pdfViewer.currentPageNumber;
         if (pageNumber === undefined) return;
-        const doc = await PDFDocument.load(await pdfViewer.pdfDocument.getData());
+        const doc = await this.loadPdfLibDocumentFromArrayBuffer(await pdfViewer.pdfDocument.getData());
         if (doc) {
             return doc.getPage(pageNumber - 1);
         }

@@ -33,11 +33,11 @@ export class PDFOutlines {
         let pdfJsDoc = child.pdfViewer.pdfViewer?.pdfDocument;
         let doc: PDFDocument | undefined;
         if (pdfJsDoc) {
-            doc = await PDFDocument.load(await pdfJsDoc.getData());
+            doc = await lib.loadPdfLibDocumentFromArrayBuffer(await pdfJsDoc.getData());
         } else if (child.file) {
             const buffer = await app.vault.readBinary(child.file);
             pdfJsDoc = await lib.loadPDFDocumentFromArrayBuffer(buffer);
-            doc = await PDFDocument.load(buffer);
+            doc = await lib.loadPdfLibDocumentFromArrayBuffer(buffer);
         }
 
         if (pdfJsDoc && doc) {

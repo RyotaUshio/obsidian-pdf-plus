@@ -77,33 +77,17 @@ export class PdfLibIO extends PDFPlusLibSubmodule implements IPdfIo {
     }
 
     async process<T>(file: TFile, fn: (pdfDoc: PDFDocument) => T) {
-        const buffer = await this.app.vault.readBinary(file);
-        try {
-            const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: this.plugin.settings.enableEditEncryptedPDF });
-            const ret = await fn(pdfDoc);
+        const pdfDoc = await this.lib.loadPdfLibDocument(file);
 
-            await this.app.vault.modifyBinary(file, await pdfDoc.save());
+        const ret = await fn(pdfDoc);
 
-            return ret;
-        } catch (e) {
-            if (e instanceof EncryptedPDFError && !this.plugin.settings.enableEditEncryptedPDF) {
-                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. Please consider enabling "Enable editing encrypted PDF files" in the plugin settings.`);
-            }
-            throw e;
-        }
+        await this.app.vault.modifyBinary(file, await pdfDoc.save());
+        return ret;
     }
 
     async read<T>(file: TFile, fn: (pdfDoc: PDFDocument) => T) {
-        const buffer = await this.app.vault.readBinary(file);
-        try {
-            const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: this.plugin.settings.enableEditEncryptedPDF });
-            return await fn(pdfDoc);
-        } catch (e) {
-            if (e instanceof EncryptedPDFError && !this.plugin.settings.enableEditEncryptedPDF) {
-                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. Please consider enabling "Enable editing encrypted PDF files" in the plugin settings.`);
-            }
-            throw e;
-        }
+        const pdfDoc = await this.lib.loadPdfLibDocument(file);
+        return await fn(pdfDoc);
     }
 
     addAnnotation(page: PDFPage, annotDict: Record<string, any>): PDFRef {
