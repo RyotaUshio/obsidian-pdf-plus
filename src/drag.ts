@@ -4,7 +4,7 @@
  * 
  * See `src/patchers/clilpboard-manager.ts` for the drop handler.
  */
-import { TFile } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { toSingleLine } from 'utils';
@@ -37,46 +37,40 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                 }
             });
 
-            // app.dragManager.handleDrop(item.selfEl, (evt, draggable, noOpen) => {
-            //     // @ts-ignore
-            //     let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
+            app.dragManager.handleDrop(item.selfEl, (evt, draggable, dragging) => {
+                if (!plugin.settings.enalbeWriteHighlightToFile) return;
 
-            //     if (draggedItem) {
-            //         if (!noOpen) {
-            //             (async () => {
-            //                 const outlines = await PDFOutlines.fromChild(child, plugin);
-            //                 if (!outlines) return;
+                // @ts-ignore
+                let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
 
-            //                 const [targetItem, sourceItem] = await Promise.all([
-            //                     outlines.findPDFjsOutlineTreeNode(item),
-            //                     outlines.findPDFjsOutlineTreeNode(draggedItem)
-            //                 ]);
+                if (draggedItem) {
+                    if (!dragging) {
+                        (async () => {
+                            const outlines = await PDFOutlines.fromChild(child, plugin);
+                            const [destItem, itemToMove] = await Promise.all([
+                                outlines?.findPDFjsOutlineTreeNode(item),    
+                                outlines?.findPDFjsOutlineTreeNode(draggedItem)
+                            ]);
 
-            //                 if (!targetItem || !sourceItem) return;
+                            if (!outlines || !destItem || !itemToMove) {
+                                new Notice(`${plugin.manifest.name}: Failed to move the outline item.`);
+                                return;
+                            }
 
-            //                 const dest = sourceItem.getNormalizedDestination();
-            //                 if (!dest) return;
+                            destItem.appendChild(itemToMove);
+                            const buffer = await outlines.doc.save();
+                            await app.vault.modifyBinary(file, buffer);
+                        })();
+                    }
 
-            //                 sourceItem.detach();
-            //                 targetItem.createChildItem(sourceItem.title, dest);
-            //                 sourceItem.updateCountForAllAncestors();
-            //                 targetItem
-            //                     .updateCountForAllAncestors()
-            //                     .sortChildren();
-
-            //                 const buffer = await outlines.doc.save();
-            //                 await app.vault.modifyBinary(file, buffer);
-            //             })();
-            //         }
-
-            //         return {
-            //             action: `Move into "${title}"`,
-            //             dropEffect: 'move',
-            //             hoverEl: item.el,
-            //             hoverClass: 'is-being-dragged-over',
-            //         }
-            //     }
-            // }, false);
+                    return {
+                        action: `Move into "${title}"`,
+                        dropEffect: 'move',
+                        hoverEl: item.el,
+                        hoverClass: 'is-being-dragged-over',
+                    }
+                }
+            }, false);
         })())
     }
 

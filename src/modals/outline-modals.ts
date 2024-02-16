@@ -1,6 +1,7 @@
+import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
-import { Setting } from 'obsidian';
+import { Setting, prepareFuzzySearch, SearchResultContainer, sortSearchResults, FuzzySuggestModal } from 'obsidian';
 
 
 export class PDFOutlineTitleModal extends PDFPlusModal {
@@ -80,5 +81,46 @@ export class PDFOutlineTitleModal extends PDFPlusModal {
         if (this.submitted && this.title !== null) {
             this.next.forEach((callback) => callback(this.title!));
         }
+    }
+}
+
+
+export class PDFOutlineMoveModal extends FuzzySuggestModal<PDFOutlineItem> {
+    plugin: PDFPlus;
+    outlines: PDFOutlines;
+    items: PDFOutlineItem[];
+    next: ((item: PDFOutlineItem) => any)[] = [];
+
+    constructor(outlines: PDFOutlines) {
+        super(outlines.plugin.app);
+        this.outlines = outlines;
+        this.plugin = outlines.plugin;
+        this.items = [];
+        this.outlines.iter({
+            enter: (item) => item.isRoot() || this.items.push(item)
+        });
+        this.setPlaceholder('Type an outline item title');
+    }
+
+    askDestination() {
+        this.open()
+        return this;
+    }
+
+    then(callback: (item: PDFOutlineItem) => any) {
+        this.next.push(callback);
+        return this;
+    }
+
+    getItems(): PDFOutlineItem[] {
+        return this.items;
+    }
+
+    getItemText(item: PDFOutlineItem) {
+        return item.name;
+    }
+
+    onChooseItem(item: PDFOutlineItem): void {
+        this.next.forEach((callback) => callback(item));
     }
 }

@@ -3,7 +3,7 @@ import { App, Menu, Notice, Platform, TFile } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
 import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
-import { PDFOutlineTitleModal } from 'modals/outline-modals';
+import { PDFOutlineMoveModal, PDFOutlineTitleModal } from 'modals/outline-modals';
 import { PDFPageLabelUpdateModal } from 'modals/page-label-modals';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { toSingleLine } from 'utils';
@@ -99,7 +99,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                 if (destArray) {
                                     await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                                         outlineItem
-                                            .createChildItem(title, destArray)
+                                            .createChild(title, destArray)
                                             .updateCountForAllAncestors();
                                         outlineItem
                                             .sortChildren();
@@ -113,7 +113,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
         })
             .addItem((menuItem) => {
                 menuItem
-                    .setTitle('Rename')
+                    .setTitle('Rename...')
                     .setIcon('lucide-pencil')
                     .onClick(() => {
                         new PDFOutlineTitleModal(plugin, 'Rename outline item')
@@ -123,6 +123,28 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                 await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                                     outlineItem.title = title;
                                 }, child, file, plugin);
+                            });
+                    });
+            })
+            .addItem((menuItem) => {
+                menuItem
+                    .setTitle('Move item to...')
+                    .setIcon('lucide-folder-tree')
+                    .onClick(async () => {
+                        const outlines = await PDFOutlines.fromChild(child, plugin);
+                        const itemToMove = await outlines?.findPDFjsOutlineTreeNode(item);
+
+                        if (!outlines || !itemToMove) {
+                            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
+                            return;
+                        }
+
+                        new PDFOutlineMoveModal(outlines)
+                            .askDestination()
+                            .then(async (destItem) => {
+                                destItem.appendChild(itemToMove);
+                                const buffer = await outlines.doc.save();
+                                await app.vault.modifyBinary(file, buffer);
                             });
                     });
             })
@@ -230,7 +252,7 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
                                     const destArray = lib.viewStateToDestArray(state, true);
                                     if (destArray) {
                                         await PDFOutlines.processOutlineRoot((root) => {
-                                            root.createChildItem(title, destArray)
+                                            root.createChild(title, destArray)
                                                 .updateCountForAllAncestors();
                                             root.sortChildren();
                                         }, child, file, plugin);

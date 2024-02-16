@@ -633,7 +633,7 @@ interface DropInfo {
     hoverClass: string;
 }
 
-type DropEventListener = (evt: DragEvent, draggable: Draggable, noOpen: boolean) => DropInfo | undefined;
+type DropEventListener = (evt: DragEvent, draggable: Draggable, dragging: boolean) => DropInfo | undefined;
 
 interface DragManager {
     app: App;
@@ -878,6 +878,7 @@ declare module 'obsidian' {
         getConfig(name: 'useMarkdownLinks'): boolean;
         getConfig(name: 'useTab'): boolean;
         getConfig(name: 'tabSize'): number;
+        getConfig(name: 'alwaysUpdateLinks'): boolean;
         getAvailablePath(pathWithoutExtension: string, extension: string): string;
     }
 

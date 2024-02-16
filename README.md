@@ -127,9 +127,18 @@ Added annotations will be visible even outside Obsidian, unlike backlink highlig
 
 PDF++ will not modify PDF files themselves unless you explicitly allow it. ***The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.*** Report any issues you encounter [here](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).
 
-#### PDF page composer: PDF counterpart of the "Note Composer" core plugin
+### PDF page composer: PDF counterpart of the "Note Composer" core plugin
 
 Add, insert, remove or extract PDF pages via commands and **automatically update related links** in the entire vault.
+
+### Add, rename, move and delete PDF outline items (a.k.a. table of contents / bookmarks)
+
+Allow PDF modification and right-click on the PDF outline.
+Alternatively, you can use the command "Add to outline" to add a new item, or drag & drop outline items to move it under another item.
+
+### Edit page labels
+
+[Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels)
 
 ### PDF internal links enhancement
 

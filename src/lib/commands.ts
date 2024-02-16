@@ -672,7 +672,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
                     outlines
                         .ensureRoot()
-                        .createChildItem(title, destArray)
+                        .createChild(title, destArray)
                         .updateCountForAllAncestors();
                     outlines
                         .ensureRoot()

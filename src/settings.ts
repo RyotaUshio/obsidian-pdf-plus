@@ -1049,7 +1049,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Editing PDF files directly (experimental)', 'lucide-save')
-			.setDesc('Add, edit and delete highlights and links in PDF files.')
+			.then((setting) => {
+				this.renderMarkdown([
+					'By allowing PDF++ to modify PDF files directly, you can:',
+					'- Add, edit and delete highlights and links in PDF files.',
+					'- Add, insert, delete or extract PDF pages and auto-update links.',
+					'- Add, rename, move and delete outline items.',
+					'- Edit page labels.',
+				], setting.descEl);
+			});
 		this.addToggleSetting('enalbeWriteHighlightToFile', () => this.redisplay())
 			.setName('Enable')
 			.then((setting) => {
