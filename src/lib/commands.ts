@@ -1,4 +1,4 @@
-import { Command, MarkdownView, Notice, setIcon } from 'obsidian';
+import { Command, MarkdownView, Notice, apiVersion, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { DestArray } from 'typings';
@@ -143,6 +143,10 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'create-new-note',
                 name: 'Create new note for auto-focus or auto-paste',
                 callback: () => this.createNewNote()
+            }, {
+                id: 'copy-debug-info',
+                name: 'Copy debug info',
+                callback: () => this.copyDebugInfo()
             }
         ];
 
@@ -721,5 +725,13 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 setTimeout(() => openFile(), 100);
             }
         });
+    }
+
+    copyDebugInfo() {
+        const settings = Object.assign({}, this.settings, { author: '*'.repeat(this.settings.author.length) });
+        const styleSheet = this.plugin.domManager.styleEl.textContent;
+
+        navigator.clipboard.writeText(JSON.stringify({ settings, styleSheet }, null, 4));
+        new Notice(`${this.plugin.manifest.name}: Debug info copied to clipboard.`);
     }
 }
