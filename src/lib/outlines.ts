@@ -392,7 +392,7 @@ export class PDFOutlineItem {
     }
 
     get name(): string {
-        if (this.isRoot()) return '<Root>';
+        if (this.isRoot()) return '(Root)';
 
         let name = this.title;
         this.iterAncestors((ancestor) => {
@@ -447,6 +447,8 @@ export class PDFOutlineItem {
     }
 
     appendChild(child: PDFOutlineItem) {
+        if (child.isAncestorOf(this, true)) throw new Error('Cannot append an ancestor as a child');
+
         child.detach();
         child.updateCountForAllAncestors();
 
@@ -613,6 +615,14 @@ export class PDFOutlineItem {
         }
 
         return this;
+    }
+
+    isAncestorOf(another: PDFOutlineItem, inclueSelf = false): boolean {
+        let isAncestor = false;
+        another.iterAncestors((item) => {
+            if (this.is(item)) isAncestor = true;
+        }, inclueSelf);
+        return isAncestor;
     }
 
     async sortChildren() {

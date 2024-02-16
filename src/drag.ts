@@ -2,12 +2,12 @@
  * Start dragging an PDF outline item, thumbnail image, or annotation popup to 
  * get ready to create a link to the heading in the markdown file.
  * 
- * See `src/patchers/clilpboard-manager.ts` for the drop handler.
+ * See `src/patchers/clilpboard-manager.ts` for the editor drop handler.
  */
 import { Notice, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { toSingleLine } from 'utils';
+import { isAncestorOf, toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFOutlineViewer, PDFViewerChild } from 'typings';
 import { PDFOutlines } from 'lib/outlines';
 
@@ -43,7 +43,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                 // @ts-ignore
                 let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
 
-                if (draggedItem) {
+                if (draggedItem && !isAncestorOf(draggedItem, item, true) && draggedItem.parent !== item) {
                     if (!dragging) {
                         (async () => {
                             const outlines = await PDFOutlines.fromChild(child, plugin);
@@ -75,6 +75,40 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
     }
 
     await Promise.all(promises);
+
+    app.dragManager.handleDrop(pdfOutlineViewer.childrenEl, (evt, draggable, dragging) => {
+        if (!plugin.settings.enalbeWriteHighlightToFile) return;
+
+        if (evt.target !== evt.currentTarget) return;
+
+        // @ts-ignore
+        let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
+
+        if (draggedItem && draggedItem.parent) {
+            if (!dragging) {
+                (async () => {
+                    const outlines = await PDFOutlines.fromChild(child, plugin);
+                    const itemToMove = await outlines?.findPDFjsOutlineTreeNode(draggedItem);
+
+                    if (!outlines || !itemToMove) {
+                        new Notice(`${plugin.manifest.name}: Failed to move the outline item.`);
+                        return;
+                    }
+
+                    outlines.ensureRoot().appendChild(itemToMove);
+                    const buffer = await outlines.doc.save();
+                    await app.vault.modifyBinary(file, buffer);
+                })();
+            }
+
+            return {
+                action: `Move to top level`,
+                dropEffect: 'move',
+                hoverEl: pdfOutlineViewer.childrenEl,
+                hoverClass: 'is-being-dragged-over',
+            }
+        }
+    }, false);
 }
 
 export const registerThumbnailDrag = (plugin: PDFPlus, child: PDFViewerChild, file: TFile) => {

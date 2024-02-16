@@ -149,6 +149,7 @@ interface PDFOutlineViewer {
     viewer: PDFViewerChild;
     eventBus: EventBus;
     childrenEl: HTMLElement;
+    children: PDFOutlineTreeNode[];
     allItems: PDFOutlineTreeNode[];
     highlighted: PDFOutlineTreeNode | null;
     reset(): void;
@@ -162,6 +163,8 @@ interface PDFOutlineTreeNode {
     el: HTMLElement; // div.tree-item. The first child is selfEl, and the second child is childrenEl.
     selfEl: HTMLElement; // div.tree-item-self.is-clickable
     childrenEl: HTMLElement;
+    children: PDFOutlineTreeNode[];
+    parent: PDFOutlineTreeNode | null; // null for top-level items
     coverEl: HTMLElement; // probably the same as selfEl
     innerEl: HTMLElement; // div.tree-item-inner
     pageNumber?: number;

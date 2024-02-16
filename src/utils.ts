@@ -193,6 +193,18 @@ export function focusObsidian() {
     activeWindow.open('obsidian://');
 }
 
+export function isAncestorOf<TreeNode extends { children: TreeNode[], parent: TreeNode | null}>(one: TreeNode, another: TreeNode, includeSelf = false): boolean {
+    if (includeSelf && one === another) return true;
+
+    let parent = another.parent;
+    while (parent) {
+        if (parent === one) return true;
+        parent = parent.parent;
+    }
+
+    return false;
+}
+
 function getCJKRegexp() {
     let pattern = ''
 

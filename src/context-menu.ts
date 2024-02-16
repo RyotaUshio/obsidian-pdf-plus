@@ -139,7 +139,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                             return;
                         }
 
-                        new PDFOutlineMoveModal(outlines)
+                        new PDFOutlineMoveModal(outlines, itemToMove)
                             .askDestination()
                             .then(async (destItem) => {
                                 destItem.appendChild(itemToMove);

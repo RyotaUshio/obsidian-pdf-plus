@@ -91,13 +91,17 @@ export class PDFOutlineMoveModal extends FuzzySuggestModal<PDFOutlineItem> {
     items: PDFOutlineItem[];
     next: ((item: PDFOutlineItem) => any)[] = [];
 
-    constructor(outlines: PDFOutlines) {
+    constructor(outlines: PDFOutlines, itemToMove: PDFOutlineItem) {
         super(outlines.plugin.app);
         this.outlines = outlines;
         this.plugin = outlines.plugin;
         this.items = [];
         this.outlines.iter({
-            enter: (item) => item.isRoot() || this.items.push(item)
+            enter: (item) => {
+                if (!itemToMove.isAncestorOf(item, true) && !item.is(itemToMove.parent)) {
+                    this.items.push(item);
+                }
+            }
         });
         this.setPlaceholder('Type an outline item title');
     }
