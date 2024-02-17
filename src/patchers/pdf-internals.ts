@@ -28,7 +28,6 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
             if (!toolbar) return resolve(false);
 
             patchPDFViewerChild(plugin, child);
-            patchPDFToolbar(plugin, toolbar);
 
             plugin.patchStatus.pdfInternals = true;
 
@@ -96,23 +95,38 @@ const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerC
     }));
 }
 
-const patchPDFToolbar = (plugin: PDFPlus, toolbar: PDFToolbar) => {
-    plugin.register(around(toolbar.constructor.prototype, {
-        reset(old) {
-            return function () {
-                const self = this as PDFToolbar;
-                // without setTimeout, the colorPaletteInEmbedToolbar option doesn't work for newly opened notes with PDF embeds
-                setTimeout(() => plugin.domManager.addChild(new ColorPalette(plugin, self.toolbarLeftEl)));
-                old.call(this);
-            }
-        }
-    }));
-}
-
 const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
     const { app, lib } = plugin;
 
     plugin.register(around(child.constructor.prototype, {
+        load(old) {
+            return async function (...args: any[]) {
+                const ret = await old.call(this, ...args);
+
+                const self = this as PDFViewerChild;
+
+                // Add a color palette to the toolbar
+                if (self.toolbar) {
+                    const toolbar = self.toolbar;
+                    plugin.domManager.addChild(new ColorPalette(plugin, toolbar.toolbarLeftEl));
+                } else {
+                    // Should not happen, but just in case
+                    const timer = window.setInterval(() => {
+                        const toolbar = self.toolbar;
+                        if (toolbar) {
+                            plugin.domManager.addChild(new ColorPalette(plugin, toolbar.toolbarLeftEl));
+                            window.clearInterval(timer);
+                        }
+                    }, 100);
+                    window.setTimeout(() => {
+                        window.clearInterval(timer);
+                    }, 1000);
+                }
+
+                return ret;
+            }
+
+        },
         unload(old) {
             return function () {
                 const self = this as PDFViewerChild;
