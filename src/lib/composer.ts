@@ -184,6 +184,8 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
     }
 
     async extractPages(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean, keepLabels: boolean, inPlace: boolean) {
+        if (pages.length === 0) throw new Error('No pages to extract');
+        
         if (inPlace) {
             return await this.extractPagesInPlace(srcFile, pages, dstPath, existOk, keepLabels);
         } else {

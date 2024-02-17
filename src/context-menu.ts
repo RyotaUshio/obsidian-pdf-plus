@@ -204,6 +204,15 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                             return;
                         }
 
+                        if (pageNumber > nextPageNumber) {
+                            new Notice(`${plugin.manifest.name}: The page numbers are invalid: the beginning of this section is page ${pageNumber}, whereas the next section starts at page ${nextPageNumber}.`);
+                            return;
+                        }
+
+                        if (pageNumber === nextPageNumber) {
+                            nextPageNumber = pageNumber + 1;
+                        }
+
                         const dstPath = lib.getAvailablePathForCopy(file);
 
                         new PDFComposerModal(
