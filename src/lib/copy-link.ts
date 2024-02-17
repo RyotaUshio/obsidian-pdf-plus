@@ -218,8 +218,10 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (!checking) {
             const pageView = child.getPage(page);
             child.getAnnotatedText(pageView, id)
-                .then((text) => {
-                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text ?? '', '');
+                .then(async (text) => {
+                    const annotData = pageView.annotationLayer?.annotationLayer?.getAnnotation(id)?.data ?? (await pageView.pdfPage.getAnnotations()).find((annot) => annot.id === id);
+                    const color = annotData?.color ? `${annotData.color[0]}, ${annotData.color[1]}, ${annotData.color[2]}` : '';
+                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text ?? '', color);
                     navigator.clipboard.writeText(evaluated);
                     this.onCopyFinish(evaluated);
 
@@ -272,7 +274,8 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         // get the new DOM to access the newly loaded color palette instance.
                         const newPalette = this.lib.getColorPaletteFromChild(child);
                         newPalette?.setStatus('Link copied', this.statusDurationMs);
-                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, colorName?.toLowerCase() ?? '', autoPaste);
+                        const { r, g, b } = this.plugin.domManager.getRgb(colorName);
+                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, `${r}, ${g}, ${b}`, autoPaste);
                     }, 300);
                 })
         }

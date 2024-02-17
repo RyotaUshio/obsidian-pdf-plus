@@ -70,6 +70,7 @@ export default class PDFPlus extends Plugin {
 		this.addSettingTab(new PDFPlusSettingTab(this));
 
 		this.domManager = this.addChild(new DomManager(this));
+		this.domManager.registerCalloutRenderer();
 
 		this.registerRibbonIcons();
 

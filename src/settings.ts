@@ -1009,6 +1009,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'> Content',
 					'```',
 					'',
+					'You can also use explicit RGB color values like "255, 208, 0" instead of color names.',
 					'I recommend setting this as a custom color palette action in the setting below, like so:',
 					'',
 					'```markdown',
@@ -1530,7 +1531,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page = 1]]`,',
 				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page = 1 | file, page 1]]`,',
 				'- `calloutType`: The callout type you specify in the "Callout type name" setting above, in this case, ' + `"${this.plugin.settings.calloutType}", and`,
-				'- `colorName`: The name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string.',
+				'- `colorName`: In the case of text selections, this is the name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string. For text markup annotations (e.g. highlights and underlines), this is the RGB value of the color, e.g. `255, 208, 0`.',
 			], setting.descEl))
 			.addButton((button) => {
 				button

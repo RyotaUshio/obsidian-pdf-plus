@@ -38,6 +38,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             //     checkCallback: (checking) => this.createCanvasCard(checking)
             // },
             {
+                id: 'extract-annotation-and-copy-links',
+                name: 'Extract & copy annotations in this PDF',
+                checkCallback: (checking) => this.extractHighlightedText(checking)
+            },
+            {
                 id: 'copy-link-to-page-view',
                 name: 'Copy link to current page view',
                 checkCallback: (checking) => this.copyLinkToPageView(checking)
@@ -235,7 +240,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
         const template = this.settings.copyCommands[palette.actionIndex].template;
 
-        // get the currently selected color name
+        // get the currently selected color
         const colorName = palette.selectedColorName ?? undefined;
 
         return this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
@@ -732,6 +737,48 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 setTimeout(() => openFile(), 100);
             }
         });
+    }
+
+    extractHighlightedText(checking: boolean) {
+        const child = this.lib.getPDFViewerChild();
+        if (!child) return false;
+        const file = child.file;
+        if (!file) return false;
+
+        if (!checking) {
+            const palette = this.lib.getColorPaletteFromChild(child);
+            const template = palette
+                ? this.settings.copyCommands[palette.actionIndex].template
+                : this.settings.copyCommands[this.settings.defaultColorPaletteActionIndex].template;
+
+            let data = '';
+
+            (async () => {
+                const doc = this.lib.getPDFDocument(true) ?? await this.lib.loadPDFDocument(file);
+
+                const highlights = await this.lib.highlight.extract.getAnnotatedTextsInDocument(doc);
+
+                highlights.forEach((resultsInPage, pageNumber) => {
+                    resultsInPage.forEach(({ text, rgb }, id) => {
+                        if (data) {
+                            data = data.trimEnd() + '\n\n';
+                        }
+
+                        const color = rgb ? `${rgb.r},${rgb.g},${rgb.b}` : '';
+
+                        data += this.lib.copyLink.getTextToCopy(
+                            child, template, undefined, file, pageNumber,
+                            `#page=${pageNumber}&annotation=${id}`, text, color
+                        );
+                    })
+                });
+
+                navigator.clipboard.writeText(data);
+                new Notice(`${this.plugin.manifest.name}: Highlighted text copied to clipboard.`);
+            })();
+        }
+
+        return true;
     }
 
     copyDebugInfo() {

@@ -1,4 +1,4 @@
-import { App, Component, RGB } from 'obsidian';
+import { App, Component, MarkdownRenderChild, RGB } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
@@ -141,6 +141,16 @@ export class DomManager extends Component {
 		}
 	}
 
+	registerCalloutRenderer() {
+		const calloutType = this.plugin.settings.calloutType.toLowerCase();
+
+		this.plugin.registerMarkdownPostProcessor((el, ctx) => {
+			for (const calloutEl of el.querySelectorAll<HTMLElement>(`.callout[data-callout="${calloutType}"][data-callout-metadata*=","]`)) {
+				ctx.addChild(new PDFPlusCalloutRenderer(calloutEl));
+			}
+		});
+	}
+
 	setCSSColorVariables() {
 		const settings = this.plugin.settings;
 
@@ -209,5 +219,19 @@ export class DomManager extends Component {
 		const rgbString = getComputedStyle(document.body).getPropertyValue(colorVarName); // "R, G, B"
 		const rgbColor = rgbStringToObject(rgbString);
 		return rgbColor;
+	}
+}
+
+class PDFPlusCalloutRenderer extends MarkdownRenderChild {
+	onload() {
+		const metadata = this.containerEl.dataset.calloutMetadata;
+		if (metadata) {
+			const rgb = metadata.split(',').map((val) => parseInt(val))
+			const isRgb = rgb.length === 3 && rgb.every((val) => 0 <= val  && val <= 255);
+
+			if (isRgb) {
+				this.containerEl.style.setProperty('--callout-color', rgb.join(', '));
+			}
+		}
 	}
 }
