@@ -219,7 +219,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             const pageView = child.getPage(page);
             child.getAnnotatedText(pageView, id)
                 .then((text) => {
-                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '');
+                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text ?? '', '');
                     navigator.clipboard.writeText(evaluated);
                     this.onCopyFinish(evaluated);
 
@@ -311,7 +311,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             const pageView = child.getPage(page);
             child.getAnnotatedText(pageView, id)
                 .then((text) => {
-                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '');
+                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text ?? '', '');
                     canvas.createTextNode({
                         pos: canvas.posCenter(),
                         position: 'center',

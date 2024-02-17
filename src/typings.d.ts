@@ -86,7 +86,7 @@ interface PDFViewerChild {
     clearEphemeralUI(): void;
     renderAnnotationPopup(annotationElement: AnnotationElement): void;
     destroyAnnotationPopup(): void;
-    getAnnotatedText(pageView: PDFPageView, id: string): Promise<string>;
+    getAnnotatedText(pageView: PDFPageView, id: string): Promise<string | null>;
     /** Added by this plugin */
     backlinkHighlighter?: BacklinkHighlighter;
     component?: Component;

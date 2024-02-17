@@ -63,6 +63,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                             }
 
                             destItem.appendChild(itemToMove);
+                            destItem.sortChildren();
                             const buffer = await outlines.doc.save();
                             await app.vault.modifyBinary(file, buffer);
                         })();
@@ -102,7 +103,9 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                         return;
                     }
 
-                    outlines.ensureRoot().appendChild(itemToMove);
+                    const root = outlines.ensureRoot();
+                    root.appendChild(itemToMove);
+                    root.sortChildren();
                     const buffer = await outlines.doc.save();
                     await app.vault.modifyBinary(file, buffer);
                 })();
@@ -172,7 +175,7 @@ export const registerAnnotationPopupDrag = (plugin: PDFPlus, popupEl: HTMLElemen
                     icon: 'lucide-highlighter',
                     title: 'PDF annotation',
                     getText: (sourcePath: string) => {
-                        return lib.copyLink.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, '', sourcePath);
+                        return lib.copyLink.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text ?? '', '', sourcePath);
                     }
                 }
             });

@@ -143,6 +143,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                             .askDestination()
                             .then(async (destItem) => {
                                 destItem.appendChild(itemToMove);
+                                destItem.sortChildren();
                                 const buffer = await outlines.doc.save();
                                 await app.vault.modifyBinary(file, buffer);
                             });
@@ -412,7 +413,7 @@ export class PDFPlusContextMenu extends Menu {
                                         if (!display && annot.data.rect) {
                                             display = child.getTextByRect(pageView, annot.data.rect);
                                         }
-                                        const link = lib.generateMarkdownLink(file, '', subpath, display).slice(1);
+                                        const link = lib.generateMarkdownLink(file, '', subpath, display ?? undefined).slice(1);
                                         // How does the electron version differ?
                                         navigator.clipboard.writeText(link);
                                         plugin.lastCopiedDestInfo = { file, destName: destId };
