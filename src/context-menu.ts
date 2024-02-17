@@ -157,7 +157,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                         // For future reference, child === item.owner.viewer
                         await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                             // Remove the found outline item from the tree
-                            outlineItem.detach();
+                            outlineItem.remove();
                             outlineItem.updateCountForAllAncestors();
                         }, child, file, plugin);
                     });
