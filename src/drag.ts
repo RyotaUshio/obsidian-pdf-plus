@@ -40,15 +40,20 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
             app.dragManager.handleDrop(item.selfEl, (evt, draggable, dragging) => {
                 if (!plugin.settings.enalbeWriteHighlightToFile) return;
 
+                if (!draggable || draggable.source !== 'pdf-plus' || draggable.type !== 'pdf-offset') return;
+
                 // @ts-ignore
                 let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
 
-                if (draggedItem && !isAncestorOf(draggedItem, item, true) && draggedItem.parent !== item) {
+                if (draggedItem
+                    && !isAncestorOf(draggedItem, item, true)
+                    && draggedItem.parent !== item
+                    && item.owner === draggedItem.owner) {
                     if (!dragging) {
                         (async () => {
                             const outlines = await PDFOutlines.fromChild(child, plugin);
                             const [destItem, itemToMove] = await Promise.all([
-                                outlines?.findPDFjsOutlineTreeNode(item),    
+                                outlines?.findPDFjsOutlineTreeNode(item),
                                 outlines?.findPDFjsOutlineTreeNode(draggedItem)
                             ]);
 
@@ -79,12 +84,14 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
     app.dragManager.handleDrop(pdfOutlineViewer.childrenEl, (evt, draggable, dragging) => {
         if (!plugin.settings.enalbeWriteHighlightToFile) return;
 
+        if (!draggable || draggable.source !== 'pdf-plus' || draggable.type !== 'pdf-offset') return;
+
         if (evt.target !== evt.currentTarget) return;
 
         // @ts-ignore
         let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
 
-        if (draggedItem && draggedItem.parent) {
+        if (draggedItem && draggedItem.parent && pdfOutlineViewer === draggedItem.owner) {
             if (!dragging) {
                 (async () => {
                     const outlines = await PDFOutlines.fromChild(child, plugin);
