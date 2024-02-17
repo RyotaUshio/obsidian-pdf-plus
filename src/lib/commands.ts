@@ -1,12 +1,11 @@
-import { Command, MarkdownView, Notice, apiVersion, setIcon } from 'obsidian';
+import { Command, MarkdownView, Notice, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { DestArray } from 'typings';
-import { PDFPageDeleteModal } from 'modals/pdf-composer-modals';
-import { PDFPageLabelEditModal, PDFPageLabelUpdateModal } from 'modals/page-label-modals';
+import { PDFComposerModal, PDFPageDeleteModal } from 'modals/pdf-composer-modals';
+import { PDFPageLabelEditModal } from 'modals/page-label-modals';
 import { PDFOutlines } from './outlines';
 import { parsePDFSubpath } from 'utils';
-import { PDFDocument } from '@cantoo/pdf-lib';
 import { PDFOutlineTitleModal } from 'modals/outline-modals';
 
 
@@ -456,12 +455,14 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         const page = view.getState().page + (before ? 0 : 1);
 
         if (!checking) {
-            new PDFPageLabelUpdateModal(
+            new PDFComposerModal(
                 this.plugin,
                 this.settings.askPageLabelUpdateWhenInsertPage,
-                this.settings.pageLabelUpdateWhenInsertPage
+                this.settings.pageLabelUpdateWhenInsertPage,
+                false,
+                false
             )
-                .askIfKeepLabels()
+                .ask()
                 .then((answer) => {
                     this.lib.composer.insertPage(file, page, answer);
                 });
@@ -483,14 +484,16 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             new PDFPageDeleteModal(file, page, this.plugin)
                 .openIfNeccessary()
                 .then(() => {
-                    new PDFPageLabelUpdateModal(
+                    new PDFComposerModal(
                         this.plugin,
                         this.settings.askPageLabelUpdateWhenDeletePage,
-                        this.settings.pageLabelUpdateWhenDeletePage
+                        this.settings.pageLabelUpdateWhenDeletePage,
+                        false,
+                        false
                     )
-                        .askIfKeepLabels()
-                        .then((answer) => {
-                            this.lib.composer.removePage(file, page, answer);
+                        .ask()
+                        .then((keepLabels) => {
+                            this.lib.composer.removePage(file, page, keepLabels);
                         });
                 });
         }
@@ -510,14 +513,16 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             const page = view.getState().page;
             const dstPath = this.lib.getAvailablePathForCopy(file);
 
-            new PDFPageLabelUpdateModal(
+            new PDFComposerModal(
                 this.plugin,
                 this.settings.askPageLabelUpdateWhenExtractPage,
-                this.settings.pageLabelUpdateWhenExtractPage
+                this.settings.pageLabelUpdateWhenExtractPage,
+                this.settings.askExtractPageInPlace,
+                this.settings.extractPageInPlace
             )
-                .askIfKeepLabels()
-                .then((answer) => {
-                    this.lib.composer.extractPages(file, [page], dstPath, false, answer)
+                .ask()
+                .then((keepLabels, inPlace) => {
+                    this.lib.composer.extractPages(file, [page], dstPath, false, keepLabels, inPlace)
                         .then(async (file) => {
                             if (!file) {
                                 new Notice(`${this.plugin.manifest.name}: Failed to extract page.`);
@@ -547,14 +552,16 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             const page = view.getState().page;
             const dstPath = this.lib.getAvailablePathForCopy(file);
 
-            new PDFPageLabelUpdateModal(
+            new PDFComposerModal(
                 this.plugin,
-                this.settings.askPageLabelUpdateWhenDividePDFs,
-                this.settings.pageLabelUpdateWhenDividePDFs
+                this.settings.askPageLabelUpdateWhenExtractPage,
+                this.settings.pageLabelUpdateWhenExtractPage,
+                this.settings.askExtractPageInPlace,
+                this.settings.extractPageInPlace
             )
-                .askIfKeepLabels()
-                .then((answer) => {
-                    this.lib.composer.extractPages(file, { from: page }, dstPath, false, answer)
+                .ask()
+                .then((keepLabels, inPlace) => {
+                    this.lib.composer.extractPages(file, { from: page }, dstPath, false, keepLabels, inPlace)
                         .then(async (file) => {
                             if (!file) {
                                 new Notice(`${this.plugin.manifest.name}: Failed to divide PDF.`);

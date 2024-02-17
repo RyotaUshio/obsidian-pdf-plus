@@ -12,13 +12,6 @@ import { PAGE_LABEL_NUMBERING_STYLES, PDFPageLabelDict, PDFPageLabels, isPageLab
 import { getModifierNameInPlatform } from 'utils';
 
 
-export const PAGE_LABEL_UPDATE_METHODS = {
-    'keep': 'Keep labels unchanged',
-    'update': 'Update',
-} as const;
-export type PageLabelUpdateMethod = keyof typeof PAGE_LABEL_UPDATE_METHODS;
-
-
 abstract class PDFPageLabelModal extends PDFPlusModal {
     controlEl: HTMLElement;
     doc: PDFDocument | null;
@@ -314,87 +307,5 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
         } else {
             this.buttonSetting.settingEl.hide();
         }
-    }
-}
-
-
-export class PDFPageLabelUpdateModal extends PDFPlusModal {
-    #promise: Promise<'keep' | 'update' | null>;
-    #resolve: (value: 'keep' | 'update' | null) => void;
-    ask: boolean;
-    defaultMethod: PageLabelUpdateMethod;
-
-    constructor(plugin: PDFPlus, ask: boolean, defaultMethod: PageLabelUpdateMethod) {
-        super(plugin);
-        this.ask = ask;
-        this.defaultMethod = defaultMethod;
-        this.#promise = new Promise((resolve, reject) => {
-            this.#resolve = resolve;
-        });
-    }
-
-    get keepLabelsPromise(): Promise<boolean | null> {
-        return this.#promise.then((value) => value ? value === 'keep' : null);
-    }
-
-    askIfKeepLabels() {
-        if (this.ask) this.open();
-        else this.#resolve(this.defaultMethod);
-
-        return this
-    }
-
-    then(callback: (keepLabels: boolean) => any) {
-        this.keepLabelsPromise.then((value) => {
-            if (value !== null) callback(value);
-        })
-    }
-
-    onOpen() {
-        super.onOpen();
-        this.titleEl.setText(`${this.plugin.manifest.name}: Page composer`);
-
-        let selected = this.defaultMethod;
-
-        new Setting(this.contentEl)
-            .setName('Do you want to update the page labels?')
-            .setDesc(createFragment((el) => {
-                el.createEl('a', { text: 'Learn more', href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels' })
-            }))
-            .addDropdown((dropdown) => {
-                dropdown
-                    .addOptions(PAGE_LABEL_UPDATE_METHODS)
-                    .setValue(selected)
-                    .onChange((value: PageLabelUpdateMethod) => {
-                        selected = value;
-                    });
-            });
-
-        new Setting(this.contentEl)
-            .addButton((button) => {
-                button
-                    .setButtonText('Proceed')
-                    .setCta()
-                    .onClick(() => {
-                        if (selected === 'keep' || selected === 'update') {
-                            this.#resolve(selected);
-                        }
-                        this.close();
-                    });
-                setTimeout(() => button.buttonEl.focus());
-            })
-            .addButton((button) => {
-                button
-                    .setButtonText('Cancel')
-                    .onClick(() => {
-                        this.#resolve(null);
-                        this.close();
-                    });
-            });
-    }
-
-    onClose() {
-        super.onClose();
-        this.#resolve(null);
     }
 }

@@ -2,9 +2,9 @@ import { App, Menu, Notice, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
-import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
+import { PDFOutlines } from 'lib/outlines';
 import { PDFOutlineMoveModal, PDFOutlineTitleModal } from 'modals/outline-modals';
-import { PDFPageLabelUpdateModal } from 'modals/page-label-modals';
+import { PDFComposerModal } from 'modals/pdf-composer-modals';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
@@ -206,14 +206,16 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
 
                         const dstPath = lib.getAvailablePathForCopy(file);
 
-                        new PDFPageLabelUpdateModal(
+                        new PDFComposerModal(
                             plugin,
-                            settings.askPageLabelUpdateWhenDividePDFs,
-                            settings.pageLabelUpdateWhenDividePDFs
+                            settings.askPageLabelUpdateWhenExtractPage,
+                            settings.pageLabelUpdateWhenExtractPage,
+                            settings.askExtractPageInPlace,
+                            settings.extractPageInPlace
                         )
-                            .askIfKeepLabels()
-                            .then((answer) => {
-                                lib.composer.extractPages(file, { from: pageNumber, to: nextPageNumber! - 1 }, dstPath, false, answer)
+                            .ask()
+                            .then((keepLabels, inPlace) => {
+                                lib.composer.extractPages(file, { from: pageNumber, to: nextPageNumber! - 1 }, dstPath, false, keepLabels, inPlace)
                                     .then(async (file) => {
                                         if (!file) {
                                             new Notice(`${plugin.manifest.name}: Failed to extract section from PDF.`);

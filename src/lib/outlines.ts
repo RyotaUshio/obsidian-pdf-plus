@@ -140,9 +140,7 @@ export class PDFOutlines {
     async prune() {
         await this.iterAsync({
             leave: async (item) => {
-                if (await item.shouldBePruned()) {
-                    item.detach();
-                }
+                if (await item.shouldBePruned()) item.detach();
             }
         });
     }
@@ -569,10 +567,16 @@ export class PDFOutlineItem {
         if (dest instanceof PDFArray) {
             const pageRef = dest.get(0);
             if (pageRef instanceof PDFRef) {
-                const page = this.doc.context.lookup(pageRef);
-                if (page instanceof PDFPageLeaf) {
-                    return false;
+                // pdf-lib's removePage method does not remove page properly, so
+                // getPages() returns the same result as before calling removePage.
+                // Therefore, I'm relying on PDF.js to check if the page really exists.
+                try {
+                    await this.outlines.pdfJsDoc.getPageIndex({ num: pageRef.objectNumber, gen: pageRef.generationNumber });
+                } catch (e) {
+                    return true;
                 }
+    
+                return false;
             }
         }
 

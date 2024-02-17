@@ -4,7 +4,7 @@ import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
 import { KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
-import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals/page-label-modals';
+import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals/pdf-composer-modals';
 
 
 const HOVER_HIGHLIGHT_ACTIONS = {
@@ -161,14 +161,14 @@ export interface PDFPlusSettings {
 	howToOpenExtractedPDF: ExtendedPaneType;
 	warnEveryPageDelete: boolean;
 	warnBacklinkedPageDelete: boolean;
+	extractPageInPlace: boolean;
+	askExtractPageInPlace: boolean;
 	pageLabelUpdateWhenInsertPage: PageLabelUpdateMethod;
 	pageLabelUpdateWhenDeletePage: PageLabelUpdateMethod;
 	pageLabelUpdateWhenExtractPage: PageLabelUpdateMethod;
-	pageLabelUpdateWhenDividePDFs: PageLabelUpdateMethod;
 	askPageLabelUpdateWhenInsertPage: boolean;
 	askPageLabelUpdateWhenDeletePage: boolean;
 	askPageLabelUpdateWhenExtractPage: boolean;
-	askPageLabelUpdateWhenDividePDFs: boolean;
 	copyOutlineAsListFormat: string;
 	copyOutlineAsListDisplayTextFormat: string;
 	copyOutlineAsHeadingsFormat: string;
@@ -344,14 +344,14 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	howToOpenExtractedPDF: 'tab',
 	warnEveryPageDelete: false,
 	warnBacklinkedPageDelete: true,
+	extractPageInPlace: false,
+	askExtractPageInPlace: true,
 	pageLabelUpdateWhenInsertPage: 'keep',
 	pageLabelUpdateWhenDeletePage: 'keep',
 	pageLabelUpdateWhenExtractPage: 'keep',
-	pageLabelUpdateWhenDividePDFs: 'keep',
 	askPageLabelUpdateWhenInsertPage: true,
 	askPageLabelUpdateWhenDeletePage: true,
 	askPageLabelUpdateWhenExtractPage: true,
-	askPageLabelUpdateWhenDividePDFs: true,
 	copyOutlineAsListFormat: '{{linkWithDisplay}}',
 	copyOutlineAsListDisplayTextFormat: '{{text}}',
 	copyOutlineAsHeadingsFormat: '{{text}}\n\n{{linkWithDisplay}}',
@@ -1117,6 +1117,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addToggleSetting('warnBacklinkedPageDelete')
 				.setName('Warn when deleting a page with backlinks');
 		}
+		this.addToggleSetting('extractPageInPlace')
+			.setName('Remove the extracted pages from the original PDF by default')
+		this.addToggleSetting('askExtractPageInPlace')
+			.setName('Ask whether to remove the extracted pages from the original PDF before extracting')
 		this.addToggleSetting('openAfterExtractPages', () => this.redisplay())
 			.setName('Open extracted PDF file')
 			.setDesc('If enabled, the newly created PDF file will be opened after running the commands "Extract this page to a new file" or "Divide this PDF into two files at this page".');
@@ -1149,16 +1153,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Delete: ask whether to update');
 		this.addDropdownSetting('pageLabelUpdateWhenExtractPage', PAGE_LABEL_UPDATE_METHODS)
 			.setName('Extract: default page label processing')
-			.setDesc('Applies to the command "Extract this page to a new file".');
+			.setDesc('Applies to the commands "Extract this page to a new file" and "Divide this PDF into two files at this page".');
 		this.addToggleSetting('askPageLabelUpdateWhenExtractPage')
 			.setName('Extract: ask whether to update');
-		this.addDropdownSetting('pageLabelUpdateWhenDividePDFs', PAGE_LABEL_UPDATE_METHODS)
-			.setName('Divide: default page label processing')
-			.setDesc('Applies to the command "Divide this PDF into two files at this page".');
-		this.addToggleSetting('askPageLabelUpdateWhenDividePDFs')
-			.setName('Divide: ask whether to update');
-
-
 
 
 		this.addHeading('Opening links to PDF files', 'lucide-book-open');

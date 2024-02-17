@@ -64,7 +64,7 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         );
     }
 
-    async extractPages(srcFile: TFile, pages: number[] | { from?: number, to?: number }, dstPath: string, existOk: boolean, keepLabels: boolean) {
+    async extractPages(srcFile: TFile, pages: number[] | { from?: number, to?: number }, dstPath: string, existOk: boolean, keepLabels: boolean, inPlace: boolean) {
         let pageNumbers: number[];
 
         if (!Array.isArray(pages)) {
@@ -78,12 +78,20 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         }
 
         return await this.linkUpdater.updateLinks(
-            () => this.fileOperator.extractPages(srcFile, pageNumbers, dstPath, existOk, keepLabels),
+            () => this.fileOperator.extractPages(srcFile, pageNumbers, dstPath, existOk, keepLabels, inPlace),
             [srcFile],
             (f, n) => {
                 if (n === undefined) return {};
+
                 if (pageNumbers.includes(n)) return { file: dstPath, pageNumber: pageNumbers.filter(p => p <= n).length };
-                return { pageNumber: n - pageNumbers.filter(p => p < n).length };
+
+                if (inPlace) {
+                    const diff = pageNumbers.filter(p => p < n).length;
+                    if (diff > 0) return { pageNumber: n - diff };
+                    return {};
+                }
+
+                return {};
             }
         );
     }
@@ -175,7 +183,15 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         return resultFile;
     }
 
-    async extractPages(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean, keepLabels: boolean) {
+    async extractPages(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean, keepLabels: boolean, inPlace: boolean) {
+        if (inPlace) {
+            return await this.extractPagesInPlace(srcFile, pages, dstPath, existOk, keepLabels);
+        } else {
+            return await this.extractPagesAsNewFile(srcFile, pages, dstPath, existOk, keepLabels);
+        }
+    }
+
+    async extractPagesInPlace(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean, keepLabels: boolean) {
         // Create two different copies of the source file
         const [srcDoc, dstDoc] = await Promise.all([
             this.read(srcFile),
@@ -213,6 +229,37 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         ]);
 
         return dstFile;
+    }
+
+    /** 
+     * Extract pages from the source file and save it as a new file. The original file is not modified.
+     * We do this by making a copy of the source file and then removing the pages not to include in the resulting document.
+     * 
+     * @param pages 1-based page numbers to extract
+     */
+    async extractPagesAsNewFile(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean, keepLabels: boolean) {
+        // Create a copy of the source file
+        const doc = await this.read(srcFile);
+
+        // Get the pages not to include in the resulting document (pages not in the `pages` array)
+        const pagesToRemove = []
+        for (let page = 1; page <= doc.getPageCount(); page++) {
+            if (!pages.includes(page)) pagesToRemove.push(page);
+        }
+
+        // Update page labels before actually removing pages
+        this.pageLabelUpdater.removePages(doc, pagesToRemove, keepLabels);
+
+        // From the last page to the first page, so that the page numbers don't change
+        for (const page of pagesToRemove.sort((a, b) => b - a)) {
+            doc.removePage(page - 1); // pdf-lib uses 0-based page numbers
+        }
+
+        // Update outlines by iteratively pruning leaves whose destinations are not in the resulting document
+        const outlines = await PDFOutlines.fromDocument(doc, this.plugin);
+        await outlines.prune();
+
+        return await this.write(dstPath, doc, existOk);
     }
 }
 

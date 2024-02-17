@@ -46,6 +46,11 @@ settings:
         title: Hide toolbar in PDF embeds with a page specified
         type: class-toggle
         default: true
+    - 
+        id: hide-pdf-toolbar-in-hover-editor
+        title: Hide PDF toolbar in Hover Editor
+        type: class-toggle
+        default: true
 */
 
 :root {
@@ -54,6 +59,10 @@ settings:
 
 .hide-pdf-embed-toolbar .pdf-embed[src*="#"] .pdf-toolbar,
 .hide-pdf-embed-toolbar .popover.hover-popover.hover-editor .pdf-embed[src*="#"] .pdf-toolbar {
+    display: none;
+}
+
+.hide-pdf-toolbar-in-hover-editor .popover.hover-popover.hover-editor .view-content > .pdf-toolbar {
     display: none;
 }
 
