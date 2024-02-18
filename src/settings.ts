@@ -1464,7 +1464,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'Example:',
 					'```markdown',
 					'---',
-					'PDF: "[[{{ file.path }}|{{ file.basename }}]]"',
+					`${this.plugin.settings.proxyMDProperty}: "[[{{ file.path }}|{{ file.basename }}]]"`,
 					'---',
 					'<%* const title = await tp.system.prompt("Type note tile") -%>',
 					'<%* await tp.file.rename(title) %>',
