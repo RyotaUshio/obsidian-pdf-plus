@@ -105,6 +105,14 @@ export default class PDFPlus extends Plugin {
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
+		/** Correct invalid settings */
+		if (this.settings.defaultDisplayTextFormatIndex < 0 || this.settings.defaultDisplayTextFormatIndex >= this.settings.displayTextFormats.length) {
+			this.settings.defaultDisplayTextFormatIndex = 0;
+		}
+		if (this.settings.defaultColorPaletteActionIndex < 0 || this.settings.defaultColorPaletteActionIndex >= this.settings.copyCommands.length) {
+			this.settings.defaultColorPaletteActionIndex = 0;
+		}
+
 		/** migration from legacy settings */
 
 		if (this.settings.paneTypeForFirstMDLeaf as PaneType | '' === 'split') {

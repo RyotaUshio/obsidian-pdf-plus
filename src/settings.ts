@@ -769,8 +769,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 							return;
 						}
 						items.splice(index, 1);
-						if (this.plugin.settings[defaultIndexKey] >= index) {
+						if (this.plugin.settings[defaultIndexKey] > index) {
 							this.plugin.settings[defaultIndexKey]--;
+						} else if (this.plugin.settings[defaultIndexKey] === index) {
+							this.plugin.settings[defaultIndexKey] = 0;
 						}
 						await this.plugin.saveSettings();
 						this.redisplay();
