@@ -138,8 +138,9 @@ interface PDFSidebar {
     thumbnailView: HTMLElement;
     /** See the explation for switchView() */
     active: number;
-    /** availabe modes are UNKNOWN:-1, NONE: 0, THUMBS: 1, OUTLINE: 2, ATTACHMENTS: 3, LAYERS: 4 */
-    switchView(mode: number): void;
+    /** availabe view modes are UNKNOWN:-1, NONE: 0, THUMBS: 1, OUTLINE: 2, ATTACHMENTS: 3, LAYERS: 4 */
+    switchView(view: number, forceOpen?: boolean): void;
+    setInitialView(view?: number): void;
     open(): void;
     close(): void;
     toggle(open: boolean): void;

@@ -1,4 +1,4 @@
-import { AbstractInputSuggest, Command, Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TextAreaComponent, TextComponent, prepareFuzzySearch, setIcon, setTooltip, sortSearchResults } from 'obsidian';
+import { AbstractInputSuggest, App, Command, Component, DropdownComponent, FuzzyMatch, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TFile, TextAreaComponent, TextComponent, prepareFuzzySearch, renderResults, setIcon, setTooltip, sortSearchResults } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
@@ -174,6 +174,8 @@ export interface PDFPlusSettings {
 	copyOutlineAsHeadingsFormat: string;
 	copyOutlineAsHeadingsDisplayTextFormat: string;
 	copyOutlineAsHeadingsMinLevel: number;
+	newFileNameFormat: string;
+	newFileTemplatePath: string;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -357,6 +359,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	copyOutlineAsHeadingsFormat: '{{text}}\n\n{{linkWithDisplay}}',
 	copyOutlineAsHeadingsDisplayTextFormat: 'p.{{pageLabel}}',
 	copyOutlineAsHeadingsMinLevel: 2,
+	newFileNameFormat: '',
+	newFileTemplatePath: '',
 };
 
 
@@ -1407,6 +1411,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('executeCommandWhenTargetNotIdentified', () => this.redisplay())
 			.setName('Execute command when target file cannot be determined')
 			.setDesc('When PDF++ cannot determine which markdown file to focus on or paste to, it will execute the command specified in the next option to let you pick a target file.');
+		const commandName = this.app.commands.findCommand(`${this.plugin.manifest.id}:create-new-note`)?.name ?? 'PDF++: Create new note for auto-focus or auto-paste';
 		if (this.plugin.settings.executeCommandWhenTargetNotIdentified) {
 			this.addSetting('commandToExecuteWhenTargetNotIdentified')
 				.setName('Command to execute')
@@ -1419,7 +1424,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						`- ${this.app.commands.findCommand('switcher:open')?.name ?? 'Quick switcher: Open quick switcher'}`,
 						'- [Omnisearch](obsidian://show-plugin?id=omnisearch): Vault search',
 						'- [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor): Open new Hover Editor',
-						`- **${this.app.commands.findCommand(`${this.plugin.manifest.id}:create-new-note`)?.name ?? 'PDF++: Create new note for auto-focus or auto-paste'}**: Creates a new note and opens it in a new pane specified in the "How to open target markdown file when not opened" option.`
+						`- **${commandName}**: See below for the details.`,
 					], setting.descEl);
 				})
 				.addText((text) => {
@@ -1435,6 +1440,44 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					new CommandSuggest(this, text.inputEl);
 				});
 		}
+
+		this.addHeading(`The "${commandName}" command`)
+			.setDesc('Creates a new note and opens it in a new pane specified in the "How to open target markdown file when not opened" option.');
+		this.addTextSetting('newFileNameFormat', 'Leave blank not to specify')
+			.setName(`New note title format`)
+			.then((setting) => {
+				this.renderMarkdown([
+					'If this option is left blank or the active file is not a PDF, "Untitled \\*" will be used (if the language is set to English). You can use the following variables: `file`, `folder`, `app`, and other global variables such as `moment`. See below for the details about the variables.',
+				], setting.descEl)
+			});
+		this.addTextSetting('newFileTemplatePath', 'Leave blank not to use a template')
+			.setName('Template file path')
+			.then((setting) => {
+				this.renderMarkdown([
+					'You can leave this blank if you don\'t want to use a template.',
+					'You can use `file`, `folder`, `app`, and other global variables such as `moment`.',
+					'See below for the details about these variables.',
+					'',
+					'You can also include [Templater](obsidian://show-plugin?id=templater-obsidian) syntaxes in the template.',
+					'In that case, make sure the "Trigger templater on new file creation" option is enabled in the Templater settings.',
+					'',
+					'Example:',
+					'```markdown',
+					'---',
+					'PDF: "[[{{ file.path }}|{{ file.basename }}]]"',
+					'---',
+					'<%* const title = await tp.system.prompt("Type note tile") -%>',
+					'<%* await tp.file.rename(title) %>',
+					'```',
+				], setting.descEl);
+
+				const inputEl = (setting.components[0] as TextComponent).inputEl;
+				new FuzzyMarkdownFileSuggest(this.app, inputEl)
+					.onSelect(({ item: file }) => {
+						this.plugin.settings.newFileTemplatePath = file.path;
+						this.plugin.saveSettings();
+					});
+			});
 
 		this.addHeading('Link copy templates', 'lucide-copy')
 			.setDesc('The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ')
@@ -1702,7 +1745,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('thumbnailContextMenu')
 			.setName('Replace the built-in right-click menu in thumbnails with a custom one')
-			.setDesc('This enables you to insert a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail.');
+			.setDesc('This enables you to copy a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail. Moreover, you will be able to insert, delete, extract pages if PDF modification is enabled.');
 		this.addToggleSetting('thumbnailDrag')
 			.setName('Drag & drop PDF thumbnail to insert link to section')
 			.then((setting) => {
@@ -1829,6 +1872,58 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.promises = [];
 		this.component.unload();
 		this.containerEl.empty();
+	}
+}
+
+
+abstract class FuzzyInputSuggest<T> extends AbstractInputSuggest<FuzzyMatch<T>> {
+	inputEl: HTMLInputElement;
+
+	constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
+		this.inputEl = inputEl;
+	}
+
+	abstract getItems(): T[];
+	abstract getItemText(item: T): string;
+
+	getSuggestions(query: string) {
+		const search = prepareFuzzySearch(query.trim());
+		const items = this.getItems()
+
+		const results: FuzzyMatch<T>[] = [];
+
+		for (const item of items) {
+			const match = search(this.getItemText(item));
+			if (match) results.push({ match, item });
+		}
+
+		sortSearchResults(results);
+
+		return results;
+	}
+
+	renderSuggestion(result: FuzzyMatch<T>, el: HTMLElement) {
+		renderResults(el, this.getItemText(result.item), result.match);
+	}
+
+	selectSuggestion(result: FuzzyMatch<T>, evt: MouseEvent | KeyboardEvent) {
+		// @ts-ignore
+		super.selectSuggestion(result, evt); // this ts-ignore is needed due to a bug in Obsidian's type definition
+		this.inputEl.blur();
+		this.inputEl.value = this.getItemText(result.item);
+		this.close();
+	}
+}
+
+
+class FuzzyMarkdownFileSuggest extends FuzzyInputSuggest<TFile> {
+	getItems() {
+		return this.app.vault.getMarkdownFiles();
+	}
+
+	getItemText(file: TFile) {
+		return file.path;
 	}
 }
 

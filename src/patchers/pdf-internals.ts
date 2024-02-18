@@ -498,7 +498,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     return old.call(this, evt);
                 }
 
-                onThumbnailContextMenu(this, evt);
+                onThumbnailContextMenu(plugin, this, evt);
             }
         }
     }));

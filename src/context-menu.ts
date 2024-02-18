@@ -36,7 +36,9 @@ export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt:
     if (child.pdfViewer.isEmbed) evt.preventDefault();
 }
 
-export const onThumbnailContextMenu = (child: PDFViewerChild, evt: MouseEvent): void => {
+export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): void => {
+    const { lib, settings } = plugin;
+
     const node = evt.targetNode;
     if (node && node.instanceOf(HTMLElement) && node.hasClass('thumbnail') && node.dataset.pageNumber !== undefined) {
         const pageNumber = parseInt(node.dataset.pageNumber);
@@ -49,15 +51,81 @@ export const onThumbnailContextMenu = (child: PDFViewerChild, evt: MouseEvent): 
         const title = ('' + pageNumber === pageLabel)
             ? `Copy link to page ${pageNumber}`
             : `Copy link to page ${pageLabel} (${pageNumber}/${pageCount})`;
-        new Menu()
+        const menu = new Menu()
             .addItem((item) => {
                 item.setTitle(title)
                     .setIcon('lucide-copy')
                     .onClick(() => {
                         (evt.view ?? activeWindow).navigator.clipboard.writeText(link);
                     })
-            })
-            .showAtMouseEvent(evt);
+            });
+
+        if (settings.enalbeWriteHighlightToFile) {
+            menu
+                .addItem((item) => {
+                    item.setTitle('Insert page before this page')
+                        .setIcon('lucide-plus')
+                        .onClick(() => {
+                            const file = child.file;
+                            if (!file) {
+                                new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
+                                return;
+                            }
+                            lib.commands._insertPage(file, pageNumber);
+                        })
+                })
+                .addItem((item) => {
+                    item.setTitle('Insert page after this page')
+                        .setIcon('lucide-plus')
+                        .onClick(() => {
+                            const file = child.file;
+                            if (!file) {
+                                new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
+                                return;
+                            }
+                            lib.commands._insertPage(file, pageNumber + 1);
+                        })
+                })
+                .addItem((item) => {
+                    item.setTitle('Delete page')
+                        .setIcon('lucide-trash')
+                        .onClick(() => {
+                            const file = child.file;
+                            if (!file) {
+                                new Notice(`${plugin.manifest.name}: Failed to delete the page.`);
+                                return;
+                            }
+                            lib.commands._deletePage(file, pageNumber);
+                        })
+                })
+                .addItem((item) => {
+                    item.setTitle('Extract page to new file')
+                        .setIcon('lucide-file-output')
+                        .onClick(() => {
+                            const file = child.file;
+                            if (!file) {
+                                new Notice(`${plugin.manifest.name}: Failed to extract the page.`);
+                                return;
+                            }
+                            lib.commands._extractPage(file, pageNumber);
+                        });
+
+                })
+                .addItem((item) => {
+                    item.setTitle('Divide document at this page')
+                        .setIcon('lucide-split-square-vertical')
+                        .onClick(() => {
+                            const file = child.file;
+                            if (!file) {
+                                new Notice(`${plugin.manifest.name}: Failed to divide the document.`);
+                                return;
+                            }
+                            lib.commands._dividePDF(file, pageNumber);
+                        });
+                })
+        }
+
+        menu.showAtMouseEvent(evt);
     }
 }
 

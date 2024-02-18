@@ -299,6 +299,20 @@ export default class PDFPlus extends Plugin {
 			}
 		}));
 		// See also: lib.copyLink.watchPaste()
+
+		// Keep the template path for the command "Create new note for auto-focus or auto-paste" up-to-date
+		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+			if (file instanceof TFile && this.settings.newFileTemplatePath === oldPath) {
+				this.settings.newFileTemplatePath = file.path;
+				this.saveSettings();
+			}
+		}));
+		this.registerEvent(this.app.vault.on('delete', (file) => {
+			if (file instanceof TFile && this.settings.newFileTemplatePath === file.path) {
+				this.settings.newFileTemplatePath = '';
+				this.saveSettings();
+			}
+		}));
 	}
 
 	registerOneTimeEvent<T extends Events>(events: T, ...[evt, callback, ctx]: OverloadParameters<T['on']>) {
