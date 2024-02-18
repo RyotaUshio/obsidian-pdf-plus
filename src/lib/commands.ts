@@ -694,7 +694,6 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                         .ensureRoot()
                         .sortChildren();
 
-                    outlines.setToDocument();
                     await this.app.vault.modifyBinary(file, await doc.save());
                 });
         }

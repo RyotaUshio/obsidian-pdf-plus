@@ -248,7 +248,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             if (pageView?.annotationLayer && pageView.div.dataset.loaded) {
                 const elem = pageView.annotationLayer.annotationLayer.getAnnotation(id);
                 if (elem) {
-                    pageView.annotationLayer.div.createDiv("boundingRect mod-focused", (rectEl) => {
+                    pageView.annotationLayer.div.createDiv('boundingRect mod-focused', (rectEl) => {
                         const rect = elem.data.rect;
                         const view = elem.parent.page.view;
                         const dims = elem.parent.viewport.rawDims as { pageWidth: number, pageHeight: number, pageX: number, pageY: number };
@@ -307,7 +307,7 @@ export class BacklinkHighlighter extends Component implements HoverParent {
             this.app.workspace.trigger('hover-link', {
                 event,
                 source: 'pdf-plus',
-                hoverParent: {},//this,
+                hoverParent: this,
                 targetEl: annotationEl,
                 linktext: sourcePath,
                 sourcePath: this.file?.path ?? '',

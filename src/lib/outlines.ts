@@ -1,16 +1,15 @@
-import PDFPlus from 'main';
+import { Notice, TFile } from 'obsidian';
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFRef, PDFString, PDFNumber } from '@cantoo/pdf-lib';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
+import PDFPlus from 'main';
 import { DestArray, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
-import { Notice, TFile } from 'obsidian';
 
 
 export class PDFOutlines {
     plugin: PDFPlus;
     doc: PDFDocument;
     pdfJsDoc: PDFDocumentProxy;
-    _root?: PDFOutlineItem | null;
     _destinationsPromise: Promise<Record<string, PDFjsDestArray>>;
 
     constructor(plugin: PDFPlus, doc: PDFDocument, pdfJsDoc: PDFDocumentProxy) {
@@ -28,7 +27,7 @@ export class PDFOutlines {
     }
 
     static async fromChild(child: PDFViewerChild, plugin: PDFPlus) {
-        const { app, lib } = plugin;;
+        const { app, lib } = plugin;
 
         let pdfJsDoc = child.pdfViewer.pdfViewer?.pdfDocument;
         let doc: PDFDocument | undefined;
@@ -61,20 +60,15 @@ export class PDFOutlines {
     }
 
     get root(): PDFOutlineItem | null {
-        if (this._root !== undefined) return this._root;
-
         const ref = this.doc.catalog.get(PDFName.of('Outlines'));
         if (!ref) return null;
 
         const dict = this.doc.context.lookup(ref);
-        this._root = dict instanceof PDFDict ? new PDFOutlineItem(this, dict) : null;
 
-        return this._root;
+        return dict instanceof PDFDict ? new PDFOutlineItem(this, dict) : null;
     }
 
     set root(item: PDFOutlineItem | null) {
-        this._root = item;
-
         if (item) {
             let ref = this.doc.context.getObjectRef(item.dict);
             if (!ref) {
@@ -189,19 +183,6 @@ export class PDFOutlines {
         return found;
     }
 
-    setToDocument() {
-        if (this.root) {
-            const ref = this.doc.context.getObjectRef(this.root.dict);
-            if (!ref) throw new Error('Could not get ref for root');
-
-            this.doc.catalog.set(PDFName.of('Outlines'), ref);
-
-            return;
-        }
-
-        this.doc.catalog.delete(PDFName.of('Outlines'));
-    }
-
     static async processOutlineRoot(process: (root: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
         const { app } = plugin;
         const outlines = await PDFOutlines.fromChild(child, plugin);
@@ -298,24 +279,16 @@ export class PDFOutlineItem {
         return this._get('First');
     }
 
-    get lastChild(): PDFOutlineItem | null {
-        return this._get('Last');
-    }
-
-    get nextSibling(): PDFOutlineItem | null {
-        return this._get('Next');
-    }
-
-    get prevSibling(): PDFOutlineItem | null {
-        return this._get('Prev');
-    }
-
     set firstChild(item: PDFOutlineItem | null) {
         if (item && !this.is(item.parent)) {
             throw new Error(`Item "${item.name}" is not a child of this item "${this.name}"`);
         }
 
         this._setOrDelete('First', item);
+    }
+
+    get lastChild(): PDFOutlineItem | null {
+        return this._get('Last');
     }
 
     set lastChild(item: PDFOutlineItem | null) {
@@ -326,12 +299,20 @@ export class PDFOutlineItem {
         this._setOrDelete('Last', item);
     }
 
+    get nextSibling(): PDFOutlineItem | null {
+        return this._get('Next');
+    }
+
     set nextSibling(item: PDFOutlineItem | null) {
         if (item && !(item.parent && item.parent.is(this.parent))) {
             throw new Error(`Item "${item.name}" is not a sibling of this item "${this.name}"`);
         }
 
         this._setOrDelete('Next', item);
+    }
+
+    get prevSibling(): PDFOutlineItem | null {
+        return this._get('Prev');
     }
 
     set prevSibling(item: PDFOutlineItem | null) {

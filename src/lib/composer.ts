@@ -1,5 +1,5 @@
 import { TFile, normalizePath, parseLinktext, Pos, ReferenceCache, Notice } from 'obsidian';
-import { PDFDocument, PDFPage } from '@cantoo/pdf-lib';
+import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { range, encodeLinktext } from 'utils';
@@ -154,7 +154,6 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
 
         const outlines = await PDFOutlines.fromDocument(doc, this.plugin);
         await outlines.prune();
-        outlines.setToDocument();
 
         return await this.write(file.path, doc, true);
     }
@@ -221,10 +220,10 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
                 .map(async (doc) => {
                     const outlines = await PDFOutlines.fromDocument(doc, this.plugin);
                     await outlines.prune();
-                    outlines.setToDocument();
                 })
         );
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const [_, dstFile] = await Promise.all([
             this.write(srcFile.path, srcDoc, true),
             this.write(dstPath, dstDoc, existOk)
@@ -329,6 +328,7 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
     }
 
     getNewLinkText(oldLinktext: string, sourcePath: string, file: TFile, updater: LinkInfoUpdater) {
+        // eslint-disable-next-line prefer-const
         let { path: linkpath, subpath } = parseLinktext(oldLinktext);
 
         let oldPage: number | undefined;

@@ -1,7 +1,7 @@
 import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
-import { Setting, prepareFuzzySearch, SearchResultContainer, sortSearchResults, FuzzySuggestModal } from 'obsidian';
+import { Setting, FuzzySuggestModal } from 'obsidian';
 
 
 export class PDFOutlineTitleModal extends PDFPlusModal {

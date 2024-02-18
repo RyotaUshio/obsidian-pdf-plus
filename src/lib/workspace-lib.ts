@@ -1,4 +1,4 @@
-import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceMobileDrawer, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';

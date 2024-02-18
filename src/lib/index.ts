@@ -7,7 +7,7 @@ import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
 import { encodeLinktext, parsePDFSubpath, removeExtension } from 'utils';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PdfLibDestArray, PDFViewState } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState } from 'typings';
 import { EncryptedPDFError, PDFArray, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';

@@ -43,7 +43,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                 if (!draggable || draggable.source !== 'pdf-plus' || draggable.type !== 'pdf-offset') return;
 
                 // @ts-ignore
-                let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
+                const draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
 
                 if (draggedItem
                     && !isAncestorOf(draggedItem, item, true)
@@ -90,7 +90,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
         if (evt.target !== evt.currentTarget) return;
 
         // @ts-ignore
-        let draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
+        const draggedItem = draggable.item as PDFOutlineTreeNode | undefined;
 
         if (draggedItem && draggedItem.parent && pdfOutlineViewer === draggedItem.owner) {
             if (!dragging) {

@@ -9,7 +9,7 @@ import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'con
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
-import { AnnotationElement, PDFOutlineViewer, PDFToolbar, PDFViewerComponent, PDFViewerChild } from 'typings';
+import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild } from 'typings';
 import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
 
 

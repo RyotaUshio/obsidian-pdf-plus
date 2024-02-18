@@ -8,7 +8,6 @@ import { BacklinkHighlighter } from 'highlight';
 export const patchPagePreview = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
     const lib = plugin.lib;
-    const pagePreview = app.internalPlugins.plugins['page-preview'];
     const pagePreviewInstance = app.internalPlugins.plugins['page-preview'].instance;
 
     // Patch the instance instead of the prototype to avoid conflicts with Hover Editor

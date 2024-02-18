@@ -1,5 +1,5 @@
-import { Notice, RGB, TFile } from 'obsidian';
-import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
+import { RGB, TFile } from 'obsidian';
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
 
 import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { formatAnnotationID, getBorderRadius, hexToRgb } from 'utils';
