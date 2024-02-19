@@ -148,6 +148,15 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                 .onClick(async () => {
                     const evaluated = await lib.copyLink.getTextToCopyForOutlineItem(child, file, item);
                     (evt.view ?? activeWindow).navigator.clipboard.writeText(evaluated);
+
+                    const dest = item.item.dest;
+                    if (typeof dest === 'string') {
+                        plugin.lastCopiedDestInfo = { file, destName: dest };
+                    } else {
+                        const pageNumber = await item.getPageNumber();
+                        const destArray = lib.normalizePDFjsDestArray(dest, pageNumber);
+                        plugin.lastCopiedDestInfo = { file, destArray };
+                    }
                 })
         });
 
