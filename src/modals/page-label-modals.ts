@@ -1,3 +1,4 @@
+import { setTooltip } from 'obsidian';
 /**
  * For the details about how PDF page labels work, see the PDF specification
  * 12.4.2, "Page Labels".
@@ -149,6 +150,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                         .onClick(() => {
                             this.pageLabels = PDFPageLabels.createEmpty(doc);
                             this.redisplay();
+                            this.toggleButtonVisibility();
                         });
                 })
                 .addButton((button) => {
@@ -231,7 +233,12 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                                 text.inputEl.addClass('error');
                             }
                         })
-                        .setDisabled(i === pageLabels.ranges.length - 1);
+                        .setDisabled(i === pageLabels.ranges.length - 1)
+                        .then((text) => {
+                            if (text.disabled) {
+                                setTooltip(text.inputEl, 'The last range cannot be extended.');
+                            }
+                        })
                     this.component.registerDomEvent(text.inputEl, 'blur', () => this.redisplay());
                 })
                 .then((setting) => this.addPreviewButton(setting, pageTo));

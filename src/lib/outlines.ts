@@ -133,7 +133,9 @@ export class PDFOutlines {
 
     async prune() {
         await this.iterAsync({
-            enter: async (item) => {
+            // because of the tree structure changes by `removeAndLiftUpChildren`,
+            // this operatation must be done in the "leave" phase, not in the "enter" phase
+            leave: async (item) => {
                 if (await item.destNotExistInDoc()) {
                     item.removeAndLiftUpChildren();
                     item.updateCountForAllAncestors();
