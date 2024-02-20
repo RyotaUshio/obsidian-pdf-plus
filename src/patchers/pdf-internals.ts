@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, TFile, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -106,21 +106,26 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 const self = this as PDFViewerChild;
 
                 // Add a color palette to the toolbar
-                if (self.toolbar) {
-                    const toolbar = self.toolbar;
-                    plugin.domManager.addChild(new ColorPalette(plugin, toolbar.toolbarLeftEl));
-                } else {
-                    // Should not happen, but just in case
-                    const timer = window.setInterval(() => {
+                try {
+                    if (self.toolbar) {
                         const toolbar = self.toolbar;
-                        if (toolbar) {
-                            plugin.domManager.addChild(new ColorPalette(plugin, toolbar.toolbarLeftEl));
+                        plugin.domManager.addChild(new ColorPalette(plugin, toolbar.toolbarLeftEl));
+                    } else {
+                        // Should not happen, but just in case
+                        const timer = window.setInterval(() => {
+                            const toolbar = self.toolbar;
+                            if (toolbar) {
+                                plugin.domManager.addChild(new ColorPalette(plugin, toolbar.toolbarLeftEl));
+                                window.clearInterval(timer);
+                            }
+                        }, 100);
+                        window.setTimeout(() => {
                             window.clearInterval(timer);
-                        }
-                    }, 100);
-                    window.setTimeout(() => {
-                        window.clearInterval(timer);
-                    }, 1000);
+                        }, 1000);
+                    }
+                } catch (e) {
+                    new Notice(`${plugin.manifest.name}: An error occurred while mounting the color palette to the toolbar.`);
+                    console.error(e);
                 }
 
                 return ret;

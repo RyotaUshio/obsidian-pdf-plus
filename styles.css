@@ -51,6 +51,20 @@ settings:
         title: Hide PDF toolbar in Hover Editor
         type: class-toggle
         default: true
+    -
+        id: pdf-sidebar
+        title: PDF sidebars
+        type: heading
+        level: 2
+    -
+        id: pdf-plus-sidebar-width
+        title: Sidebar width (px)
+        type: variable-number-slider
+        min: 100
+        max: 1000
+        step: 10
+        default: 140
+        format: px
 */
 
 :root {
@@ -62,8 +76,8 @@ settings:
     display: none;
 }
 
-.hide-pdf-toolbar-in-hover-editor .popover.hover-popover.hover-editor .view-content > .pdf-toolbar {
-    display: none;
+.hide-pdf-toolbar-in-hover-editor .popover.hover-popover.hover-editor .view-content>.pdf-toolbar {
+    display: none !important;
 }
 
 /* When hovering over a highlighted text in PDF viewer, highlight the corresponding item in backlink pane */
@@ -241,4 +255,8 @@ settings:
 
 .pdf-plus-page-label-modal {
     z-index: var(--layer-popover);
+}
+
+.pdf-content-container {
+    --sidebar-width: var(--pdf-plus-sidebar-width, 140px);
 }
