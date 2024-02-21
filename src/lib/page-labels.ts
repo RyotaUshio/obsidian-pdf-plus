@@ -3,7 +3,9 @@
  * 12.4.2, "Page Labels".
  */
 
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFString } from '@cantoo/pdf-lib';
+import { PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFString } from '@cantoo/pdf-lib';
+import { NumberTree } from './name-or-number-trees';
+import { getDirectPDFObj } from 'utils';
 
 
 /** The "S" entry of a page label dictionary (PDF spec, Table 159) */
@@ -47,7 +49,7 @@ export class PDFPageLabelDict {
         }
 
         const prefix = dict.get(PDFName.of('P'));
-        if (prefix instanceof PDFString) {
+        if (prefix instanceof PDFString || prefix instanceof PDFHexString) {
             instance.prefix = prefix.decodeText();
         }
 
@@ -56,9 +58,6 @@ export class PDFPageLabelDict {
 }
 
 
-/**
- * A number tree representing the page labeling style of an entire PDF document.
- */
 export class PDFPageLabels {
     // pageFrom: converted into a 1-based page index for easier use; it's 0-based in the original PDF document
     constructor(public doc: PDFDocument, public ranges: { pageFrom: number, dict: PDFPageLabelDict }[]) {
@@ -102,21 +101,16 @@ export class PDFPageLabels {
     }
 
     static fromDocument(doc: PDFDocument) {
-        const numberTree = doc.catalog.get(PDFName.of('PageLabels'));
-        if (!(numberTree instanceof PDFDict)) return null;
-
-        const nums = numberTree.get(PDFName.of('Nums'));
-        if (!(nums instanceof PDFArray)) return null;
+        const dict = getDirectPDFObj(doc.catalog, 'PageLabels');
+        if (!(dict instanceof PDFDict)) return null;
+        const numberTree = new NumberTree(dict);
 
         const ranges: { pageFrom: number, dict: PDFPageLabelDict }[] = [];
 
-        for (let i = 0; i < nums.size(); i += 2) {
-            const pageFrom = nums.get(i);
-            const dict = nums.get(i + 1);
+        for (const [pageFrom, dict] of numberTree) {
+            if (!(dict instanceof PDFDict)) return null;
 
-            if (!(pageFrom instanceof PDFNumber && dict instanceof PDFDict)) return null;
-
-            ranges.push({ pageFrom: pageFrom.asNumber() + 1, dict: PDFPageLabelDict.fromPDFDict(dict) });
+            ranges.push({ pageFrom: pageFrom + 1, dict: PDFPageLabelDict.fromPDFDict(dict) });
         }
 
         return new PDFPageLabels(doc, ranges);
@@ -137,6 +131,9 @@ export class PDFPageLabels {
         }
 
         const pageLabels = doc.context.obj({ Nums });
+
+        new NumberTree(pageLabels).limitLeafSize(64);
+
         doc.catalog.set(PDFName.of('PageLabels'), pageLabels);
     }
 

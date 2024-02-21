@@ -21,8 +21,6 @@ abstract class PDFPageLabelModal extends PDFPlusModal {
 
     constructor(plugin: PDFPlus, public file: TFile) {
         super(plugin);
-        // @ts-ignore
-        window.modal = this;
         this.containerEl.addClass('pdf-plus-page-label-modal');
         this.controlEl = this.contentEl.createDiv();
         this.doc = null;
@@ -124,14 +122,20 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
             })
             .then((setting) => this.contentEl.prepend(setting.settingEl));
 
+        this.controlEl.createDiv({
+            cls: 'page-labels-loading',
+            text: 'Loading...'
+        });
+
         await this.docLoadingPromise;
+
         this.display();
         this.addButtons();
     }
 
     redisplay() {
         this.display();
-        // this.toggleButtonVisibility();
+        // this.updateButtonVisibility();
     }
 
     display() {
@@ -150,7 +154,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                         .onClick(() => {
                             this.pageLabels = PDFPageLabels.createEmpty(doc);
                             this.redisplay();
-                            this.toggleButtonVisibility();
+                            this.updateButtonVisibility();
                         });
                 })
                 .addButton((button) => {
@@ -226,7 +230,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                     text.setValue('' + pageTo)
                         .onChange((value) => {
                             const num = Number(value);
-                            if (Number.isInteger(num) && range.pageFrom <= num && num <= pageCount) {
+                            if (Number.isInteger(num) && range.pageFrom <= num && num <= (nextRange?.pageFrom -1 ?? pageCount)) {
                                 nextRange.pageFrom = num + 1;
                                 text.inputEl.removeClass('error');
                             } else {
@@ -302,11 +306,11 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                 })
                 .then((setting) => {
                     this.buttonSetting = setting;
-                    this.toggleButtonVisibility();
+                    this.updateButtonVisibility();
                 });
     }
 
-    toggleButtonVisibility() {
+    updateButtonVisibility() {
         if (!this.buttonSetting) return;
 
         if (this.pageLabels && this.pageLabels.rangeCount() > 0) {

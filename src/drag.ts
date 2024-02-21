@@ -51,13 +51,13 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                     && item.owner === draggedItem.owner) {
                     if (!dragging) {
                         (async () => {
-                            const outlines = await PDFOutlines.fromChild(child, plugin);
+                            const outlines = await PDFOutlines.fromFile(file, plugin);
                             const [destItem, itemToMove] = await Promise.all([
-                                outlines?.findPDFjsOutlineTreeNode(item),
-                                outlines?.findPDFjsOutlineTreeNode(draggedItem)
+                                outlines.findPDFjsOutlineTreeNode(item),
+                                outlines.findPDFjsOutlineTreeNode(draggedItem)
                             ]);
 
-                            if (!outlines || !destItem || !itemToMove) {
+                            if (!destItem || !itemToMove) {
                                 new Notice(`${plugin.manifest.name}: Failed to move the outline item.`);
                                 return;
                             }
@@ -95,10 +95,10 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
         if (draggedItem && draggedItem.parent && pdfOutlineViewer === draggedItem.owner) {
             if (!dragging) {
                 (async () => {
-                    const outlines = await PDFOutlines.fromChild(child, plugin);
+                    const outlines = await PDFOutlines.fromFile(file, plugin);
                     const itemToMove = await outlines?.findPDFjsOutlineTreeNode(draggedItem);
 
-                    if (!outlines || !itemToMove) {
+                    if (!itemToMove) {
                         new Notice(`${plugin.manifest.name}: Failed to move the outline item.`);
                         return;
                     }

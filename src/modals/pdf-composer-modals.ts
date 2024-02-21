@@ -1,4 +1,5 @@
 import { Setting, TFile } from 'obsidian';
+import { PDFDocument, PageSizes } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
@@ -135,18 +136,18 @@ export class PDFComposerModal extends PDFPlusModal {
 
         if (this.askPageLabelUpdateMethod) {
             new Setting(this.contentEl)
-            .setName('Update the page labels?')
-            .setDesc(createFragment((el) => {
-                el.createEl('a', { text: 'Learn more', href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels' })
-            }))
-            .addDropdown((dropdown) => {
-                dropdown
-                    .addOptions(PAGE_LABEL_UPDATE_METHODS)
-                    .setValue(pageLabelUpdateMethod)
-                    .onChange((value: PageLabelUpdateMethod) => {
-                        pageLabelUpdateMethod = value;
-                    });
-            });
+                .setName('Update the page labels?')
+                .setDesc(createFragment((el) => {
+                    el.createEl('a', { text: 'Learn more', href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels' })
+                }))
+                .addDropdown((dropdown) => {
+                    dropdown
+                        .addOptions(PAGE_LABEL_UPDATE_METHODS)
+                        .setValue(pageLabelUpdateMethod)
+                        .onChange((value: PageLabelUpdateMethod) => {
+                            pageLabelUpdateMethod = value;
+                        });
+                });
         }
 
         if (this.askInPlace) {
@@ -187,5 +188,98 @@ export class PDFComposerModal extends PDFPlusModal {
     onClose() {
         super.onClose();
         this.#resolve(null);
+    }
+}
+
+
+export class PDFCreateModal extends PDFPlusModal {
+
+    pageSize: keyof typeof PageSizes = 'A4';
+    orientation: 'portrait' | 'landscape' = 'portrait';
+
+    next: ((doc: PDFDocument) => any)[] = [];
+
+    askOptions() {
+        this.open();
+        return this;
+    }
+
+    onOpen() {
+        super.onOpen();
+
+        this.titleEl.setText(`${this.plugin.manifest.name}: Create new PDF`);
+
+        this.addSetting()
+            .setName('Page size')
+            .addDropdown((dropdown) => {
+                Object.keys(PageSizes)
+                    .forEach((key) => dropdown.addOption(key, key));
+
+                dropdown
+                    .setValue(this.pageSize)
+                    .onChange((value) => {
+                        if (PageSizes.hasOwnProperty(value)) {
+                            this.pageSize = value as keyof typeof PageSizes;
+                        }
+                    });
+            });
+
+        this.addSetting()
+            .setName('Orientation')
+            .addDropdown((dropdown) => {
+                dropdown
+                    .addOption('portrait', 'Portrait')
+                    .addOption('landscape', 'Landscape')
+                    .setValue(this.orientation)
+                    .onChange((value) => {
+                        if (value === 'portrait' || value === 'landscape') {
+                            this.orientation = value;
+                        }
+                    });
+            });
+
+        this.addSetting()
+            .addButton((button) => {
+                button
+                    .setButtonText('Create')
+                    .setCta()
+                    .then((button) => {
+                        setTimeout(() => button.buttonEl.focus());
+                    })
+                    .onClick(async () => {
+                        this.close();
+                        const doc = await this.createPDFDocument();
+                        this.next.forEach((callback) => callback(doc));
+                    });
+            })
+            .addButton((button) => {
+                button
+                    .setButtonText('Cancel')
+                    .onClick(() => {
+                        this.close();
+                    });
+            });
+    }
+
+    addSetting() {
+        return new Setting(this.contentEl);
+    }
+
+    then(callback: (doc: PDFDocument) => any) {
+        this.next.push(callback);
+        return this;
+    }
+
+    async createPDFDocument() {
+        const doc = await PDFDocument.create();
+
+        const [size1, size2] = PageSizes[this.pageSize];
+        const sizeMax = Math.max(size1, size2);
+        const sizeMin = Math.min(size1, size2);
+        const size: [number, number] = this.orientation === 'portrait' ? [sizeMin, sizeMax] : [sizeMax, sizeMin];
+
+        doc.addPage(size);
+        
+        return doc;
     }
 }

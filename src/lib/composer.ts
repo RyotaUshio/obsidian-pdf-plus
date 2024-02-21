@@ -35,9 +35,9 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         );
     }
 
-    async insertPage(file: TFile, pageNumber: number, keepLabels: boolean) {
+    async insertPage(file: TFile, pageNumber: number, basePageNumber: number, keepLabels: boolean) {
         return await this.linkUpdater.updateLinks(
-            () => this.fileOperator.insertPage(file, pageNumber, keepLabels),
+            () => this.fileOperator.insertPage(file, pageNumber, basePageNumber, keepLabels),
             [file],
             (f, n) => { return { pageNumber: typeof n === 'number' && n >= pageNumber ? n + 1 : n } }
         );
@@ -135,14 +135,28 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
 
     async addPage(file: TFile) {
         const doc = await this.read(file);
-        doc.addPage();
+        const lastPage = doc.getPage(doc.getPageCount() - 1);
+        const { width, height } = lastPage.getSize();
+        doc.addPage([width, height]);
         return await this.write(file.path, doc, true);
     }
 
-    async insertPage(file: TFile, pageNumber: number, keepLabels: boolean) {
+    /**
+     * @param file The PDF file to insert a page into.
+     * @param pageNumber The index of the new page to be inserted.
+     * @param basePageNumber The page number to reference for the new page size.
+     * @param keepLabels Whether to keep the page labels unchanged.
+     */
+    async insertPage(file: TFile, pageNumber: number, basePageNumber: number, keepLabels: boolean) {
         const doc = await this.read(file);
+
         this.pageLabelUpdater.insertPage(doc, pageNumber, keepLabels);
-        doc.insertPage(pageNumber - 1);
+
+        const basePage = doc.getPage(basePageNumber - 1);
+        const { width, height } = basePage.getSize();
+
+        doc.insertPage(pageNumber - 1, [width, height]);
+
         return await this.write(file.path, doc, true);
     }
 
@@ -184,7 +198,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
 
     async extractPages(srcFile: TFile, pages: number[], dstPath: string, existOk: boolean, keepLabels: boolean, inPlace: boolean) {
         if (pages.length === 0) throw new Error('No pages to extract');
-        
+
         if (inPlace) {
             return await this.extractPagesInPlace(srcFile, pages, dstPath, existOk, keepLabels);
         } else {

@@ -1,13 +1,13 @@
-import { Command, MarkdownView, Notice, TFile, setIcon } from 'obsidian';
+import { Command, MarkdownView, Notice, TFile, normalizePath, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
-import { DestArray } from 'typings';
-import { PDFComposerModal, PDFPageDeleteModal } from 'modals/pdf-composer-modals';
+import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal } from 'modals/pdf-composer-modals';
 import { PDFPageLabelEditModal } from 'modals/page-label-modals';
 import { PDFOutlines } from './outlines';
-import { parsePDFSubpath } from 'utils';
 import { PDFOutlineTitleModal } from 'modals/outline-modals';
 import { TemplateProcessor } from 'template';
+import { parsePDFSubpath } from 'utils';
+import { DestArray } from 'typings';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -152,6 +152,10 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'copy-debug-info',
                 name: 'Copy debug info',
                 callback: () => this.copyDebugInfo()
+            }, {
+                id: 'create-pdf',
+                name: 'Create new PDF',
+                callback: () => this.createPDF()
             }
         ];
 
@@ -456,14 +460,20 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!view || !view.file) return false;
         const file = view.file;
 
-        const page = view.getState().page + (before ? 0 : 1);
+        const basePage = view.getState().page;
+        const page = basePage + (before ? 0 : 1);
 
-        if (!checking) this._insertPage(file, page);
+        if (!checking) this._insertPage(file, page, basePage);
 
         return true;
     }
 
-    _insertPage(file: TFile, page: number) {
+    /**
+     * @param file The PDF file to insert a page into
+     * @param page The index of the new page to be inserted
+     * @param basePage The page number to reference for the new page size
+     */
+    _insertPage(file: TFile, page: number, basePage: number) {
         new PDFComposerModal(
             this.plugin,
             this.settings.askPageLabelUpdateWhenInsertPage,
@@ -473,7 +483,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         )
             .ask()
             .then((answer) => {
-                this.lib.composer.insertPage(file, page, answer);
+                this.lib.composer.insertPage(file, page, basePage, answer);
             });
     }
 
@@ -595,6 +605,24 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             });
     }
 
+    createPDF() {
+        const activeFile = this.app.workspace.getActiveFile();
+        const location = this.settings.newPDFLocation;
+        const folderPath = location === 'root' ? '/'
+            : location == 'current' ? (activeFile?.parent?.path ?? '')
+                : normalizePath(this.settings.newPDFFolderPath);
+        const folder = this.app.vault.getAbstractFileByPath(folderPath) ?? this.app.vault.getRoot();
+        const path = this.app.vault.getAvailablePath(normalizePath(folder.path + '/Untitled'), 'pdf');
+
+        new PDFCreateModal(this.plugin)
+            .askOptions()
+            .then(async (doc) => {
+                const file = await this.app.vault.createBinary(path, await doc.save());
+                const leaf = this.app.workspace.getLeaf('tab'); // TODO: make this configurable
+                await leaf.openFile(file);
+            });
+    }
+
     editPageLabels(checking: boolean) {
         if (!this.settings.enalbeWriteHighlightToFile) return false;
 
@@ -624,15 +652,8 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             const minHeadingLevel = this.settings.copyOutlineAsHeadingsMinLevel;
 
             (async () => {
-                const doc = await this.lib.getPdfLibDocument(true);
-                const pdfJsDoc = this.lib.getPDFDocument(true);
+                const outlines = await PDFOutlines.fromFile(file, this.plugin);
 
-                if (!doc || !pdfJsDoc) {
-                    new Notice(`${this.plugin.manifest.name}: Failed to load PDF document.`);
-                    return;
-                }
-
-                const outlines = new PDFOutlines(this.plugin, doc, pdfJsDoc);
                 let text = '';
 
                 const useTab = this.app.vault.getConfig('useTab');
@@ -643,14 +664,8 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                     enter: async (item) => {
                         if (!item.isRoot()) {
                             let subpath: string | null = null;
-                            const dest = item.getNormalizedDestination();
-                            if (dest) {
-                                if (typeof dest === 'string') {
-                                    subpath = await this.lib.destIdToSubpath(dest, pdfJsDoc);
-                                } else if (dest) {
-                                    subpath = await this.lib.destArrayToSubpath(dest);
-                                }
-                            }
+                            const dest = item.getExplicitDestination();
+                            if (dest) subpath = await this.lib.destArrayToSubpath(dest);
 
                             const pageNumber = subpath ? parsePDFSubpath(subpath)?.page : undefined;
 
@@ -687,15 +702,12 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         const destArray = this.lib.viewStateToDestArray(state, true);
         if (!destArray) return false;
 
-        const pdfJsDoc = this.lib.getPDFDocument(true);
-        if (!pdfJsDoc) return false;
-
         if (!checking) {
             new PDFOutlineTitleModal(this.plugin, 'Add to outline')
                 .askTitle()
                 .then(async (title) => {
-                    const doc = await this.lib.loadPdfLibDocumentFromArrayBuffer(await pdfJsDoc.getData());
-                    const outlines = new PDFOutlines(this.plugin, doc, pdfJsDoc);
+                    const outlines = await PDFOutlines.fromFile(file, this.plugin);
+                    const doc = outlines.doc;
 
                     outlines
                         .ensureRoot()
@@ -715,7 +727,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     async createNewNote() {
         const activeFile = this.app.workspace.getActiveFile();
         const activeFilePath = activeFile?.path ?? '';
-        const folder = this.app.fileManager.getNewFileParent(activeFilePath, '');
+        const folder = this.app.fileManager.getNewFileParent(activeFilePath);
 
         let name = '';
         let data = '';

@@ -1,4 +1,4 @@
-import { AbstractInputSuggest, App, Command, Component, DropdownComponent, FuzzyMatch, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TFile, TextAreaComponent, TextComponent, prepareFuzzySearch, renderResults, setIcon, setTooltip, sortSearchResults } from 'obsidian';
+import { AbstractInputSuggest, App, Command, Component, DropdownComponent, FuzzyMatch, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TFile, TFolder, TextAreaComponent, TextComponent, prepareFuzzySearch, renderResults, setIcon, setTooltip, sortSearchResults } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
@@ -32,6 +32,12 @@ const AUTO_FOCUS_TARGETS: Record<AutoFocusTarget, string> = {
 	'last-paste-then-last-active-and-open': 'Last pasted .md if any, otherwise last active & open .md',
 	'last-active-and-open-then-last-paste': 'Last active & open .md if any, otherwise last pasted .md',
 };
+
+const NEW_FILE_LOCATIONS = {
+	'root': 'Vault folder',
+	'current': 'Same folder as current file',
+	'folder': 'In the folder specified below',
+} as const;
 
 export interface namedTemplate {
 	name: string;
@@ -176,6 +182,8 @@ export interface PDFPlusSettings {
 	copyOutlineAsHeadingsMinLevel: number;
 	newFileNameFormat: string;
 	newFileTemplatePath: string;
+	newPDFLocation: keyof typeof NEW_FILE_LOCATIONS;
+	newPDFFolderPath: string;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -361,6 +369,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	copyOutlineAsHeadingsMinLevel: 2,
 	newFileNameFormat: '',
 	newFileTemplatePath: '',
+	newPDFLocation: 'current',
+	newPDFFolderPath: '',
 };
 
 
@@ -1824,6 +1834,23 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('showStatusInToolbar')
 			.setName('Show status in PDF toolbar')
 			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');
+		this.addDropdownSetting('newPDFLocation', NEW_FILE_LOCATIONS, () => this.redisplay())
+			.setName('Default location for new PDFs')
+			.setDesc('The "Create new PDF" command will create a new PDF file in the location specified here.');
+		if (this.plugin.settings.newPDFLocation === 'folder') {
+			this.addSetting()
+				.setName('Folder to create new PDFs in')
+				.setDesc('Newly created PDFs will appear under this folder.')
+				.addText((text) => {
+					text.setValue(this.plugin.settings.newPDFFolderPath);
+					text.inputEl.size = 30;
+					new FuzzyFolderSuggest(this.app, text.inputEl)
+						.onSelect(({ item: folder }) => {
+							this.plugin.settings.newPDFFolderPath = folder.path;
+							this.plugin.saveSettings();
+						});
+				});
+		}
 
 
 		this.addHeading('Style settings', 'lucide-external-link')
@@ -1925,6 +1952,17 @@ class FuzzyMarkdownFileSuggest extends FuzzyInputSuggest<TFile> {
 	}
 
 	getItemText(file: TFile) {
+		return file.path;
+	}
+}
+
+
+class FuzzyFolderSuggest extends FuzzyInputSuggest<TFolder> {
+	getItems() {
+		return this.app.vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder)
+	}
+
+	getItemText(file: TFolder) {
 		return file.path;
 	}
 }

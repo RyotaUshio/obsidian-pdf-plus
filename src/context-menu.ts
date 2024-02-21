@@ -2,7 +2,7 @@ import { App, Menu, Notice, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
-import { PDFOutlines } from 'lib/outlines';
+import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import { PDFOutlineMoveModal, PDFOutlineTitleModal } from 'modals/outline-modals';
 import { PDFComposerModal } from 'modals/pdf-composer-modals';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
@@ -71,7 +71,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                                 new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
                                 return;
                             }
-                            lib.commands._insertPage(file, pageNumber);
+                            lib.commands._insertPage(file, pageNumber, pageNumber);
                         })
                 })
                 .addItem((item) => {
@@ -83,7 +83,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                                 new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
                                 return;
                             }
-                            lib.commands._insertPage(file, pageNumber + 1);
+                            lib.commands._insertPage(file, pageNumber + 1, pageNumber);
                         })
                 })
                 .addItem((item) => {
@@ -180,7 +180,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                             .updateCountForAllAncestors();
                                         outlineItem
                                             .sortChildren();
-                                    }, child, file, plugin);
+                                    }, file, plugin);
                                     return;
                                 }
                             }
@@ -199,7 +199,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                             .then(async (title) => {
                                 await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                                     outlineItem.title = title;
-                                }, child, file, plugin);
+                                }, file, plugin);
                             });
                     });
             })
@@ -208,10 +208,10 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                     .setTitle('Move item to...')
                     .setIcon('lucide-folder-tree')
                     .onClick(async () => {
-                        const outlines = await PDFOutlines.fromChild(child, plugin);
-                        const itemToMove = await outlines?.findPDFjsOutlineTreeNode(item);
+                        const outlines = await PDFOutlines.fromFile(file, plugin);
+                        const itemToMove = await outlines.findPDFjsOutlineTreeNode(item);
 
-                        if (!outlines || !itemToMove) {
+                        if (!itemToMove) {
                             new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
                             return;
                         }
@@ -236,7 +236,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                             // Remove the found outline item from the tree
                             outlineItem.remove();
                             outlineItem.updateCountForAllAncestors();
-                        }, child, file, plugin);
+                        }, file, plugin);
                     });
 
             })
@@ -246,13 +246,8 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                     .setIcon('lucide-file-output')
                     .onClick(async () => {
                         const { app, lib, settings } = plugin;
-                        const outlines = await PDFOutlines.fromChild(child, plugin);
 
-                        if (!outlines) {
-                            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
-                            return;
-                        }
-
+                        const outlines = await PDFOutlines.fromFile(file, plugin);
                         const found = await outlines.findPDFjsOutlineTreeNode(item);
 
                         if (!found) {
@@ -260,17 +255,26 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                             return;
                         }
 
-                        const { doc, pdfJsDoc } = outlines;
+                        const { doc } = outlines;
 
-                        const dest = found.getNormalizedDestination();
-                        const pageNumber = dest ? await lib.destToPageNumber(dest, pdfJsDoc) : null;
+                        const dest = found.getExplicitDestination();
+                        const pageNumber = dest ? dest[0] + 1 : null;
 
+                        // Find the starting page number of the next section
                         let nextPageNumber: number | null = null;
 
-                        if (found.nextSibling) {
-                            const nextDest = found.nextSibling.getNormalizedDestination();
+                        let itemWithNextSibling: PDFOutlineItem = found;
+
+                        while (!itemWithNextSibling.nextSibling && itemWithNextSibling.parent) {
+                            itemWithNextSibling = itemWithNextSibling.parent;
+                        }
+
+                        const nextItem = itemWithNextSibling.nextSibling;
+
+                        if (nextItem) {
+                            const nextDest = nextItem.getExplicitDestination();
                             if (nextDest) {
-                                nextPageNumber = await lib.destToPageNumber(nextDest, pdfJsDoc);
+                                nextPageNumber = nextDest[0] + 1;
                             }
                         } else {
                             nextPageNumber = doc.getPageCount() + 1;
@@ -344,7 +348,7 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
                                             root.createChild(title, destArray)
                                                 .updateCountForAllAncestors();
                                             root.sortChildren();
-                                        }, child, file, plugin);
+                                        }, file, plugin);
                                         return;
                                     }
                                 }

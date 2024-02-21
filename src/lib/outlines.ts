@@ -1,49 +1,31 @@
 import { Notice, TFile } from 'obsidian';
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFRef, PDFString, PDFNumber } from '@cantoo/pdf-lib';
-import { PDFDocumentProxy } from 'pdfjs-dist';
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFRef, PDFString, PDFNumber, PDFPageLeaf } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
-import { DestArray, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
+import { DestArray, PDFOutlineTreeNode } from 'typings';
+import { PDFNamedDestinations } from './destinations';
 
 
 export class PDFOutlines {
     plugin: PDFPlus;
     doc: PDFDocument;
-    pdfJsDoc: PDFDocumentProxy;
-    _destinationsPromise: Promise<Record<string, PDFjsDestArray>>;
+    namedDests: PDFNamedDestinations | null;
 
-    constructor(plugin: PDFPlus, doc: PDFDocument, pdfJsDoc: PDFDocumentProxy) {
+    constructor(plugin: PDFPlus, doc: PDFDocument) {
         this.plugin = plugin;
         this.doc = doc;
-        this.pdfJsDoc = pdfJsDoc;
-        // @ts-ignore
-        this._destinationsPromise = this.pdfJsDoc.getDestinations();
+        this.namedDests = PDFNamedDestinations.fromDocument(doc);
     }
 
     static async fromDocument(doc: PDFDocument, plugin: PDFPlus) {
-        const buffer = await doc.save();
-        const pdfJsDoc = await window.pdfjsLib.getDocument(buffer).promise;
-        return new PDFOutlines(plugin, doc, pdfJsDoc);
+        return new PDFOutlines(plugin, doc);
     }
 
-    static async fromChild(child: PDFViewerChild, plugin: PDFPlus) {
-        const { app, lib } = plugin;
+    static async fromFile(file: TFile, plugin: PDFPlus) {
+        const { lib } = plugin;
 
-        let pdfJsDoc = child.pdfViewer.pdfViewer?.pdfDocument;
-        let doc: PDFDocument | undefined;
-        if (pdfJsDoc) {
-            doc = await lib.loadPdfLibDocumentFromArrayBuffer(await pdfJsDoc.getData());
-        } else if (child.file) {
-            const buffer = await app.vault.readBinary(child.file);
-            pdfJsDoc = await lib.loadPDFDocumentFromArrayBuffer(buffer);
-            doc = await lib.loadPdfLibDocumentFromArrayBuffer(buffer);
-        }
-
-        if (pdfJsDoc && doc) {
-            return new PDFOutlines(plugin, doc, pdfJsDoc);
-        }
-
-        return null;
+        const doc = await lib.loadPdfLibDocument(file);
+        return new PDFOutlines(plugin, doc);
     }
 
     // TODO
@@ -53,10 +35,6 @@ export class PDFOutlines {
 
     get lib() {
         return this.plugin.lib;
-    }
-
-    async getDestForName(name: string): Promise<PDFjsDestArray | null> {
-        return this._destinationsPromise.then((dests) => dests[name] ?? null);
     }
 
     get root(): PDFOutlineItem | null {
@@ -172,8 +150,7 @@ export class PDFOutlines {
                             found = outlineItem;
                         }
                     } else {
-                        const pageNumber = node.pageNumber
-                            ?? (await this.pdfJsDoc!.getPageIndex(dest[0]) + 1);
+                        const pageNumber = await node.getPageNumber();
                         if (JSON.stringify(this.lib.normalizePDFjsDestArray(dest, pageNumber)) === JSON.stringify(outlineDest)) {
                             found = outlineItem;
                         }
@@ -185,14 +162,10 @@ export class PDFOutlines {
         return found;
     }
 
-    static async processOutlineRoot(process: (root: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
+    static async processOutlineRoot(process: (root: PDFOutlineItem) => void, file: TFile, plugin: PDFPlus) {
         const { app } = plugin;
-        const outlines = await PDFOutlines.fromChild(child, plugin);
 
-        if (!outlines) {
-            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
-            return;
-        }
+        const outlines = await PDFOutlines.fromFile(file, plugin);
 
         process(outlines.ensureRoot());
 
@@ -201,15 +174,10 @@ export class PDFOutlines {
         await app.vault.modifyBinary(file, buffer);
     }
 
-    static async findAndProcessOutlineItem(item: PDFOutlineTreeNode, processor: (item: PDFOutlineItem) => void, child: PDFViewerChild, file: TFile, plugin: PDFPlus) {
+    static async findAndProcessOutlineItem(item: PDFOutlineTreeNode, processor: (item: PDFOutlineItem) => void, file: TFile, plugin: PDFPlus) {
         const { app } = plugin;
-        const outlines = await PDFOutlines.fromChild(child, plugin);
 
-        if (!outlines) {
-            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
-            return;
-        }
-
+        const outlines = await PDFOutlines.fromFile(file, plugin);
         const found = await outlines.findPDFjsOutlineTreeNode(item);
 
         if (!found) {
@@ -549,10 +517,7 @@ export class PDFOutlineItem {
     async sortChildren() {
         const children: { child: PDFOutlineItem, page: number, top?: number }[] = [];
         await this.iterChildrenAsync(async (child) => {
-            const dest = child.getNormalizedDestination();
-            if (dest === null) return 0;
-
-            const destArray = await this.lib.ensureDestArray(dest, this.outlines.pdfJsDoc);
+            const destArray = child.getExplicitDestination();
             if (destArray === null) return 0;
 
             const page = destArray[0];
@@ -588,39 +553,45 @@ export class PDFOutlineItem {
     async destNotExistInDoc(): Promise<boolean> {
         if (this.isRoot()) return false;
 
+        // named or explicit destination
         const dest = this.getDestination();
+        // explicit destination
+        let destArray: PDFArray | null = null;
 
         if (dest instanceof PDFString || dest instanceof PDFHexString) {
             const name = dest.decodeText();
-            const destArray = await this.outlines.getDestForName(name);
-            if (!destArray) return true;
-
-            try {
-                await this.outlines.pdfJsDoc.getPageIndex(destArray[0]);
-            } catch (e) {
-                return true;
-            }
-
-            return false;
+            destArray = this.outlines.namedDests?.getExplicitDest(name) ?? null;
+        } else if (dest instanceof PDFArray) {
+            destArray = dest;
         }
 
-        if (dest instanceof PDFArray) {
-            const pageRef = dest.get(0);
-            if (pageRef instanceof PDFRef) {
-                // pdf-lib's removePage method does not remove page properly, so
-                // getPages() returns the same result as before calling removePage.
-                // Therefore, I'm relying on PDF.js to check if the page really exists.
-                try {
-                    await this.outlines.pdfJsDoc.getPageIndex({ num: pageRef.objectNumber, gen: pageRef.generationNumber });
-                } catch (e) {
-                    return true;
-                }
+        if (!destArray) return true;
 
-                return false;
+        const pageRef = destArray.get(0);
+        if (pageRef instanceof PDFRef) {
+            // pdf-lib's removePage method does not remove page properly, so
+            // getPages() returns the same result as before calling removePage.
+
+            // Therefore, I was relying on PDF.js to check if the page really exists, like so:
+            // 
+            // try {
+            //     await this.outlines.pdfJsDoc.getPageIndex({ num: pageRef.objectNumber, gen: pageRef.generationNumber });
+            // } catch (e) {
+            //     return true;
+            // }
+            // return false;
+
+            // However, now I found that I can check it using only pdf-lib as follows:
+
+            const pageLeaf = this.doc.context.lookup(pageRef);
+            if (pageLeaf instanceof PDFPageLeaf) {
+                // If the page has been removed, its previous parent can no longer see the page
+                // although the removed page can still see its previous parent.
+                return !pageLeaf.Parent()?.Kids().asArray().includes(pageRef);
             }
         }
 
-        return true;
+        throw new Error('The first element of a destination array must be a refernece of a page leaf node.');
     }
 
     /** Compute the value of the "Count" entry following the algirithm described in Table 153 of the PDF spec. */
@@ -683,5 +654,15 @@ export class PDFOutlineItem {
         }
 
         return null;
+    }
+
+    getExplicitDestination(): DestArray | null {
+        const dest = this.getNormalizedDestination();
+        if (typeof dest === 'string') {
+            const destArray = this.outlines.namedDests?.getExplicitDest(dest) ?? null;
+            if (destArray) return this.lib.normalizePdfLibDestArray(destArray, this.doc);
+            return null;
+        }
+        return dest;
     }
 }

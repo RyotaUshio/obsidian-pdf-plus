@@ -1,6 +1,15 @@
+import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, HexString, RGB, Keymap, App } from 'obsidian';
 import { ObsidianViewer } from 'typings';
 
+
+export function getDirectPDFObj(dict: PDFDict, key: string) {
+    const obj = dict.get(PDFName.of(key));
+    if (obj instanceof PDFRef) {
+        return dict.context.lookup(obj);
+    }
+    return obj;
+}
 
 /** Return an array of numbers from `from` (inclusive) to `to` (exclusive). */
 export function range(from: number, to: number): number[] {

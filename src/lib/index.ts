@@ -1,17 +1,19 @@
 import { App, Component, EditableFileView, MarkdownView, Notice, TFile, TextFileView, View, parseLinktext } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
-import { encodeLinktext, parsePDFSubpath, removeExtension } from 'utils';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState } from 'typings';
-import { EncryptedPDFError, PDFArray, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
+import { encodeLinktext, getDirectPDFObj, parsePDFSubpath, removeExtension } from 'utils';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
+import { NameTree, NumberTree } from './name-or-number-trees';
+import { PDFNamedDestinations } from './destinations';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState } from 'typings';
 
 
 export class PDFPlusLib {
@@ -19,6 +21,9 @@ export class PDFPlusLib {
     plugin: PDFPlus
 
     PDFOutlines = PDFOutlines;
+    NameTree = NameTree;
+    NumberTree = NumberTree;
+    PDFNamedDestinations = PDFNamedDestinations;
 
     /** Sub-modules */
     commands: PDFPlusCommands;
@@ -364,6 +369,15 @@ export class PDFPlusLib {
         return null;
     }
 
+    getPageLabelTree(doc: PDFDocument) {
+        const dict = getDirectPDFObj(doc.catalog, 'PageLabels');
+        if (dict instanceof PDFDict) {
+            return new NumberTree(dict);
+        }
+
+        return null;
+    }
+
     getAnnotationInfoFromAnnotationElement(annot: AnnotationElement) {
         return {
             page: annot.parent.page.pageNumber,
@@ -637,9 +651,8 @@ export class PDFPlusLib {
 
     async getPDFOutlines() {
         const doc = await this.getPdfLibDocument();
-        const pdfJsDoc = this.getPDFDocument();
-        if (doc && pdfJsDoc) {
-            return new PDFOutlines(this.plugin, doc, pdfJsDoc);
+        if (doc) {
+            return new PDFOutlines(this.plugin, doc);
         }
     }
 

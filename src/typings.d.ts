@@ -813,8 +813,9 @@ declare module 'obsidian' {
     }
 
     interface FileManager {
-        getNewFileParent(activeFilePath: string, name: string): TFolder;
+        // getNewFileParent(sourcePath: string, newFilePath?: string): TFolder;
         createNewMarkdownFile(folder: TFolder, name: string, data?: string): Promise<TFile>;
+        createNewFile(folder: TFolder, name: string, extension: string, data?: string): Promise<TFile>;
     }
 
     interface PluginSettingTab {
@@ -887,6 +888,7 @@ declare module 'obsidian' {
         getConfig(name: 'useTab'): boolean;
         getConfig(name: 'tabSize'): number;
         getConfig(name: 'alwaysUpdateLinks'): boolean;
+        getConfig(name: 'newFileLocation'): 'root' | 'current' | 'folder';
         getAvailablePath(pathWithoutExtension: string, extension: string): string;
     }
 
