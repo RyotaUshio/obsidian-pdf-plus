@@ -8,6 +8,7 @@ import { PDFOutlineTitleModal } from 'modals/outline-modals';
 import { TemplateProcessor } from 'template';
 import { parsePDFSubpath } from 'utils';
 import { DestArray } from 'typings';
+import { PDFPlusSettingTab } from 'settings';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -152,6 +153,10 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'copy-debug-info',
                 name: 'Copy debug info',
                 callback: () => this.copyDebugInfo()
+            }, {
+                id: 'load-debug-info',
+                name: 'Load debug info',
+                checkCallback: (checking) => this.loadDebugInfo(checking)
             }, {
                 id: 'create-pdf',
                 name: 'Create new PDF',
@@ -836,5 +841,29 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
         navigator.clipboard.writeText(JSON.stringify({ settings, styleSheet }, null, 4));
         new Notice(`${this.plugin.manifest.name}: Debug info copied to clipboard.`);
+    }
+
+    loadDebugInfo(checking: boolean) {
+        if (!this.plugin.isDebugMode) return false;
+
+        if (!checking) {
+            (async () => {
+                try {
+                    const { settings, styleSheet } = JSON.parse(await navigator.clipboard.readText());
+                    console.log({ settings, styleSheet });
+
+                    this.plugin.settings = settings;
+                    const tab = this.app.setting.pluginTabs.find((tab) => tab.id === this.plugin.manifest.id);
+                    if (tab) {
+                        await (tab as PDFPlusSettingTab).hide();
+                    }
+
+                } catch (err) {
+                    new Notice(`${this.plugin.manifest.name}: Debug info not found in clipboard.`);
+                }
+            })();
+        }
+
+        return true;
     }
 }

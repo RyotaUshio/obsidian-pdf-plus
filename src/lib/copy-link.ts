@@ -532,9 +532,18 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     watchPaste(text: string) {
         // watch for a manual paste for updating this.lastPasteFile
         this.plugin.registerOneTimeEvent(this.app.workspace, 'editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+            console.log(`lastActiveMarkdownFile = ${this.plugin.lastActiveMarkdownFile?.path}`)
+            console.log(`lastPasteFile = ${this.plugin.lastPasteFile?.path}`)
+            console.log(`- clipboardData = ${JSON.stringify(evt.clipboardData?.getData('text/plain'))}`)
+            console.log(`- originalText = ${JSON.stringify(text)}`)
+            console.log(evt.clipboardData?.getData('text/plain') === text ? '>> Texts match' : '>> Texts do not match')
             if (info.file?.extension === 'md' && evt.clipboardData?.getData('text/plain') === text) {
                 this.plugin.lastPasteFile = info.file;
+                console.log(`>> lastPasteFile updated to ${info.file.path}`)
+            } else {
+                console.log(`>> lastPasteFile not updated`);
             }
+            console.log('---');
         });
     }
 
