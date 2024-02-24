@@ -8,7 +8,19 @@
         "type": "tabs",
         "children": [
           {
-            "id": "1ee8c8ee66fbff6a",
+            "id": "34035ea3ecfebbe2",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Basics.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "63bdc639bf1cf1bb",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -18,20 +30,9 @@
                 "source": false
               }
             }
-          },
-          {
-            "id": "34035ea3ecfebbe2",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Untitled.md",
-                "mode": "source",
-                "source": false
-              }
-            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -81,8 +82,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "6491806704765c38",
@@ -170,10 +170,30 @@
       "webpage-html-export:Export Vault to HTML": false
     }
   },
-  "active": "1ee8c8ee66fbff6a",
+  "active": "63bdc639bf1cf1bb",
   "lastOpenFiles": [
-    "Untitled.md",
+    "Colors.md",
+    "Basics.md",
+    "Backlink highlighting.md",
     "index.md",
+    "Getting started.md",
+    "Annotating PDFs.md",
+    "Attachments/Pasted image 20240224150625.png",
+    "Untitled.md",
+    "Attachments/Demo.mov",
+    "Attachments",
+    "Attachments/Screen Recording 2024-02-24 at 16.23.02.mov",
+    "Attachments/Screen Recording 2024-02-24 at 16.21.33.mov",
+    "Attachments/Screen Recording 2024-02-24 at 16.17.34.mov",
+    "Attachments/Pasted image 20240224161224.png",
+    "Attachments/Pasted image 20240224160002.png",
+    "Attachments/Screen Recording 2024-02-24 at 15.51.47.mov",
+    "Attachments/Pasted image 20240224153532.png",
+    "Attachments/Screen Recording 2024-02-24 at 15.31.40.mov",
+    "Screen Recording 2024-02-24 at 15.24.57.mov",
+    "Pasted image 20240224150601.png",
+    "Pasted image 20240224150436.png",
+    "Pasted image 20240224150327.png",
     "Folder/Untitled.md",
     "Folder",
     "Welcome.md"

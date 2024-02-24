@@ -1,4 +1,6 @@
 {
   "showInlineTitle": false,
-  "propertiesInDocument": "hidden"
+  "propertiesInDocument": "hidden",
+  "alwaysUpdateLinks": true,
+  "attachmentFolderPath": "Attachments"
 }
