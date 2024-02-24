@@ -850,7 +850,12 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             (async () => {
                 try {
                     const { settings, styleSheet } = JSON.parse(await navigator.clipboard.readText());
-                    console.log({ settings, styleSheet });
+
+                    new Notice(`${this.plugin.manifest.name}: Debug info loaded from clipboard.`);
+
+                    console.debug('Loaded debug info:');
+                    console.debug('- settings:', settings);
+                    console.debug('- styleSheet:', styleSheet);
 
                     this.plugin.settings = settings;
                     const tab = this.app.setting.pluginTabs.find((tab) => tab.id === this.plugin.manifest.id);

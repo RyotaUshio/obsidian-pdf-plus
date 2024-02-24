@@ -532,12 +532,21 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     watchPaste(text: string) {
         // watch for a manual paste for updating this.lastPasteFile
         this.plugin.registerOneTimeEvent(this.app.workspace, 'editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+            if (info.file?.extension !== 'md') return;
+            if (!evt.clipboardData) return;
+
+            const clipboardText = evt.clipboardData.getData('text/plain');
+            // Get rid of the influences of the OS-dependent line endings
+            // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
+            const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
+
             console.log(`lastActiveMarkdownFile = ${this.plugin.lastActiveMarkdownFile?.path}`)
             console.log(`lastPasteFile = ${this.plugin.lastPasteFile?.path}`)
-            console.log(`- clipboardData = ${JSON.stringify(evt.clipboardData?.getData('text/plain'))}`)
+            console.log(`- clipboardText = ${JSON.stringify(clipboardText)}`)
+            console.log(`- clipboardTextNormalized = ${JSON.stringify(clipboardTextNormalized)}`)
             console.log(`- originalText = ${JSON.stringify(text)}`)
-            console.log(evt.clipboardData?.getData('text/plain') === text ? '>> Texts match' : '>> Texts do not match')
-            if (info.file?.extension === 'md' && evt.clipboardData?.getData('text/plain') === text) {
+            console.log(clipboardTextNormalized === text ? '>> Texts match' : '>> Texts do not match')
+            if (clipboardTextNormalized === text) {
                 this.plugin.lastPasteFile = info.file;
                 console.log(`>> lastPasteFile updated to ${info.file.path}`)
             } else {
