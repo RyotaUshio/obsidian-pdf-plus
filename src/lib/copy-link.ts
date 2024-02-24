@@ -532,7 +532,15 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     watchPaste(text: string) {
         // watch for a manual paste for updating this.lastPasteFile
         this.plugin.registerOneTimeEvent(this.app.workspace, 'editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-            if (info.file?.extension === 'md' && evt.clipboardData?.getData('text/plain') === text) {
+            if (info.file?.extension !== 'md') return;
+            if (!evt.clipboardData) return;
+
+            const clipboardText = evt.clipboardData.getData('text/plain');
+            // Get rid of the influences of the OS-dependent line endings
+            // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
+            const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
+
+            if (clipboardTextNormalized === text) {
                 this.plugin.lastPasteFile = info.file;
             }
         });

@@ -59,6 +59,7 @@ export default class PDFPlus extends Plugin {
 	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
 	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
 	pdfViewerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
+	isDebugMode: boolean = false;
 
 	async onload() {
 		this.checkVersion();
