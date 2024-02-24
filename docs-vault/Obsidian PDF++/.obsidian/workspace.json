@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Folder/Untitled.md",
+                "file": "index.md",
                 "mode": "source",
                 "source": false
               }
@@ -69,7 +69,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "6491806704765c38",
@@ -80,12 +81,22 @@
         "type": "tabs",
         "children": [
           {
+            "id": "c5d3ba0e61f93f9a",
+            "type": "leaf",
+            "state": {
+              "type": "file-properties",
+              "state": {
+                "file": "index.md"
+              }
+            }
+          },
+          {
             "id": "0b619c4f564ab6d3",
             "type": "leaf",
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Folder/Untitled.md",
+                "file": "index.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +113,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Folder/Untitled.md",
+                "file": "index.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,7 +136,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Folder/Untitled.md"
+                "file": "index.md"
               }
             }
           }
@@ -149,8 +160,8 @@
   },
   "active": "1ee8c8ee66fbff6a",
   "lastOpenFiles": [
-    "index.md",
     "Folder/Untitled.md",
+    "index.md",
     "Folder",
     "Welcome.md"
   ]
