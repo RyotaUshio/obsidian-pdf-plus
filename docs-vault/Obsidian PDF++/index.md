@@ -3,7 +3,7 @@ title: Home
 ---
 Welcome to the official documentation of the **Obsidian PDF++** plugin!
 
-PDF++ is *the most Obsidian-native PDF annotation & editing tool* ever, which significantly upgrades Obsidian's native PDF support.
+PDF++ is *the most Obsidian-native PDF annotation & editing tool ever*, which significantly upgrades Obsidian's native PDF support.
 
 [Visit GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus)
 
@@ -14,7 +14,7 @@ PDF++ is *the most Obsidian-native PDF annotation & editing tool* ever, which si
 > 
 > If you find this plugin helpful, please support the project from the links below.
 > 
-> - One-time donations are much appreciated. However, monthly donations will help me even more by providing a constant source of income.
+> - One-time donations are much appreciated. However, monthly paying will help me even more by providing a constant source of income regardless of the amount.
 > - If you prefer PayPal, please make donations from Ko-fi.
 > 
 > GitHub Sponsors:
