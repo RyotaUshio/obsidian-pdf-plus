@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Basics.md",
+                "file": "Colors.md",
                 "mode": "source",
                 "source": false
               }
@@ -31,8 +31,7 @@
               }
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -98,7 +97,7 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "index.md"
+                "file": "Colors.md"
               }
             }
           },
@@ -108,7 +107,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "index.md",
+                "file": "Colors.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -125,7 +124,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "index.md",
+                "file": "Colors.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -148,7 +147,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "index.md"
+                "file": "Colors.md"
               }
             }
           }
@@ -170,12 +169,16 @@
       "webpage-html-export:Export Vault to HTML": false
     }
   },
-  "active": "63bdc639bf1cf1bb",
+  "active": "34035ea3ecfebbe2",
   "lastOpenFiles": [
+    "index.md",
     "Colors.md",
     "Basics.md",
     "Backlink highlighting.md",
-    "index.md",
+    "Settings/Backlink highlighting.md",
+    "Attachments/Pasted image 20240224164607.png",
+    "Settings",
+    "Attachments/Pasted image 20240224164428.png",
     "Getting started.md",
     "Annotating PDFs.md",
     "Attachments/Pasted image 20240224150625.png",

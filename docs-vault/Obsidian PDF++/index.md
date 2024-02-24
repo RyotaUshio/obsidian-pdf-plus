@@ -10,13 +10,13 @@ PDF++ is *the most Obsidian-native PDF annotation & editing tool ever*, which si
 [Visit GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus)
 
 > [!important] Support Development
-> Maintaining this plugin is not an easy work; it requires investigating Obsidian's unexposed internals, the knowledge of the technical specification of the PDF file format and PDF-related libraries, and more.
+> It is not an easy work to develop and maintain this plugin; it requires investigating Obsidian's unexposed internals, the knowledge of the technical specification of the PDF file format and PDF-related libraries, and more.
 > 
 > Therefore, **your financial support is crucial for ensuring PDF++ can help you organize your knowledge base for the years to come.**
 > 
 > If you find this plugin helpful, please support the project from the links below.
 > 
-> - One-time donations are much appreciated. However, monthly paying will help me even more by providing a constant source of income regardless of the amount.
+> - One-time donations are much appreciated. However, monthly paying will help me even more by providing a constant source of income.
 > - If you prefer PayPal, please make donations from Ko-fi.
 > 
 > GitHub Sponsors:
