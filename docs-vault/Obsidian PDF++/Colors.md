@@ -22,8 +22,15 @@ Of course, it is tedious to add a color name to a link manually. By using the co
 
 ![[Screen Recording 2024-02-24 at 16.23.02.mov]]
 
+> [!NOTE]
+> Color palettes also offer various formatting options. Learn more in: [[Color palette]]
+
 ## Customizing colors
 
 Available colors are defined in [[Settings/Backlink highlighting#Colors|this section in the PDF++ settings]]. See the linked page for further details.
 
 ![[Pasted image 20240224164428.png]]
+
+---
+
+**Previous: [[Basics]]**

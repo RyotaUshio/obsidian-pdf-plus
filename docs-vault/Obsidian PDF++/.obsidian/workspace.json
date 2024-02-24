@@ -25,14 +25,25 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Basics.md",
+                "file": "Colors.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "73595273cb05c12e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "index.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -98,7 +109,7 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Basics.md"
+                "file": "Settings/Backlink highlighting.md"
               }
             }
           },
@@ -108,7 +119,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Basics.md",
+                "file": "Settings/Backlink highlighting.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -125,7 +136,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Basics.md",
+                "file": "Settings/Backlink highlighting.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -148,7 +159,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Basics.md"
+                "file": "Settings/Backlink highlighting.md"
               }
             }
           }
@@ -170,20 +181,20 @@
       "webpage-html-export:Export Vault to HTML": false
     }
   },
-  "active": "63bdc639bf1cf1bb",
+  "active": "34035ea3ecfebbe2",
   "lastOpenFiles": [
+    "index.md",
+    "Colors.md",
+    "Color palette.md",
     "Backlink highlighting.md",
     "Annotating PDFs.md",
     "Getting started.md",
-    "index.md",
-    "Colors.md",
-    "Basics.md",
     "Settings/Backlink highlighting.md",
+    "Basics.md",
     "Attachments/Pasted image 20240224164607.png",
     "Settings",
     "Attachments/Pasted image 20240224164428.png",
     "Attachments/Pasted image 20240224150625.png",
-    "Untitled.md",
     "Attachments/Demo.mov",
     "Attachments",
     "Attachments/Screen Recording 2024-02-24 at 16.23.02.mov",
