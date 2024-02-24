@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Colors.md",
+                "file": "Settings/Backlink highlighting.md",
                 "mode": "source",
                 "source": false
               }
@@ -31,7 +31,8 @@
               }
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -97,7 +98,7 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Colors.md"
+                "file": "index.md"
               }
             }
           },
@@ -107,7 +108,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Colors.md",
+                "file": "index.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -124,7 +125,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Colors.md",
+                "file": "index.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -147,7 +148,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Colors.md"
+                "file": "index.md"
               }
             }
           }
@@ -169,13 +170,13 @@
       "webpage-html-export:Export Vault to HTML": false
     }
   },
-  "active": "34035ea3ecfebbe2",
+  "active": "63bdc639bf1cf1bb",
   "lastOpenFiles": [
-    "index.md",
     "Colors.md",
     "Basics.md",
     "Backlink highlighting.md",
     "Settings/Backlink highlighting.md",
+    "index.md",
     "Attachments/Pasted image 20240224164607.png",
     "Settings",
     "Attachments/Pasted image 20240224164428.png",
