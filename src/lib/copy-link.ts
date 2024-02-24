@@ -539,8 +539,9 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // Get rid of the influences of the OS-dependent line endings
             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
             const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
+            const copiedTextNormalized = text.replace(/\r\n/g, '\n');
 
-            if (clipboardTextNormalized === text) {
+            if (clipboardTextNormalized === copiedTextNormalized) {
                 this.plugin.lastPasteFile = info.file;
             }
         });
