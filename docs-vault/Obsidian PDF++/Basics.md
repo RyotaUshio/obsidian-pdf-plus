@@ -1,4 +1,4 @@
-PDF++'s **backlink highlighting** is based on Obsidian's built-in [PDF deep linking feature introduced in Obsidian v1.3.6](https://www.reddit.com/r/ObsidianMD/comments/14jq9by/obsidian_136_adds_deep_linking_to_pdf_selections/).
+PDF++'s **backlink highlighting** is based on the built-in [PDF deep linking feature introduced in Obsidian v1.3.6](https://www.reddit.com/r/ObsidianMD/comments/14jq9by/obsidian_136_adds_deep_linking_to_pdf_selections/).
 
 ## Reviewing Obsidian's native PDF support
 

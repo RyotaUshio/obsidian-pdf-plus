@@ -25,7 +25,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "index.md",
+                "file": "Basics.md",
                 "mode": "source",
                 "source": false
               }
@@ -98,7 +98,7 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "index.md"
+                "file": "Basics.md"
               }
             }
           },
@@ -108,7 +108,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "index.md",
+                "file": "Basics.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -125,7 +125,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "index.md",
+                "file": "Basics.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -148,7 +148,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "index.md"
+                "file": "Basics.md"
               }
             }
           }
@@ -172,16 +172,16 @@
   },
   "active": "63bdc639bf1cf1bb",
   "lastOpenFiles": [
+    "Backlink highlighting.md",
+    "Annotating PDFs.md",
+    "Getting started.md",
+    "index.md",
     "Colors.md",
     "Basics.md",
-    "Backlink highlighting.md",
     "Settings/Backlink highlighting.md",
-    "index.md",
     "Attachments/Pasted image 20240224164607.png",
     "Settings",
     "Attachments/Pasted image 20240224164428.png",
-    "Getting started.md",
-    "Annotating PDFs.md",
     "Attachments/Pasted image 20240224150625.png",
     "Untitled.md",
     "Attachments/Demo.mov",
