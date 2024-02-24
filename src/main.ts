@@ -96,10 +96,8 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private checkVersion() {
-		if (requireApiVersion('1.5.4')) {
-			const notice = new Notice(`${this.manifest.name}: This plugin has not been tested on Obsidian v1.5.4 or above. Please report any issue you encounter on `, 0);
-			notice.noticeEl.append(createEl('a', { href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new', text: 'GitHub' }));
-			notice.noticeEl.appendText('.');
+		if (requireApiVersion('1.5.9')) {
+			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian v1.5.9 or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).`);
 		}
 	}
 
