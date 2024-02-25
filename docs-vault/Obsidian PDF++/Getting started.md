@@ -1,3 +1,0 @@
-- [[Annotating PDFs]]: Learn how to highlight & add comments to text selections in PDF.
-- [[Editing PDFs]]
-- [[Other QOL improvements]]
