@@ -22,7 +22,7 @@ See [here](#installation) for an installation guide.
 >   If it doesn't help, let me know by [filing an issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues).
 
 > [!warning]
-> - This plugin relies on many private APIs of Obsidian, so **there is a relatively high risk that this plugin may break when Obsidian is updated**. For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
+> - This plugin relies on many private APIs of Obsidian, so **there is a relatively high risk that this plugin may break when Obsidian is updated** ([learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/48)). For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
 > - Although this plugin is almost mobile-compatible, some features, including copying links with color palette, might not work well on mobile.
 
 ## Getting started
@@ -205,8 +205,9 @@ Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.
 #### Copy link to page from PDF thumbnail
 
 - **Replace the built-in right-click menu in the thumbnail with a custom one**: This enables you to copy a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail.
+  > Note: The Minimal theme has an issue where thumbnails cannot be right-clicked to open a menu when combined with Style Settings ([details](https://github.com/kepano/obsidian-minimal/issues/702)).
 - **Drag & drop PDF thumbnail to copy link to section**: Grab a thumbnail image and drop it to a markdown file to create a page link.
-  > Note: When disabled, drag-and-drop will cause the thumbnail image to be paste as a data url, which is seemingly Obsidian\'s bug.
+  > Note: When disabled, drag-and-drop will cause the thumbnail image to be paste as a data url, which is seemingly Obsidian's bug.
 
 ### Embedding PDF files
 
