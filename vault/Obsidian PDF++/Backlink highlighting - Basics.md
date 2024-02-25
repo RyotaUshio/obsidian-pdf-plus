@@ -13,9 +13,11 @@ It will copy a link that looks like `[[Lorem Ipsum.pdf#page=1&selection=4,0,4,11
 However, it doesn't work in the opposite way. While jumping to a text selection in a PDF from a markdown file works like a charm, you can't go to the markdown file linking to the text selection.
 Also, it is difficult to see what parts of the PDF is referenced in your notes at a glance.
 
-## Backlink highlighting
+## Introducing backlink highlighting
 
-Now, enable PDF++. You will find the text that you linked to in the previous step is displayed with a highlight. It makes it easy to identify the text selections with backlinks.
+Here's where PDF++ comes in.
+
+Now, enable the plugin. You will find the text that you linked to in the previous step is displayed with a highlight. It makes it easy to identify the text selections with backlinks.
 
 ![[Pasted image 20240224153532.png]]
 ### Open backlinks from PDFs
