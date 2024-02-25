@@ -35,7 +35,7 @@ For example,
 
 As you might have already noticed if you're familiar with JavaScript, each `{{...}}` is evaluated as a JavaScript expression. It means you can do whatever you want in your templates!
 
-However, don't worry if you have no experience with JavaScript; PDF++ prepares almost all information you will want in your templates for you and make it availabel as various preset variables so that you don't have to do anything too complex.
+Don't worry even if you have no experience with JavaScript; PDF++ prepares almost all information you will want in your templates for you and make it availabel as various preset variables so that you don't have to do anything too complex.
 
 Learn more at: [[Templating]].
 
