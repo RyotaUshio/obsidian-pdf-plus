@@ -3,12 +3,14 @@ title: Home
 ---
 Welcome to the official documentation of the **Obsidian PDF++** plugin!
 
-PDF++ is *the most Obsidian-native PDF annotation & editing tool ever*, which significantly upgrades Obsidian's native PDF support.
+PDF++ is **the most Obsidian-native PDF annotation & editing tool ever**, which significantly upgrades Obsidian's native PDF support.
 
 ![[Demo.mov]]
 
-- [Visit GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus)
-- [[Getting started]]
+- [View on GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus)
+- [Click to Install via BRAT](obsidian://brat?plugin=RyotaUshio/obsidian-pdf-plus) (requires the latest version of [BRAT](https://obsidian.md/plugins?id=brat))
+
+Start your exploration from here: [[Getting started]]
 
 > [!important] Support Development
 > It is not an easy work to develop and maintain this plugin; it requires investigating Obsidian's unexposed internals, the knowledge of the technical specification of the PDF file format and PDF-related libraries, and more.
