@@ -1,6 +1,9 @@
 ---
 title: Home
 ---
+> [!NOTE]
+> This documentation is pretty much a work in progress and thus imcomplete. More complete instructions can be found in the plugin settings.
+
 Welcome to the official documentation of the **Obsidian PDF++** plugin!
 
 PDF++ is **the most Obsidian-native PDF annotation & editing tool ever**, which significantly upgrades Obsidian's native PDF support.
