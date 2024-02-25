@@ -1496,7 +1496,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addSetting()
 			.then((setting) => this.renderMarkdown([
 				// 'The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ',
-				'Each `{{ ...}}` will be evaluated as a JavaScript expression given the variables listed below.',
+				'Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.',
 				'',
 				'Available variables are:',
 				'',

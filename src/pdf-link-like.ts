@@ -3,6 +3,7 @@ import { App, HoverParent, HoverPopover, Keymap } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
 import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
+import { isMouseEventExternal } from 'utils';
 
 
 /**
@@ -15,12 +16,39 @@ import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray }
  * - Hovering to show a popover
  * - Clicking to record history
  */
-abstract class PDFLinkLikePostProcessor {
+abstract class PDFLinkLikePostProcessor implements HoverParent {
     app: App;
     plugin: PDFPlus;
     lib: PDFPlusLib;
     child: PDFViewerChild;
     targetEl: HTMLElement;
+
+    _hoverPopover: HoverPopover | null = null;
+
+    /**
+     * A hover parent (https://docs.obsidian.md/Reference/TypeScript+API/HoverParent) is
+     * any object that has `hoverPopover: HoverPopover | null` property.
+     * 
+     * The `hoverPopover` property is set when a popover is shown.
+     * In order to add a CSS class or a data attribute to the popover's hover element,
+     * we define a custom hover parent class that has `hoverPopover` as an accessor property,
+     * where the setter adds the class or the data attribute to the popover's hover element.
+     */
+    get hoverPopover() {
+        return this._hoverPopover;
+    }
+
+    set hoverPopover(hoverPopover) {
+        this._hoverPopover = hoverPopover;
+        if (hoverPopover) {
+            this.onHoverPopoverSet(hoverPopover);
+        }
+    }
+
+    onHoverPopoverSet(hoverPopover: HoverPopover): void {
+        // override this method to post-process the hover popover 
+        // (e.g. add a class or a data attribute to the popover's hover element)
+    }
 
     protected constructor(plugin: PDFPlus, child: PDFViewerChild, targetEl: HTMLElement) {
         this.plugin = plugin;
@@ -35,8 +63,6 @@ abstract class PDFLinkLikePostProcessor {
     }
 
     abstract getLinkText(evt: MouseEvent): Promise<string | null>;
-
-    abstract getHoverParent(evt: MouseEvent): HoverParent;
 
     abstract useModifierKey(): boolean;
 
@@ -75,7 +101,9 @@ abstract class PDFLinkLikePostProcessor {
         const { app, plugin, targetEl } = this;
 
         plugin.registerDomEvent(targetEl, 'mouseover', async (event) => {
-            let linktext;
+            if (!isMouseEventExternal(event, targetEl)) return;
+
+            let linktext: string | null = null;
             try {
                 linktext = await this.getLinkText(event);
             } catch (e) {
@@ -90,7 +118,7 @@ abstract class PDFLinkLikePostProcessor {
             app.workspace.trigger('hover-link', {
                 event,
                 source: 'pdf-plus',
-                hoverParent: this.getHoverParent(event),
+                hoverParent: this,
                 targetEl,
                 linktext,
                 sourcePath: this.sourcePath
@@ -122,7 +150,7 @@ abstract class PDFLinkLikePostProcessor {
  * The destination can be either a string (a named destination) or an array (an explicit destination).
  */
 abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcessor {
-    abstract getDest(evt: MouseEvent): string | PDFjsDestArray;
+    abstract getDest(): string | PDFjsDestArray;
 
     async getLinkText(evt: MouseEvent) {
         const { lib, child } = this;
@@ -130,7 +158,7 @@ abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcesso
         const doc = child.pdfViewer.pdfViewer?.pdfDocument;
         if (!doc) return null;
 
-        const dest = this.getDest(evt);
+        const dest = this.getDest();
         let subpath: string | null = null;
         if (typeof dest === 'string') {
             subpath = await lib.destIdToSubpath(dest, doc);
@@ -142,12 +170,11 @@ abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcesso
         return (this.file?.path ?? '') + subpath;
     }
 
-    getHoverParent(evt: MouseEvent) {
-        const dest = this.getDest(evt);
-        return new PDFDestinationHolderHoverParent(
-            this.plugin,
-            typeof dest === 'string' ? dest : undefined
-        );
+    onHoverPopoverSet(hoverPopover: HoverPopover): void {
+        const el = hoverPopover.hoverEl;
+        el.addClass('pdf-plus-pdf-internal-link-popover');
+        const dest = this.getDest();
+        if (typeof dest === 'string') el.dataset.dest = dest;
     }
 }
 
@@ -243,41 +270,5 @@ export class PDFThumbnailItemPostProcessor extends PDFLinkLikePostProcessor {
     shouldRecordHistory() {
         return this.plugin.settings.recordHistoryOnThumbnailClick
             && !this.child.opts.isEmbed;
-    }
-
-    // @ts-ignore
-    getHoverParent() {
-        return this.child;
-    }
-}
-
-
-/**
- * A hover parent (https://docs.obsidian.md/Reference/TypeScript+API/HoverParent) is
- * any object that has `hoverPopover: HoverPopover | null` property.
- * 
- * The `hoverPopover` property is set when a popover is shown.
- * In order to add a CSS class or a data attribute to the popover's hover element,
- * we define a custom hover parent class that has `hoverPopover` as an accessor property,
- * where the setter adds the class or the data attribute to the popover's hover element.
- */
-export class PDFDestinationHolderHoverParent implements HoverParent {
-    _hoverPopover: HoverPopover | null
-
-    constructor(public plugin: PDFPlus, public destId?: string) {
-        this._hoverPopover = null;
-    }
-
-    get hoverPopover() {
-        return this._hoverPopover;
-    }
-
-    set hoverPopover(hoverPopover) {
-        this._hoverPopover = hoverPopover;
-        if (hoverPopover) {
-            const el = hoverPopover.hoverEl;
-            el.addClass('pdf-plus-pdf-internal-link-popover');
-            if (this.destId) el.dataset.dest = this.destId;
-        }
     }
 }
