@@ -33,4 +33,5 @@ Start your exploration from here: [[Getting started]]
 > 
 > Ko-fi:
 > <a href='https://ko-fi.com/E1E6U7CJZ' target='_blank'><img height='36' style='border:0px; width: 180px; height:auto;' src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-> 
+
+[Contribute to this documentation](https://github.com/RyotaUshio/obsidian-pdf-plus/tree/docs)
