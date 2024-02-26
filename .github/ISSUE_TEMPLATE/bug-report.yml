@@ -6,7 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for taking the time to fill out this bug report! <!--- Please note: we consider a problem as a bug only if it can be reproducible in the sandbox vault where only PDF++ (and other relevant plugins if any) are enabled. If this is not the case, ask a question in the GitHub Discussions: https://github.com/RyotaUshio/obsidian-pdf-plus/discussions --->
+        Thank you for taking the time to fill out this bug report!
+        Please note: we consider a problem as a bug only if it can be reproducible in the sandbox vault where only PDF++ (and other relevant plugins if any) are enabled. If this is not the case, ask a question in the [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions).
   - type: textarea
     id: description
     attributes:
@@ -21,9 +22,9 @@ body:
       label: Steps to reproduce
       description: 'Describe the detailed steps to reproduce the behavior in the sandbox vault. If possible, attach a PDF file where you face the problem.'
       placeholder: |
-        1. Go to '...'|
-        2. Click on '....'|
-        3. Scroll down to '....'|
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
         4. See error
     validations:
       required: true
