@@ -28,3 +28,22 @@ Add screen recordings that capture the situation the bug is happening. If it's d
 
 **Additional context (optional)**
 Add any other context about the problem here.
+
+body:
+  - type: textarea
+    id: obsidian-debug-info
+    attributes:
+      label: Obsidian debug info
+      description: From the command palette, run the command `Show debug info`. Then select `Copy to clipboard` and paste the result here.
+      placeholder: 
+    validations:
+      required: true
+  - type: textarea
+    id: pdf-plus-debug-info
+    attributes:
+      label: 'PDF++ debug info'
+      description: From the command palette, run the command `PDF++: Copy debug info`. Then paste the result here.
+      placeholder:
+      render: json
+    validations:
+      required: true
