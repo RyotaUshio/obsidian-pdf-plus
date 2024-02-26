@@ -1,4 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Questions? Visit GitHub Discussions
+  - name: 'Questions'
     url: https://github.com/RyotaUshio/obsidian-pdf-plus/discussions
+    about: 'Ask questions or browse the past questions on GitHub Discussions'
