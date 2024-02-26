@@ -2,7 +2,7 @@
 title: Home
 ---
 > [!NOTE]
-> This documentation is pretty much a work in progress and thus imcomplete. More complete instructions can be found in the plugin settings.
+> This documentation is pretty much a work in progress and thus incomplete. More complete instructions can be found in the plugin settings.
 
 Welcome to the official documentation of the **Obsidian PDF++** plugin!
 
