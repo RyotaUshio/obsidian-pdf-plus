@@ -1573,9 +1573,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 		this.addSetting('copyCommands')
-			.setName('Custom color palette actions')
+			.setName('Custom link copy formats')
 			.then((setting) => this.renderMarkdown([
-				'Customize the commands that you can trigger by clicking a color palette item while selecting a range of text in PDF viewer.',
+				'Customize the format to use when you copy a link by clicking a color palette item or running the commands while selecting a range of text in PDF viewer.',
 				'',
 				'In addition to the variables listed above, here you can use',
 				'',
