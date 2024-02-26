@@ -13,13 +13,14 @@ PDF++ stands out among other PDF annotation tools for the following reasons:
 - Annotations for a single PDF are no longer confined to a single file and **can be distributed across the whole vault**. It establishes a novel, *Obsidianic* way of PDF annotation.
 - PDF++ does not introduce plugin-dependent syntaxes except for the *optional* `&color=...` link notation.
 
-See [here](#installation) for an installation guide.
+🚀 [Install](#installation)<br>
+📖 [Read the docs](https://ryotaushio.github.io/obsidian-pdf-plus/) (Note: it's still a work in progress!)<br>
+💬 [Ask questions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions)<br>
+❗ [Report bugs](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose) (Tip: when something is not working, first restart Obsidian by running the `Reload app without saving` command.)
 
 > [!note]
 > - If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
 > - Some features require the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enabled.
-> - When something is not working, first restart Obsidian by running the `Reload app without saving` command.
->   If it doesn't help, let me know by [filing an issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues).
 
 > [!warning]
 > - This plugin relies on many private APIs of Obsidian, so **there is a relatively high risk that this plugin may break when Obsidian is updated** ([learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/48)). For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
