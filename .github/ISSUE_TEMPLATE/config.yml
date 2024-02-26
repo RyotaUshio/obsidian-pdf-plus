@@ -3,3 +3,6 @@ contact_links:
   - name: 'Questions'
     url: https://github.com/RyotaUshio/obsidian-pdf-plus/discussions
     about: 'Ask questions or browse the past questions on GitHub Discussions'
+  - name: 'Contribute to the docs'
+    url: https://github.com/RyotaUshio/obsidian-pdf-plus/tree/docs
+    about: 'Improve the documentation to help the community'
