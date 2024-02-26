@@ -1,3 +1,4 @@
+import { getDirectPDFObj } from 'utils';
 import { Notice, TFile } from 'obsidian';
 import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFRef, PDFString, PDFNumber, PDFPageLeaf } from '@cantoo/pdf-lib';
 
@@ -38,11 +39,7 @@ export class PDFOutlines {
     }
 
     get root(): PDFOutlineItem | null {
-        const ref = this.doc.catalog.get(PDFName.of('Outlines'));
-        if (!ref) return null;
-
-        const dict = this.doc.context.lookup(ref);
-
+        const dict = getDirectPDFObj(this.doc.catalog, 'Outlines');
         return dict instanceof PDFDict ? new PDFOutlineItem(this, dict) : null;
     }
 
@@ -215,22 +212,9 @@ export class PDFOutlineItem {
         return another !== null && this.dict === another.dict;
     }
 
-    _getValue(key: string): PDFObject | null {
-        const obj = this.dict.get(PDFName.of(key));
-        if (obj instanceof PDFRef) {
-            return this.dict.context.lookup(obj) ?? null;
-        }
-        return obj ?? null;
-    }
-
-    _getDictFromKey(key: string): PDFDict | null {
-        const obj = this._getValue(key);
-        return obj instanceof PDFDict ? obj : null;
-    }
-
     _get(key: string): PDFOutlineItem | null {
-        const dict = this._getDictFromKey(key);
-        return dict ? new PDFOutlineItem(this.outlines, dict) : null;
+        const dict = getDirectPDFObj(this.dict, key);
+        return dict instanceof PDFDict ? new PDFOutlineItem(this.outlines, dict) : null;
     }
 
     _setOrDelete(key: string, item: PDFOutlineItem | null) {
@@ -303,7 +287,7 @@ export class PDFOutlineItem {
     }
 
     get count(): number | null {
-        const count = this.dict.get(PDFName.of('Count'));
+        const count = getDirectPDFObj(this.dict, 'Count');
         if (count instanceof PDFNumber) {
             return count.asNumber();
         }
@@ -322,7 +306,7 @@ export class PDFOutlineItem {
     get title(): string {
         if (this.isRoot()) throw new Error('Root of outline does not have a title');
 
-        const title = this.dict.get(PDFName.of('Title'));
+        const title = getDirectPDFObj(this.dict, 'Title');
         if (title instanceof PDFString || title instanceof PDFHexString) {
             return title.decodeText();
         }
@@ -621,21 +605,18 @@ export class PDFOutlineItem {
     }
 
     getDestination() {
-        const dest = this.dict.get(PDFName.of('Dest'));
+        const dest = getDirectPDFObj(this.dict, 'Dest');
 
         if (dest) {
             return dest;
         }
 
-        const actionRef = this.dict.get(PDFName.of('A'));
-        if (!actionRef) return null;
-
-        const action = this.doc.context.lookup(actionRef);
+        const action = getDirectPDFObj(this.dict, 'A');
         if (action instanceof PDFDict) {
-            const type = action.get(PDFName.of('S'));
+            const type = getDirectPDFObj(action, 'S');
             if (type instanceof PDFName && type.decodeText() === 'GoTo') {
-                const d = action.get(PDFName.of('D'));
-                return d;
+                const d = getDirectPDFObj(action, 'D');
+                return d ?? null;
             }
         }
 

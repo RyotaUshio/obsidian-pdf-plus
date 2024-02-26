@@ -101,8 +101,6 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
         const { app, plugin, targetEl } = this;
 
         plugin.registerDomEvent(targetEl, 'mouseover', async (event) => {
-            if (!isMouseEventExternal(event, targetEl)) return;
-
             let linktext: string | null = null;
             try {
                 linktext = await this.getLinkText(event);
@@ -153,7 +151,9 @@ abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcesso
     abstract getDest(): string | PDFjsDestArray;
 
     async getLinkText(evt: MouseEvent) {
-        const { lib, child } = this;
+        const { lib, child, targetEl } = this;
+
+        if (!isMouseEventExternal(evt, targetEl)) return null;
 
         const doc = child.pdfViewer.pdfViewer?.pdfDocument;
         if (!doc) return null;
