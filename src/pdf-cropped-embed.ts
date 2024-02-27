@@ -22,18 +22,13 @@ export class PDFCroppedEmbed extends Component implements Embed {
         if (width) this.containerEl.setAttribute('width', '' + width);
     }
 
-    onload() {
-        // Need the re-render to adjust the resolution of the canvas
-        this.registerEvent(this.app.workspace.on('resize', () => this.loadFile()));
-    }
-
     async loadFile() {
         const doc = await this.lib.loadPDFDocument(this.file);
         this.register(() => doc.destroy());
         const page = await doc.getPage(this.pageNumber);
         const [pageX, pageY, pageWidth, pageHeight] = page.view;
 
-        const canvas = await this.lib.renderPDFPageToCanvas(page, 8);
+        const canvas = await this.lib.renderPDFPageToCanvas(page, 7);
 
         const scaleX = canvas.width / pageWidth;
         const scaleY = canvas.height / pageHeight;
