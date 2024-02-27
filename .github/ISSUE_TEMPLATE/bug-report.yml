@@ -1,5 +1,5 @@
 name: Bug report
-description: "Report a bug with PDF++"
+description: "Report a bug with PDF++."
 labels: ["bug"]
 title: "[Bug] "
 body:
@@ -7,7 +7,8 @@ body:
     attributes:
       value: |
         Thank you for taking the time to fill out this bug report!
-        Please note: we consider a problem as a bug only if it can be reproducible in the sandbox vault where only PDF++ (and other relevant plugins if any) are enabled. If this is not the case, ask a question in the [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions).
+        
+        Please note: we consider a problem as PDF++'s bug only if it can be reproducible in the sandbox vault where only this plugin (and other relevant plugins if any) are enabled. If this is not the case, ask a question on [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions).
   - type: textarea
     id: description
     attributes:
