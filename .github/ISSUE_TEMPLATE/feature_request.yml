@@ -7,3 +7,11 @@ body:
     attributes:
       value: |
         Note: for the time being, it is unlikely that PDF++ will support handwritten annotation. [Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/42)
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe your request
+      description: 'A clear and detailed description of the feature you want to have.'
+      placeholder: 
+    validations:
+      required: true
