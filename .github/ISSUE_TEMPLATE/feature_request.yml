@@ -6,4 +6,4 @@ body:
   - type: markdown
     attributes:
       value: |
-      "Note: for the time being, it is unlikely that PDF++ will support handwritten annotation. [Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/42)"
+        Note: for the time being, it is unlikely that PDF++ will support handwritten annotation. [Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/42)
