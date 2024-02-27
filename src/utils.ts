@@ -174,6 +174,13 @@ export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
     return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
 }
 
+export function getEventCoord(evt: MouseEvent | TouchEvent) {
+    return {
+        x: evt instanceof MouseEvent ? evt.clientX : evt.touches[0].clientX,
+        y: evt instanceof MouseEvent ? evt.clientY : evt.touches[0].clientY
+    }
+}
+
 /** EmbedLike includes embeds, canvas cards, Obsidian's native hover popovers, and Hover Editor. */
 export function isNonEmbedLike(pdfViewer: ObsidianViewer): boolean {
     return !pdfViewer.isEmbed && !isHoverEditor(pdfViewer);

@@ -2,7 +2,7 @@ import { App, Component, Menu, ToggleComponent, setIcon, setTooltip } from 'obsi
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
-import { KeysOfType, isHexString } from 'utils';
+import { KeysOfType, getEventCoord, isHexString } from 'utils';
 import { Rect } from 'typings';
 
 
@@ -279,9 +279,10 @@ export class ColorPalette extends Component {
                 if (!pageEl) return;
 
                 const selectBox = { left: 0, top: 0, width: 0, height: 0 };
-                const onMouseDown = (evt: MouseEvent) => {
-                    selectBox.left = evt.clientX;
-                    selectBox.top = evt.clientY;
+                const onMouseDown = (evt: MouseEvent | TouchEvent) => {
+                    const { x, y } = getEventCoord(evt);
+                    selectBox.left = x;
+                    selectBox.top = y;
 
                     const boxEl = pageEl.createDiv('pdf-plus-select-box');
                     const pageRect = pageEl.getBoundingClientRect();
@@ -290,19 +291,26 @@ export class ColorPalette extends Component {
                         top: (selectBox.top - pageRect.top) + 'px',
                     });
 
-                    const onMouseMove = (evt: MouseEvent) => {
-                        selectBox.width = evt.clientX - selectBox.left;
-                        selectBox.height = evt.clientY - selectBox.top;
+                    const onMouseMove = (evt: MouseEvent | TouchEvent) => {
+                        const { x, y } = getEventCoord(evt);
+                        selectBox.width = x - selectBox.left;
+                        selectBox.height = y - selectBox.top;
 
                         boxEl.setCssStyles({
                             width: selectBox.width + 'px',
                             height: selectBox.height + 'px',
                         });
+
+                        // Prevent scrolling on mobile
+                        evt.preventDefault();
+                        evt.stopImmediatePropagation();
                     };
 
                     const onMouseUp = () => {
                         pageEl.removeEventListener('mousemove', onMouseMove);
+                        pageEl.removeEventListener('touchmove', onMouseMove);
                         pageEl.removeEventListener('mouseup', onMouseUp);
+                        pageEl.removeEventListener('touchend', onMouseUp);
                         pageEl.removeChild(boxEl);
 
                         const left = selectBox.left - pageRect.left;
@@ -320,19 +328,23 @@ export class ColorPalette extends Component {
                     };
 
                     pageEl.addEventListener('mousemove', onMouseMove);
+                    pageEl.addEventListener('touchmove', onMouseMove);
                     pageEl.addEventListener('mouseup', onMouseUp);
+                    pageEl.addEventListener('touchend', onMouseUp);
                 };
 
                 const toggle = () => {
                     el.toggleClass('is-active', !el.hasClass('is-active'));
                     pageEl.toggleClass('pdf-plus-selecting', el.hasClass('is-active'));
-                    
+
                     activeWindow.getSelection()?.empty();
 
                     if (el.hasClass('is-active')) {
                         pageEl.addEventListener('mousedown', onMouseDown);
+                        pageEl.addEventListener('touchstart', onMouseDown);
                     } else {
                         pageEl.removeEventListener('mousedown', onMouseDown);
+                        pageEl.removeEventListener('touchstart', onMouseDown);
                     }
                 };
 

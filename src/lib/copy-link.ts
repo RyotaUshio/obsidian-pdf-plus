@@ -291,6 +291,13 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, autoPaste?: boolean, sourcePath?: string): boolean {
         if (!child.file) return false;
 
+        const palette = this.lib.getColorPaletteFromChild(child);
+
+        if (rect.some((coord) => isNaN(coord))) {
+            palette?.setStatus('Invalid selection', this.statusDurationMs);
+            return false;
+        }
+
         if (!checking) {
             const display = this.getDisplayText(child, undefined, child.file, pageNumber, '');
             const subpath = `#page=${pageNumber}&rect=${rect.join(',')}`;
@@ -298,7 +305,6 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             navigator.clipboard.writeText(embedLink);
             this.onCopyFinish(embedLink);
 
-            const palette = this.lib.getColorPaletteFromChild(child);
             palette?.setStatus('Link copied', this.statusDurationMs);
             this.afterCopy(embedLink, autoPaste, palette ?? undefined);
         }
