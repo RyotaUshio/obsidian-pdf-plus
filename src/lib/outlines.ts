@@ -1,6 +1,6 @@
 import { getDirectPDFObj } from 'utils';
 import { Notice, TFile } from 'obsidian';
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRef, PDFString, PDFNumber, PDFPageLeaf } from '@cantoo/pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRef, PDFString, PDFNumber, PDFPageLeaf, PDFNull } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
 import { DestArray, PDFOutlineTreeNode } from 'typings';
@@ -367,8 +367,8 @@ export class PDFOutlineItem {
             Dest = PDFArray.withContext(this.doc.context);
             Dest.push(this.doc.getPage(dest[0]).ref);
             Dest.push(PDFName.of(dest[1]));
-            for (const num of dest.slice(2)) {
-                Dest.push(PDFNumber.of(num as number));
+            for (const num of dest.slice(2) as (number | null)[]) {
+                Dest.push(typeof num === 'number' ? PDFNumber.of(num) : PDFNull);
             }
         }
 
@@ -510,7 +510,7 @@ export class PDFOutlineItem {
                     : destArray[1] === 'FitBH' || destArray[1] === 'FitH' ? destArray[2]
                         : undefined;
 
-            children.push({ child, page, top });
+            children.push({ child, page, top: top ?? undefined });
         });
         children.sort((a, b) => a.page - b.page || (a.top ?? 0) - (b.top ?? 0));
 

@@ -2,7 +2,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian'
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
-import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
+import { encodeLinktext, paramsToSubpath, parsePDFSubpath, toSingleLine } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
 
@@ -203,6 +203,19 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 const palette = this.lib.getColorPaletteFromChild(child);
                 palette?.setStatus('Link copied', this.statusDurationMs);
                 this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+
+                // TODO: Needs refactor
+                const result = parsePDFSubpath(subpath);
+                if (result && 'beginIndex' in result) {
+                    const item = child.getPage(page).textLayer?.textContentItems[result.beginIndex];
+                    if (item) {
+                        const left = item.transform[4];
+                        const top = item.transform[5] + item.height;
+                        if (typeof left === 'number' && typeof top === 'number') {
+                            this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
+                        }
+                    }
+                }
             }
 
             return true;
@@ -234,6 +247,14 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     // This can be redundant because the copy button already shows the status.
                     if (shouldShowStatus) palette?.setStatus('Link copied', this.statusDurationMs);
                     this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+
+                    // TODO: Needs refactor
+                    const rect = annotData?.rect;
+                    const left = rect?.[0];
+                    const top = rect?.[3];
+                    if (typeof left === 'number' && typeof top === 'number') {
+                        this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
+                    }
                 });
         }
 
@@ -271,7 +292,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 .then((result) => {
                     if (!result) return;
 
-                    const { child, file, page, annotationID } = result;
+                    const { child, file, page, annotationID, rects } = result;
                     if (!annotationID || !file) return;
 
                     setTimeout(() => {
@@ -281,6 +302,15 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         newPalette?.setStatus('Link copied', this.statusDurationMs);
                         const { r, g, b } = this.plugin.domManager.getRgb(colorName);
                         this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, `${r}, ${g}, ${b}`, autoPaste);
+
+                        // TODO: Needs refactor
+                        if (rects) {
+                            const left = Math.min(...rects.map((rect) => rect[0]))
+                            const top = Math.max(...rects.map((rect) => rect[3]))
+                            if (typeof left === 'number' && typeof top === 'number') {
+                                this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
+                            }
+                        }
                     }, 300);
                 })
         }
@@ -340,6 +370,8 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
                     this.onCopyFinish(text);
                 }
+
+                this.plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'FitR', ...rect] };
 
                 palette?.setStatus('Link copied', this.statusDurationMs);
                 await this.afterCopy(text, autoPaste, palette ?? undefined);

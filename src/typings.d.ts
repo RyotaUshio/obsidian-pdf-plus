@@ -292,7 +292,7 @@ type Rect = [number, number, number, number];
  * page: 0-based page number
  * destType: "XYZ" or "FitBH"
  */
-type DestArray = [page: number, destType: string, ...params: number[]];
+type DestArray = [page: number, destType: string, ...params: (number | null)[]];
 type PDFjsDestArray = [pageRef: { num: number, gen: number }, destType: { name: string }, ...params: (number | null)[]];
 type PdfLibDestArray = [pageRef: PDFRef, destType: PDFName, ...params: (PDFNumber | typeof PDFNull)[]];
 

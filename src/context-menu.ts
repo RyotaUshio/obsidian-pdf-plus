@@ -57,6 +57,8 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                     .setIcon('lucide-copy')
                     .onClick(() => {
                         (evt.view ?? activeWindow).navigator.clipboard.writeText(link);
+                        const file = child.file;
+                        if (file) plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'XYZ', null, null, null] };
                     })
             });
 
@@ -496,7 +498,7 @@ export class PDFPlusContextMenu extends Menu {
                         this.addItem((item) => {
                             return item
                                 .setSection('link')
-                                .setTitle('Copy PDF link as Obsidian link')
+                                .setTitle('Copy PDF link')
                                 .setIcon('lucide-copy')
                                 .onClick(async () => {
                                     const subpath = await lib.destIdToSubpath(destId, doc);

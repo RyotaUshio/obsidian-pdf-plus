@@ -1,5 +1,5 @@
 import { RGB, TFile } from 'obsidian';
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFNumber, PDFPage, PDFRef, PDFString } from '@cantoo/pdf-lib';
 
 import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { formatAnnotationID, getBorderRadius, hexToRgb } from 'utils';
@@ -58,7 +58,7 @@ export class PdfLibIO extends PDFPlusLibSubmodule implements IPdfIo {
                 Dest = PDFString.of(dest);
             } else {
                 const targetPageRef = pdfDoc.getPage(dest[0]).ref;
-                Dest = [targetPageRef, dest[1], ...dest.slice(2).map((num: number) => PDFNumber.of(num))];
+                Dest = [targetPageRef, dest[1], ...dest.slice(2).map((num: number | null): PDFNumber | typeof PDFNull => typeof num === 'number' ? PDFNumber.of(num) : PDFNull)];
             }
 
             const ref = this.addAnnotation(page, {

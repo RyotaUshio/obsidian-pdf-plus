@@ -274,8 +274,8 @@ export class PDFPlusLib {
             pageNumber - 1,
             dest[1].name,
             ...dest
-                .slice(2)
-                .filter((param: number | null): param is number => typeof param === 'number')
+                .slice(2) as (number | null)[]
+                // .filter((param: number | null): param is number => typeof param === 'number')
         ]
     }
 
@@ -294,8 +294,8 @@ export class PDFPlusLib {
             destType.decodeText(),
             ...dest.asArray()
                 .slice(2)
-                .filter((param): param is PDFNumber => param instanceof PDFNumber)
-                .map((num) => num.asNumber())
+                // .filter((param): param is PDFNumber => param instanceof PDFNumber)
+                .map((num) => num instanceof PDFNumber ? num.asNumber() : null)
         ];
     }
 
