@@ -376,9 +376,9 @@ You can also find a [great tutorial](https://forum.obsidian.md/t/getting-comfort
 
 ## Installation
 
-Since this plugin is still awaiting approval from the Obsidian team, it's not available in the community plugin browser yet.
+You can install this plugin from within Obsidian's community plugin browser.
 
-But you can install the latest release using [BRAT](https://github.com/TfTHacker/obsidian42-brat).
+Alternatively, you can try the cutting-edge, latest beta release using [BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
 1. Install the latest version of BRAT and enable it.
 2. _(Optional but highly recommended)_ In the BRAT settings, turn on `Auto-update plugins at startup` at the top of the page.
