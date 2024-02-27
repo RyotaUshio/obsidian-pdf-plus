@@ -253,6 +253,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         const leaf = sidebarType === 'right-sidebar'
             ? this.app.workspace.getRightLeaf(false)
             : this.app.workspace.getLeftLeaf(false);
+        if (!leaf) throw new Error('No sidebar leaf found');
         return leaf;
     }
 

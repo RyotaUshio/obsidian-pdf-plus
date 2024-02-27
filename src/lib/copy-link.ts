@@ -290,6 +290,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
     copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, autoPaste?: boolean, sourcePath?: string): boolean {
         if (!child.file) return false;
+        const file = child.file;
 
         const palette = this.lib.getColorPaletteFromChild(child);
 
@@ -299,14 +300,50 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         }
 
         if (!checking) {
-            const display = this.getDisplayText(child, undefined, child.file, pageNumber, '');
+            const display = this.getDisplayText(child, undefined, file, pageNumber, '');
             const subpath = `#page=${pageNumber}&rect=${rect.join(',')}`;
-            const embedLink = this.lib.generateMarkdownLink(child.file, sourcePath ?? '', subpath, display);
-            navigator.clipboard.writeText(embedLink);
-            this.onCopyFinish(embedLink);
+            const embedLink = this.lib.generateMarkdownLink(file, sourcePath ?? '', subpath, display);
 
-            palette?.setStatus('Link copied', this.statusDurationMs);
-            this.afterCopy(embedLink, autoPaste, palette ?? undefined);
+            (async () => {
+                let text = embedLink;
+                const page = child.getPage(pageNumber).pdfPage;
+                const extension = this.settings.rectImageExtension;
+
+                if (!this.settings.rectEmbedStaticImage) {
+                    navigator.clipboard.writeText(text);
+
+                    this.onCopyFinish(text);
+                } else if (this.settings.rectImageFormat === 'file') {
+                    const imagePath = await this.app.fileManager.getAvailablePathForAttachment(file.basename + '.' + extension, '');
+                    const useWikilinks = !this.app.vault.getConfig('useMarkdownLinks');
+                    const imageEmbedLink = useWikilinks ? `![[${imagePath}]]` : `![](${encodeLinktext(imagePath)})`;
+                    text = imageEmbedLink + '\n\n' + embedLink.slice(1);
+
+                    navigator.clipboard.writeText(text);
+
+                    const createImageFile = async () => {
+                        const buffer = await this.lib.pdfPageToImageArrayBuffer(page, { type: `image/${extension}`, cropRect: rect });
+                        return await this.app.vault.createBinary(imagePath, buffer);
+                    };
+                    if (autoPaste) {
+                        await createImageFile();
+                        this.onCopyFinish(text);
+                    } else {
+                        this.onCopyFinish(text, createImageFile);
+                    }
+                } else {
+                    const dataUrl = await this.lib.pdfPageToImageDataUrl(page, { type: `image/${extension}`, cropRect: rect });
+                    const imageEmbedLink = `![](${dataUrl})`;
+                    text = imageEmbedLink + '\n\n' + embedLink.slice(1);
+
+                    navigator.clipboard.writeText(text);
+
+                    this.onCopyFinish(text);
+                }
+
+                palette?.setStatus('Link copied', this.statusDurationMs);
+                await this.afterCopy(text, autoPaste, palette ?? undefined);
+            })();
         }
 
         return true;
@@ -558,7 +595,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         }
     }
 
-    watchPaste(text: string) {
+    watchPaste(text: string, onPaste?: () => any) {
         // watch for a manual paste for updating this.lastPasteFile
         this.plugin.registerOneTimeEvent(this.app.workspace, 'editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
             if (info.file?.extension !== 'md') return;
@@ -572,12 +609,13 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
             if (clipboardTextNormalized === copiedTextNormalized) {
                 this.plugin.lastPasteFile = info.file;
+                onPaste?.();
             }
         });
     }
 
-    onCopyFinish(text: string) {
-        this.watchPaste(text);
+    onCopyFinish(text: string, onPaste?: () => any) {
+        this.watchPaste(text, onPaste);
         // update this.lastCopiedDestArray
         this.plugin.lastCopiedDestInfo = null;
     }

@@ -39,6 +39,14 @@ const NEW_FILE_LOCATIONS = {
 	'folder': 'In the folder specified below',
 } as const;
 
+const IMAGE_EXTENSIONS = [
+	'png',
+	'jpg',
+	'webp',
+	'bmp',
+] as const;
+export type ImageExtension = typeof IMAGE_EXTENSIONS[number];
+
 export interface namedTemplate {
 	name: string;
 	template: string;
@@ -184,6 +192,9 @@ export interface PDFPlusSettings {
 	newFileTemplatePath: string;
 	newPDFLocation: keyof typeof NEW_FILE_LOCATIONS;
 	newPDFFolderPath: string;
+	rectEmbedStaticImage: boolean;
+	rectImageFormat: 'file' | 'data-url';
+	rectImageExtension: ImageExtension;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -371,6 +382,9 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	newFileTemplatePath: '',
 	newPDFLocation: 'current',
 	newPDFFolderPath: '',
+	rectEmbedStaticImage: false,
+	rectImageFormat: 'file',
+	rectImageExtension: 'webp',
 };
 
 
@@ -996,6 +1010,30 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Default highlight color')
 				.setDesc('If no color is specified in link text, this color will be used.');
 		}
+
+
+		this.addHeading('Rectangular selection embeds', 'lucide-box-select')
+			.then((setting) => {
+				this.renderMarkdown([
+					'You can embed a specified rectangular area from a PDF page into your note. [Learn more](https://ryotaushio.github.io/obsidian-pdf-plus/embedding-rectangular-selections.html)'
+				], setting.descEl);
+			});
+		this.addToggleSetting('rectEmbedStaticImage', () => this.redisplay())
+			.setName('Paste as image')
+			.setDesc('By default, rectangular selection embeds are re-rendered every time you open the markdown file, which can slow down the loading time. Turn on this option to replace them with static images and improve the performance.');
+		if (this.plugin.settings.rectEmbedStaticImage) {
+			this.addDropdownSetting('rectImageFormat', {'file': 'Create & embed image file', 'data-url': 'Embed as data URL'}, () => this.redisplay())
+				.setName('How to embed the image')
+				.then((setting) => this.renderMarkdown([
+					'- "Create & embed image file": Create an image file and embed it in the markdown file. The image file will be saved in the folder you specify in the "Default location for new attachments" setting in the core Obsidian settings.',
+					'- "Embed as data URL": Embed the image as a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs) without creating a file. This option is useful when you don\'t want to mess up your attachment folder. It also helps you make your notes self-contained.',
+				], setting.descEl));
+			if (this.plugin.settings.rectImageFormat === 'file') {
+				this.addDropdownSetting('rectImageExtension', IMAGE_EXTENSIONS)
+					.setName('Image file format');
+			}
+		}
+
 
 
 		this.addHeading('PDF++ callouts', 'lucide-quote')

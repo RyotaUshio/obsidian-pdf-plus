@@ -1,7 +1,6 @@
-import { App, Component, Platform, TFile } from 'obsidian';
+import { App, Component, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { cropCanvas } from 'utils';
 import { Embed, EmbedContext, Rect } from 'typings';
 
 
@@ -26,27 +25,15 @@ export class PDFCroppedEmbed extends Component implements Embed {
         const doc = await this.lib.loadPDFDocument(this.file);
         this.register(() => doc.destroy());
         const page = await doc.getPage(this.pageNumber);
-        const [pageX, pageY, pageWidth, pageHeight] = page.view;
-
-        // Requiring too much resolution on mobile devices seems to cause the rendering to fail
-        const resolution = Platform.isMobile
-            ? Platform.isTablet ? 4 : undefined
-            : 7;
-        const canvas = await this.lib.renderPDFPageToCanvas(page, resolution);
-
-        const scaleX = canvas.width / pageWidth;
-        const scaleY = canvas.height / pageHeight;
-        const crop = {
-            left: (this.rect[0] - pageX) * scaleX,
-            top: (pageY + pageHeight - this.rect[3]) * scaleY,
-            width: (this.rect[2] - this.rect[0]) * scaleX,
-            height: (this.rect[3] - this.rect[1]) * scaleY,
-        };
-        const croppedCanvas = cropCanvas(canvas, crop);
+        const dataUrl = await this.lib.pdfPageToImageDataUrl(page, {
+            type: 'image/bmp',
+            encoderOptions: 1.0,
+            cropRect: this.rect,
+        });
 
         await new Promise<void>((resolve, reject) => {
             this.containerEl.empty();
-            this.containerEl.createEl('img', { attr: { src: croppedCanvas.toDataURL() } }, (imgEl) => {
+            this.containerEl.createEl('img', { attr: { src: dataUrl } }, (imgEl) => {
                 imgEl.addEventListener('load', () => resolve());
                 imgEl.addEventListener('error', (err) => reject(err));
 

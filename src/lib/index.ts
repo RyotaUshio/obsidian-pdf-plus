@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, MarkdownView, Notice, TFile, TextFileView, View, parseLinktext } from 'obsidian';
+import { App, Component, EditableFileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, parseLinktext } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 
@@ -7,13 +7,13 @@ import { ColorPalette } from 'color-palette';
 import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
-import { encodeLinktext, getDirectPDFObj, parsePDFSubpath, removeExtension } from 'utils';
+import { cropCanvas, encodeLinktext, getDirectPDFObj, parsePDFSubpath, removeExtension } from 'utils';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 
 
@@ -710,7 +710,7 @@ export class PDFPlusLib {
 
     async renderPDFPageToCanvas(page: PDFPageProxy, resolution?: number): Promise<HTMLCanvasElement> {
         const canvas = createEl('canvas');
-        const context = canvas.getContext('2d')!;
+        const canvasContext = canvas.getContext('2d')!;
 
         const viewport = page.getViewport({ scale: 1 });
 
@@ -727,13 +727,51 @@ export class PDFPlusLib {
 
         const transform = [outputScale, 0, 0, outputScale, 0, 0];
 
-        const renderContext = {
-            canvasContext: context,
-            transform: transform,
-            viewport: viewport
-        };
-        await page.render(renderContext).promise;
+        await page.render({ canvasContext, transform, viewport }).promise;
 
         return canvas;
+    }
+
+    /**
+     * @param options The following options are supported:
+     * - type: The image format passed to HTMLCanvasElement.toDataURL(). The default is 'image/png'.
+     * - encoderOptions: The quality of the image format passed to HTMLCanvasElement.toDataURL().
+     * - resolution: The resolution of the PDF page rendering.
+     * - cropRect: The rectangle to crop the PDF page to. The coordinates are in PDF space.
+     */
+    async pdfPageToImageDataUrl(page: PDFPageProxy, options?: { type?: string, encoderOptions?: number, resolution?: number, cropRect?: Rect }): Promise<string> {
+        const [pageX, pageY, pageWidth, pageHeight] = page.view;
+
+        const type = options?.type;
+        const encoderOptions = options?.encoderOptions;
+        const resolution = options?.resolution ??
+            // Requiring too much resolution on mobile devices seems to cause the rendering to fail
+            Platform.isDesktop ? 7 : Platform.isTablet ? 4 : undefined;
+        const cropRect = options?.cropRect;
+
+        const canvas = await this.renderPDFPageToCanvas(page, resolution);
+
+        if (!cropRect) return canvas.toDataURL(type, encoderOptions);
+
+        const scaleX = canvas.width / pageWidth;
+        const scaleY = canvas.height / pageHeight;
+        const crop = {
+            left: (cropRect[0] - pageX) * scaleX,
+            top: (pageY + pageHeight - cropRect[3]) * scaleY,
+            width: (cropRect[2] - cropRect[0]) * scaleX,
+            height: (cropRect[3] - cropRect[1]) * scaleY,
+        };
+        const croppedCanvas = cropCanvas(canvas, crop);
+        return croppedCanvas.toDataURL(type, encoderOptions);
+    }
+
+    /**
+     * @param options Supports the same options as pdfPageToImageDataUrl.
+     */
+    async pdfPageToImageArrayBuffer(page: PDFPageProxy, options?: { type?: string, encoderOptions?: number, resolution?: number, cropRect?: Rect }): Promise<ArrayBuffer> {
+        const dataUrl = await this.pdfPageToImageDataUrl(page, options);
+        const base64 = dataUrl.match(/^data:image\/\w+;base64,(.*)/)?.[1];
+        if (!base64) throw new Error('Failed to convert data URL to base64');
+        return base64ToArrayBuffer(base64);
     }
 }
