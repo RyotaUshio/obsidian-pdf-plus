@@ -266,3 +266,39 @@ settings:
 .pdf-content-container {
     --sidebar-width: var(--pdf-plus-sidebar-width, 140px);
 }
+
+body {
+    --container-pdf-cropped-width: var(--line-width);
+    --container-pdf-cropped-max-width: var(--max-width);
+}
+
+.internal-embed.pdf-cropped-embed {
+    width: var(--container-pdf-cropped-width);
+    max-width: var(--container-pdf-cropped-max-width);
+
+    img {
+        cursor: text !important;
+        max-width: 100%;
+    }
+}
+
+.popover.hover-popover>.pdf-cropped-embed img {
+    max-height: 100%;
+    max-width: 100%;
+    height: auto;
+}
+
+.pdf-plus-selecting {
+    cursor: crosshair;
+
+    .textLayer {
+        user-select: none;
+    }
+}
+
+.pdf-container .pdf-plus-select-box {
+    position: absolute;
+    z-index: 1000;
+    border: dashed var(--background-modifier-border) 2px;
+    background-color: var(--background-modifier-active-hover);
+}

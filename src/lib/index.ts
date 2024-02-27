@@ -14,6 +14,7 @@ import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState } from 'typings';
+import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 
 
 export class PDFPlusLib {
@@ -547,6 +548,7 @@ export class PDFPlusLib {
         return null;
     }
 
+    /** Get an instance of Obsidian's built-in PDFEmbed. */
     getPDFEmbed(activeOnly: boolean = false): PDFEmbed | null {
         const activeEmbed = this.getPDFEmbedInActiveView();
         if (activeEmbed) return activeEmbed;
@@ -679,7 +681,8 @@ export class PDFPlusLib {
             && embed.file.extension === 'pdf'
             && embed.containerEl instanceof HTMLElement
             && embed.containerEl?.matches('.pdf-embed') // additional class: "internal-embed" for embeds in markdown views, "canvas-node-content" for embeds in canvas views
-            && embed instanceof Component;
+            && embed instanceof Component
+            && !(embed instanceof PDFCroppedEmbed);
     }
 
     isCanvasView(view: View): view is CanvasView {
@@ -703,5 +706,34 @@ export class PDFPlusLib {
 
     get metadataCacheUpdatePromise() {
         return new Promise<void>((resolve) => this.app.metadataCache.onCleanCache(resolve))
+    }
+
+    async renderPDFPageToCanvas(page: PDFPageProxy, resolution?: number): Promise<HTMLCanvasElement> {
+        const canvas = createEl('canvas');
+        const context = canvas.getContext('2d')!;
+
+        const viewport = page.getViewport({ scale: 1 });
+
+        const outputScale = resolution
+            ?? window.devicePixelRatio // Support HiDPI-screens
+            ?? 1;
+
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.setCssStyles({
+            width: Math.floor(viewport.width) + 'px',
+            height: Math.floor(viewport.height) + 'px',
+        });
+
+        const transform = [outputScale, 0, 0, outputScale, 0, 0];
+
+        const renderContext = {
+            canvasContext: context,
+            transform: transform,
+            viewport: viewport
+        };
+        await page.render(renderContext).promise;
+
+        return canvas;
     }
 }

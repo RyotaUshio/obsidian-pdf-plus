@@ -111,6 +111,7 @@ interface ObsidianViewer {
         containerEl: HTMLElement;
         viewerEl: HTMLElement;
         viewerContainerEl: HTMLElement;
+        pdfContainerEl: HTMLElement;
     } | null;
     page?: number;
     pagesCount: number;

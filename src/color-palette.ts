@@ -3,6 +3,7 @@ import { App, Component, Menu, ToggleComponent, setIcon, setTooltip } from 'obsi
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
 import { KeysOfType, isHexString } from 'utils';
+import { Rect } from 'typings';
 
 
 type ColorPaletteState = Pick<ColorPalette, 'selectedColorName' | 'actionIndex' | 'displayTextFormatIndex' | 'writeFile'>;
@@ -78,8 +79,11 @@ export class ColorPalette extends Component {
             this.addWriteFileToggle(this.paletteEl);
         }
 
+        this.addCropButton(this.paletteEl);
+
         this.statusContainerEl = this.paletteEl.createDiv('pdf-plus-color-palette-status-container');
         this.statusEl = this.statusContainerEl.createSpan('pdf-plus-color-palette-status');
+
 
         this.registerEvent(this.plugin.on('color-palette-state-change', ({ source }) => {
             if (source !== this) this.syncTo(source);
@@ -260,6 +264,81 @@ export class ColorPalette extends Component {
             this.writeFileToggle.on = value;
             this.writeFileToggle.toggleEl.toggleClass('is-enabled', value);
         }
+    }
+
+    addCropButton(paletteEl: HTMLElement) {
+        paletteEl.createDiv('clickable-icon pdf-plus-rect-select', (el) => {
+            setIcon(el, 'lucide-box-select');
+            setTooltip(el, 'Copy embed link to rectangular selection')
+
+            el.addEventListener('click', () => {
+                const child = this.lib.getPDFViewerChildAssociatedWithNode(this.paletteEl!);
+                if (!child || !child.pdfViewer.pdfViewer) return;
+                const pageView = child.getPage(child.pdfViewer.pdfViewer.currentPageNumber);
+                const pageEl = pageView.div
+                if (!pageEl) return;
+
+                const selectBox = { left: 0, top: 0, width: 0, height: 0 };
+                const onMouseDown = (evt: MouseEvent) => {
+                    selectBox.left = evt.clientX;
+                    selectBox.top = evt.clientY;
+
+                    const boxEl = pageEl.createDiv('pdf-plus-select-box');
+                    const pageRect = pageEl.getBoundingClientRect();
+                    boxEl.setCssStyles({
+                        left: (selectBox.left - pageRect.left) + 'px',
+                        top: (selectBox.top - pageRect.top) + 'px',
+                    });
+
+                    const onMouseMove = (evt: MouseEvent) => {
+                        selectBox.width = evt.clientX - selectBox.left;
+                        selectBox.height = evt.clientY - selectBox.top;
+
+                        boxEl.setCssStyles({
+                            width: selectBox.width + 'px',
+                            height: selectBox.height + 'px',
+                        });
+                    };
+
+                    const onMouseUp = () => {
+                        pageEl.removeEventListener('mousemove', onMouseMove);
+                        pageEl.removeEventListener('mouseup', onMouseUp);
+                        pageEl.removeChild(boxEl);
+
+                        const left = selectBox.left - pageRect.left;
+                        const top = selectBox.top - pageRect.top;
+                        const right = left + selectBox.width;
+                        const bottom = top + selectBox.height;
+
+                        const rect = window.pdfjsLib.Util.normalizeRect([
+                            ...pageView.getPagePoint(left, bottom),
+                            ...pageView.getPagePoint(right, top)
+                        ]) as Rect;
+
+                        this.lib.copyLink.copyEmbedLinkToRect(false, child, pageView.id, rect);
+                        toggle();
+                    };
+
+                    pageEl.addEventListener('mousemove', onMouseMove);
+                    pageEl.addEventListener('mouseup', onMouseUp);
+                };
+
+                const toggle = () => {
+                    el.toggleClass('is-active', !el.hasClass('is-active'));
+                    pageEl.toggleClass('pdf-plus-selecting', el.hasClass('is-active'));
+                    
+                    activeWindow.getSelection()?.empty();
+
+                    if (el.hasClass('is-active')) {
+                        pageEl.addEventListener('mousedown', onMouseDown);
+                    } else {
+                        pageEl.removeEventListener('mousedown', onMouseDown);
+                    }
+                };
+
+                toggle();
+            });
+        });
     }
 
     setStatus(text: string, durationMs: number) {

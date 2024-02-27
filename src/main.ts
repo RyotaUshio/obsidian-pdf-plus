@@ -12,9 +12,10 @@ import { PDFPlusLib } from 'lib';
 import { SelectToCopyMode } from 'select-to-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
+import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters, focusObsidian } from 'utils';
-import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
+import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
 
 
 export default class PDFPlus extends Plugin {
@@ -216,12 +217,26 @@ export default class PDFPlus extends Plugin {
 
 		this.app.embedRegistry.unregisterExtension('pdf');
 		this.app.embedRegistry.registerExtension('pdf', (ctx, file, subpath) => {
-			const embed = originalPDFEmbedCreator(ctx, file, subpath) as PDFEmbed;
-			// @ts-ignore
-			if (!this.classes.PDFEmbed) this.classes.PDFEmbed = embed.constructor;
+			const params = subpathToParams(subpath);
 
-			if (!this.patchStatus.pdfInternals) {
-				patchPDFInternals(this, embed.viewer);
+			let embed: PDFEmbed | PDFCroppedEmbed | null = null;
+
+			if (params.has('rect') && params.has('page')) {
+				const pageNumber = parseInt(params.get('page')!);
+				const rect = params.get('rect')!.split(',').map((n) => parseFloat(n));
+				const width = params.has('width') ? parseFloat(params.get('width')!) : undefined;
+				if (Number.isInteger(pageNumber) && rect.length === 4) {
+					embed = new PDFCroppedEmbed(this, ctx, file, subpath, pageNumber, rect as Rect, width);
+				}
+			}
+
+			if (!embed) {
+				embed = originalPDFEmbedCreator(ctx, file, subpath) as PDFEmbed;
+				// @ts-ignore
+				if (!this.classes.PDFEmbed) this.classes.PDFEmbed = embed.constructor;
+				if (!this.patchStatus.pdfInternals) {
+					patchPDFInternals(this, embed.viewer);
+				}
 			}
 
 			// Double-lick PDF embeds to open links
@@ -229,7 +244,7 @@ export default class PDFPlus extends Plugin {
 				if (this.settings.dblclickEmbedToOpenLink
 					&& evt.target instanceof HTMLElement
 					// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
-					&& evt.target.closest('.pdf-embed[src] > .pdf-container')) {
+					&& (evt.target.closest('.pdf-embed[src] > .pdf-container') || evt.target.closest('.pdf-cropped-embed'))) {
 					const linktext = file.path + subpath;
 					// we don't need sourcePath because linktext is the full path
 					this.app.workspace.openLinkText(linktext, '', Keymap.isModEvent(evt));
@@ -237,7 +252,6 @@ export default class PDFPlus extends Plugin {
 				}
 			});
 
-			const params = subpathToParams(subpath);
 			if (params.has('color')) {
 				embed.containerEl.dataset.highlightColor = params.get('color')!.toLowerCase();
 			} else if (this.settings.defaultColor) {

@@ -1,6 +1,6 @@
 import { getDirectPDFObj } from 'utils';
 import { Notice, TFile } from 'obsidian';
-import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFObject, PDFRef, PDFString, PDFNumber, PDFPageLeaf } from '@cantoo/pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRef, PDFString, PDFNumber, PDFPageLeaf } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
 import { DestArray, PDFOutlineTreeNode } from 'typings';

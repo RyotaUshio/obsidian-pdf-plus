@@ -202,7 +202,7 @@ export function focusObsidian() {
     activeWindow.open('obsidian://');
 }
 
-export function isAncestorOf<TreeNode extends { children: TreeNode[], parent: TreeNode | null}>(one: TreeNode, another: TreeNode, includeSelf = false): boolean {
+export function isAncestorOf<TreeNode extends { children: TreeNode[], parent: TreeNode | null }>(one: TreeNode, another: TreeNode, includeSelf = false): boolean {
     if (includeSelf && one === another) return true;
 
     let parent = another.parent;
@@ -266,6 +266,19 @@ export function toSingleLine(str: string): string {
 export function encodeLinktext(linktext: string) {
     // eslint-disable-next-line no-control-regex
     return linktext.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (component) => encodeURIComponent(component));
+}
+
+// Thanks https://stackoverflow.com/a/54555834
+export function cropCanvas(srcCanvas: HTMLCanvasElement, crop: { left: number, top: number, width: number, height: number }, output: { width: number, height: number } = { width: crop.width, height: crop.height }) {
+    const dstCanvas = createEl('canvas');
+    dstCanvas.width = output.width;
+    dstCanvas.height = output.height;
+    dstCanvas.getContext('2d')!.drawImage(
+        srcCanvas,
+        crop.left, crop.top, crop.width, crop.height,
+        0, 0, output.width, output.height
+    );
+    return dstCanvas;
 }
 
 //////////////////////////

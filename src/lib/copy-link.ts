@@ -3,7 +3,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian'
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
 import { encodeLinktext, paramsToSubpath, toSingleLine } from 'utils';
-import { Canvas, PDFOutlineTreeNode, PDFViewerChild } from 'typings';
+import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
 
 
@@ -183,7 +183,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
     copyLinkToSelection(checking: boolean, template: string, colorName?: string, autoPaste?: boolean): boolean {
         const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
-        
+
         if (variables) {
             const { child, file, subpath, page, text } = variables;
 
@@ -221,7 +221,12 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 .then(async (text) => {
                     const annotData = pageView.annotationLayer?.annotationLayer?.getAnnotation(id)?.data ?? (await pageView.pdfPage.getAnnotations()).find((annot) => annot.id === id);
                     const color = annotData?.color ? `${annotData.color[0]}, ${annotData.color[1]}, ${annotData.color[2]}` : '';
-                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text ?? '', color);
+                    let subpath = `#page=${page}&annotation=${id}`;
+                    if (annotData.subtype === 'Square') {
+                        const rect = annotData.rect;
+                        subpath += `&rect=${rect[0]},${rect[1]},${rect[2]},${rect[3]}`;
+                    }
+                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text ?? '', color);
                     navigator.clipboard.writeText(evaluated);
                     this.onCopyFinish(evaluated);
 
@@ -278,6 +283,24 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, `${r}, ${g}, ${b}`, autoPaste);
                     }, 300);
                 })
+        }
+
+        return true;
+    }
+
+    copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, autoPaste?: boolean, sourcePath?: string): boolean {
+        if (!child.file) return false;
+
+        if (!checking) {
+            const display = this.getDisplayText(child, undefined, child.file, pageNumber, '');
+            const subpath = `#page=${pageNumber}&rect=${rect.join(',')}`;
+            const embedLink = this.lib.generateMarkdownLink(child.file, sourcePath ?? '', subpath, display);
+            navigator.clipboard.writeText(embedLink);
+            this.onCopyFinish(embedLink);
+
+            const palette = this.lib.getColorPaletteFromChild(child);
+            palette?.setStatus('Link copied', this.statusDurationMs);
+            this.afterCopy(embedLink, autoPaste, palette ?? undefined);
         }
 
         return true;
