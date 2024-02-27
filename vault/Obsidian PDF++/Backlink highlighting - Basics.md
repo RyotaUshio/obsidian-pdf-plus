@@ -11,7 +11,7 @@ Obsidian will show you a context menu. From there, click "Copy link to selection
 It will copy a link that looks like `[[Lorem Ipsum.pdf#page=1&selection=4,0,4,11|Lorem Ipsum, page 1]]`,  clicking which will take you to the exact location in the PDF file where you copied the link from.
 
 However, it doesn't work in the opposite way. While jumping to a text selection in a PDF from a markdown file works like a charm, you can't go to the markdown file linking to the text selection.
-Also, it is difficult to see what parts of the PDF is referenced in your notes at a glance.
+Also, it is difficult to see what parts of the PDF are referenced in your notes at a glance.
 
 ## Introducing backlink highlighting
 
