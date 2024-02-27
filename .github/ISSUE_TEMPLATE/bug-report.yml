@@ -1,5 +1,5 @@
 name: Bug report
-description: "Report a bug with PDF++"
+description: "Report a bug with PDF++."
 labels: ["bug"]
 title: "[Bug] "
 body:
