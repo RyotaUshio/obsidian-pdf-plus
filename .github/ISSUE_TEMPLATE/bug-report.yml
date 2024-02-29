@@ -12,15 +12,6 @@ body:
         - We consider a problem as PDF++'s bug only if it can be reproducible in the sandbox vault where only this plugin (and other relevant plugins if any) are enabled. You can open the sandbox vault by running "Open sandbox vault" command from the command palette.
         - If this is not the case, ask a question on [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions).
         - **Please fill in all the fields**. Identifying where the problem comes from is extremely difficult if any of the required fields are missing.
-        
-  - type: textarea
-    id: description
-    attributes:
-      label: Describe the bug
-      description: 'A clear and concise description of what the bug is.'
-      placeholder: 
-    validations:
-      required: true
   - type: textarea
     id: steps
     attributes:
@@ -33,6 +24,22 @@ body:
         4. See error
     validations:
       required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: 'What do you expect to happen after the steps you described above?'
+      placeholder: 
+    validations:
+      required: true    
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Instead of the expected behavior, what happened?
+      placeholder: 
+    validations:
+      required: true    
   - type: textarea
     id: screen-capture
     attributes:
