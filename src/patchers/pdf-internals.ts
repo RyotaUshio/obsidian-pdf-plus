@@ -263,7 +263,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                         const page = parseNum(params.get('page')!) ?? 1;
 
-                        let dest: [number, { name: string }, ...offset: (number | null)[]] | null = null;
+                        let dest: [number, { name: string }, ...(number | null)[]] | null = null;
 
                         if (params.has('rect')) {
                             const rect = params.get('rect')!.split(',').map(parseNum);
