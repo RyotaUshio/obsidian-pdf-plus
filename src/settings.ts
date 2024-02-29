@@ -437,18 +437,19 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	addHeading(heading: string, icon?: IconName, processHeaderDom?: (dom: { headerEl: HTMLElement, iconEl: HTMLElement, titleEl: HTMLElement }) => void) {
 		const setting = this.addSetting()
+			.setName(heading)
 			.setHeading()
 			.then((setting) => {
-				const parentEl = setting.settingEl.parentElement;
-				if (parentEl) {
-					parentEl.insertBefore(createDiv('spacer'), setting.settingEl);
-				}
-
-				setting.nameEl.appendChild(createSpan({ text: heading }));
 				if (icon) {
+					const parentEl = setting.settingEl.parentElement;
+					if (parentEl) {
+						parentEl.insertBefore(createDiv('spacer'), setting.settingEl);
+					}
+
 					const iconEl = createDiv();
 					setting.settingEl.prepend(iconEl)
 					setIcon(iconEl, icon);
+					
 					setting.settingEl.addClass('pdf-plus-setting-heading');
 				}
 			});
