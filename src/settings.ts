@@ -116,7 +116,7 @@ export interface PDFPlusSettings {
 	recordPDFInternalLinkHistory: boolean;
 	alwaysRecordHistory: boolean;
 	renderMarkdownInStickyNote: boolean;
-	enalbeWriteHighlightToFile: boolean;
+	enablePDFEdit: boolean;
 	author: string;
 	writeHighlightToFileOpacity: number;
 	defaultWriteFileToggle: boolean;
@@ -313,7 +313,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	recordPDFInternalLinkHistory: true,
 	alwaysRecordHistory: true,
 	renderMarkdownInStickyNote: true,
-	enalbeWriteHighlightToFile: false,
+	enablePDFEdit: false,
 	author: '',
 	writeHighlightToFileOpacity: 0.2,
 	defaultWriteFileToggle: false,
@@ -407,11 +407,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	items: Partial<Record<keyof PDFPlusSettings, Setting>>;
 	promises: Promise<any>[];
 
+	contentEl: HTMLElement;
+	headerContainerEl: HTMLElement;
+
 	constructor(public plugin: PDFPlus) {
 		super(plugin.app, plugin);
 		this.component = new Component();
 		this.items = {};
 		this.promises = [];
+
+		this.containerEl.addClass('pdf-plus-settings');
+		this.headerContainerEl = this.containerEl.createDiv('header-container');
+		this.contentEl = this.containerEl.createDiv('content');
 	}
 
 	get(settingName: keyof PDFPlusSettings) {
@@ -419,7 +426,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addSetting(settingName?: keyof PDFPlusSettings) {
-		const item = new Setting(this.containerEl);
+		const item = new Setting(this.contentEl);
 		if (settingName) this.items[settingName] = item;
 		return item;
 	}
@@ -428,11 +435,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.items[settingName]?.settingEl.scrollIntoView();
 	}
 
-	addHeading(heading: string, icon?: IconName) {
-		return this.addSetting()
-			.setName(heading)
+	addHeading(heading: string, icon?: IconName, processHeaderDom?: (dom: { headerEl: HTMLElement, iconEl: HTMLElement, titleEl: HTMLElement }) => void) {
+		const setting = this.addSetting()
 			.setHeading()
 			.then((setting) => {
+				const parentEl = setting.settingEl.parentElement;
+				if (parentEl) {
+					parentEl.insertBefore(createDiv('spacer'), setting.settingEl);
+				}
+
+				setting.nameEl.appendChild(createSpan({ text: heading }));
 				if (icon) {
 					const iconEl = createDiv();
 					setting.settingEl.prepend(iconEl)
@@ -440,6 +452,26 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					setting.settingEl.addClass('pdf-plus-setting-heading');
 				}
 			});
+
+		if (icon) {
+			this.headerContainerEl.createDiv('clickable-icon header', (headerEl) => {
+				const iconEl = headerEl.createDiv();
+				setIcon(iconEl, icon);
+
+				const titleEl = headerEl.createDiv('header-title');
+				titleEl.setText(heading);
+
+				setTooltip(headerEl, heading);
+
+				this.component.registerDomEvent(headerEl, 'click', () => {
+					(setting.settingEl.previousElementSibling ?? setting.settingEl).scrollIntoView({ behavior: 'smooth' });
+				});
+
+				processHeaderDom?.({ headerEl, iconEl, titleEl });
+			});
+		}
+
+		return setting;
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlur?: () => any) {
@@ -587,7 +619,19 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	addFundingButton() {
-		return this.addHeading('Support development', 'lucide-heart')
+		const postProcessIcon = (iconEl: Element) => {
+			const svg = iconEl.firstElementChild;
+			if (svg?.tagName === 'svg') {
+				svg.setAttribute('fill', 'var(--color-red)');
+				svg.setAttribute('stroke', 'var(--color-red)');
+			}
+		};
+
+		return this.addHeading(
+			'Support development',
+			'lucide-heart',
+			({ iconEl }) => postProcessIcon(iconEl)
+		)
 			.setDesc('If you find PDF++ helpful, please consider supporting the development to help me keep this plugin alive.\n\nIf you prefer PayPal, please make donations via Ko-fi. Thank you!')
 			.then((setting) => {
 				const infoEl = setting.infoEl;
@@ -602,6 +646,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				setting.settingEl.id = 'pdf-plus-funding';
 				container.id = 'pdf-plus-funding-icon-info-container';
 				iconEl.id = 'pdf-plus-funding-icon';
+
+				postProcessIcon(iconEl);
 			})
 			.addButton((button) => {
 				button
@@ -846,7 +892,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				formSize: 50,
 			},
 			delete: {
-				deleteLastMessage: 'You cannot delete the last format.',
+				deleteLastMessage: 'You cannot delete the last display text format.',
 			}
 		});
 	}
@@ -857,9 +903,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			index,
 			'defaultColorPaletteActionIndex', {
 			name: {
-				placeholder: 'Action name',
+				placeholder: 'Format name',
 				formSize: 30,
-				duplicateMessage: 'This action name is already used.',
+				duplicateMessage: 'This format name is already used.',
 			},
 			value: {
 				placeholder: 'Copied text format',
@@ -867,7 +913,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				formRows: 3,
 			},
 			delete: {
-				deleteLastMessage: 'You cannot delete the last copy command.',
+				deleteLastMessage: 'You cannot delete the last copy format.',
 			}
 		});
 	}
@@ -921,14 +967,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	/** Refresh the setting tab and then scroll back to the original position. */
 	redisplay() {
-		const scrollTop = this.containerEl.scrollTop;
+		const scrollTop = this.contentEl.scrollTop;
 		this.display();
-		this.containerEl.scroll({ top: scrollTop });
+		this.contentEl.scroll({ top: scrollTop });
 	}
 
 	async display(): Promise<void> {
-		this.containerEl.empty();
-		this.containerEl.addClass('pdf-plus-settings');
+		this.headerContainerEl.empty();
+		this.contentEl.empty();
 		this.promises = [];
 		this.component.load();
 
@@ -938,7 +984,45 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const hoverCmd = `hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`;
 
 
-		this.addDesc('Note: some of the settings below require reopening tabs to take effect.')
+		this.contentEl.createDiv('top-note', (el) => {
+			el.setText('Note: some of the settings below require reopening tabs to take effect.');
+		});
+
+
+
+		this.addHeading('Editing PDF files', 'lucide-save')
+			.then((setting) => {
+				this.renderMarkdown([
+					'To make the best of PDF++\'s powerful features, it is strongly recommended to enable PDF editing.',
+					'',
+					'By allowing PDF++ to modify PDF files directly, you can:',
+					'- Add, edit and delete highlights and links in PDF files.',
+					'- Add, insert, delete or extract PDF pages and auto-update links.',
+					'- Add, rename, move and delete outline items.',
+					'- Edit page labels.',
+				], setting.descEl);
+			});
+		this.addToggleSetting('enablePDFEdit', () => this.redisplay())
+			.setName('Enable PDF editing')
+			.then((setting) => {
+				this.renderMarkdown([
+					'PDF++ will not modify PDF files themselves unless you turn on this option. <span style="color: var(--text-warning);">The author assumes no responsibility for any data corruption. Please make sure you have a backup of your files.</span>',
+				], setting.descEl);
+			});
+		if (this.plugin.settings.enablePDFEdit) {
+			this.addTextSetting('author', 'Your name', function () {
+				const inputEl = this as HTMLInputElement;
+				inputEl.toggleClass('error', !inputEl.value);
+			})
+				.setName('Annotation author')
+				.setDesc('It must contain at least one character in order to make annotations referenceable & editable within Obsidian.')
+				.then((setting) => {
+					const inputEl = (setting.components[0] as TextComponent).inputEl;
+					inputEl.toggleClass('error', !inputEl.value);
+				});
+			this.addToggleSetting('enableEditEncryptedPDF')
+				.setName('Enable editing encrypted PDF files');
+		}
 
 
 		this.addHeading('Backlink highlighting', 'lucide-highlighter')
@@ -1025,6 +1109,25 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setDesc('If no color is specified in link text, this color will be used.');
 		}
 
+		this.addHeading('Backlink indicator bounding rectangles');
+		this.addToggleSetting('showBoundingRectForBacklinkedAnnot')
+			.setName('Show bounding rectangles for backlinked annotations')
+			.setDesc('Bounding rectangles will be shown for annotations with backlinks.');
+
+
+		this.addHeading('Backlink indicator icons')
+			.setDesc('Show icons for text selections, annotations, offsets and rectangular selections with backlinks.');
+		this.addToggleSetting('showBacklinkIconForSelection')
+			.setName('Show icon for text selection with backlinks');
+		this.addToggleSetting('showBacklinkIconForAnnotation')
+			.setName('Show icon for annotation with backlinks');
+		this.addToggleSetting('showBacklinkIconForOffset')
+			.setName('Show icon for offset backlinks');
+		this.addToggleSetting('showBacklinkIconForRect')
+			.setName('Show icon for rectangular selection backlinks');
+		this.addSliderSetting('backlinkIconSize', 10, 100, 5)
+			.setName('Icon size');
+
 
 		this.addHeading('Rectangular selection embeds', 'lucide-box-select')
 			.then((setting) => {
@@ -1036,7 +1139,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Paste as image')
 			.setDesc('By default, rectangular selection embeds are re-rendered every time you open the markdown file, which can slow down the loading time. Turn on this option to replace them with static images and improve the performance.');
 		if (this.plugin.settings.rectEmbedStaticImage) {
-			this.addDropdownSetting('rectImageFormat', {'file': 'Create & embed image file', 'data-url': 'Embed as data URL'}, () => this.redisplay())
+			this.addDropdownSetting('rectImageFormat', { 'file': 'Create & embed image file', 'data-url': 'Embed as data URL' }, () => this.redisplay())
 				.setName('How to embed the image')
 				.then((setting) => this.renderMarkdown([
 					'- "Create & embed image file": Create an image file and embed it in the markdown file. The image file will be saved in the folder you specify in the "Default location for new attachments" setting in the core Obsidian settings.',
@@ -1047,25 +1150,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setName('Image file format');
 			}
 		}
-
-
-		this.addHeading('Backlink indicator bounding rectangles', 'lucide-square');
-		this.addToggleSetting('showBoundingRectForBacklinkedAnnot')
-			.setName('Show bounding rectangles for backlinked annotations')
-			.setDesc('Bounding rectangles will be shown for annotations with backlinks.');
-
-
-		this.addHeading('Backlink indicator icons', 'links-coming-in');
-		this.addToggleSetting('showBacklinkIconForSelection')
-			.setName('Show icon for text selection with backlinks');
-		this.addToggleSetting('showBacklinkIconForAnnotation')
-			.setName('Show icon for annotation with backlinks');
-		this.addToggleSetting('showBacklinkIconForOffset')
-			.setName('Show icon for offset backlinks');
-		this.addToggleSetting('showBacklinkIconForRect')
-			.setName('Show icon for rectangular selection backlinks');
-		this.addSliderSetting('backlinkIconSize', 10, 100, 5)
-			.setName('Icon size');
 
 
 		this.addHeading('PDF++ callouts', 'lucide-quote')
@@ -1107,254 +1191,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addCalloutIconSetting();
 
 
-		this.addHeading('Backlinks pane for PDF files', 'links-coming-in')
-			.then((setting) => this.renderMarkdown(
-				`Improve the built-in [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) for better PDF experience.`,
-				setting.descEl
-			));
-		this.addToggleSetting('filterBacklinksByPageDefault')
-			.setName('Filter backlinks by page by default')
-			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
-		this.addToggleSetting('showBacklinkToPage')
-			.setName('Show backlinks to the entire page')
-			.setDesc('If turned off, only backlinks to specific text selections, annotations or locations will be shown when filtering the backlinks page by page.')
-		this.addToggleSetting('highlightBacklinksPane')
-			.setName('Hover sync (PDF viewer → Backlinks pane)')
-			.setDesc('Hovering your mouse over highlighted text or annotation will also highlight the corresponding item in the backlink pane.');
-		this.addToggleSetting('highlightOnHoverBacklinkPane')
-			.setName('Hover sync (Backlinks pane → PDF viewer)')
-			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer. This option requires reopening or switching tabs to take effect.')
-		if (this.plugin.settings.highlightOnHoverBacklinkPane) {
-			this.addDropdownSetting(
-				'backlinkHoverColor',
-				['', ...Object.keys(this.plugin.settings.colors)],
-				(option) => option || 'PDF++ default',
-				() => this.plugin.loadStyle()
-			)
-				.setName('Highlight color for hover sync (Backlinks pane → PDF viewer)')
-				.setDesc('To add a new color, click the "+" button in the "highlight colors" setting above.');
-		}
-
-
-		this.addHeading('Editing PDF files directly (experimental)', 'lucide-save')
-			.then((setting) => {
-				this.renderMarkdown([
-					'By allowing PDF++ to modify PDF files directly, you can:',
-					'- Add, edit and delete highlights and links in PDF files.',
-					'- Add, insert, delete or extract PDF pages and auto-update links.',
-					'- Add, rename, move and delete outline items.',
-					'- Edit page labels.',
-				], setting.descEl);
-			});
-		this.addToggleSetting('enalbeWriteHighlightToFile', () => this.redisplay())
-			.setName('Enable')
-			.then((setting) => {
-				this.renderMarkdown([
-					'PDF++ will not modify PDF files themselves unless you turn on this option. <span style="color: var(--text-warning);">The author assumes no responsibility for any data corruption. Please make sure you have a backup and use it at your own risk.</span> Report any issues you encounter on [GitHub](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).',
-				], setting.descEl);
-			});
-		if (this.plugin.settings.enalbeWriteHighlightToFile) {
-			this.addTextSetting('author', 'Your name', function () {
-				const inputEl = this as HTMLInputElement;
-				inputEl.toggleClass('error', !inputEl.value);
-			})
-				.setName('Annotation author')
-				.setDesc('It must contain at least one character in order to make annotations referenceable & editable within Obsidian.')
-				.then((setting) => {
-					const inputEl = (setting.components[0] as TextComponent).inputEl;
-					inputEl.toggleClass('error', !inputEl.value);
-				});
-			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
-				.setName('Highlight opacity');
-			this.addToggleSetting('defaultWriteFileToggle')
-				.setName('Write highlight to file by default')
-				.setDesc('You can turn this on and off with the toggle button in the PDF viewer toolbar.');
-			this.addToggleSetting('syncWriteFileToggle')
-				.setName('Share the same toggle state among all PDF viewers')
-				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
-			if (this.plugin.settings.syncWriteFileToggle) {
-				this.addToggleSetting('syncDefaultWriteFileToggle')
-					.setName('Share the state with newly opened PDF viewers as well')
-			}
-			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
-				.setName('Enable editing annotation contents')
-				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
-			this.addToggleSetting('enableAnnotationDeletion', () => this.redisplay())
-				.setName('Enable annotation deletion')
-				.setDesc('If enabled, you can delete annotations embedded in PDF files by clicking the "Delete" button in the annotation popup.');
-			if (this.plugin.settings.enableAnnotationDeletion) {
-				this.addToggleSetting('warnEveryAnnotationDelete', () => this.redisplay())
-					.setName('Always warn when deleting an annotation');
-				if (!this.plugin.settings.warnEveryAnnotationDelete) {
-					this.addToggleSetting('warnBacklinkedAnnotationDelete')
-						.setName('Warn when deleting an annotation with backlinks');
-				}
-			}
-			this.addToggleSetting('enableEditEncryptedPDF')
-				.setName('Enable editing encrypted PDF files');
-		}
-
-
-		this.addHeading('PDF page composer (experimental)', 'lucide-blocks')
-			.then((setting) => {
-				this.renderMarkdown([
-					`Add, insert, delete or extract PDF pages via commands and **automatically update all the related links in the entire vault**. The "Editing PDF files directly" option has to be enabled to use these features.`
-				], setting.descEl);
-			});
-		this.addToggleSetting('warnEveryPageDelete', () => this.redisplay())
-			.setName('Always warn when deleting a page');
-		if (!this.plugin.settings.warnEveryPageDelete) {
-			this.addToggleSetting('warnBacklinkedPageDelete')
-				.setName('Warn when deleting a page with backlinks');
-		}
-		this.addToggleSetting('extractPageInPlace')
-			.setName('Remove the extracted pages from the original PDF by default')
-		this.addToggleSetting('askExtractPageInPlace')
-			.setName('Ask whether to remove the extracted pages from the original PDF before extracting')
-		this.addToggleSetting('openAfterExtractPages', () => this.redisplay())
-			.setName('Open extracted PDF file')
-			.setDesc('If enabled, the newly created PDF file will be opened after running the commands "Extract this page to a new file" or "Divide this PDF into two files at this page".');
-		if (this.plugin.settings.openAfterExtractPages) {
-			this.addDropdownSetting('howToOpenExtractedPDF', PANE_TYPE)
-				.setName('How to open');
-		}
-
-
-		this.addHeading('Page labels')
-			.then((setting) => {
-				this.renderMarkdown([
-					'Each page in a PDF document can be assigned a ***page label***, which can be different from the page indices.',
-					'For example, a book might have a preface numbered as "i", "ii", "iii", ... and the main content numbered as "1", "2", "3", ...',
-					'',
-					'PDF++ allows you to choose whether page labels should be kept unchanged or updated when inserting/removing/extracting pages. [Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels)',
-					'',
-					'You can also modify page labels directly using the command "Edit page labels".'
-				], setting.descEl);
-			});
-		this.addDropdownSetting('pageLabelUpdateWhenInsertPage', PAGE_LABEL_UPDATE_METHODS)
-			.setName('Insert: default page label processing')
-			.setDesc('Applies to the commands "Insert page before/after this page".');
-		this.addToggleSetting('askPageLabelUpdateWhenInsertPage')
-			.setName('Insert: ask whether to update');
-		this.addDropdownSetting('pageLabelUpdateWhenDeletePage', PAGE_LABEL_UPDATE_METHODS)
-			.setName('Delete: default page label processing')
-			.setDesc('Applies to the command "Delete this page".');
-		this.addToggleSetting('askPageLabelUpdateWhenDeletePage')
-			.setName('Delete: ask whether to update');
-		this.addDropdownSetting('pageLabelUpdateWhenExtractPage', PAGE_LABEL_UPDATE_METHODS)
-			.setName('Extract: default page label processing')
-			.setDesc('Applies to the commands "Extract this page to a new file" and "Divide this PDF into two files at this page".');
-		this.addToggleSetting('askPageLabelUpdateWhenExtractPage')
-			.setName('Extract: ask whether to update');
-
-
-		this.addHeading('Opening links to PDF files', 'lucide-book-open');
-		this.addToggleSetting('alwaysRecordHistory')
-			.setName('Always record to history when opening PDF links')
-			.setDesc('By default, the history is recorded only when you open a link to a different PDF file. If enabled, the history will be recorded even when you open a link to the same PDF file as the current one, and you will be able to go back and forth the history by clicking the left/right arrow buttons even within a single PDF file.');
-		this.addToggleSetting('singleTabForSinglePDF', () => this.redisplay())
-			.setName('Don\'t open a single PDF file in multiple tabs')
-			.then((setting) => this.renderMarkdown(
-				`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the same file has already been already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
-				setting.descEl
-			));
-		if (this.plugin.settings.singleTabForSinglePDF) {
-			this.addToggleSetting('dontActivateAfterOpenPDF')
-				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
-				.setDesc('This option will be ignored when you open a PDF link in a tab in the same split as the PDF viewer.')
-			this.addToggleSetting('highlightExistingTab', () => this.redisplay())
-				.setName('When opening a link to an already opened PDF file, highlight the tab');
-			if (this.plugin.settings.highlightExistingTab) {
-				this.addSliderSetting('existingTabHighlightOpacity', 0, 1, 0.01)
-					.setName('Highlight opacity of an existing tab')
-				this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.05)
-					.setName('Highlight duration of an existing tab (sec)')
-			}
-		}
-		this.addDropdownSetting('paneTypeForFirstPDFLeaf', PANE_TYPE)
-			.setName(`How to open PDF links when there is no open PDF file`)
-			.then((setting) => {
-				this.renderMarkdown(
-					'This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
-					setting.descEl
-				);
-			});
-		this.addToggleSetting('openLinkNextToExistingPDFTab')
-			.setName('Open PDF links next to an existing PDF tab')
-			.then((setting) => this.renderMarkdown(
-				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
-				setting.descEl
-			));
-		this.addToggleSetting('hoverPDFLinkToOpen')
-			.setName('Open PDF link instead of showing popover preview when target PDF is already opened')
-			.setDesc(`Press ${getModifierNameInPlatform('Mod').toLowerCase()} while hovering a PDF link to actually open it if the target PDF is already opened in another tab.`)
-		this.addSetting()
-			.setName('Open PDF links with an external app')
-			.setDesc('See the "Integration with external apps" section for the details.');
-
-
-		this.addSetting()
-			.setName('Clear highlights after a certain amount of time')
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.highlightDuration > 0)
-					.onChange(async (value) => {
-						this.plugin.settings.highlightDuration = value
-							? (this.plugin.settings.highlightDuration > 0
-								? this.plugin.settings.highlightDuration
-								: 1)
-							: 0;
-						await this.plugin.saveSettings();
-						this.redisplay();
-					});
-			});
-		if (this.plugin.settings.highlightDuration > 0) {
-			this.addSliderSetting('highlightDuration', 0.1, 10, 0.05)
-				.setName('Highlight duration (sec)');
-		}
-		this.addToggleSetting('ignoreHeightParamInPopoverPreview')
-			.setName('Ignore "height" parameter in popover preview')
-			.setDesc('Obsidian lets you specify the height of a PDF embed by appending "&height=..." to a link, and this also applies to popover previews. Enable this option if you want to ignore the height parameter in popover previews.')
-
-
-		this.addHeading('Embedding PDF files', 'picture-in-picture-2');
-		this.addToggleSetting('dblclickEmbedToOpenLink', () => this.plugin.loadStyle())
-			.setName('Double click PDF embeds to open links')
-			.setDesc('Double-clicking a PDF embed will open the embedded file.');
-		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())
-			.setName('Trim selection/annotation embeds')
-			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
-		if (this.plugin.settings.trimSelectionEmbed) {
-			this.addSliderSetting('embedMargin', 0, 200, 1)
-				.setName('Selection/annotation embeds margin (px)');
-		}
-		this.addToggleSetting('noSidebarInEmbed')
-			.setName('Hide sidebar in PDF embeds embeds or PDF popover previews by default');
-		this.addToggleSetting('noSpreadModeInEmbed')
-			.setName('Don\'t display PDF embeds or PDF popover previews in "two page" layout')
-			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.')
-		this.addToggleSetting('noTextHighlightsInEmbed')
-			.setName('Don\'t highlight text in a text selection embeds');
-		this.addToggleSetting('noAnnotationHighlightsInEmbed')
-			.setName('Don\'t highlight annotations in an annotation embeds');
-		this.addToggleSetting('persistentTextHighlightsInEmbed')
-			.setName('Don\'t clear highlights in a text selection embeds');
-		this.addToggleSetting('persistentAnnotationHighlightsInEmbed')
-			.setName('Don\'t clear highlights in an annotation embeds');
-		this.addToggleSetting('embedUnscrollable')
-			.setName('Make PDF embeds with a page specified unscrollable');
-
-
-		this.addHeading('Right-click menu in PDF viewer', 'lucide-mouse-pointer-click')
-			.setDesc('Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.')
-		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
-			.setName('Replace the built-in right-click menu and show color palette actions instead');
-		if (!this.plugin.settings.replaceContextMenu) {
-			this.addSetting()
-				.setName('Display text format')
-				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
-		}
-
-
 		this.addHeading('Color palette', 'lucide-palette')
 			.setDesc('Clicking a color while selecting a range of text will copy a link to the selection with "&color=..." appended.');
 		this.addToggleSetting('colorPaletteInToolbar', () => {
@@ -1378,6 +1214,17 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addToggleSetting('syncDefaultColorPaletteItem')
 					.setName('Share the color with newly opened color palettes as well');
 			}
+		}
+
+
+		this.addHeading('Right-click menu in PDF viewer', 'lucide-mouse-pointer-click')
+			.setDesc('Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.')
+		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
+			.setName('Replace the built-in right-click menu and show color palette actions instead');
+		if (!this.plugin.settings.replaceContextMenu) {
+			this.addSetting()
+				.setName('Display text format')
+				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
 		}
 
 
@@ -1444,125 +1291,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				], setting.descEl);
 			});
 
-
-		this.addHeading('Auto-focus / auto-paste', 'lucide-zap');
-		this.addToggleSetting('autoFocus', () => {
-			this.plugin.autoFocusToggleIconEl.toggleClass('is-active', this.plugin.settings.autoFocus);
-		})
-			.setName('Auto-focus markdown after copying link from PDF')
-			.setDesc('If enabled, the last active note or the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation" command.');
-		this.addToggleSetting('autoFocusToggleRibbonIcon')
-			.setName('Show an icon to toggle auto-focus in the left ribbon menu')
-			.setDesc('You can also toggle auto-focus via a command. Reload the plugin after changing this setting to take effect.')
-		this.addDropdownSetting('autoFocusTarget', AUTO_FOCUS_TARGETS)
-			.setName('Auto-focus target');
-		this.addDropdownSetting('autoPasteTarget', AUTO_FOCUS_TARGETS)
-			.setName('Auto-paste target');
-		this.addToggleSetting('focusEditorAfterAutoPaste')
-			.setName('Focus editor after auto-paste')
-			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
-		this.addToggleSetting('openAutoFocusTargetIfNotOpened', () => this.redisplay())
-			.setName('Open target markdown file if not opened');
-		if (this.plugin.settings.openAutoFocusTargetIfNotOpened) {
-			this.addDropdownSetting(
-				'howToOpenAutoFocusTargetIfNotOpened',
-				{ ...PANE_TYPE, 'hover-editor': 'Hover Editor' },
-				() => this.redisplay()
-			)
-				.setName('How to open target markdown file when not opened')
-				.then((setting) => {
-					this.renderMarkdown(
-						'The "Hover Editor" option is available if the [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor) plugin is enabled.',
-						setting.descEl
-					);
-					if (this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor') {
-						if (!this.app.plugins.plugins['obsidian-hover-editor']) {
-							setting.descEl.addClass('error');
-						}
-					}
-				});
-			if (this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor') {
-				this.addToggleSetting('closeHoverEditorWhenLostFocus')
-					.setName('Close Hover Editor when it loses focus')
-					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.')
-			} else if (isSidebarType(this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened)) {
-				this.addToggleSetting('closeSidebarWhenLostFocus')
-					.setName('Auto-hide sidebar when it loses focus');
-			}
-			this.addToggleSetting('openAutoFocusTargetInEditingView')
-				.setName('Always open in editing view')
-				.setDesc('This option can be useful especially when you set the previous option to "Hover Editor".');
-		}
-		this.addToggleSetting('executeCommandWhenTargetNotIdentified', () => this.redisplay())
-			.setName('Execute command when target file cannot be determined')
-			.setDesc('When PDF++ cannot determine which markdown file to focus on or paste to, it will execute the command specified in the next option to let you pick a target file.');
-		const commandName = this.app.commands.findCommand(`${this.plugin.manifest.id}:create-new-note`)?.name ?? 'PDF++: Create new note for auto-focus or auto-paste';
-		if (this.plugin.settings.executeCommandWhenTargetNotIdentified) {
-			this.addSetting('commandToExecuteWhenTargetNotIdentified')
-				.setName('Command to execute')
-				.then((setting) => {
-					this.renderMarkdown([
-						'Here\'s some examples of useful commands:',
-						'',
-						`- ${this.app.commands.findCommand('file-explorer:new-file')?.name ?? 'Create new note'}`,
-						`- ${this.app.commands.findCommand('file-explorer:new-file-in-new-pane')?.name ?? 'Create note to the right'}`,
-						`- ${this.app.commands.findCommand('switcher:open')?.name ?? 'Quick switcher: Open quick switcher'}`,
-						'- [Omnisearch](obsidian://show-plugin?id=omnisearch): Vault search',
-						'- [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor): Open new Hover Editor',
-						`- **${commandName}**: See below for the details.`,
-					], setting.descEl);
-				})
-				.addText((text) => {
-					const id = this.plugin.settings.commandToExecuteWhenTargetNotIdentified;
-					const command = this.app.commands.findCommand(id);
-					if (command) {
-						text.setValue(command.name);
-					} else {
-						text.inputEl.addClass('error');
-						text.setPlaceholder('Command not found');
-					}
-					text.inputEl.size = 30;
-					new CommandSuggest(this, text.inputEl);
-				});
-		}
-
-		this.addHeading(`The "${commandName}" command`)
-			.setDesc('Creates a new note and opens it in a new pane specified in the "How to open target markdown file when not opened" option.');
-		this.addTextSetting('newFileNameFormat', 'Leave blank not to specify')
-			.setName(`New note title format`)
-			.then((setting) => {
-				this.renderMarkdown([
-					'If this option is left blank or the active file is not a PDF, "Untitled \\*" will be used (if the language is set to English). You can use the following variables: `file`, `folder`, `app`, and other global variables such as `moment`. See below for the details about the variables.',
-				], setting.descEl)
-			});
-		this.addTextSetting('newFileTemplatePath', 'Leave blank not to use a template')
-			.setName('Template file path')
-			.then((setting) => {
-				this.renderMarkdown([
-					'You can leave this blank if you don\'t want to use a template.',
-					'You can use `file`, `folder`, `app`, and other global variables such as `moment`.',
-					'See below for the details about these variables.',
-					'',
-					'You can also include [Templater](obsidian://show-plugin?id=templater-obsidian) syntaxes in the template.',
-					'In that case, make sure the "Trigger templater on new file creation" option is enabled in the Templater settings.',
-					'',
-					'Example:',
-					'```markdown',
-					'---',
-					`${this.plugin.settings.proxyMDProperty}: "[[{{ file.path }}|{{ file.basename }}]]"`,
-					'---',
-					'<%* const title = await tp.system.prompt("Type note tile") -%>',
-					'<%* await tp.file.rename(title) %>',
-					'```',
-				], setting.descEl);
-
-				const inputEl = (setting.components[0] as TextComponent).inputEl;
-				new FuzzyMarkdownFileSuggest(this.app, inputEl)
-					.onSelect(({ item: file }) => {
-						this.plugin.settings.newFileTemplatePath = file.path;
-						this.plugin.saveSettings();
-					});
-			});
 
 		this.addHeading('Link copy templates', 'lucide-copy')
 			.setDesc('The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ')
@@ -1696,6 +1424,126 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
+		this.addHeading('Auto-focus / auto-paste', 'lucide-zap');
+		this.addToggleSetting('autoFocus', () => {
+			this.plugin.autoFocusToggleIconEl.toggleClass('is-active', this.plugin.settings.autoFocus);
+		})
+			.setName('Auto-focus markdown after copying link from PDF')
+			.setDesc('If enabled, the last active note or the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation" command.');
+		this.addToggleSetting('autoFocusToggleRibbonIcon')
+			.setName('Show an icon to toggle auto-focus in the left ribbon menu')
+			.setDesc('You can also toggle auto-focus via a command. Reload the plugin after changing this setting to take effect.')
+		this.addDropdownSetting('autoFocusTarget', AUTO_FOCUS_TARGETS)
+			.setName('Auto-focus target');
+		this.addDropdownSetting('autoPasteTarget', AUTO_FOCUS_TARGETS)
+			.setName('Auto-paste target');
+		this.addToggleSetting('focusEditorAfterAutoPaste')
+			.setName('Focus editor after auto-paste')
+			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
+		this.addToggleSetting('openAutoFocusTargetIfNotOpened', () => this.redisplay())
+			.setName('Open target markdown file if not opened');
+		if (this.plugin.settings.openAutoFocusTargetIfNotOpened) {
+			this.addDropdownSetting(
+				'howToOpenAutoFocusTargetIfNotOpened',
+				{ ...PANE_TYPE, 'hover-editor': 'Hover Editor' },
+				() => this.redisplay()
+			)
+				.setName('How to open target markdown file when not opened')
+				.then((setting) => {
+					this.renderMarkdown(
+						'The "Hover Editor" option is available if the [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor) plugin is enabled.',
+						setting.descEl
+					);
+					if (this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor') {
+						if (!this.app.plugins.plugins['obsidian-hover-editor']) {
+							setting.descEl.addClass('error');
+						}
+					}
+				});
+			if (this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor') {
+				this.addToggleSetting('closeHoverEditorWhenLostFocus')
+					.setName('Close Hover Editor when it loses focus')
+					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.')
+			} else if (isSidebarType(this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened)) {
+				this.addToggleSetting('closeSidebarWhenLostFocus')
+					.setName('Auto-hide sidebar when it loses focus');
+			}
+			this.addToggleSetting('openAutoFocusTargetInEditingView')
+				.setName('Always open in editing view')
+				.setDesc('This option can be useful especially when you set the previous option to "Hover Editor".');
+		}
+		this.addToggleSetting('executeCommandWhenTargetNotIdentified', () => this.redisplay())
+			.setName('Execute command when target file cannot be determined')
+			.setDesc('When PDF++ cannot determine which markdown file to focus on or paste to, it will execute the command specified in the next option to let you pick a target file.');
+		const commandName = this.app.commands.findCommand(`${this.plugin.manifest.id}:create-new-note`)?.name ?? 'PDF++: Create new note for auto-focus or auto-paste';
+		if (this.plugin.settings.executeCommandWhenTargetNotIdentified) {
+			this.addSetting('commandToExecuteWhenTargetNotIdentified')
+				.setName('Command to execute')
+				.then((setting) => {
+					this.renderMarkdown([
+						'Here\'s some examples of useful commands:',
+						'',
+						`- ${this.app.commands.findCommand('file-explorer:new-file')?.name ?? 'Create new note'}`,
+						`- ${this.app.commands.findCommand('file-explorer:new-file-in-new-pane')?.name ?? 'Create note to the right'}`,
+						`- ${this.app.commands.findCommand('switcher:open')?.name ?? 'Quick switcher: Open quick switcher'}`,
+						'- [Omnisearch](obsidian://show-plugin?id=omnisearch): Vault search',
+						'- [Hover Editor](obsidian://show-plugin?id=obsidian-hover-editor): Open new Hover Editor',
+						`- **${commandName}**: See below for the details.`,
+					], setting.descEl);
+				})
+				.addText((text) => {
+					const id = this.plugin.settings.commandToExecuteWhenTargetNotIdentified;
+					const command = this.app.commands.findCommand(id);
+					if (command) {
+						text.setValue(command.name);
+					} else {
+						text.inputEl.addClass('error');
+						text.setPlaceholder('Command not found');
+					}
+					text.inputEl.size = 30;
+					new CommandSuggest(this, text.inputEl);
+				});
+		}
+
+		this.addHeading(`The "${commandName}" command`)
+			.setDesc('Creates a new note and opens it in a new pane specified in the "How to open target markdown file when not opened" option.');
+		this.addTextSetting('newFileNameFormat', 'Leave blank not to specify')
+			.setName(`New note title format`)
+			.then((setting) => {
+				this.renderMarkdown([
+					'If this option is left blank or the active file is not a PDF, "Untitled \\*" will be used (if the language is set to English). You can use the following variables: `file`, `folder`, `app`, and other global variables such as `moment`. See below for the details about the variables.',
+				], setting.descEl)
+			});
+		this.addTextSetting('newFileTemplatePath', 'Leave blank not to use a template')
+			.setName('Template file path')
+			.then((setting) => {
+				this.renderMarkdown([
+					'You can leave this blank if you don\'t want to use a template.',
+					'You can use `file`, `folder`, `app`, and other global variables such as `moment`.',
+					'See below for the details about these variables.',
+					'',
+					'You can also include [Templater](obsidian://show-plugin?id=templater-obsidian) syntaxes in the template.',
+					'In that case, make sure the "Trigger templater on new file creation" option is enabled in the Templater settings.',
+					'',
+					'Example:',
+					'```markdown',
+					'---',
+					`${this.plugin.settings.proxyMDProperty}: "[[{{ file.path }}|{{ file.basename }}]]"`,
+					'---',
+					'<%* const title = await tp.system.prompt("Type note tile") -%>',
+					'<%* await tp.file.rename(title) %>',
+					'```',
+				], setting.descEl);
+
+				const inputEl = (setting.components[0] as TextComponent).inputEl;
+				new FuzzyMarkdownFileSuggest(this.app, inputEl)
+					.onSelect(({ item: file }) => {
+						this.plugin.settings.newFileTemplatePath = file.path;
+						this.plugin.saveSettings();
+					});
+			});
+
+
 		this.addHeading('PDF internal links', 'link')
 			.setDesc('Make it easier to work with internal links embedded in PDF files.');
 		this.addToggleSetting('clickPDFInternalLinkWithModifierKey')
@@ -1723,7 +1571,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addSetting()
 			.setName('Paste copied link to a text selection in a PDF file')
 			.setDesc('(Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".');
-		if (this.plugin.settings.replaceContextMenu && this.plugin.settings.enalbeWriteHighlightToFile) {
+		if (this.plugin.settings.replaceContextMenu && this.plugin.settings.enablePDFEdit) {
 			this.addToggleSetting('pdfLinkBorder', () => this.redisplay())
 				.setName('Draw borders around internal links')
 				.setDesc('Specify whether PDF internal links that you create by "Paste copied link to selection" should be surrounded by borders.');
@@ -1733,6 +1581,43 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
 			}
 		}
+
+
+		this.addHeading('Annotations', 'lucide-message-square');
+		if (this.plugin.settings.enablePDFEdit) {
+			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
+				.setName('Highlight opacity');
+			this.addToggleSetting('defaultWriteFileToggle')
+				.setName('Write highlight to file by default')
+				.setDesc('You can turn this on and off with the toggle button in the PDF viewer toolbar.');
+			this.addToggleSetting('syncWriteFileToggle')
+				.setName('Share the same toggle state among all PDF viewers')
+				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
+			if (this.plugin.settings.syncWriteFileToggle) {
+				this.addToggleSetting('syncDefaultWriteFileToggle')
+					.setName('Share the state with newly opened PDF viewers as well')
+			}
+			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
+				.setName('Enable editing annotation contents')
+				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
+			this.addToggleSetting('enableAnnotationDeletion', () => this.redisplay())
+				.setName('Enable annotation deletion')
+				.setDesc('If enabled, you can delete annotations embedded in PDF files by clicking the "Delete" button in the annotation popup.');
+			if (this.plugin.settings.enableAnnotationDeletion) {
+				this.addToggleSetting('warnEveryAnnotationDelete', () => this.redisplay())
+					.setName('Always warn when deleting an annotation');
+				if (!this.plugin.settings.warnEveryAnnotationDelete) {
+					this.addToggleSetting('warnBacklinkedAnnotationDelete')
+						.setName('Warn when deleting an annotation with backlinks');
+				}
+			}
+		}
+		this.addToggleSetting('annotationPopupDrag')
+			.setName('Drag & drop annotation popup to insert a link to the annotation')
+			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
+		this.addToggleSetting('renderMarkdownInStickyNote')
+			.setName('Render markdown in annotation popups when the annotation has text contents');
+
 
 
 		this.addHeading('PDF outline (table of contents)', 'lucide-list')
@@ -1857,12 +1742,56 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Annotation popup', 'lucide-message-square');
-		this.addToggleSetting('annotationPopupDrag')
-			.setName('Drag & drop annotation popup to insert a link to the annotation')
-			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
-		this.addToggleSetting('renderMarkdownInStickyNote')
-			.setName('Render markdown in annotation popups when the annotation has text contents');
+		this.addHeading('PDF page composer (experimental)', 'lucide-blocks')
+			.then((setting) => {
+				this.renderMarkdown([
+					`Add, insert, delete or extract PDF pages via commands and **automatically update all the related links in the entire vault**. The "Editing PDF files directly" option has to be enabled to use these features.`
+				], setting.descEl);
+			});
+		this.addToggleSetting('warnEveryPageDelete', () => this.redisplay())
+			.setName('Always warn when deleting a page');
+		if (!this.plugin.settings.warnEveryPageDelete) {
+			this.addToggleSetting('warnBacklinkedPageDelete')
+				.setName('Warn when deleting a page with backlinks');
+		}
+		this.addToggleSetting('extractPageInPlace')
+			.setName('Remove the extracted pages from the original PDF by default')
+		this.addToggleSetting('askExtractPageInPlace')
+			.setName('Ask whether to remove the extracted pages from the original PDF before extracting')
+		this.addToggleSetting('openAfterExtractPages', () => this.redisplay())
+			.setName('Open extracted PDF file')
+			.setDesc('If enabled, the newly created PDF file will be opened after running the commands "Extract this page to a new file" or "Divide this PDF into two files at this page".');
+		if (this.plugin.settings.openAfterExtractPages) {
+			this.addDropdownSetting('howToOpenExtractedPDF', PANE_TYPE)
+				.setName('How to open');
+		}
+
+		this.addHeading('Page labels')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Each page in a PDF document can be assigned a ***page label***, which can be different from the page indices.',
+					'For example, a book might have a preface numbered as "i", "ii", "iii", ... and the main content numbered as "1", "2", "3", ...',
+					'',
+					'PDF++ allows you to choose whether page labels should be kept unchanged or updated when inserting/removing/extracting pages. [Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels)',
+					'',
+					'You can also modify page labels directly using the command "Edit page labels".'
+				], setting.descEl);
+			});
+		this.addDropdownSetting('pageLabelUpdateWhenInsertPage', PAGE_LABEL_UPDATE_METHODS)
+			.setName('Insert: default page label processing')
+			.setDesc('Applies to the commands "Insert page before/after this page".');
+		this.addToggleSetting('askPageLabelUpdateWhenInsertPage')
+			.setName('Insert: ask whether to update');
+		this.addDropdownSetting('pageLabelUpdateWhenDeletePage', PAGE_LABEL_UPDATE_METHODS)
+			.setName('Delete: default page label processing')
+			.setDesc('Applies to the command "Delete this page".');
+		this.addToggleSetting('askPageLabelUpdateWhenDeletePage')
+			.setName('Delete: ask whether to update');
+		this.addDropdownSetting('pageLabelUpdateWhenExtractPage', PAGE_LABEL_UPDATE_METHODS)
+			.setName('Extract: default page label processing')
+			.setDesc('Applies to the commands "Extract this page to a new file" and "Divide this PDF into two files at this page".');
+		this.addToggleSetting('askPageLabelUpdateWhenExtractPage')
+			.setName('Extract: ask whether to update');
 
 
 		// this.addHeading('Canvas', 'lucide-layout-dashboard')
@@ -1870,6 +1799,131 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		// this.addToggleSetting('canvasContextMenu')
 		// 	.setName('Show "Create Canvas card from ..." in the right-click menu in Canvas')
 		// 	.setDesc('Turn this off if you don\'t want to clutter the right-click menu. You can always use the "Create canvas card from selection or annotation" command via a hotkey.');
+
+
+		this.addHeading('Opening links to PDF files', 'lucide-book-open');
+		this.addToggleSetting('alwaysRecordHistory')
+			.setName('Always record to history when opening PDF links')
+			.setDesc('By default, the history is recorded only when you open a link to a different PDF file. If enabled, the history will be recorded even when you open a link to the same PDF file as the current one, and you will be able to go back and forth the history by clicking the left/right arrow buttons even within a single PDF file.');
+		this.addToggleSetting('singleTabForSinglePDF', () => this.redisplay())
+			.setName('Don\'t open a single PDF file in multiple tabs')
+			.then((setting) => this.renderMarkdown(
+				`When opening a link to a PDF file without pressing any [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link), a new tab will not be opened if the same file has already been already opened in another tab. Useful for annotating PDFs using a side-by-side view ("Split right"), displaying a PDF in one side and a markdown file in another.`,
+				setting.descEl
+			));
+		if (this.plugin.settings.singleTabForSinglePDF) {
+			this.addToggleSetting('dontActivateAfterOpenPDF')
+				.setName('Don\'t move focus to PDF viewer after opening a PDF link')
+				.setDesc('This option will be ignored when you open a PDF link in a tab in the same split as the PDF viewer.')
+			this.addToggleSetting('highlightExistingTab', () => this.redisplay())
+				.setName('When opening a link to an already opened PDF file, highlight the tab');
+			if (this.plugin.settings.highlightExistingTab) {
+				this.addSliderSetting('existingTabHighlightOpacity', 0, 1, 0.01)
+					.setName('Highlight opacity of an existing tab')
+				this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.05)
+					.setName('Highlight duration of an existing tab (sec)')
+			}
+		}
+		this.addDropdownSetting('paneTypeForFirstPDFLeaf', PANE_TYPE)
+			.setName(`How to open PDF links when there is no open PDF file`)
+			.then((setting) => {
+				this.renderMarkdown(
+					'This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
+					setting.descEl
+				);
+			});
+		this.addToggleSetting('openLinkNextToExistingPDFTab')
+			.setName('Open PDF links next to an existing PDF tab')
+			.then((setting) => this.renderMarkdown(
+				'If there is a PDF file opened in a tab, clicking a PDF link will first create a new tab next to it and then open the target PDF file in the created tab. This is especially useful when you are spliting the workspace vertically or horizontally and want PDF files to be always opened in one side. This option will be ignored when you press [modifier keys](https://help.obsidian.md/User+interface/Use+tabs+in+Obsidian#Open+a+link) to explicitly specify how to open the link.',
+				setting.descEl
+			));
+		this.addToggleSetting('hoverPDFLinkToOpen')
+			.setName('Open PDF link instead of showing popover preview when target PDF is already opened')
+			.setDesc(`Press ${getModifierNameInPlatform('Mod').toLowerCase()} while hovering a PDF link to actually open it if the target PDF is already opened in another tab.`)
+		this.addSetting()
+			.setName('Open PDF links with an external app')
+			.setDesc('See the "Integration with external apps" section for the details.');
+
+
+		this.addSetting()
+			.setName('Clear highlights after a certain amount of time')
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.highlightDuration > 0)
+					.onChange(async (value) => {
+						this.plugin.settings.highlightDuration = value
+							? (this.plugin.settings.highlightDuration > 0
+								? this.plugin.settings.highlightDuration
+								: 1)
+							: 0;
+						await this.plugin.saveSettings();
+						this.redisplay();
+					});
+			});
+		if (this.plugin.settings.highlightDuration > 0) {
+			this.addSliderSetting('highlightDuration', 0.1, 10, 0.05)
+				.setName('Highlight duration (sec)');
+		}
+		this.addToggleSetting('ignoreHeightParamInPopoverPreview')
+			.setName('Ignore "height" parameter in popover preview')
+			.setDesc('Obsidian lets you specify the height of a PDF embed by appending "&height=..." to a link, and this also applies to popover previews. Enable this option if you want to ignore the height parameter in popover previews.')
+
+
+		this.addHeading('Embedding PDF files', 'picture-in-picture-2');
+		this.addToggleSetting('dblclickEmbedToOpenLink', () => this.plugin.loadStyle())
+			.setName('Double click PDF embeds to open links')
+			.setDesc('Double-clicking a PDF embed will open the embedded file.');
+		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())
+			.setName('Trim selection/annotation embeds')
+			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
+		if (this.plugin.settings.trimSelectionEmbed) {
+			this.addSliderSetting('embedMargin', 0, 200, 1)
+				.setName('Selection/annotation embeds margin (px)');
+		}
+		this.addToggleSetting('noSidebarInEmbed')
+			.setName('Hide sidebar in PDF embeds embeds or PDF popover previews by default');
+		this.addToggleSetting('noSpreadModeInEmbed')
+			.setName('Don\'t display PDF embeds or PDF popover previews in "two page" layout')
+			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.')
+		this.addToggleSetting('noTextHighlightsInEmbed')
+			.setName('Don\'t highlight text in a text selection embeds');
+		this.addToggleSetting('noAnnotationHighlightsInEmbed')
+			.setName('Don\'t highlight annotations in an annotation embeds');
+		this.addToggleSetting('persistentTextHighlightsInEmbed')
+			.setName('Don\'t clear highlights in a text selection embeds');
+		this.addToggleSetting('persistentAnnotationHighlightsInEmbed')
+			.setName('Don\'t clear highlights in an annotation embeds');
+		this.addToggleSetting('embedUnscrollable')
+			.setName('Make PDF embeds with a page specified unscrollable');
+
+
+		this.addHeading('Backlinks pane for PDF files', 'links-coming-in')
+			.then((setting) => this.renderMarkdown(
+				`Improve the built-in [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) for better PDF experience.`,
+				setting.descEl
+			));
+		this.addToggleSetting('filterBacklinksByPageDefault')
+			.setName('Filter backlinks by page by default')
+			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
+		this.addToggleSetting('showBacklinkToPage')
+			.setName('Show backlinks to the entire page')
+			.setDesc('If turned off, only backlinks to specific text selections, annotations or locations will be shown when filtering the backlinks page by page.')
+		this.addToggleSetting('highlightBacklinksPane')
+			.setName('Hover sync (PDF viewer → Backlinks pane)')
+			.setDesc('Hovering your mouse over highlighted text or annotation will also highlight the corresponding item in the backlink pane.');
+		this.addToggleSetting('highlightOnHoverBacklinkPane')
+			.setName('Hover sync (Backlinks pane → PDF viewer)')
+			.setDesc('In the backlinks pane, hover your mouse over an backlink item to highlight the corresponding text or annotation in the PDF viewer. This option requires reopening or switching tabs to take effect.')
+		if (this.plugin.settings.highlightOnHoverBacklinkPane) {
+			this.addDropdownSetting(
+				'backlinkHoverColor',
+				['', ...Object.keys(this.plugin.settings.colors)],
+				(option) => option || 'PDF++ default',
+				() => this.plugin.loadStyle()
+			)
+				.setName('Highlight color for hover sync (Backlinks pane → PDF viewer)')
+				.setDesc('To add a new color, click the "+" button in the "highlight colors" setting above.');
+		}
 
 
 		this.addHeading('Integration with external apps (desktop-only)', 'lucide-share');
@@ -1962,8 +2016,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.plugin.settings.displayTextFormats = this.plugin.settings.displayTextFormats.filter((format) => format.name && format.template);
 
 		// avoid annotations to be not referneceable
-		if (this.plugin.settings.enalbeWriteHighlightToFile && !this.plugin.settings.author) {
-			this.plugin.settings.enalbeWriteHighlightToFile = false;
+		if (this.plugin.settings.enablePDFEdit && !this.plugin.settings.author) {
+			this.plugin.settings.enablePDFEdit = false;
 			new Notice(`${this.plugin.manifest.name}: Cannot enable writing highlights into PDF files because the "Annotation author" option is empty.`)
 		}
 
@@ -1973,7 +2027,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.promises = [];
 		this.component.unload();
-		this.containerEl.empty();
 	}
 }
 

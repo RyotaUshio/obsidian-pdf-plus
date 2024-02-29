@@ -50,7 +50,7 @@ export class ColorPalette extends Component {
         this.selectedColorName = null;
         this.actionIndex = plugin.settings.defaultColorPaletteActionIndex;
         this.displayTextFormatIndex = plugin.settings.defaultDisplayTextFormatIndex;
-        this.writeFile = plugin.settings.enalbeWriteHighlightToFile && plugin.settings.defaultWriteFileToggle;
+        this.writeFile = plugin.settings.enablePDFEdit && plugin.settings.defaultWriteFileToggle;
     }
 
     onload() {
@@ -75,7 +75,7 @@ export class ColorPalette extends Component {
         this.actionMenuEl = this.addCopyActionDropdown(this.paletteEl);
         this.displayTextFormatMenuEl = this.addDisplayTextFormatDropdown(this.paletteEl);
 
-        if (this.plugin.settings.enalbeWriteHighlightToFile) {
+        if (this.plugin.settings.enablePDFEdit) {
             this.addWriteFileToggle(this.paletteEl);
         }
 

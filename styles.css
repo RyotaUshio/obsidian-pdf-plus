@@ -156,8 +156,60 @@ settings:
     }
 }
 
-.pdf-plus-settings .pdf-plus-setting-heading:not(.normal-margin-top) {
-    margin-top: 2.4em;
+.pdf-plus-settings {
+    --pdf-plus-settings-header-height: var(--size-4-12);
+
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
+
+    scroll-margin: 400px;
+}
+
+.pdf-plus-settings .header-container {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: var(--pdf-plus-settings-header-height);
+    line-height: var(--pdf-plus-settings-header-height);
+    text-align: center;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--divider-color);
+    padding-left: var(--size-4-4);
+    padding-right: var(--size-4-4);
+
+    overflow-x: scroll;
+    overflow-y: hidden;
+    white-space: nowrap;
+
+    .header {
+        display: inline-block;
+        vertical-align: middle;
+        line-height: normal;
+
+        .header-title {
+            display: none;
+        }
+    }
+}
+
+.pdf-plus-settings .content {
+    padding-top: var(--size-4-8);
+    padding-bottom: var(--size-4-16);
+    padding-left: var(--size-4-12);
+    padding-right: var(--size-4-12);
+
+    scroll-margin: 400px;
+}
+
+.pdf-plus-settings .spacer {
+    height: var(--pdf-plus-settings-header-height);
+}
+
+.pdf-plus-settings .top-note {
+    height: 0;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
 }
 
 .pdf-plus-settings .setting-item-description,
@@ -348,7 +400,8 @@ body {
     margin: calc(var(--size-4-2) * -1);
     border: var(--size-4-1) solid rgba(var(--text-highlight-bg-rgb), 0.8);
     padding: var(--size-4-1);
-    z-index: 0; /* Avoid preventing annotation click */
+    z-index: 0;
+    /* Avoid preventing annotation click */
     position: absolute;
     pointer-events: none;
 }

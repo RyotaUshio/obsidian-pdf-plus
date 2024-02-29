@@ -24,7 +24,7 @@ export class PDFComposer extends PDFPlusLibSubmodule {
     }
 
     isEnabled(): boolean {
-        return this.settings.enalbeWriteHighlightToFile;
+        return this.settings.enablePDFEdit;
     }
 
     async addPage(file: TFile) {

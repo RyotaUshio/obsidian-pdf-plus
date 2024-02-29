@@ -512,7 +512,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     }
 
                     // add edit button
-                    if (plugin.settings.enalbeWriteHighlightToFile
+                    if (plugin.settings.enablePDFEdit
                         && plugin.settings.enableAnnotationContentEdit
                         && PDFAnnotationEditModal.isSubtypeSupported(annotationElement.data.subtype)) {
                         const subtype = annotationElement.data.subtype;
@@ -530,7 +530,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     }
 
                     // add delete button
-                    if (plugin.settings.enalbeWriteHighlightToFile && plugin.settings.enableAnnotationDeletion) {
+                    if (plugin.settings.enablePDFEdit && plugin.settings.enableAnnotationDeletion) {
                         popupMetaEl.createDiv('clickable-icon pdf-plus-delete-annotation', (deleteButtonEl) => {
                             setIcon(deleteButtonEl, 'lucide-trash');
                             setTooltip(deleteButtonEl, 'Delete');

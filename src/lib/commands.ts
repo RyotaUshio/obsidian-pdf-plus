@@ -430,7 +430,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     setWriteFile(checking: boolean, writeFile: boolean) {
-        if (!this.settings.enalbeWriteHighlightToFile) return false;
+        if (!this.settings.enablePDFEdit) return false;
         const palette = this.lib.getColorPalette();
         if (!palette) return false;
         if (palette.writeFile === writeFile) return false;
@@ -629,7 +629,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     editPageLabels(checking: boolean) {
-        if (!this.settings.enalbeWriteHighlightToFile) return false;
+        if (!this.settings.enablePDFEdit) return false;
 
         const view = this.lib.workspace.getActivePDFView();
         if (!view) return false;
@@ -697,7 +697,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     addOutlineItem(checking: boolean) {
-        if (!this.settings.enalbeWriteHighlightToFile) return false;
+        if (!this.settings.enablePDFEdit) return false;
 
         const view = this.lib.workspace.getActivePDFView();
         const file = view?.file;

@@ -38,7 +38,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
             });
 
             app.dragManager.handleDrop(item.selfEl, (evt, draggable, dragging) => {
-                if (!plugin.settings.enalbeWriteHighlightToFile) return;
+                if (!plugin.settings.enablePDFEdit) return;
 
                 if (!draggable || draggable.source !== 'pdf-plus' || draggable.type !== 'pdf-offset') return;
 
@@ -83,7 +83,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
     await Promise.all(promises);
 
     app.dragManager.handleDrop(pdfOutlineViewer.childrenEl, (evt, draggable, dragging) => {
-        if (!plugin.settings.enalbeWriteHighlightToFile) return;
+        if (!plugin.settings.enablePDFEdit) return;
 
         if (!draggable || draggable.source !== 'pdf-plus' || draggable.type !== 'pdf-offset') return;
 

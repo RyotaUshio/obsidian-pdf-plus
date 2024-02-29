@@ -64,7 +64,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                     })
             });
 
-        if (settings.enalbeWriteHighlightToFile) {
+        if (settings.enablePDFEdit) {
             menu
                 .addItem((item) => {
                     item.setTitle('Insert page before this page')
@@ -164,7 +164,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                 })
         });
 
-    if (plugin.settings.enalbeWriteHighlightToFile) {
+    if (plugin.settings.enablePDFEdit) {
         menu.addItem((menuItem) => {
             menuItem
                 .setTitle('Add subitem')
@@ -333,7 +333,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
 export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, evt: MouseEvent) => {
     const { lib } = plugin;
 
-    if (plugin.settings.enalbeWriteHighlightToFile) {
+    if (plugin.settings.enablePDFEdit) {
         new Menu()
             .addItem((menuItem) => {
                 menuItem
@@ -466,7 +466,7 @@ export class PDFPlusContextMenu extends Menu {
             // }
 
             // } else {
-            if (plugin.settings.enalbeWriteHighlightToFile) {
+            if (plugin.settings.enablePDFEdit) {
                 for (const { name, template } of formats) {
                     this.addItem((item) => {
                         return item
@@ -562,7 +562,7 @@ export class PDFPlusContextMenu extends Menu {
                 // }
 
                 // edit & delete annotation //
-                if (plugin.settings.enalbeWriteHighlightToFile) {
+                if (plugin.settings.enablePDFEdit) {
                     if (plugin.settings.enableAnnotationContentEdit && PDFAnnotationEditModal.isSubtypeSupported(annot.data.subtype)) {
                         const subtype = annot.data.subtype;
                         this.addItem((item) => {
@@ -600,7 +600,7 @@ export class PDFPlusContextMenu extends Menu {
 
         // Add a PDF internal link to selection
         if (selection
-            && plugin.settings.enalbeWriteHighlightToFile
+            && plugin.settings.enablePDFEdit
             && plugin.lastCopiedDestInfo
             && plugin.lastCopiedDestInfo.file === child.file) {
             if ('destArray' in plugin.lastCopiedDestInfo) {
