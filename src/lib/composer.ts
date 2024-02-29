@@ -1,4 +1,4 @@
-import { TFile, normalizePath, parseLinktext, Pos, ReferenceCache, Notice } from 'obsidian';
+import { TFile, normalizePath, parseLinktext, Pos, Notice, Reference } from 'obsidian';
 import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { PDFPlusLibSubmodule } from './submodule';
@@ -381,7 +381,7 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
         return oldDisplay;
     }
 
-    getNewLink(refCache: ReferenceCache, newLinktext: string) {
+    getNewLink(refCache: Reference, newLinktext: string) {
         let oldLink = refCache.original;
         const oldDisplay = refCache.displayText;
         const oldLinktext = refCache.link;

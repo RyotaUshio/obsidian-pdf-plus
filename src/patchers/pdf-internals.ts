@@ -3,7 +3,6 @@ import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
-import { BacklinkHighlighter } from 'highlight';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
@@ -11,6 +10,7 @@ import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild } from 'typings';
 import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
+import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -58,37 +58,19 @@ function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
 
 const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent) => {
     plugin.register(around(pdfViewerComponent.constructor.prototype, {
-        onload(old) {
-            return function () {
-                const ret = old.call(this);
-                const self = this as PDFViewerComponent;
-                self.then((child) => {
-                    if (!self.backlinkHighlighter) {
-                        self.backlinkHighlighter = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
-                    }
-                    if (!child.backlinkHighlighter) {
-                        child.backlinkHighlighter = self.backlinkHighlighter
-                    }
-                });
-                return ret;
-            }
-        },
         loadFile(old) {
             return async function (file: TFile, subpath?: string) {
                 const ret = await old.call(this, file, subpath);
                 const self = this as PDFViewerComponent;
-                self.then((child) => {
-                    if (!self.backlinkHighlighter) {
-                        self.backlinkHighlighter = self.addChild(new BacklinkHighlighter(plugin, child.pdfViewer));
-                    }
-                    if (!child.backlinkHighlighter) {
-                        child.backlinkHighlighter = self.backlinkHighlighter
-                    }
-                    self.backlinkHighlighter.file = file;
-                    self.backlinkHighlighter.highlightBacklinks();
 
-                    child.file = file;
+                self.then((child) => {
+                    child.parent = self;
+                    if (!self.visualizer || self.visualizer.file !== file) {
+                        self.visualizer?.unload();
+                        self.visualizer = self.addChild(PDFViewerBacklinkVisualizer.create(plugin, file, child));
+                    }
                 });
+
                 return ret;
             }
         }

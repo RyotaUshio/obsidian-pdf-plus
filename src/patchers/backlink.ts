@@ -69,7 +69,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
 
                         for (const item of result.properties) {
                             const [start, end] = item.pos;
-                            const linkCache = findReferenceCache(cache, start, end);
+                            const linkCache = cache.frontmatterLinks?.find((link) => link.key === item.key);
                             if (linkCache && self.filter(file, linkCache)) resultFromProperties.push(item);
                         }
                         result.properties.length = 0;

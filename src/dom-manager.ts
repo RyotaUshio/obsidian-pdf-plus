@@ -53,7 +53,9 @@ export class DomManager extends Component {
 			return isHexString(color) ? [
 				`.pdf-plus-backlink-highlight-layer .pdf-plus-backlink:not(.hovered-highlight)[data-highlight-color="${name.toLowerCase()}"],`,
 				`.pdf-embed[data-highlight-color="${name.toLowerCase()}"] .textLayer .mod-focused {`,
-				`    background-color: ${color};`,
+				`    --pdf-plus-color: ${color};`,
+				`    --pdf-plus-backlink-icon-color: ${color};`,
+				`    --pdf-plus-rect-color: ${color};`,
 				`}`
 			].join('\n') : '';
 		}).join('\n');
@@ -64,7 +66,9 @@ export class DomManager extends Component {
 		}
 		this.styleEl.textContent += [
 			`\n.pdf-plus-backlink-highlight-layer .pdf-plus-backlink:not(.hovered-highlight) {`,
-			`    background-color: ${defaultColor};`,
+			`    --pdf-plus-color: ${defaultColor};`,
+			`    --pdf-plus-backlink-icon-color: ${defaultColor};`,
+			`    --pdf-plus-rect-color: ${defaultColor};`,
 			`}`
 		].join('\n');
 
@@ -72,7 +76,9 @@ export class DomManager extends Component {
 		if (!backlinkHoverColor || !isHexString(backlinkHoverColor)) backlinkHoverColor = DEFAULT_BACKLINK_HOVER_COLOR;
 		this.styleEl.textContent += [
 			`\n.pdf-plus-backlink-highlight-layer .pdf-plus-backlink.hovered-highlight {`,
-			`	background-color: ${backlinkHoverColor};`,
+			`	--pdf-plus-color: ${backlinkHoverColor};`,
+			`	--pdf-plus-backlink-icon-color: ${backlinkHoverColor};`,
+			`   --pdf-plus-rect-color: ${backlinkHoverColor};`,
 			`}`
 		].join('\n');
 
@@ -189,15 +195,15 @@ export class DomManager extends Component {
 			].join('\n');
 		}
 
-		let defaultColor = settings.colors[settings.defaultColor];
-		if (!defaultColor || !isHexString(defaultColor)) {
-			defaultColor = 'rgb(var(--text-highlight-bg-rgb))';
-		}
-		this.styleEl.textContent += [
-			`\n.pdf-plus-backlink-highlight-layer .pdf-plus-backlink:not(.hovered-highlight) {`,
-			`    background-color: ${defaultColor};`,
-			`}`
-		].join('\n');
+		// let defaultColor = settings.colors[settings.defaultColor];
+		// if (!defaultColor || !isHexString(defaultColor)) {
+		// 	defaultColor = 'rgb(var(--text-highlight-bg-rgb))';
+		// }
+		// this.styleEl.textContent += [
+		// 	`\n.pdf-plus-backlink-highlight-layer .pdf-plus-backlink:not(.hovered-highlight) {`,
+		// 	`    background-color: ${defaultColor};`,
+		// 	`}`
+		// ].join('\n');
 	}
 
 	toCSSVariableName(colorName: string): string | null {

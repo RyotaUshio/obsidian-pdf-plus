@@ -111,6 +111,7 @@ export interface PDFPlusSettings {
 	hoverPDFLinkToOpen: boolean;
 	ignoreHeightParamInPopoverPreview: boolean;
 	filterBacklinksByPageDefault: boolean;
+	showBacklinkToPage: boolean;
 	enableHoverPDFInternalLink: boolean;
 	recordPDFInternalLinkHistory: boolean;
 	alwaysRecordHistory: boolean;
@@ -195,6 +196,12 @@ export interface PDFPlusSettings {
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
 	rectImageExtension: ImageExtension;
+	backlinkIconSize: number;
+	showBacklinkIconForSelection: boolean;
+	showBacklinkIconForAnnotation: boolean;
+	showBacklinkIconForOffset: boolean;
+	showBacklinkIconForRect: boolean;
+	showBoundingRectForBacklinkedAnnot: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -301,6 +308,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	hoverPDFLinkToOpen: false,
 	ignoreHeightParamInPopoverPreview: true,
 	filterBacklinksByPageDefault: true,
+	showBacklinkToPage: true,
 	enableHoverPDFInternalLink: true,
 	recordPDFInternalLinkHistory: true,
 	alwaysRecordHistory: true,
@@ -385,6 +393,12 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	rectEmbedStaticImage: false,
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
+	backlinkIconSize: 50,
+	showBacklinkIconForSelection: false,
+	showBacklinkIconForAnnotation: false,
+	showBacklinkIconForOffset: true,
+	showBacklinkIconForRect: false,
+	showBoundingRectForBacklinkedAnnot: false,
 };
 
 
@@ -1035,6 +1049,24 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
+		this.addHeading('Backlink indicator bounding rectangles', 'lucide-square');
+		this.addToggleSetting('showBoundingRectForBacklinkedAnnot')
+			.setName('Show bounding rectangles for backlinked annotations')
+			.setDesc('Bounding rectangles will be shown for annotations with backlinks.');
+
+
+		this.addHeading('Backlink indicator icons', 'links-coming-in');
+		this.addToggleSetting('showBacklinkIconForSelection')
+			.setName('Show icon for text selection with backlinks');
+		this.addToggleSetting('showBacklinkIconForAnnotation')
+			.setName('Show icon for annotation with backlinks');
+		this.addToggleSetting('showBacklinkIconForOffset')
+			.setName('Show icon for offset backlinks');
+		this.addToggleSetting('showBacklinkIconForRect')
+			.setName('Show icon for rectangular selection backlinks');
+		this.addSliderSetting('backlinkIconSize', 10, 100, 5)
+			.setName('Icon size');
+
 
 		this.addHeading('PDF++ callouts', 'lucide-quote')
 			.then((setting) => {
@@ -1083,6 +1115,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('filterBacklinksByPageDefault')
 			.setName('Filter backlinks by page by default')
 			.setDesc('You can toggle this on and off with the "Show only backlinks in the current page" button at the top right of the backlinks pane.')
+		this.addToggleSetting('showBacklinkToPage')
+			.setName('Show backlinks to the entire page')
+			.setDesc('If turned off, only backlinks to specific text selections, annotations or locations will be shown when filtering the backlinks page by page.')
 		this.addToggleSetting('highlightBacklinksPane')
 			.setName('Hover sync (PDF viewer → Backlinks pane)')
 			.setDesc('Hovering your mouse over highlighted text or annotation will also highlight the corresponding item in the backlink pane.');

@@ -1,7 +1,7 @@
 import { Component } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from 'lib/submodule';
-import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFViewerChild } from 'typings';
+import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFViewerChild, Rect } from 'typings';
 
 
 /** Adding text highlight in PDF viewers without writing into files */
@@ -14,7 +14,7 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
             ?? pageDiv.createDiv('pdf-plus-backlink-highlight-layer');
     }
 
-    highlightRectInPage(rect: [number, number, number, number], page: PDFPageView) {
+    placeRectInPage(rect: Rect, page: PDFPageView) {
         const viewBox = page.pdfPage.view;
         const pageX = viewBox[0];
         const pageY = viewBox[1];
@@ -40,7 +40,7 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
             const component = new Component();
             component.load();
 
-            this.lib.onTextLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
+            this.lib.onTextLayerReady(child.pdfViewer, component, (pageNumber) => {
                 if (!child.subpathHighlight) return;
                 const { page, range } = child.subpathHighlight as PDFTextHighlight;
                 if (page !== pageNumber) return;
@@ -58,7 +58,7 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
             const component = new Component();
             component.load();
 
-            this.lib.onAnnotationLayerReady(child.pdfViewer, component, (pageView, pageNumber) => {
+            this.lib.onAnnotationLayerReady(child.pdfViewer, component, (pageNumber) => {
                 if (!child.subpathHighlight) return;
                 const { page, id } = child.subpathHighlight as PDFAnnotationHighlight;
                 if (page !== pageNumber) return;

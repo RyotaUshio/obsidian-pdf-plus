@@ -37,6 +37,28 @@ settings:
         default: 0.05
         format: em
     - 
+        id: pdf-rect
+        title: Rectanglular selection
+        type: heading
+        level: 2
+    -
+        id: pdf-plus-rect-highlight-opacity
+        title: Rectangle highlight opacity
+        type: variable-number-slider
+        min: 0
+        max: 1
+        step: 0.01
+        default: 1
+    -
+        id: pdf-plus-rect-highlight-border-width
+        title: Rectangle highlight border width (px)
+        type: variable-number-slider
+        min: 1
+        max: 10
+        step: 1
+        default: 2
+        format: px
+    - 
         id: pdf-toolbar
         title: PDF toolbars
         type: heading
@@ -171,13 +193,27 @@ settings:
 
 .pdf-plus-backlink-highlight-layer .pdf-plus-backlink {
     position: absolute;
+    pointer-events: auto;
+}
+
+.pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-selection {
     box-sizing: content-box;
+    background-color: var(--pdf-plus-color);
     opacity: var(--pdf-plus-highlight-opacity, 0.2);
     padding: var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em));
     margin: calc(var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) * -1) calc(var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em)) * -1);
     border-radius: var(--radius-s);
-    pointer-events: auto;
     cursor: text;
+}
+
+.pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-fit-r {
+    border: dashed var(--pdf-plus-rect-color) var(--pdf-plus-rect-highlight-border-width, 2px);
+    opacity: var(--pdf-plus-rect-highlight-opacity, 1);
+}
+
+.pdf-plus-backlink-icon {
+    position: absolute;
+    --icon-size: 100%;
 }
 
 .pdf-plus-annotation-edit-modal {
@@ -301,4 +337,18 @@ body {
     z-index: 1000;
     border: dashed var(--background-modifier-border) 2px;
     background-color: var(--background-modifier-active-hover);
+}
+
+/* From Obsidian's app.css (.annotationLayer .mod-focused /  .annotationLayer .boundingRect)*/
+.pdf-plus-annotation-bounding-rect {
+    background-color: rgba(var(--text-highlight-bg-rgb), 0.1);
+    border-radius: var(--radius-s);
+    box-shadow: var(--shadow-s);
+    box-sizing: content-box;
+    margin: calc(var(--size-4-2) * -1);
+    border: var(--size-4-1) solid rgba(var(--text-highlight-bg-rgb), 0.8);
+    padding: var(--size-4-1);
+    z-index: 0; /* Avoid preventing annotation click */
+    position: absolute;
+    pointer-events: none;
 }

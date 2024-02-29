@@ -15,6 +15,7 @@ import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
+import { PDFBacklinkIndex } from './pdf-backlink-index';
 
 
 export class PDFPlusLib {
@@ -66,20 +67,36 @@ export class PDFPlusLib {
     }
 
     /** 
-     * Register a callback executed when the text layer for a page gets rendered. 
-     * Note that PDF rendering is "lazy"; the text layer for a page is not rendered until the page is scrolled into view.
+     * Register a callback executed when the PDFPageView for a page is ready.
+     * This happens before the text layer and the annotation layer are ready.
+     * Note that PDF rendering is "lazy"; a page view is not prepared until the page is scrolled into view.
      * 
      * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
      */
-    onTextLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageView: PDFPageView, pageNumber: number, newlyRendered: boolean) => any) {
+    onPageReady(viewer: ObsidianViewer, component: Component | null, cb: (pageNumber: number, pageView: PDFPageView, newlyRendered: boolean) => any) {
+        viewer.pdfViewer?._pages
+            .forEach((pageView, pageIndex) => {
+                    cb(pageIndex + 1, pageView, false); // page number is 1-based
+            });
+        this.registerPDFEvent('pagerendered', viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
+            cb(data.pageNumber, data.source, true);
+        });
+    }
+
+    /** 
+     * Register a callback executed when the text layer for a page gets rendered. 
+     * 
+     * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
+     */
+    onTextLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageNumber: number, pageView: PDFPageView, newlyRendered: boolean) => any) {
         viewer.pdfViewer?._pages
             .forEach((pageView, pageIndex) => {
                 if (pageView.textLayer) {
-                    cb(pageView, pageIndex + 1, false); // page number is 1-based
+                    cb(pageIndex + 1, pageView, false); // page number is 1-based
                 }
             });
         this.registerPDFEvent('textlayerrendered', viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
-            cb(data.source, data.pageNumber, true);
+            cb(data.pageNumber, data.source, true);
         });
     }
 
@@ -88,15 +105,15 @@ export class PDFPlusLib {
      * 
      * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
      */
-    onAnnotationLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageView: PDFPageView, pageNumber: number, newlyRendered: boolean) => any) {
+    onAnnotationLayerReady(viewer: ObsidianViewer, component: Component | null, cb: (pageNumber: number, pageView: PDFPageView, newlyRendered: boolean) => any) {
         viewer.pdfViewer?._pages
             .forEach((pageView, pageIndex) => {
                 if (pageView.annotationLayer) {
-                    cb(pageView, pageIndex + 1, false); // page number is 1-based
+                    cb(pageIndex + 1, pageView, false); // page number is 1-based
                 }
             });
         this.registerPDFEvent('annotationlayerrendered', viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
-            cb(data.source, data.pageNumber, true);
+            cb(data.pageNumber, data.source, true);
         });
     }
 
@@ -449,6 +466,11 @@ export class PDFPlusLib {
         return 'md' !== file.extension ? '!' + nonEmbedLink : nonEmbedLink;
     }
 
+    getBacklinkIndexFor(file: TFile) {
+        return new PDFBacklinkIndex(this.plugin, file);
+    }
+
+    // TODO: rewrite using PDFBacklinkIndex
     isBacklinked(file: TFile, subpathParams?: { page: number, selection?: [number, number, number, number], annotation?: string }): boolean {
         // validate parameters
         if (subpathParams) {

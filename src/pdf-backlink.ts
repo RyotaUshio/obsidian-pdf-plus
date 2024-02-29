@@ -1,23 +1,27 @@
-import { App, Component, TFile, ReferenceCache, parseLinktext } from 'obsidian';
+import { App, Component, TFile, parseLinktext, SectionCache, Reference } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
-import { MutationObservingChild, findReferenceCache, getSubpathWithoutHash } from 'utils';
-import { BacklinkRenderer, PDFViewerChild } from 'typings';
+import { MutationObservingChild, findReferenceCache, getSubpathWithoutHash, isMouseEventExternal } from 'utils';
+import { BacklinkRenderer, PDFViewerChild, PDFViewerComponent } from 'typings';
+import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
+import { PDFPlusComponent } from 'lib/component';
 
 
 /** A component that will be loaded as a child of the backlinks pane while the active file is PDF. */
-export class BacklinkPanePDFManager extends Component {
-    app: App;
-    lib: PDFPlusLib;
+export class BacklinkPanePDFManager extends PDFPlusComponent {
+    renderer: BacklinkRenderer;
+    file: TFile
+
     navButtonEl: HTMLElement | null = null;
     pageTracker: BacklinkPanePDFPageTracker;
     isTrackingPage: boolean;
 
-    constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
-        super();
-        this.app = plugin.app;
-        this.lib = plugin.lib;
+
+    constructor(plugin: PDFPlus, renderer: BacklinkRenderer, file: TFile) {
+        super(plugin);
+        this.renderer = renderer;
+        this.file = file;
         this.pageTracker = new BacklinkPanePDFPageTracker(plugin, renderer, file);
         this.isTrackingPage = plugin.settings.filterBacklinksByPageDefault;
     }
@@ -32,6 +36,37 @@ export class BacklinkPanePDFManager extends Component {
             }
         );
         this.updatePageTracker();
+
+        this.registerDomEvent(this.renderer.backlinkDom.el, 'mouseover', (evt) => {
+            this.processBacklinkVisualizerDomForEvent(evt, (backlinkItemEl, visDoms, cache, viewer) => {
+                if (!isMouseEventExternal(evt, backlinkItemEl)) return;
+
+                for (const dom of visDoms) dom.addClass('hovered-highlight');
+
+                let rectEl: HTMLElement | null = null;
+                if (cache.page && cache.annotation) {
+                    viewer.then((child) => {
+                        const pageView = child.getPage(cache.page!);
+                        const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(cache.annotation!.id);
+                        if (annot) {
+                            rectEl = this.lib.highlight.viewer.placeRectInPage(annot.data.rect, pageView);
+                            rectEl.addClass('pdf-plus-annotation-bounding-rect');
+                        }
+                    });
+                }
+
+                const listener = (evt: MouseEvent) => {
+                    if (isMouseEventExternal(evt, backlinkItemEl)) {
+                        for (const dom of visDoms) dom.removeClass('hovered-highlight');
+                        if (rectEl) rectEl.remove();
+
+                        backlinkItemEl.removeEventListener('mouseout', listener);
+                    }
+                }
+
+                backlinkItemEl.addEventListener('mouseout', listener);
+            });
+        });
     }
 
     onunload() {
@@ -50,45 +85,102 @@ export class BacklinkPanePDFManager extends Component {
         this.isTrackingPage ? this.pageTracker.load() : this.pageTracker.unload();
     }
 
-    /**
-     * @param itemEl div.search-result-file-match
-     */
-    getSubpathFromItemEl(itemEl: HTMLElement) {
-        const fileDom = this.renderer.backlinkDom.vChildren.children.find((fileDom) => {
-            return fileDom.childrenEl.contains(itemEl)
-        });
-        if (!fileDom) return;
-        const cache = this.app.metadataCache.getFileCache(fileDom.file);
-        if (!cache) return;
+    findBacklinkItemEl(cache: PDFBacklinkCache): HTMLElement | null {
+        const { refCache, sourcePath } = cache;
+
+        const backlinkDom = this.renderer.backlinkDom;
+        const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
+        if (!(sourceFile instanceof TFile)) return null;
+
+        const fileDom = backlinkDom.getResult(sourceFile);
+        if (!fileDom) return null;
 
         // reliable check than app.plugins.enabledPlugins.has('better-search-views')
         // because Better Search Views does not properly load or unload without reloading the app
-        const isBetterSearchViewsEnabled = fileDom.childrenEl.querySelector('.better-search-views-tree');
+        const isBetterSearchViewsEnabled = !!fileDom.childrenEl.querySelector('.better-search-views-tree');
 
         if (!isBetterSearchViewsEnabled) {
-            const itemDom = fileDom.vChildren.children.find((itemDom) => itemDom.el === itemEl);
-            if (!itemDom) return;
+            const itemDoms = fileDom?.vChildren.children;
+            if (!itemDoms) return null;
 
-            const linktext = findReferenceCache(cache, itemDom.start, itemDom.end)?.link;
-            if (!linktext) return;
+            const itemDom = itemDoms.find((itemDom) => {
+                // contents
+                if ('position' in refCache) {
+                    return itemDom.start <= refCache.position.start.offset && refCache.position.end.offset <= itemDom.end;
+                }
 
-            const { subpath } = parseLinktext(linktext);
-            return subpath;
+                // properties
+                for (const match of itemDom.matches) {
+                    return 'key' in match && match.key === refCache.key;
+                }
+
+                return false;
+            });
+
+            return itemDom?.el ?? null;
+        } else {
+            // Better Search Views destroys fileDom.vChildren!! So we have to take a detour.
+            const cache = this.app.metadataCache.getFileCache(sourceFile);
+            if (!cache?.sections) return null;
+
+            // Better Search View does not affect the fileDom when it contains properties matches.
+            if (!('position' in refCache)) return null;
+
+            const sectionsContainingBacklinks = new Set<SectionCache>();
+            for (const [start, end] of fileDom.result.content) {
+                const sec = cache.sections.find(sec => sec.position.start.offset <= start && end <= sec.position.end.offset);
+                if (sec) {
+                    sectionsContainingBacklinks.add(sec);
+                    if (start === refCache.position.start.offset && refCache.position.end.offset === end) {
+                        break;
+                    }
+                }
+            }
+
+            const index = sectionsContainingBacklinks.size - 1;
+            if (index === -1) return null;
+
+            return fileDom?.childrenEl.querySelectorAll<HTMLElement>('.search-result-file-match')[index] ?? null;
+        }
+    }
+
+    processBacklinkVisualizerDomForEvent(evt: MouseEvent, callback: (backlinkItemEl: HTMLElement, visualizerEls: Set<HTMLElement>, cache: PDFBacklinkCache, viewer: PDFViewerComponent) => void) {
+        if (evt.defaultPrevented) return;
+        const targetEl = evt.target;
+        if (!(targetEl instanceof HTMLElement)) return;
+
+        const fileDom = this.renderer.backlinkDom.vChildren.children.find((fileDom) => fileDom.el.contains(targetEl));
+        if (fileDom) {
+            const sourcePath = fileDom.file.path;
+            evt.preventDefault();
+
+            this.lib.workspace.iteratePDFViewerComponents((viewer) => {
+                if (viewer.visualizer) {
+                    const caches = viewer.visualizer.index.sourcePaths.get(sourcePath) ?? new Set();
+                    for (const cache of caches) {
+                        if (cache.page === null) continue;
+
+                        const backlinkItemEl = this.findBacklinkItemEl(cache);
+                        if (backlinkItemEl?.contains(targetEl)) {
+                            const cacheToDoms = viewer.visualizer.domManager.getCacheToDomsMap(cache.page);
+                            const doms = cacheToDoms.get(cache);
+
+                            callback(backlinkItemEl, doms, cache, viewer);
+                        }
+                    }
+                }
+            });
         }
     }
 }
 
 
 /** While this component is loaded, the backlinks pane shows only backlinks to the page that is currently opened in the PDF viewer. */
-export class BacklinkPanePDFPageTracker extends Component {
-    app: App;
-    lib: PDFPlusLib;
+export class BacklinkPanePDFPageTracker extends PDFPlusComponent {
     matchCountObserver: MutationObservingChild;
 
-    constructor(public plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
-        super();
-        this.app = plugin.app;
-        this.lib = plugin.lib;
+    constructor(plugin: PDFPlus, public renderer: BacklinkRenderer, public file: TFile) {
+        super(plugin);
         this.matchCountObserver = new MutationObservingChild(
             this.renderer.backlinkDom.el,
             () => {
@@ -111,14 +203,12 @@ export class BacklinkPanePDFPageTracker extends Component {
                     return child.pdfViewer.pdfViewer ? this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache) : true;
                 }
                 this.updateBacklinkDom();
-                this.updateBacklinkItemDomHoverHandler(child, child.pdfViewer.pdfViewer?.currentPageNumber);
 
                 this.lib.registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
                     const page = typeof data.pageNumber === 'number' ? (data.pageNumber as number) : child.pdfViewer.pdfViewer?.currentPageNumber;
                     if (page) this.renderer.backlinkDom.filter = (file, linkCache) => this.filter(page, linkCache);
 
                     this.updateBacklinkDom();
-                    this.updateBacklinkItemDomHoverHandler(child, page);
                 });
             });
         }
@@ -131,21 +221,10 @@ export class BacklinkPanePDFPageTracker extends Component {
     onunload() {
         this.renderer.backlinkDom.filter = undefined;
         this.updateBacklinkDom();
-        const view = this.lib.workspace.getExistingPDFViewOfFile(this.file);
-        if (view) {
-            view.viewer.then((child) => this.updateBacklinkItemDomHoverHandler(child));
-        }
     }
 
     updateBacklinkDom() {
-        this.renderer.backlinkDom.emptyResults();
-        this.app.metadataCache.getBacklinksForFile(this.file).keys().forEach((sourcePath) => {
-            const sourceFile = this.app.vault.getAbstractFileByPath(sourcePath);
-            if (sourceFile instanceof TFile) {
-                this.renderer.recomputeBacklink(sourceFile);
-                this.renderer.update();
-            }
-        });
+        this.renderer.recomputeBacklink(this.file);
     }
 
     updateBacklinkCountEl(format?: (num: number) => string) {
@@ -156,35 +235,13 @@ export class BacklinkPanePDFPageTracker extends Component {
         this.renderer.backlinkCountEl?.setText(format ? format(num) : `${num}`);
     }
 
-    updateBacklinkItemDomHoverHandler(child: PDFViewerChild, page?: number) {
-        // `updateBacklinkDom` re-draws the DOM and therefore removes the event handlers.
-        // we need to re-register new event handlers.
-        if (this.plugin.settings.highlightOnHoverBacklinkPane) {
-            setTimeout(() => {
-                const highlighter = child.backlinkHighlighter;
-                if (!highlighter) return;
-
-                const pages = page ? [page] : Object.keys(highlighter.backlinks).map((page) => +page);
-
-                for (const page of pages) {
-                    for (const type of ['selection', 'annotation'] as const) {
-                        for (const backlink of highlighter.backlinks[page]?.[type] ?? []) {
-                            highlighter.updateBacklinkItemEl(backlink);
-
-                            if (backlink.backlinkItemEl && backlink.annotationEls) {
-                                highlighter.registerHoverOverBacklinkItem(backlink.type, page, backlink.backlinkItemEl, backlink.annotationEls);
-                            }
-                        }
-                    }
-                }
-            }, 500);
-        }
-    }
-
-    filter(pageNumber: number, linkCache: ReferenceCache) {
+    filter(pageNumber: number, linkCache: Reference) {
         const subpath = getSubpathWithoutHash(linkCache.link);
         const params = new URLSearchParams(subpath);
         if (params.has('page')) {
+            if (!this.settings.showBacklinkToPage) {
+                if (!params.has('selection') && !params.has('annotation') && !params.has('offset') && !params.has('rect')) return false;
+            }
             const page = +params.get('page')!
             return page === pageNumber;
         }

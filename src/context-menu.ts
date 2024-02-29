@@ -1,4 +1,4 @@
-import { App, Menu, Notice, Platform, TFile } from 'obsidian';
+import { App, Menu, Notice, Platform, TFile, parseLinktext } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
@@ -8,6 +8,8 @@ import { PDFComposerModal } from 'modals/pdf-composer-modals';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
 import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
+import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
+import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
@@ -633,3 +635,100 @@ export class PDFPlusContextMenu extends Menu {
         });
     }
 }
+
+export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDFViewerBacklinkVisualizer, cache: PDFBacklinkCache) => {
+    if (evt.defaultPrevented) return;
+    if (activeWindow.getSelection()?.toString()) return;
+
+    const { app, lib, settings, child } = visualizer;
+
+    if (cache.page) {
+        const pageView = child.getPage(cache.page);
+        const annot = child.getAnnotationFromEvt(pageView, evt);
+        if (annot) return;
+    }
+
+    const oldColor = cache.getColor();
+    const oldColorName = oldColor?.type === 'name' ? oldColor.name : undefined;
+
+    const menu = new Menu();
+
+    if (oldColor) {
+        menu.addItem((item) => {
+            item.setTitle(`Unset color`)
+                .setIcon('lucide-palette')
+                .onClick(() => {
+                    setColor(app, lib, cache, null);
+                });
+        });
+    }
+
+    for (const colorName of Object.keys(settings.colors)) {
+        if (colorName.toLowerCase() !== oldColorName?.toLowerCase()) {
+            menu.addItem((item) => {
+                item.setTitle(`Change color to "${colorName}"`)
+                    .setIcon('lucide-palette')
+                    .onClick(() => {
+                        setColor(app, lib, cache, colorName.toLowerCase());
+                    });
+            });
+        }
+    }
+
+    menu.showAtMouseEvent(evt);
+    evt.preventDefault();
+};
+
+
+const setColor = (app: App, lib: PDFPlusLib, cache: PDFBacklinkCache, newColor: string | null) => {
+    const file = app.vault.getAbstractFileByPath(cache.sourcePath);
+    if (!(file instanceof TFile)) return;
+
+    const linktext = cache.refCache.link;
+    const { path, subpath } = parseLinktext(linktext);
+    const params = new URLSearchParams(subpath.startsWith('#') ? subpath.slice(1) : subpath);
+
+    if (newColor) {
+        params.set('color', newColor);
+    } else {
+        params.delete('color');
+    }
+
+    let newSubpath = '';
+    for (const [key, value] of params.entries()) {
+        newSubpath += newSubpath ? `&${key}=${value}` : `#${key}=${value}`;
+    }
+    const newLinktext = path + newSubpath;
+    const newLink = lib.composer.linkUpdater.getNewLink(cache.refCache, newLinktext);
+
+    // TODO: move this code into LinkUpdater
+    if ('position' in cache.refCache) { // contents
+        const position = cache.refCache.position;
+
+        app.vault.process(file, (data) => {
+            data = data.slice(0, position.start.offset) + newLink + data.slice(position.end.offset);
+
+            // Check if this link is inside a PDF++ callout
+            const sections = app.metadataCache.getFileCache(file)?.sections ?? [];
+            const section = sections.find((sec) => sec.position.start.offset <= position.start.offset && position.end.offset <= sec.position.end.offset);
+            if (section && section.type === 'callout') {
+                const lines = data.split(/\r?\n/);
+                const lineNumber = section.position.start.line;
+                const line = lines[lineNumber];
+                const pdfPlusCalloutPattern = new RegExp(
+                    `> *\\[\\! *${lib.plugin.settings.calloutType} *(\\|(.*?))?\\]`,
+                    'i'
+                );
+                lines[lineNumber] = line.replace(pdfPlusCalloutPattern, `> [!${lib.plugin.settings.calloutType}${newColor ? `|${newColor}` : ''}]`);
+                data = lines.join('\n');
+            }
+
+            return data;
+        });
+    } else { // properties
+        const key = cache.refCache.key;
+        app.fileManager.processFrontMatter(file, (frontmatter) => {
+            frontmatter[key] = newLink;
+        });
+    }
+};

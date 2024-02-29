@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, ReferenceCache, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference } from 'obsidian';
 import { CanvasData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -6,8 +6,8 @@ import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_stora
 import { PDFName, PDFNumber, PDFRef, PDFNull } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
-import { BacklinkHighlighter } from 'highlight';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
+import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 
 
 declare global {
@@ -51,7 +51,7 @@ interface PDFViewerComponent extends Component {
     then(cb: (child: PDFViewerChild) => void): void; // register a callback executed when the child gets ready
     loadFile(file: TFile, subpath?: string): Promise<void>;
     /** Added by this plugin */
-    backlinkHighlighter?: BacklinkHighlighter;
+    visualizer?: PDFViewerBacklinkVisualizer;
 }
 
 interface PDFViewerChild {
@@ -88,8 +88,8 @@ interface PDFViewerChild {
     destroyAnnotationPopup(): void;
     getAnnotatedText(pageView: PDFPageView, id: string): Promise<string | null>;
     /** Added by this plugin */
-    backlinkHighlighter?: BacklinkHighlighter;
     component?: Component;
+    parent?: PDFViewerComponent;
 }
 
 interface PDFHighlight {
@@ -128,6 +128,7 @@ interface ObsidianViewer {
     applySubpath(subpath: string): void;
     zoomIn(): void;
     zoomOut(): void;
+    open(options: any): Promise<void>;
 }
 
 interface PDFSidebar {
@@ -451,7 +452,7 @@ interface SearchResultDom {
     setFocusedItem(item: SearchResultItemDom | null): void;
     changeFocusedItem(item: SearchResultItemDom | null): void;
     /** Added by this plugin */
-    filter?: (file: TFile, linkCache: ReferenceCache) => boolean;
+    filter?: (file: TFile, linkCache: Reference) => boolean;
 }
 
 interface SearchResultFileDom {
@@ -476,11 +477,9 @@ interface SearchResultFileDom {
     pusherEl: HTMLElement;
     app: App;
     parentDom: SearchResultDom;
+    el: HTMLElement; // div.tree-item.search-result
     childrenEl: HTMLElement; // div.search-result-file-matches
-    result: {
-        content: SearchMatches;
-        properties: any[];
-    };
+    result: FileSearchResult;
     content: string;
     file: TFile;
     parent?: SearchResultDom; // same as parentDom
@@ -496,7 +495,7 @@ interface SearchResultItemDom {
     start: number;
     /** The end position (Loc.offset) of the text range that is rendered into this item dom. Don't confuse it with the end position of a link! */
     end: number;
-    matches: SearchMatches;
+    matches: FileSearchResult['content' | 'properties'];
     mutateEState: any;
     el: HTMLElement;
     showMoreBeforeEl: HTMLElement;
