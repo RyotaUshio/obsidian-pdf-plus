@@ -1544,6 +1544,42 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
+		this.addHeading('PDF Annotations', 'lucide-message-square');
+		this.addToggleSetting('annotationPopupDrag')
+			.setName('Drag & drop annotation popup to insert a link to the annotation')
+			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
+		this.addToggleSetting('renderMarkdownInStickyNote')
+			.setName('Render markdown in annotation popups when the annotation has text contents');
+		if (this.plugin.settings.enablePDFEdit) {
+			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
+				.setName('Highlight opacity');
+			this.addToggleSetting('defaultWriteFileToggle')
+				.setName('Write highlight to file by default')
+				.setDesc('You can turn this on and off with the toggle button in the PDF viewer toolbar.');
+			this.addToggleSetting('syncWriteFileToggle')
+				.setName('Share the same toggle state among all PDF viewers')
+				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
+			if (this.plugin.settings.syncWriteFileToggle) {
+				this.addToggleSetting('syncDefaultWriteFileToggle')
+					.setName('Share the state with newly opened PDF viewers as well')
+			}
+			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
+				.setName('Enable editing annotation contents')
+				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
+			this.addToggleSetting('enableAnnotationDeletion', () => this.redisplay())
+				.setName('Enable annotation deletion')
+				.setDesc('If enabled, you can delete annotations embedded in PDF files by clicking the "Delete" button in the annotation popup.');
+			if (this.plugin.settings.enableAnnotationDeletion) {
+				this.addToggleSetting('warnEveryAnnotationDelete', () => this.redisplay())
+					.setName('Always warn when deleting an annotation');
+				if (!this.plugin.settings.warnEveryAnnotationDelete) {
+					this.addToggleSetting('warnBacklinkedAnnotationDelete')
+						.setName('Warn when deleting an annotation with backlinks');
+				}
+			}
+		}
+
+
 		this.addHeading('PDF internal links', 'link')
 			.setDesc('Make it easier to work with internal links embedded in PDF files.');
 		this.addToggleSetting('clickPDFInternalLinkWithModifierKey')
@@ -1581,43 +1617,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
 			}
 		}
-
-
-		this.addHeading('Annotations', 'lucide-message-square');
-		if (this.plugin.settings.enablePDFEdit) {
-			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
-				.setName('Highlight opacity');
-			this.addToggleSetting('defaultWriteFileToggle')
-				.setName('Write highlight to file by default')
-				.setDesc('You can turn this on and off with the toggle button in the PDF viewer toolbar.');
-			this.addToggleSetting('syncWriteFileToggle')
-				.setName('Share the same toggle state among all PDF viewers')
-				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
-			if (this.plugin.settings.syncWriteFileToggle) {
-				this.addToggleSetting('syncDefaultWriteFileToggle')
-					.setName('Share the state with newly opened PDF viewers as well')
-			}
-			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
-				.setName('Enable editing annotation contents')
-				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
-			this.addToggleSetting('enableAnnotationDeletion', () => this.redisplay())
-				.setName('Enable annotation deletion')
-				.setDesc('If enabled, you can delete annotations embedded in PDF files by clicking the "Delete" button in the annotation popup.');
-			if (this.plugin.settings.enableAnnotationDeletion) {
-				this.addToggleSetting('warnEveryAnnotationDelete', () => this.redisplay())
-					.setName('Always warn when deleting an annotation');
-				if (!this.plugin.settings.warnEveryAnnotationDelete) {
-					this.addToggleSetting('warnBacklinkedAnnotationDelete')
-						.setName('Warn when deleting an annotation with backlinks');
-				}
-			}
-		}
-		this.addToggleSetting('annotationPopupDrag')
-			.setName('Drag & drop annotation popup to insert a link to the annotation')
-			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
-		this.addToggleSetting('renderMarkdownInStickyNote')
-			.setName('Render markdown in annotation popups when the annotation has text contents');
-
 
 
 		this.addHeading('PDF outline (table of contents)', 'lucide-list')
