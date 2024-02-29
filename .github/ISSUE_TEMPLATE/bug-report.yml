@@ -8,7 +8,11 @@ body:
       value: |
         Thank you for taking the time to fill out this bug report!
         
-        Please note: we consider a problem as PDF++'s bug only if it can be reproducible in the sandbox vault where only this plugin (and other relevant plugins if any) are enabled. If this is not the case, ask a question on [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions).
+        Please note:
+        - We consider a problem as PDF++'s bug only if it can be reproducible in the sandbox vault where only this plugin (and other relevant plugins if any) are enabled. You can open the sandbox vault by running "Open sandbox vault" command from the command palette.
+        - If this is not the case, ask a question on [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions).
+        - **Please fill in all the fields**. Identifying where the problem comes from is extremely difficult if any of the required fields are missing.
+        
   - type: textarea
     id: description
     attributes:
@@ -33,7 +37,7 @@ body:
     id: screen-capture
     attributes:
       label: Screen recordings or screenshots
-      description: "Add screen recordings that capture the situation the bug is happening. If it's difficult, add screenshots instead."
+      description: "Add screen recordings that capture the situation in which the bug is happening. If it's difficult, add screenshots instead."
       placeholder: 
     validations:
       required: true
@@ -49,7 +53,7 @@ body:
     id: pdf-plus-debug-info
     attributes:
       label: 'PDF++ debug info'
-      description: "From the command palette, run the command `PDF++: Copy debug info`. Then paste the result here."
+      description: "From the command palette, run the command `PDF++: Copy debug info` and paste the result here."
       placeholder:
       render: json
     validations:
