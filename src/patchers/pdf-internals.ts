@@ -237,6 +237,98 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
             }
         },
+        /** Modified applySubpath() from Obsidian's app.js so that it can interpret the `rect` parameter as FitR. */
+        applySubpath(old) {
+            return function (subpath?: string) {
+                const self = this as PDFViewerChild;
+
+                const parseNum = (num: string) => {
+                    if (!num) return null;
+                    var parsed = parseInt(num);
+                    return Number.isNaN(parsed) ? null : parsed
+                };
+
+                if (subpath) {
+                    const pdfViewer = self.pdfViewer;
+                    
+                    const { dest, highlight } = ((subpath) => {
+                        var params = new URLSearchParams(subpath.startsWith('#') ? subpath.substring(1) : subpath);
+
+                        if (!params.has('page')) {
+                            return {
+                                dest: subpath,
+                                highlight: null
+                            };
+                        }
+
+                        const page = parseNum(params.get('page')!) ?? 1;
+
+                        let dest: [number, { name: string }, ...offset: (number | null)[]] | null = null;
+
+                        if (params.has('rect')) {
+                            const rect = params.get('rect')!.split(',').map(parseNum);
+                            if (rect.length === 4 && rect.every((n) => n !== null)) {
+                                dest = [page - 1, {
+                                    name: 'FitR'
+                                }, ...rect];
+                            }
+                        }
+
+                        if (!dest) {
+                            const offset = params.has('offset') ? params.get('offset')!.split(',') : [];
+                            const left = parseNum(offset[0]);
+                            const top = parseNum(offset[1]);
+                            const zoom = parseNum(offset[2]);
+                            dest = null === zoom ? [page - 1, {
+                                name: 'FitBH'
+                            }, top] : [page - 1, {
+                                name: 'XYZ'
+                            }, left, top, zoom];
+                        }
+
+                        let highlight = null;
+                        if (params.has('annotation')) {
+                            highlight = {
+                                type: 'annotation',
+                                page,
+                                id: params.get('annotation')!
+                            };
+                        } else if (params.has('selection')) {
+                            const selection = params.get('selection')!.split(',');
+                            const beginIndex = parseNum(selection[0]);
+                            const beginOffset = parseNum(selection[1]);
+                            const endIndex = parseNum(selection[2]);
+                            const endOffset = parseNum(selection[3]);
+                            if (null !== beginIndex && null !== beginOffset && null !== endIndex && null !== endOffset) {
+                                highlight = {
+                                    type: 'text',
+                                    page,
+                                    range: [[beginIndex, beginOffset], [endIndex, endOffset]]
+                                }
+                            }
+                        }
+                        
+                        // `height` is unused so it's commented out
+                        // const height = params.has('height') ? parseNum(params.get('height')!) : null;
+                        return {
+                            dest: JSON.stringify(dest),
+                            highlight,
+                            // height
+                        }
+                    })(subpath);
+
+                    const pdfLoadingTask = pdfViewer.pdfLoadingTask;
+                    if (pdfLoadingTask) {
+                        pdfLoadingTask.promise.then(() => pdfViewer.applySubpath(dest))
+                    } else {
+                        pdfViewer.subpath = dest;
+                    }
+
+                    // @ts-ignore
+                    self.subpathHighlight = highlight || null;
+                }
+            }
+        },
         getMarkdownLink(old) {
             return function (subpath?: string, alias?: string, embed?: boolean): string {
                 const self = this as PDFViewerChild;

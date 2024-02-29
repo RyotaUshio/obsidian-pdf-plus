@@ -78,7 +78,7 @@ interface PDFViewerChild {
     getMarkdownLink(subpath?: string, alias?: string, embed?: boolean): string;
     onContextMenu(evt: MouseEvent): void;
     onResize(): void;
-    applySubpath(subpath?: string): any;
+    applySubpath(subpath?: string): void;
     highlightText(page: number, range: [[number, number], [number, number]]): void;
     highlightAnnotation(page: number, id: string): void;
     clearTextHighlight(): void;
