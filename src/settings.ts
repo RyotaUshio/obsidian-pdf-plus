@@ -440,11 +440,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName(heading)
 			.setHeading()
 			.then((setting) => {
-				const parentEl = setting.settingEl.parentElement;
-				if (parentEl) {
-					parentEl.insertBefore(createDiv('spacer'), setting.settingEl);
-				}
-
 				if (icon) {
 					const parentEl = setting.settingEl.parentElement;
 					if (parentEl) {
