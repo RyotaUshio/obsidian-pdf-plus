@@ -32,6 +32,12 @@ export function hexToRgb(hexColor: HexString) {
     } : null;
 }
 
+// Thanks https://stackoverflow.com/a/5624139
+export function rgbToHex(rgb: RGB) {
+    const { r, g, b } = rgb;
+    return '#' + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+}
+
 export function rgbStringToObject(rgbString: string): RGB {
     const [r, g, b] = rgbString // "R, G, B"
         .split(',')

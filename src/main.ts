@@ -113,6 +113,10 @@ export default class PDFPlus extends Plugin {
 			this.settings.defaultColorPaletteActionIndex = 0;
 		}
 
+		for (const [name, hex] of Object.entries(this.settings.colors)) {
+			this.settings.colors[name] = hex.toLowerCase();
+		}
+
 		/** migration from legacy settings */
 
 		if (this.settings.paneTypeForFirstMDLeaf as PaneType | '' === 'split') {

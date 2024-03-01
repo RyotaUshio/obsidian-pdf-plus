@@ -466,8 +466,20 @@ export class PDFPlusLib {
         return 'md' !== file.extension ? '!' + nonEmbedLink : nonEmbedLink;
     }
 
-    getBacklinkIndexFor(file: TFile) {
+    getBacklinkIndexForFile(file: TFile) {
         return new PDFBacklinkIndex(this.plugin, file);
+    }
+
+    async getLatestBacklinkIndexForFile(file: TFile) {
+        const backlinkIndex = this.getBacklinkIndexForFile(file);
+        await this.metadataCacheUpdatePromise;
+        backlinkIndex.init();
+        return backlinkIndex;
+    }
+
+    async getLatestBacklinksForAnnotation(file: TFile, pageNumber: number, id: string) {
+        const index = await this.getLatestBacklinkIndexForFile(file);
+        return index.getPageIndex(pageNumber).annotations.get(id) ?? new Set();
     }
 
     // TODO: rewrite using PDFBacklinkIndex
@@ -618,6 +630,10 @@ export class PDFPlusLib {
             return viewer.getPageView(viewer.currentPageNumber - 1);
         }
         return null;
+    }
+
+    getAnnotation(id: string) {
+        return this.getPage(true)?.annotationLayer?.annotationLayer.getAnnotation(id);
     }
 
     getPDFDocument(activeOnly: boolean = false) {

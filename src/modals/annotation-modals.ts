@@ -1,7 +1,7 @@
-import { Setting, TFile, TextAreaComponent, MarkdownRenderer, RGB } from 'obsidian';
+import { Setting, TFile, TextAreaComponent, MarkdownRenderer, RGB, ColorComponent, DropdownComponent } from 'obsidian';
 
 import PDFPlus from 'main';
-import { hexToRgb, hookInternalLinkMouseEventHandlers } from 'utils';
+import { hexToRgb, hookInternalLinkMouseEventHandlers, rgbToHex } from 'utils';
 import { PDFDict } from '@cantoo/pdf-lib';
 import { PDFPlusModal } from 'modals';
 
@@ -121,8 +121,21 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
             switch (key) {
                 case 'color':
                     if (this.newValues.color && this.newValues.color !== this.oldValues.color) {
+                        const rgb = this.newValues.color;
                         writers.push((annot: PDFDict) => {
-                            pdflibAPI.setColorToAnnotation(annot, this.newValues.color!);
+                            pdflibAPI.setColorToAnnotation(annot, rgb);
+
+                            this.lib.getLatestBacklinksForAnnotation(this.file, this.page, this.id)
+                                .then((caches) => {
+                                    caches.forEach((cache) => {
+                                        return this.lib.composer.linkUpdater.updateLinkColor(
+                                            cache.refCache,
+                                            cache.sourcePath,
+                                            { type: 'rgb', rgb },
+                                            { linktext: false }
+                                        );
+                                    })
+                                });
                         });
                     }
                     break;
@@ -166,15 +179,35 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
 
     addColorSetting() {
         if (this.oldValues.color || this.allowNoValue.color) {
+            let picker: ColorComponent;
+            let dropdown: DropdownComponent;
             new Setting(this.contentEl)
                 .setName('Color')
-                .addColorPicker((picker) => {
+                .setDesc('You can choose a color from the color picker or select one from your custom named colors.')
+                .addColorPicker((_picker) => {
+                    picker = _picker;
+
                     picker
                         .setValueRgb(this.oldValues.color ?? { r: 0, g: 0, b: 0 })
                         .onChange((value) => {
                             const rgb = hexToRgb(value);
                             if (!rgb) return;
                             this.newValues.color = rgb;
+
+                            dropdown.setValue(value);
+                        });
+                })
+                .addDropdown((_dropdown) => {
+                    dropdown = _dropdown;
+
+                    dropdown.addOptions(Object.fromEntries(Object.entries(this.plugin.settings.colors).map(([name, value]) => [value, name])))
+                        .setValue(this.oldValues.color ? rgbToHex(this.oldValues.color) : '')
+                        .onChange((value) => {
+                            const rgb = hexToRgb(value);
+                            if (!rgb) return;
+                            this.newValues.color = rgb;
+
+                            picker.setValue(value);
                         });
                 });
         }

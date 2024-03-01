@@ -1,4 +1,4 @@
-import { TFile, normalizePath, parseLinktext, Pos, Notice, Reference } from 'obsidian';
+import { TFile, normalizePath, parseLinktext, Pos, Notice, Reference, ReferenceCache, RGB, FrontmatterLinkCache, EmbedCache, LinkCache } from 'obsidian';
 import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { PDFPlusLibSubmodule } from './submodule';
@@ -286,6 +286,7 @@ type LinkInfoUpdater = (file: TFile, pageNumber?: number) => {
 
 export class PDFLinkUpdater extends PDFPlusLibSubmodule {
 
+    // TODO: rewrite using PDFBacklinkIndex
     async updateLinks(operator: () => Promise<TFile | null>, files: TFile[], updater: LinkInfoUpdater): Promise<TFile | null> {
         await this.lib.metadataCacheUpdatePromise;
 
@@ -401,6 +402,72 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
 
         return newLink;
     }
+
+    /**
+     * @param options Options for updating the link color:
+     * - `linktext`: Whether the color should appear in the link text.
+     * - `callout`: Whether the color should be updated in the PDF++ callout.
+     */
+    async updateLinkColor(
+        refCache: LinkCache | EmbedCache | FrontmatterLinkCache,
+        sourcePath: string,
+        newColor: { type: 'name', name: string } | { type: 'rgb', rgb: RGB } | null,
+        options?: { linktext?: boolean, callout?: boolean }
+    ) {
+        options = Object.assign({ linktext: true, callout: true }, options);
+
+        const file = this.app.vault.getAbstractFileByPath(sourcePath);
+        if (!(file instanceof TFile)) return;
+
+        const linktext = refCache.link;
+        const { path, subpath } = parseLinktext(linktext);
+        const params = new URLSearchParams(subpath.startsWith('#') ? subpath.slice(1) : subpath);
+
+        if (newColor && options.linktext) {
+            params.set('color', newColor.type === 'name' ? newColor.name.toLowerCase() : `${newColor.rgb.r},${newColor.rgb.g},${newColor.rgb.b}`);
+        } else {
+            params.delete('color');
+        }
+
+        let newSubpath = '';
+        for (const [key, value] of params.entries()) {
+            newSubpath += newSubpath ? `&${key}=${value}` : `#${key}=${value}`;
+        }
+        const newLinktext = path + newSubpath;
+        const newLink = this.getNewLink(refCache, newLinktext);
+
+        if ('position' in refCache) { // contents
+            const position = refCache.position;
+
+            await this.app.vault.process(file, (data) => {
+                data = data.slice(0, position.start.offset) + newLink + data.slice(position.end.offset);
+
+                if (options!.callout) {
+                    // Check if this link is inside a PDF++ callout
+                    const sections = this.app.metadataCache.getFileCache(file)?.sections ?? [];
+                    const section = sections.find((sec) => sec.position.start.offset <= position.start.offset && position.end.offset <= sec.position.end.offset);
+                    if (section && section.type === 'callout') {
+                        const lines = data.split(/\r?\n/);
+                        const lineNumber = section.position.start.line;
+                        const line = lines[lineNumber];
+                        const pdfPlusCalloutPattern = new RegExp(
+                            `> *\\[\\! *${this.settings.calloutType} *(\\|(.*?))?\\]`,
+                            'i'
+                        );
+                        lines[lineNumber] = line.replace(pdfPlusCalloutPattern, `> [!${this.settings.calloutType}${newColor ? `|${newColor.type === 'name' ? newColor.name.toLowerCase() : `${newColor.rgb.r},${newColor.rgb.g},${newColor.rgb.b}`}` : ''}]`);
+                        data = lines.join('\n');
+                    }
+                }
+
+                return data;
+            });
+        } else { // properties
+            const key = refCache.key;
+            await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+                frontmatter[key] = newLink;
+            });
+        }
+    };
 }
 
 

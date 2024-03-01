@@ -47,7 +47,8 @@ class BacklinkDomManager {
     clearDomInPage(pageNumber: number) {
         const cacheToDoms = this.getCacheToDomsMap(pageNumber);
         for (const el of cacheToDoms.values()) {
-            el.remove();
+            // Avoid removing elements in the annotation layer
+            if (el.closest('.pdf-plus-backlink-highlight-layer')) el.remove();
         }
         this.pagewiseCacheToDomsMap.delete(pageNumber);
         this.updateStatus(pageNumber, { onPageReady: false, onTextLayerReady: false, onAnnotationLayerReady: false });

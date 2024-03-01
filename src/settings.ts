@@ -206,10 +206,10 @@ export interface PDFPlusSettings {
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	displayTextFormats: [
-		{
-			name: 'Obsidian default',
-			template: '{{file.basename}}, page {{page}}',
-		},
+		// {
+		// 	name: 'Obsidian default',
+		// 	template: '{{file.basename}}, page {{page}}',
+		// },
 		{
 			name: 'Title & page',
 			template: '{{file.basename}}, p.{{pageLabel}}',
@@ -246,10 +246,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		{
 			name: 'Quote in callout',
 			template: '> [!{{calloutType}}|{{colorName}}] {{linkWithDisplay}}\n> > {{text}}\n> \n> ',
-		},
-		{
-			name: 'Create new note',
-			template: '{{app.vault.create(text + ".md", linkWithDisplay).then((file) => app.workspace.getLeaf(true).openFile(file)), ""}}'
 		}
 	],
 	useAnotherCopyTemplateWhenNoSelection: false,
@@ -283,7 +279,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	backlinkHoverColor: '',
 	colors: {
 		'Yellow': '#ffd000',
-		'Red': '#EA5252',
+		'Red': '#ea5252',
 		'Note': '#086ddd',
 		'Important': '#bb61e5',
 	},

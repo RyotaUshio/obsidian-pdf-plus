@@ -658,7 +658,8 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
             item.setTitle(`Unset color`)
                 .setIcon('lucide-palette')
                 .onClick(() => {
-                    setColor(app, lib, cache, null);
+                    lib.composer.linkUpdater.updateLinkColor(cache.refCache, cache.sourcePath, null);
+                    // setColor(app, lib, cache, null);
                 });
         });
     }
@@ -669,7 +670,8 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
                 item.setTitle(`Change color to "${colorName}"`)
                     .setIcon('lucide-palette')
                     .onClick(() => {
-                        setColor(app, lib, cache, colorName.toLowerCase());
+                        lib.composer.linkUpdater.updateLinkColor(cache.refCache, cache.sourcePath, { type: 'name', name: colorName });
+                        // setColor(app, lib, cache, colorName.toLowerCase());
                     });
             });
         }
@@ -680,55 +682,55 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
 };
 
 
-const setColor = (app: App, lib: PDFPlusLib, cache: PDFBacklinkCache, newColor: string | null) => {
-    const file = app.vault.getAbstractFileByPath(cache.sourcePath);
-    if (!(file instanceof TFile)) return;
+// const setColor = (app: App, lib: PDFPlusLib, cache: PDFBacklinkCache, newColor: string | null) => {
+//     const file = app.vault.getAbstractFileByPath(cache.sourcePath);
+//     if (!(file instanceof TFile)) return;
 
-    const linktext = cache.refCache.link;
-    const { path, subpath } = parseLinktext(linktext);
-    const params = new URLSearchParams(subpath.startsWith('#') ? subpath.slice(1) : subpath);
+//     const linktext = cache.refCache.link;
+//     const { path, subpath } = parseLinktext(linktext);
+//     const params = new URLSearchParams(subpath.startsWith('#') ? subpath.slice(1) : subpath);
 
-    if (newColor) {
-        params.set('color', newColor);
-    } else {
-        params.delete('color');
-    }
+//     if (newColor) {
+//         params.set('color', newColor);
+//     } else {
+//         params.delete('color');
+//     }
 
-    let newSubpath = '';
-    for (const [key, value] of params.entries()) {
-        newSubpath += newSubpath ? `&${key}=${value}` : `#${key}=${value}`;
-    }
-    const newLinktext = path + newSubpath;
-    const newLink = lib.composer.linkUpdater.getNewLink(cache.refCache, newLinktext);
+//     let newSubpath = '';
+//     for (const [key, value] of params.entries()) {
+//         newSubpath += newSubpath ? `&${key}=${value}` : `#${key}=${value}`;
+//     }
+//     const newLinktext = path + newSubpath;
+//     const newLink = lib.composer.linkUpdater.getNewLink(cache.refCache, newLinktext);
 
-    // TODO: move this code into LinkUpdater
-    if ('position' in cache.refCache) { // contents
-        const position = cache.refCache.position;
+//     // TODO: move this code into LinkUpdater
+//     if ('position' in cache.refCache) { // contents
+//         const position = cache.refCache.position;
 
-        app.vault.process(file, (data) => {
-            data = data.slice(0, position.start.offset) + newLink + data.slice(position.end.offset);
+//         app.vault.process(file, (data) => {
+//             data = data.slice(0, position.start.offset) + newLink + data.slice(position.end.offset);
 
-            // Check if this link is inside a PDF++ callout
-            const sections = app.metadataCache.getFileCache(file)?.sections ?? [];
-            const section = sections.find((sec) => sec.position.start.offset <= position.start.offset && position.end.offset <= sec.position.end.offset);
-            if (section && section.type === 'callout') {
-                const lines = data.split(/\r?\n/);
-                const lineNumber = section.position.start.line;
-                const line = lines[lineNumber];
-                const pdfPlusCalloutPattern = new RegExp(
-                    `> *\\[\\! *${lib.plugin.settings.calloutType} *(\\|(.*?))?\\]`,
-                    'i'
-                );
-                lines[lineNumber] = line.replace(pdfPlusCalloutPattern, `> [!${lib.plugin.settings.calloutType}${newColor ? `|${newColor}` : ''}]`);
-                data = lines.join('\n');
-            }
+//             // Check if this link is inside a PDF++ callout
+//             const sections = app.metadataCache.getFileCache(file)?.sections ?? [];
+//             const section = sections.find((sec) => sec.position.start.offset <= position.start.offset && position.end.offset <= sec.position.end.offset);
+//             if (section && section.type === 'callout') {
+//                 const lines = data.split(/\r?\n/);
+//                 const lineNumber = section.position.start.line;
+//                 const line = lines[lineNumber];
+//                 const pdfPlusCalloutPattern = new RegExp(
+//                     `> *\\[\\! *${lib.plugin.settings.calloutType} *(\\|(.*?))?\\]`,
+//                     'i'
+//                 );
+//                 lines[lineNumber] = line.replace(pdfPlusCalloutPattern, `> [!${lib.plugin.settings.calloutType}${newColor ? `|${newColor}` : ''}]`);
+//                 data = lines.join('\n');
+//             }
 
-            return data;
-        });
-    } else { // properties
-        const key = cache.refCache.key;
-        app.fileManager.processFrontMatter(file, (frontmatter) => {
-            frontmatter[key] = newLink;
-        });
-    }
-};
+//             return data;
+//         });
+//     } else { // properties
+//         const key = cache.refCache.key;
+//         app.fileManager.processFrontMatter(file, (frontmatter) => {
+//             frontmatter[key] = newLink;
+//         });
+//     }
+// };
