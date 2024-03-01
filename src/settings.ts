@@ -406,6 +406,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	component: Component;
 	items: Partial<Record<keyof PDFPlusSettings, Setting>>;
 	headings: Setting[];
+	headerEls: HTMLElement[];
 	promises: Promise<any>[];
 
 	contentEl: HTMLElement;
@@ -416,6 +417,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.component = new Component();
 		this.items = {};
 		this.headings = [];
+		this.headerEls = [];
 		this.promises = [];
 
 		this.containerEl.addClass('pdf-plus-settings');
@@ -468,32 +470,30 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 				this.component.registerDomEvent(headerEl, 'click', () => {
 					(setting.settingEl.previousElementSibling ?? setting.settingEl).scrollIntoView({ behavior: 'smooth' });
+					const timer = window.setInterval(() => this.updateHeaderElClass(), 50);
+					window.setTimeout(() => window.clearInterval(timer), 1000);
 				});
 
-				const index = this.headings.length;
-				this.updateHeaderElClass(index, setting, headerEl);
-				this.component.registerDomEvent(
-					this.contentEl, 'wheel', 
-					debounce(() => this.updateHeaderElClass(index, setting, headerEl), 100)
-				);
-
 				processHeaderDom?.({ headerEl, iconEl, titleEl });
-			});
 
-			this.headings.push(setting);
+				this.headings.push(setting);
+				this.headerEls.push(headerEl);
+			});
 		}
 
 		return setting;
 	}
 
-	updateHeaderElClass(index: number, heading: Setting, headerEl: HTMLElement) {
+	updateHeaderElClass() {
 		const tabHeight = this.containerEl.getBoundingClientRect().height;
 
-		const top = heading.settingEl.getBoundingClientRect().top;
-		const bottom = this.headings[index + 1]?.settingEl.getBoundingClientRect().top
-			?? this.contentEl.getBoundingClientRect().bottom;
-		const isVisible = top <= tabHeight * 0.85 && bottom >= tabHeight * 0.2 + this.headerContainerEl.clientHeight;
-		headerEl.toggleClass('is-active', isVisible);
+		for (let i = 0; i < this.headings.length; i++) {
+			const top = this.headings[i].settingEl.getBoundingClientRect().top;
+			const bottom = this.headings[i + 1]?.settingEl.getBoundingClientRect().top
+				?? this.contentEl.getBoundingClientRect().bottom;
+			const isVisible = top <= tabHeight * 0.85 && bottom >= tabHeight * 0.2 + this.headerContainerEl.clientHeight;
+			this.headerEls[i].toggleClass('is-active', isVisible);
+		}
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlur?: () => any) {
@@ -999,6 +999,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.contentEl.empty();
 		this.promises = [];
 		this.component.load();
+
+
+		setTimeout(() => this.updateHeaderElClass());
+		this.component.registerDomEvent(
+			this.contentEl, 'wheel',
+			debounce(() => this.updateHeaderElClass(), 100)
+		);
 
 
 		// @ts-ignore
