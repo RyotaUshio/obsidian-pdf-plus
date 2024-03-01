@@ -44,7 +44,7 @@ body:
   - type: textarea
     id: screen-capture
     attributes:
-      label: Screen recordings or screenshots in the sandbox vault
+      label: Screen recordings or screenshots (sandbox vault)
       description: "Add screen recordings that capture the situation in which the bug is happening **IN THE SANDBOX VAULT**. If it's difficult, add screenshots instead."
       placeholder: 
     validations:
