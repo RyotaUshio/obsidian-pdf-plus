@@ -1,4 +1,4 @@
-import { ViewStateResult } from 'obsidian';
+import { TFile, ViewStateResult } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -50,6 +50,18 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
                             }
                         }
                     });
+                }
+            },
+            // Called inside onModify
+            onLoadFile(old) {
+                return async function (file: TFile) {
+                    // The original implementation is `this.viewer.loadFile(e)`, which ignores the subpath
+
+                    // Restore the last page, position & zoom level on file mofiication
+                    const self = this as PDFView;
+                    const state = self.getState();
+                    const subpath = lib.viewStateToSubpath(state);
+                    return self.viewer.loadFile(file, subpath ?? undefined);
                 }
             }
         }));

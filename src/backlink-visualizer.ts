@@ -219,9 +219,10 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
     processAnnotation(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
         const pageView = this.child.getPage(pageNumber);
-        const annotationLayer = pageView.annotationLayer;
+        const annotationLayer = pageView.annotationLayer?.annotationLayer;
         if (!annotationLayer) return;
-        const annot = annotationLayer.annotationLayer.getAnnotation(id);
+        const annot = annotationLayer.getAnnotation(id);
+        if (!annot) return;
         annot.container.addClasses(['pdf-plus-backlink', 'pdf-plus-backlink-annotation']);
 
         const [left, bottom, right, top] = annot.data.rect;
