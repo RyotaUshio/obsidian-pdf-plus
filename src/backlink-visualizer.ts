@@ -233,7 +233,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
         let rectEl: HTMLElement | undefined;
         if (this.settings.showBoundingRectForBacklinkedAnnot) {
             rectEl = this.lib.highlight.viewer.placeRectInPage(annot.data.rect, pageView);
-            rectEl.addClass('pdf-plus-annotation-bounding-rect');    
+            rectEl.addClass('pdf-plus-annotation-bounding-rect');
         }
 
         const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
@@ -247,7 +247,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
         }
     }
 
-    processFitXYZ(pageNumber: number, cache: PDFBacklinkCache) {
+    processXYZ(pageNumber: number, cache: PDFBacklinkCache) {
         if (!cache.XYZ) {
             throw new Error('XYZ cache does not have a XYZ info');
         }
@@ -255,7 +255,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
         if (this.settings.showBacklinkIconForOffset) {
             const pageView = this.child.getPage(pageNumber);
             const { left, top } = cache.XYZ;
-            const iconEl = this.showIcon(left, top, pageView);
+            const iconEl = this.showIcon(left, top, pageView, 'left');
             this.domManager.getCacheToDomsMap(pageNumber).set(cache, iconEl);
         }
     }
@@ -292,10 +292,12 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
         }
     }
 
-    showIcon(x: number, y: number, pageView: PDFPageView) {
+    showIcon(x: number, y: number, pageView: PDFPageView, side: 'left' | 'right' = 'right') {
         // @ts-ignore
         const iconSize = Math.min(pageView.viewport.rawDims.pageWidth, pageView.viewport.rawDims.pageWidth) * this.settings.backlinkIconSize / 2000;
-        const iconEl = this.lib.highlight.viewer.placeRectInPage([x, y - iconSize, x + iconSize, y], pageView);
+        const iconEl = side === 'right'
+            ? this.lib.highlight.viewer.placeRectInPage([x, y - iconSize, x + iconSize, y], pageView)
+            : this.lib.highlight.viewer.placeRectInPage([x - iconSize, y - iconSize, x, y], pageView);
         iconEl.addClass('pdf-plus-backlink-icon');
         setIcon(iconEl, 'links-coming-in');
         const svg = iconEl.querySelector<SVGElement>('svg');

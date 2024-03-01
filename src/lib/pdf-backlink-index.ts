@@ -6,9 +6,9 @@ import { PDFPlusComponent } from './component';
 
 export class PDFBacklinkIndex extends PDFPlusComponent {
     file: TFile;
-    events: Events;
+    #events: Events;
 
-    pages: Map<number, PDFPageBacklinkIndex>;
+    #pagesMap: Map<number, PDFPageBacklinkIndex>;
 
     sourcePaths: Map<string, Set<PDFBacklinkCache>>;
     backlinks: Set<PDFBacklinkCache>;
@@ -16,15 +16,15 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
     constructor(plugin: PDFPlus, file: TFile) {
         super(plugin);
         this.file = file;
-        this.events = new Events();
+        this.#events = new Events();
     }
 
     getPageIndex(pageNumber: number) {
-        if (!this.pages.has(pageNumber)) {
-            this.pages.set(pageNumber, new PDFPageBacklinkIndex(this, pageNumber));
+        if (!this.#pagesMap.has(pageNumber)) {
+            this.#pagesMap.set(pageNumber, new PDFPageBacklinkIndex(this, pageNumber));
         }
 
-        return this.pages.get(pageNumber)!;
+        return this.#pagesMap.get(pageNumber)!;
     }
 
     onload() {
@@ -42,7 +42,7 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
     }
 
     init() {
-        this.pages = new Map();
+        this.#pagesMap = new Map();
         this.sourcePaths = new Map();
         this.backlinks = new Set();
 
@@ -145,11 +145,11 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
 
     on(name: 'update', callback: () => any, ctx?: any): EventRef;
     on(name: string, callback: (...args: any[]) => any, ctx?: any): EventRef {
-        return this.events.on(name, callback, ctx);
+        return this.#events.on(name, callback, ctx);
     }
 
     trigger(name: string, ...args: any[]) {
-        this.events.trigger(name, ...args);
+        this.#events.trigger(name, ...args);
     }
 }
 
@@ -206,26 +206,13 @@ class PDFPageBacklinkIndex {
     delete(cache: PDFBacklinkCache) {
         this.backlinks.delete(cache);
         this.sourcePaths.get(cache.sourcePath)?.delete(cache);
-
-        if (cache.selection) {
-            this.selections.delete(cache);
-        }
-
+        this.selections.delete(cache);
         if (cache.annotation) {
-            this.annotations.get(cache.annotation.id)!.delete(cache);
+            this.annotations.get(cache.annotation.id)?.delete(cache);
         }
-
-        if (cache.XYZ) {
-            this.XYZs.delete(cache);
-        }
-
-        if (cache.FitBH) {
-            this.FitBHs.delete(cache);
-        }
-
-        if (cache.FitR) {
-            this.FitRs.delete(cache);
-        }
+        this.XYZs.delete(cache);
+        this.FitBHs.delete(cache);
+        this.FitRs.delete(cache);
     }
 }
 

@@ -318,7 +318,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return true;
     }
 
-    copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, autoPaste?: boolean, sourcePath?: string): boolean {
+    copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, colorName?: string, autoPaste?: boolean, sourcePath?: string): boolean {
         if (!child.file) return false;
         const file = child.file;
 
@@ -331,7 +331,8 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
         if (!checking) {
             const display = this.getDisplayText(child, undefined, file, pageNumber, '');
-            const subpath = `#page=${pageNumber}&rect=${rect.join(',')}`;
+            let subpath = `#page=${pageNumber}&rect=${rect.join(',')}`;
+            if (colorName) subpath += `&color=${colorName}`;
             const embedLink = this.lib.generateMarkdownLink(file, sourcePath ?? '', subpath, display);
 
             (async () => {

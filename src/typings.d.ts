@@ -306,6 +306,8 @@ interface AnnotationElement {
         subtype: string;
         id: string;
         rect: Rect;
+        inReplyTo?: string;
+        replyType?: 'R' | 'Group';
         [key: string]: any;
     }
 }

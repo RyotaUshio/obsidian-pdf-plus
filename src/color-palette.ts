@@ -323,7 +323,12 @@ export class ColorPalette extends Component {
                             ...pageView.getPagePoint(right, top)
                         ]) as Rect;
 
-                        this.lib.copyLink.copyEmbedLinkToRect(false, child, pageView.id, rect);
+                        this.lib.copyLink.copyEmbedLinkToRect(
+                            false, child, pageView.id, rect,
+                            this.plugin.settings.includeColorWhenCopyingRectLink
+                                ? this.selectedColorName ?? undefined
+                                : undefined
+                        );
                         toggle();
                     };
 

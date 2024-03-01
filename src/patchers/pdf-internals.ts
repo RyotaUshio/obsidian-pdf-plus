@@ -152,7 +152,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     const { source: pageView } = data;
 
                     pageView.annotationLayer?.div
-                        ?.querySelectorAll<HTMLElement>('section.linkAnnotation[data-internal-link][data-annotation-id]')
+                        ?.querySelectorAll<HTMLElement>('section[data-annotation-id]')
                         .forEach((el) => {
                             const annotationId = el.dataset.annotationId;
                             if (!annotationId) return;
@@ -160,7 +160,15 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(annotationId);
                             if (!annot) return;
 
-                            PDFInternalLinkPostProcessor.registerEvents(plugin, self, annot);
+                            if (annot.data.subtype === 'Link' && typeof annot.container.dataset.internalLink === 'string') {
+                                PDFInternalLinkPostProcessor.registerEvents(plugin, self, annot);
+                            }
+
+                            // Avoid rendering annotations that are replies to other annotations
+                            // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/68
+                            if (plugin.settings.hideReplyAnnotation && annot.data.inReplyTo && annot.data.replyType === 'R') {
+                                annot.container.hide();
+                            }
                         });
                 });
 
@@ -229,7 +237,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 const view = lib.workspace.getActivePDFView();
                                 if (view && view.viewer.child === self) {
                                     const override = { state: { file: self.file!.path, page: pageNumber } };
-                                    this.app.workspace.trigger('view-sync:state-change', view, override);
+                                    app.workspace.trigger('view-sync:state-change', view, override);
                                 }
                             }
                         }, plugin.settings.viewSyncPageDebounceInterval * 1000)

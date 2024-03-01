@@ -196,12 +196,14 @@ export interface PDFPlusSettings {
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
 	rectImageExtension: ImageExtension;
+	includeColorWhenCopyingRectLink: boolean;
 	backlinkIconSize: number;
 	showBacklinkIconForSelection: boolean;
 	showBacklinkIconForAnnotation: boolean;
 	showBacklinkIconForOffset: boolean;
 	showBacklinkIconForRect: boolean;
 	showBoundingRectForBacklinkedAnnot: boolean;
+	hideReplyAnnotation: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -389,12 +391,14 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	rectEmbedStaticImage: false,
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
+	includeColorWhenCopyingRectLink: true,
 	backlinkIconSize: 50,
 	showBacklinkIconForSelection: false,
 	showBacklinkIconForAnnotation: false,
 	showBacklinkIconForOffset: true,
 	showBacklinkIconForRect: false,
 	showBoundingRectForBacklinkedAnnot: false,
+	hideReplyAnnotation: false,
 };
 
 
@@ -441,7 +445,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					parentEl.insertBefore(createDiv('spacer'), setting.settingEl);
 				}
 
-				setting.nameEl.appendChild(createSpan({ text: heading }));
 				if (icon) {
 					const parentEl = setting.settingEl.parentElement;
 					if (parentEl) {
@@ -1153,6 +1156,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setName('Image file format');
 			}
 		}
+		this.addToggleSetting('includeColorWhenCopyingRectLink')
+			.setName('Include the selected color\'s name when copying a link to a rectangular selection')
+			.setDesc('When enabled, the name of the color selected in the color palette will be included in the link text. As a result, the rectangular selection will be highlighted with the specified color in the PDF viewer.');
 
 
 		this.addHeading('PDF++ callouts', 'lucide-quote')
@@ -2017,6 +2023,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						});
 				});
 		}
+		this.addToggleSetting('hideReplyAnnotation')
+			.setName('Hide reply annotations')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Hide annotations that are replies to other annotations in the PDF viewer.',
+					'',
+					'This is a temporary fix for the issue that PDF.js (the library Obsidian\'s PDF viewer is based on) does not fulfill the PDF specification in that it renders reply annotations as if a standalone annotation.',
+				], setting.descEl);
+			});
 
 
 		this.addHeading('Style settings', 'lucide-external-link')
