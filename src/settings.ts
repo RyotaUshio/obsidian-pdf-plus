@@ -440,6 +440,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName(heading)
 			.setHeading()
 			.then((setting) => {
+				const parentEl = setting.settingEl.parentElement;
+				if (parentEl) {
+					parentEl.insertBefore(createDiv('spacer'), setting.settingEl);
+				}
+
+				setting.nameEl.appendChild(createSpan({ text: heading }));
 				if (icon) {
 					const parentEl = setting.settingEl.parentElement;
 					if (parentEl) {
@@ -1287,7 +1293,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Zoom in / zoom out: when the active file is not PDF, run Font Size Adjuster\'s "Increment font size" / "Decrement font size" command')
 			.then((setting) => {
 				this.renderMarkdown([
-					'_(Requires the [Font Size Adjuster](https://github.com/RyotaUshio/obsidian-font-size) plugin enabled)_ ',
+					'(Requires the [Font Size Adjuster](obsidian://show-plugin?id=font-size) plugin enabled) ',
 					'If both of this option and the above option are enabled, this option will be prioritized. The built-in "Zoom in" / "Zoom out" command will be executed if Font Size Adjuster is not installed or disabled.'
 				], setting.descEl);
 			});
@@ -1618,6 +1624,43 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
 			}
 		}
+
+
+		this.addHeading('Annotations', 'lucide-message-square');
+		if (this.plugin.settings.enablePDFEdit) {
+			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
+				.setName('Highlight opacity');
+			this.addToggleSetting('defaultWriteFileToggle')
+				.setName('Write highlight to file by default')
+				.setDesc('You can turn this on and off with the toggle button in the PDF viewer toolbar.');
+			this.addToggleSetting('syncWriteFileToggle')
+				.setName('Share the same toggle state among all PDF viewers')
+				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
+			if (this.plugin.settings.syncWriteFileToggle) {
+				this.addToggleSetting('syncDefaultWriteFileToggle')
+					.setName('Share the state with newly opened PDF viewers as well')
+			}
+			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
+				.setName('Enable editing annotation contents')
+				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
+			this.addToggleSetting('enableAnnotationDeletion', () => this.redisplay())
+				.setName('Enable annotation deletion')
+				.setDesc('If enabled, you can delete annotations embedded in PDF files by clicking the "Delete" button in the annotation popup.');
+			if (this.plugin.settings.enableAnnotationDeletion) {
+				this.addToggleSetting('warnEveryAnnotationDelete', () => this.redisplay())
+					.setName('Always warn when deleting an annotation');
+				if (!this.plugin.settings.warnEveryAnnotationDelete) {
+					this.addToggleSetting('warnBacklinkedAnnotationDelete')
+						.setName('Warn when deleting an annotation with backlinks');
+				}
+			}
+		}
+		this.addToggleSetting('annotationPopupDrag')
+			.setName('Drag & drop annotation popup to insert a link to the annotation')
+			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
+		this.addToggleSetting('renderMarkdownInStickyNote')
+			.setName('Render markdown in annotation popups when the annotation has text contents');
+
 
 
 		this.addHeading('PDF outline (table of contents)', 'lucide-list')

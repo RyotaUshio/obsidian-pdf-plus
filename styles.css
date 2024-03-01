@@ -162,8 +162,6 @@ settings:
     padding-top: 0;
     padding-left: 0;
     padding-right: 0;
-
-    scroll-margin: 400px;
 }
 
 .pdf-plus-settings .header-container {
@@ -198,8 +196,6 @@ settings:
     padding-bottom: var(--size-4-16);
     padding-left: var(--size-4-12);
     padding-right: var(--size-4-12);
-
-    scroll-margin: 400px;
 }
 
 .pdf-plus-settings .spacer {

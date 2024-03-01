@@ -140,9 +140,10 @@ export default class PDFPlus extends Plugin {
 		}
 
 		if (this.settings.hasOwnProperty('enalbeWriteHighlightToFile')) {
-			this.settings.enablePDFEdit = this.settings.enablePDFEdit;
 			// @ts-ignore
-			delete this.settings.enablePDFEdit;
+			this.settings.enablePDFEdit = this.settings.enalbeWriteHighlightToFile;
+			// @ts-ignore
+			delete this.settings.enalbeWriteHighlightToFile;
 		}
 	}
 
