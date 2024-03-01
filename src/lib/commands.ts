@@ -837,9 +837,15 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
     copyDebugInfo() {
         const settings = Object.assign({}, this.settings, { author: '*'.repeat(this.settings.author.length) });
+        // @ts-ignore
+        const fullStyleSettings = this.app.plugins.plugins['obsidian-style-settings']?.settingsManager.settings
+        const styleSettings = fullStyleSettings ? Object.fromEntries(
+            Object.entries(fullStyleSettings)
+                .filter(([key]) => key.startsWith('pdf-plus@@'))
+        ) : null;
         const styleSheet = this.plugin.domManager.styleEl.textContent;
 
-        navigator.clipboard.writeText(JSON.stringify({ settings, styleSheet }, null, 4));
+        navigator.clipboard.writeText(JSON.stringify({ settings, styleSettings, styleSheet }, null, 4));
         new Notice(`${this.plugin.manifest.name}: Debug info copied to clipboard.`);
     }
 
@@ -849,13 +855,16 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!checking) {
             (async () => {
                 try {
-                    const { settings, styleSheet } = JSON.parse(await navigator.clipboard.readText());
+                    const { settings, styleSettings, styleSheet } = JSON.parse(await navigator.clipboard.readText());
 
                     new Notice(`${this.plugin.manifest.name}: Debug info loaded from clipboard.`);
 
                     console.debug('Loaded debug info:');
                     console.debug('- settings:', settings);
+                    console.debug('- styleSettings:', styleSettings);
                     console.debug('- styleSheet:', styleSheet);
+                    // @ts-ignore
+                    window.pdfPlusDebugInfo = { settings, styleSettings, styleSheet };
 
                     this.plugin.settings = settings;
                     const tab = this.app.setting.pluginTabs.find((tab) => tab.id === this.plugin.manifest.id);

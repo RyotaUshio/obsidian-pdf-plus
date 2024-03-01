@@ -406,7 +406,7 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
     /**
      * @param options Options for updating the link color:
      * - `linktext`: Whether the color should appear in the link text.
-     * - `callout`: Whether the color should be updated in the PDF++ callout.
+     * - `callout`: Whether the color should be updated in the PDF++ callout that contains the link if any.
      */
     async updateLinkColor(
         refCache: LinkCache | EmbedCache | FrontmatterLinkCache,
