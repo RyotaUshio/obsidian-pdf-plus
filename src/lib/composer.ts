@@ -1,4 +1,4 @@
-import { TFile, normalizePath, parseLinktext, Pos, Notice, Reference, ReferenceCache, RGB, FrontmatterLinkCache, EmbedCache, LinkCache } from 'obsidian';
+import { TFile, normalizePath, parseLinktext, Pos, Notice, Reference, RGB, FrontmatterLinkCache, EmbedCache, LinkCache } from 'obsidian';
 import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { PDFPlusLibSubmodule } from './submodule';
@@ -467,7 +467,7 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
                 frontmatter[key] = newLink;
             });
         }
-    };
+    }
 }
 
 

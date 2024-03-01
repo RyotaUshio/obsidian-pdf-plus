@@ -1,4 +1,4 @@
-import { App, Menu, Notice, Platform, TFile, parseLinktext } from 'obsidian';
+import { App, Menu, Notice, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
@@ -471,7 +471,7 @@ export class PDFPlusContextMenu extends Menu {
                     this.addItem((item) => {
                         return item
                             .setSection('write-file')
-                            .setTitle(`Write highlight to PDF & copy link with format "${name}"`)
+                            .setTitle(`Write highlight & copy link with format "${name}"`)
                             .setIcon('lucide-save')
                             .onClick(() => {
                                 lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
@@ -640,7 +640,7 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
     if (evt.defaultPrevented) return;
     if (activeWindow.getSelection()?.toString()) return;
 
-    const { app, lib, settings, child } = visualizer;
+    const { lib, settings, child } = visualizer;
 
     if (cache.page) {
         const pageView = child.getPage(cache.page);

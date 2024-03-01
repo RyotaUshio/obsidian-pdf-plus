@@ -1,4 +1,4 @@
-import { AbstractInputSuggest, App, Command, Component, DropdownComponent, FuzzyMatch, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TFile, TFolder, TextAreaComponent, TextComponent, prepareFuzzySearch, renderResults, setIcon, setTooltip, sortSearchResults } from 'obsidian';
+import { AbstractInputSuggest, App, Command, Component, DropdownComponent, FuzzyMatch, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, SearchResultContainer, Setting, TFile, TFolder, TextAreaComponent, TextComponent, debounce, prepareFuzzySearch, renderResults, setIcon, setTooltip, sortSearchResults } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
@@ -405,6 +405,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 export class PDFPlusSettingTab extends PluginSettingTab {
 	component: Component;
 	items: Partial<Record<keyof PDFPlusSettings, Setting>>;
+	headings: Setting[];
 	promises: Promise<any>[];
 
 	contentEl: HTMLElement;
@@ -414,6 +415,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		super(plugin.app, plugin);
 		this.component = new Component();
 		this.items = {};
+		this.headings = [];
 		this.promises = [];
 
 		this.containerEl.addClass('pdf-plus-settings');
@@ -449,7 +451,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					const iconEl = createDiv();
 					setting.settingEl.prepend(iconEl)
 					setIcon(iconEl, icon);
-					
+
 					setting.settingEl.addClass('pdf-plus-setting-heading');
 				}
 			});
@@ -468,11 +470,30 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					(setting.settingEl.previousElementSibling ?? setting.settingEl).scrollIntoView({ behavior: 'smooth' });
 				});
 
+				const index = this.headings.length;
+				this.updateHeaderElClass(index, setting, headerEl);
+				this.component.registerDomEvent(
+					this.contentEl, 'wheel', 
+					debounce(() => this.updateHeaderElClass(index, setting, headerEl), 100)
+				);
+
 				processHeaderDom?.({ headerEl, iconEl, titleEl });
 			});
+
+			this.headings.push(setting);
 		}
 
 		return setting;
+	}
+
+	updateHeaderElClass(index: number, heading: Setting, headerEl: HTMLElement) {
+		const tabHeight = this.containerEl.getBoundingClientRect().height;
+
+		const top = heading.settingEl.getBoundingClientRect().top;
+		const bottom = this.headings[index + 1]?.settingEl.getBoundingClientRect().top
+			?? this.contentEl.getBoundingClientRect().bottom;
+		const isVisible = top <= tabHeight * 0.85 && bottom >= tabHeight * 0.2 + this.headerContainerEl.clientHeight;
+		headerEl.toggleClass('is-active', isVisible);
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlur?: () => any) {
@@ -990,7 +1011,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		});
 
 
-
 		this.addHeading('Editing PDF files', 'lucide-save')
 			.then((setting) => {
 				this.renderMarkdown([
@@ -1241,7 +1261,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'',
 					'1. **Copy link to selection or annotation:**',
 					'   Copies a link to the text selection or focused annotation in the PDF viewer, which is formatted according to the options specified in the PDF toolbar.',
-					'   <br>If the "write to file directly" toggle switch in the PDF toolbar is on, it first adds a highlight annotation directly to the PDF file, and then copies the link to the created annotation.',
+					'   <br>If the "Add highlights to file directly" toggle switch in the PDF toolbar is on, it first adds a highlight annotation directly to the PDF file, and then copies the link to the created annotation.',
 					'2. **Copy & auto-paste link to selection or annotation:**',
 					'  In addition to copying the link, it automatically pastes the copied link at the end of the last active note or the note where you last pasted a link. Note that Canvas is not supported.',
 					'',

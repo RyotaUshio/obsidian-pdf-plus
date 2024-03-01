@@ -1,4 +1,4 @@
-import { App, Component, Menu, ToggleComponent, setIcon, setTooltip } from 'obsidian';
+import { App, Component, Menu, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
@@ -21,8 +21,7 @@ export class ColorPalette extends Component {
     itemEls: HTMLElement[];
     actionMenuEl: HTMLElement | null;
     displayTextFormatMenuEl: HTMLElement | null;
-    writeFileToggleContainerEl: HTMLElement | null;
-    writeFileToggle: ToggleComponent | null;
+    writeFileButtonEl: HTMLElement | null;
     statusContainerEl: HTMLElement | null;
     statusEl: HTMLElement | null;
 
@@ -42,8 +41,7 @@ export class ColorPalette extends Component {
         this.itemEls = [];
         this.actionMenuEl = null;
         this.displayTextFormatMenuEl = null;
-        this.writeFileToggleContainerEl = null;
-        this.writeFileToggle = null;
+        this.writeFileButtonEl = null;
         this.statusContainerEl = null;
         this.statusEl = null;
 
@@ -75,15 +73,14 @@ export class ColorPalette extends Component {
         this.actionMenuEl = this.addCopyActionDropdown(this.paletteEl);
         this.displayTextFormatMenuEl = this.addDisplayTextFormatDropdown(this.paletteEl);
 
+        this.addCropButton(this.paletteEl);
+
         if (this.plugin.settings.enablePDFEdit) {
             this.addWriteFileToggle(this.paletteEl);
         }
 
-        this.addCropButton(this.paletteEl);
-
         this.statusContainerEl = this.paletteEl.createDiv('pdf-plus-color-palette-status-container');
         this.statusEl = this.statusContainerEl.createSpan('pdf-plus-color-palette-status');
-
 
         this.registerEvent(this.plugin.on('color-palette-state-change', ({ source }) => {
             if (source !== this) this.syncTo(source);
@@ -239,31 +236,24 @@ export class ColorPalette extends Component {
     }
 
     addWriteFileToggle(paletteEl: HTMLElement) {
-        const containerEl = paletteEl.createDiv('pdf-plus-write-file-toggle-container');
-        const toggle = new ToggleComponent(containerEl)
-            .setTooltip(`${this.plugin.manifest.name}: Write to file directly`)
-            .setValue(this.writeFile)
-            .onChange((value) => {
-                this.writeFile = value;
+        this.writeFileButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
+            setIcon(el, 'lucide-save');
+            setTooltip(el, `${this.plugin.manifest.name}: Add highlights to file directly`);
+            el.addEventListener('click', () => {
+                this.setWriteFile(!this.writeFile);
 
                 if (this.plugin.settings.syncWriteFileToggle && this.plugin.settings.syncDefaultWriteFileToggle) {
-                    this.plugin.settings.defaultWriteFileToggle = value;
+                    this.plugin.settings.defaultWriteFileToggle = this.writeFile;
                 }
 
                 this.plugin.trigger('color-palette-state-change', { source: this });
             });
-        this.writeFileToggleContainerEl = containerEl;
-        this.writeFileToggle = toggle;
+        });
     }
 
     setWriteFile(value: boolean) {
         this.writeFile = value;
-        // the same as this.writeFileToggle.setValue(value), but without calling the onChange callback
-        if (this.writeFileToggle) {
-            // @ts-ignore
-            this.writeFileToggle.on = value;
-            this.writeFileToggle.toggleEl.toggleClass('is-enabled', value);
-        }
+        this.writeFileButtonEl?.toggleClass('is-active', value);
     }
 
     addCropButton(paletteEl: HTMLElement) {

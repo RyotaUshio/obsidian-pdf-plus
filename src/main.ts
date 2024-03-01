@@ -263,6 +263,15 @@ export default class PDFPlus extends Plugin {
 				}
 			});
 
+			if (embed instanceof PDFCroppedEmbed) {
+				this.registerDomEvent(embed.containerEl, 'click', (evt) => {
+					if (evt.target instanceof HTMLElement && evt.target.closest('.cm-editor')) {
+						// Prevent the click event causing the editor to select the link like an image embed
+						evt.preventDefault();
+					}
+				})
+			}
+
 			if (params.has('color')) {
 				embed.containerEl.dataset.highlightColor = params.get('color')!.toLowerCase();
 			} else if (this.settings.defaultColor) {

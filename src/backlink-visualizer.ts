@@ -225,7 +225,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
         if (!annot) return;
         annot.container.addClasses(['pdf-plus-backlink', 'pdf-plus-backlink-annotation']);
 
-        const [left, bottom, right, top] = annot.data.rect;
+        const [, , right, top] = annot.data.rect;
         let iconEl: HTMLElement | undefined;
         if (this.settings.showBacklinkIconForAnnotation) {
             iconEl = this.showIcon(right, top, pageView);
@@ -390,14 +390,14 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 }
 
 
-class PDFCanvasBacklinkVisualizer extends PDFViewerBacklinkVisualizer {
-    // not implemented yet
-}
+// class PDFCanvasBacklinkVisualizer extends PDFViewerBacklinkVisualizer {
+//     // not implemented yet
+// }
 
 
-class PDFExportBacklinkVisualizer extends PDFBacklinkVisualizer {
-    // not implemented yet
-}
+// class PDFExportBacklinkVisualizer extends PDFBacklinkVisualizer {
+//     // not implemented yet
+// }
 
 
 class BidirectionalMultiValuedMap<Key, Value> {

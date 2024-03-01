@@ -245,14 +245,24 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
             }
         },
-        /** Modified applySubpath() from Obsidian's app.js so that it can interpret the `rect` parameter as FitR. */
+        /** 
+         * Modified applySubpath() from Obsidian's app.js so that 
+         * - it can interpret the `rect` parameter as FitR
+         * - and the `offset` & `rect` parameters can be parsed as float numbers, not integers
+         */
         applySubpath(old) {
             return function (subpath?: string) {
                 const self = this as PDFViewerChild;
 
-                const parseNum = (num: string) => {
+                const _parseInt = (num: string) => {
                     if (!num) return null;
-                    var parsed = parseInt(num);
+                    const parsed = parseInt(num);
+                    return Number.isNaN(parsed) ? null : parsed
+                };
+
+                const _parseFloat = (num: string) => {
+                    if (!num) return null;
+                    const parsed = parseFloat(num);
                     return Number.isNaN(parsed) ? null : parsed
                 };
 
@@ -260,7 +270,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     const pdfViewer = self.pdfViewer;
                     
                     const { dest, highlight } = ((subpath) => {
-                        var params = new URLSearchParams(subpath.startsWith('#') ? subpath.substring(1) : subpath);
+                        const params = new URLSearchParams(subpath.startsWith('#') ? subpath.substring(1) : subpath);
 
                         if (!params.has('page')) {
                             return {
@@ -269,12 +279,12 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             };
                         }
 
-                        const page = parseNum(params.get('page')!) ?? 1;
+                        const page = _parseInt(params.get('page')!) ?? 1;
 
                         let dest: [number, { name: string }, ...(number | null)[]] | null = null;
 
                         if (params.has('rect')) {
-                            const rect = params.get('rect')!.split(',').map(parseNum);
+                            const rect = params.get('rect')!.split(',').map(_parseFloat);
                             if (rect.length === 4 && rect.every((n) => n !== null)) {
                                 dest = [page - 1, {
                                     name: 'FitR'
@@ -284,9 +294,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                         if (!dest) {
                             const offset = params.has('offset') ? params.get('offset')!.split(',') : [];
-                            const left = parseNum(offset[0]);
-                            const top = parseNum(offset[1]);
-                            const zoom = parseNum(offset[2]);
+                            const left = _parseFloat(offset[0]);
+                            const top = _parseFloat(offset[1]);
+                            const zoom = _parseFloat(offset[2]);
                             dest = null === zoom ? [page - 1, {
                                 name: 'FitBH'
                             }, top] : [page - 1, {
@@ -303,10 +313,10 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             };
                         } else if (params.has('selection')) {
                             const selection = params.get('selection')!.split(',');
-                            const beginIndex = parseNum(selection[0]);
-                            const beginOffset = parseNum(selection[1]);
-                            const endIndex = parseNum(selection[2]);
-                            const endOffset = parseNum(selection[3]);
+                            const beginIndex = _parseInt(selection[0]);
+                            const beginOffset = _parseInt(selection[1]);
+                            const endIndex = _parseInt(selection[2]);
+                            const endOffset = _parseInt(selection[3]);
                             if (null !== beginIndex && null !== beginOffset && null !== endIndex && null !== endOffset) {
                                 highlight = {
                                     type: 'text',
