@@ -651,11 +651,12 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
     const oldColor = cache.getColor();
     const oldColorName = oldColor?.type === 'name' ? oldColor.name : undefined;
 
-    const menu = new Menu();
+    const menu = new Menu().addSections(['color', 'image']);
 
     if (oldColor) {
         menu.addItem((item) => {
-            item.setTitle(`Unset color`)
+            item.setSection('color')
+                .setTitle(`Unset color`)
                 .setIcon('lucide-palette')
                 .onClick(() => {
                     lib.composer.linkUpdater.updateLinkColor(cache.refCache, cache.sourcePath, null);
@@ -666,13 +667,38 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
     for (const colorName of Object.keys(settings.colors)) {
         if (colorName.toLowerCase() !== oldColorName?.toLowerCase()) {
             menu.addItem((item) => {
-                item.setTitle(`Change color to "${colorName}"`)
+                item.setSection('color')
+                    .setTitle(`Change color to "${colorName}"`)
                     .setIcon('lucide-palette')
                     .onClick(() => {
                         lib.composer.linkUpdater.updateLinkColor(cache.refCache, cache.sourcePath, { type: 'name', name: colorName });
                     });
             });
         }
+    }
+
+    if (cache.page && cache.FitR) {
+        const page = child.getPage(cache.page).pdfPage;
+        const { left, bottom, right, top } = cache.FitR!;
+
+        menu.addItem((item) => {
+            item.setSection('image')
+                .setTitle('Copy as image')
+                .setIcon('lucide-image')
+                .onClick(() => {
+                    const blobPromise = lib.pdfPageToImageArrayBuffer(page, {
+                        type: 'image/png',
+                        encoderOptions: 1.0,
+                        cropRect: [left, bottom, right, top]
+                    }).then((buffer) => {
+                        return new Blob([buffer], { type: 'image/png' });
+                    });
+
+                    navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blobPromise })
+                    ]);
+                });
+        });
     }
 
     menu.showAtMouseEvent(evt);
