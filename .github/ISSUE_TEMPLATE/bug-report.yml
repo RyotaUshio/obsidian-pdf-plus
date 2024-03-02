@@ -67,3 +67,8 @@ body:
       render: json
     validations:
       required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error messages
+      description: Open the developer tool by `Ctrl`+`Shift`+`I` (or `Cmd`+`Option`+`I` on macOS) and open the `Console` tab. Do you see any error message on a red background? If so, take a screenshot and paste it here.
