@@ -62,9 +62,11 @@ See [here](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Tips:-backlinks-
 
 https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/fb624769-4cc3-4d4e-9898-b17d0a5591e3
 
-### PDF Embeds are automatically trimmed
+### Rectangular selection embeds
 
-<img width="954" alt="image" src="https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/a2f93579-4126-4437-93d0-2b90d3ee49a3">
+[Learn more](https://ryotaushio.github.io/obsidian-pdf-plus/embedding-rectangular-selections.html)
+
+https://github.com/RyotaUshio/obsidian-pdf-plus/assets/72342591/7a6331ab-71bf-45d0-a457-7984e487e326
 
 ### `Ctrl`/`Cmd`+hover over highlights to preview or open backlinks
 
