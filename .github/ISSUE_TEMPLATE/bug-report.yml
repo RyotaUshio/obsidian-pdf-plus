@@ -9,6 +9,7 @@ body:
         Thank you for taking the time to fill out this bug report!
         
         Please note:
+        - Please make sure you are on the latest version of PDF++.
         - We consider a problem as PDF++'s bug only if it can be reproducible in the sandbox vault where only this plugin (and other relevant plugins if any) are enabled. You can open the sandbox vault by running "Open sandbox vault" command from the command palette (the command name may vary depending on the language setting).
         - If this is not the case, ask a question on [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions).
         - As noted in the plugin settings tab, changing some options requires reopening PDF files or reloading the plugin to take effect. If it seems something is not working, first try reopening the vault. If it does not help, please file a bug report.
