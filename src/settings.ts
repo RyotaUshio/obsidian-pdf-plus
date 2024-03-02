@@ -158,6 +158,7 @@ export interface PDFPlusSettings {
 	clickOutlineItemWithModifierKey: boolean;
 	clickThumbnailWithModifierKey: boolean;
 	focusEditorAfterAutoPaste: boolean;
+	respectCursorPositionWhenAutoPaste: boolean;
 	autoFocus: boolean;
 	autoFocusTarget: AutoFocusTarget;
 	autoPasteTarget: AutoFocusTarget;
@@ -353,6 +354,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	clickOutlineItemWithModifierKey: true,
 	clickThumbnailWithModifierKey: true,
 	focusEditorAfterAutoPaste: true,
+	respectCursorPositionWhenAutoPaste: true,
 	autoFocus: false,
 	autoFocusTarget: 'last-active-and-open-then-last-paste',
 	autoPasteTarget: 'last-active-and-open-then-last-paste',
@@ -1471,6 +1473,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('focusEditorAfterAutoPaste')
 			.setName('Focus editor after auto-paste')
 			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
+		this.addToggleSetting('respectCursorPositionWhenAutoPaste')
+			.setName('Respect current cursor position when auto-pasting')
+			.setDesc('When enabled, the auto-paste command will paste the copied text at the current cursor position if the target note is already opened. If disabled, the text will be always appended to the end of the note.');
 		this.addToggleSetting('openAutoFocusTargetIfNotOpened', () => this.redisplay())
 			.setName('Open target markdown file if not opened');
 		if (this.plugin.settings.openAutoFocusTargetIfNotOpened) {

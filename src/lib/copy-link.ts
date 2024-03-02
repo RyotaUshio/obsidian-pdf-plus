@@ -596,35 +596,55 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     }
 
     async pasteTextToFile(text: string, file: TFile) {
-        const { leaf } = await this.prepareMarkdownLeafForPaste(file);
+        const { leaf, isExistingLeaf } = await this.prepareMarkdownLeafForPaste(file);
 
-        // Use vault, not editor, so that we can auto-paste even when the file is not opened
-        await this.app.vault.process(file, (data) => {
-            // If the file does not end with a blank line, add one
-            data = data.trimEnd()
-            if (data) data += '\n\n';
-            data += text;
-            return data;
-        });
+        if (leaf && isExistingLeaf && leaf.view instanceof MarkdownView) {
+            // If the file is already opened in some tab, use the editor interface to respect the current cursor position
+            // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/71
+            const editor = leaf.view.editor;
 
-        if (this.plugin.settings.focusEditorAfterAutoPaste && leaf) {
-            // If the file opened in some tab, focus the tab and move the cursor to the end of the file.
-            // To this end, we listen to the editor-change event so that we can detect when the editor update
-            // triggered by the auto-paste is done.
-            const eventRef = this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-                if (info.file?.path === file.path) {
-                    this.app.workspace.offref(eventRef);
+            if (this.settings.respectCursorPositionWhenAutoPaste) {
+                editor.replaceSelection(text);
+            } else {
+                let data = editor.getValue();
+                data = data.trimEnd()
+                if (data) data += '\n\n';
+                data += text;
+                editor.setValue(data);
+            }
 
-                    if (info instanceof MarkdownView) {
-                        this.app.workspace.revealLeaf(info.leaf);
-                    }
-
-                    if (!editor.hasFocus()) editor.focus();
-                    editor.exec('goEnd');
-                }
+            if (this.settings.focusEditorAfterAutoPaste) {
+                editor.focus();
+            }
+        } else {
+            // Otherwise we just use the vault interface
+            await this.app.vault.process(file, (data) => {
+                // If the file does not end with a blank line, add one
+                data = data.trimEnd()
+                if (data) data += '\n\n';
+                data += text;
+                return data;
             });
 
-            this.plugin.registerEvent(eventRef);
+            if (this.settings.focusEditorAfterAutoPaste && leaf) {
+                // If the file opened in some tab, focus the tab and move the cursor to the end of the file.
+                // To this end, we listen to the editor-change event so that we can detect when the editor update
+                // triggered by the auto-paste is done.
+                const eventRef = this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+                    if (info.file?.path === file.path) {
+                        this.app.workspace.offref(eventRef);
+
+                        if (info instanceof MarkdownView) {
+                            this.app.workspace.revealLeaf(info.leaf);
+                        }
+
+                        if (!editor.hasFocus()) editor.focus();
+                        editor.exec('goEnd');
+                    }
+                });
+
+                this.plugin.registerEvent(eventRef);
+            }
         }
     }
 
