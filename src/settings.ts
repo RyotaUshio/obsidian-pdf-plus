@@ -252,7 +252,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	],
 	useAnotherCopyTemplateWhenNoSelection: false,
 	copyTemplateWhenNoSelection: '{{linkToPageWithDisplay}}',
-	trimSelectionEmbed: true,
+	trimSelectionEmbed: false,
 	embedMargin: 50,
 	noSidebarInEmbed: true,
 	noSpreadModeInEmbed: true,
@@ -1942,7 +1942,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Double-clicking a PDF embed will open the embedded file.');
 		this.addToggleSetting('trimSelectionEmbed', () => this.redisplay())
 			.setName('Trim selection/annotation embeds')
-			.setDesc('When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.');
+			.then((setting) => {
+				this.renderMarkdown([
+					'<span style="color: var(--text-warning);">(Deprecated in favor of the <a href="https://ryotaushio.github.io/obsidian-pdf-plus/embedding-rectangular-selections.html" class="external-link" target="_blank" rel="noopener">rectangular selection embed feature</a> introduced in PDF++ 0.36.0)</span>',
+					'When embedding a selection or an annotation from a PDF file, only the target selection/annotation and its surroundings are displayed rather than the entire page.'
+				], setting.descEl);
+			});
 		if (this.plugin.settings.trimSelectionEmbed) {
 			this.addSliderSetting('embedMargin', 0, 200, 1)
 				.setName('Selection/annotation embeds margin (px)');
