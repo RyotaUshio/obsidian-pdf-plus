@@ -38,6 +38,7 @@ const NEW_FILE_LOCATIONS = {
 	'current': 'Same folder as current file',
 	'folder': 'In the folder specified below',
 } as const;
+type NewFileLocation = keyof typeof NEW_FILE_LOCATIONS;
 
 const IMAGE_EXTENSIONS = [
 	'png',
@@ -134,6 +135,7 @@ export interface PDFPlusSettings {
 	executeBuiltinCommandForZoom: boolean;
 	executeFontSizeAdjusterCommand: boolean;
 	closeSidebarWithShowCommandIfExist: boolean;
+	autoHidePDFSidebar: boolean;
 	outlineDrag: boolean;
 	outlineContextMenu: boolean;
 	outlineLinkDisplayTextFormat: string;
@@ -192,7 +194,7 @@ export interface PDFPlusSettings {
 	copyOutlineAsHeadingsMinLevel: number;
 	newFileNameFormat: string;
 	newFileTemplatePath: string;
-	newPDFLocation: keyof typeof NEW_FILE_LOCATIONS;
+	newPDFLocation: NewFileLocation;
 	newPDFFolderPath: string;
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
@@ -330,6 +332,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	executeBuiltinCommandForZoom: true,
 	executeFontSizeAdjusterCommand: true,
 	closeSidebarWithShowCommandIfExist: true,
+	autoHidePDFSidebar: false,
 	outlineDrag: true,
 	outlineContextMenu: true,
 	outlineLinkDisplayTextFormat: '{{file.basename}}, {{text}}',
@@ -640,6 +643,35 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addDesc(desc: string) {
 		return this.addSetting()
 			.setDesc(desc);
+	}
+
+	addFileLocationSetting(
+		settingName: KeysOfType<PDFPlusSettings, NewFileLocation>,
+		postProcessDropdownSetting: (setting: Setting) => any,
+		folderPathSettingName: KeysOfType<PDFPlusSettings, string>,
+		postProcessFolderPathSetting: (setting: Setting) => any
+	) {
+		return [
+			this.addDropdownSetting(settingName, NEW_FILE_LOCATIONS, () => this.redisplay())
+				.then(postProcessDropdownSetting),
+			this.addSetting()
+				.addText((text) => {
+					text.setValue(this.plugin.settings[folderPathSettingName]);
+					text.inputEl.size = 30;
+					new FuzzyFolderSuggest(this.app, text.inputEl)
+						.onSelect(({ item: folder }) => {
+							// @ts-ignore
+							this.plugin.settings[folderPathSettingName] = folder.path;
+							this.plugin.saveSettings();
+						});
+				})
+				.then((setting) => {
+					postProcessFolderPathSetting(setting);
+					if (this.plugin.settings[settingName] !== 'folder') {
+						setting.settingEl.hide()
+					}
+				})
+		];
 	}
 
 	addFundingButton() {
@@ -1692,6 +1724,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 
+		this.addHeading('PDF sidebar', 'sidebar-left')
+			.setName('General settings for the PDF sidebar. The options specific to the outline and thumbnails are located in the corresponding sections below.');
+		this.addToggleSetting('autoHidePDFSidebar')
+			.setName('Click on PDF content to hide sidebar')
+			.setDesc('Requires reopening the tabs after changing this option.');
+
+
 		this.addHeading('PDF outline (table of contents)', 'lucide-list')
 			.setDesc('Power up the outline view of the built-in PDF viewer: add, rename, or delete items via the right-click menu and the "Add to outline" command, drag & drop items to insert a section link, and more.');
 		this.addToggleSetting('clickOutlineItemWithModifierKey')
@@ -2038,23 +2077,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('showStatusInToolbar')
 			.setName('Show status in PDF toolbar')
 			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');
-		this.addDropdownSetting('newPDFLocation', NEW_FILE_LOCATIONS, () => this.redisplay())
-			.setName('Default location for new PDFs')
-			.setDesc('The "Create new PDF" command will create a new PDF file in the location specified here.');
-		if (this.plugin.settings.newPDFLocation === 'folder') {
-			this.addSetting()
+		this.addFileLocationSetting(
+			'newPDFLocation', (setting) => setting
+				.setName('Default location for new PDFs')
+				.setDesc('The "Create new PDF" command will create a new PDF file in the location specified here.'),
+			'newPDFFolderPath', (setting) => setting
 				.setName('Folder to create new PDFs in')
 				.setDesc('Newly created PDFs will appear under this folder.')
-				.addText((text) => {
-					text.setValue(this.plugin.settings.newPDFFolderPath);
-					text.inputEl.size = 30;
-					new FuzzyFolderSuggest(this.app, text.inputEl)
-						.onSelect(({ item: folder }) => {
-							this.plugin.settings.newPDFFolderPath = folder.path;
-							this.plugin.saveSettings();
-						});
-				});
-		}
+		);
 		this.addToggleSetting('hideReplyAnnotation')
 			.setName('Hide reply annotations')
 			.then((setting) => {

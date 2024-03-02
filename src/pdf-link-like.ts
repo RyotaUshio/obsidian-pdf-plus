@@ -23,8 +23,6 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
     child: PDFViewerChild;
     targetEl: HTMLElement;
 
-    _hoverPopover: HoverPopover | null = null;
-
     /**
      * A hover parent (https://docs.obsidian.md/Reference/TypeScript+API/HoverParent) is
      * any object that has `hoverPopover: HoverPopover | null` property.
@@ -35,11 +33,11 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
      * where the setter adds the class or the data attribute to the popover's hover element.
      */
     get hoverPopover() {
-        return this._hoverPopover;
+        return this.child.hoverPopover;
     }
 
     set hoverPopover(hoverPopover) {
-        this._hoverPopover = hoverPopover;
+        this.child.hoverPopover = hoverPopover;
         if (hoverPopover) {
             this.onHoverPopoverSet(hoverPopover);
         }

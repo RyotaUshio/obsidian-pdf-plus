@@ -349,13 +349,13 @@ export class PDFPlusLib {
         let zoom = '';
 
         if (destArray[1] === 'XYZ') {
-            left = '' + destArray[2];
-            top = '' + destArray[3];
+            if (typeof destArray[2] === 'number') left += Math.round(destArray[2]);
+            if (typeof destArray[3] === 'number') top += Math.round(destArray[3]);
             // Obsidian recognizes the `offset` parameter as "FitBH" if the third parameter is omitted.
             // from the PDF spec: "A zoom value of 0 has the same meaning as a null value."
-            zoom = '' + (destArray[4] ?? 0);
+            zoom = '' + Math.round((destArray[4] ?? 0) * 100) / 100;
         } else if (destArray[1] === 'FitBH') {
-            top = '' + destArray[2];
+            if (typeof destArray[2] === 'number') top += destArray[2];
         }
 
         const subpath = `#page=${pageNumber + 1}&offset=${left},${top},${zoom}`;

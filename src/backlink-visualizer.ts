@@ -84,7 +84,6 @@ class BacklinkDomManager {
 export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implements HoverParent {
     child: PDFViewerChild;
     domManager: BacklinkDomManager;
-    _hoverPopover: HoverPopover | null = null;
 
     constructor(plugin: PDFPlus, file: TFile, child: PDFViewerChild) {
         super(plugin, file);
@@ -97,11 +96,12 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     }
 
     get hoverPopover() {
-        return this._hoverPopover;
+        return this.child.hoverPopover;
     }
 
     set hoverPopover(hoverPopover: HoverPopover | null) {
-        this._hoverPopover = hoverPopover;
+        // We can add some post-processing if needed
+        this.child.hoverPopover = hoverPopover;
     }
 
     onload() {

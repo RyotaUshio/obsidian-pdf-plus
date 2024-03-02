@@ -83,9 +83,15 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
     plugin.register(around(child.constructor.prototype, {
         load(old) {
             return async function (...args: any[]) {
-                const ret = await old.call(this, ...args);
-
                 const self = this as PDFViewerChild;
+                self.hoverPopover = null;
+
+                if (!self.component) {
+                    self.component = new Component();
+                }
+                self.component.load();
+
+                const ret = await old.call(self, ...args);
 
                 // Add a color palette to the toolbar
                 try {
@@ -104,6 +110,13 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         window.setTimeout(() => {
                             window.clearInterval(timer);
                         }, 1000);
+                    }
+
+                    const viewerContainerEl = self.pdfViewer?.dom?.viewerContainerEl;
+                    if (plugin.settings.autoHidePDFSidebar && viewerContainerEl) {
+                        self.component.registerDomEvent(viewerContainerEl, 'click', () => {
+                            self.pdfViewer.pdfSidebar.switchView(0);
+                        });
                     }
                 } catch (e) {
                     new Notice(`${plugin.manifest.name}: An error occurred while mounting the color palette to the toolbar.`);
@@ -268,7 +281,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                 if (subpath) {
                     const pdfViewer = self.pdfViewer;
-                    
+
                     const { dest, highlight } = ((subpath) => {
                         const params = new URLSearchParams(subpath.startsWith('#') ? subpath.substring(1) : subpath);
 
@@ -325,7 +338,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 }
                             }
                         }
-                        
+
                         // `height` is unused so it's commented out
                         // const height = params.has('height') ? parseNum(params.get('height')!) : null;
                         return {
