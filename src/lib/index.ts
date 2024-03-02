@@ -778,7 +778,9 @@ export class PDFPlusLib {
      * - cropRect: The rectangle to crop the PDF page to. The coordinates are in PDF space.
      */
     async pdfPageToImageDataUrl(page: PDFPageProxy, options?: { type?: string, encoderOptions?: number, resolution?: number, cropRect?: Rect }): Promise<string> {
-        const [pageX, pageY, pageWidth, pageHeight] = page.view;
+        const [left, bottom, right, top] = page.view;
+        const pageWidth = right - left;
+        const pageHeight = top - bottom;
 
         const type = options?.type;
         const encoderOptions = options?.encoderOptions;
@@ -794,8 +796,8 @@ export class PDFPlusLib {
         const scaleX = canvas.width / pageWidth;
         const scaleY = canvas.height / pageHeight;
         const crop = {
-            left: (cropRect[0] - pageX) * scaleX,
-            top: (pageY + pageHeight - cropRect[3]) * scaleY,
+            left: (cropRect[0] - left) * scaleX,
+            top: (bottom + pageHeight - cropRect[3]) * scaleY,
             width: (cropRect[2] - cropRect[0]) * scaleX,
             height: (cropRect[3] - cropRect[1]) * scaleY,
         };
