@@ -380,7 +380,7 @@ body {
     position: absolute;
     z-index: 1000;
     border: dashed var(--background-modifier-border) 2px;
-    background-color: var(--background-modifier-active-hover);
+    background-color: hsla(var(--interactive-accent-hsl), 0.15);
 }
 
 /* From Obsidian's app.css (.annotationLayer .mod-focused /  .annotationLayer .boundingRect)*/
