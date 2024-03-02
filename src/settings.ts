@@ -1725,7 +1725,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('PDF sidebar', 'sidebar-left')
-			.setName('General settings for the PDF sidebar. The options specific to the outline and thumbnails are located in the corresponding sections below.');
+			.setDesc('General settings for the PDF sidebar. The options specific to the outline and thumbnails are located in the corresponding sections below.');
 		this.addToggleSetting('autoHidePDFSidebar')
 			.setName('Click on PDF content to hide sidebar')
 			.setDesc('Requires reopening the tabs after changing this option.');
