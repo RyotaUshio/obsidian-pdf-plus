@@ -181,10 +181,13 @@ export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
 }
 
 export function getEventCoord(evt: MouseEvent | TouchEvent) {
-    return {
-        x: evt instanceof MouseEvent ? evt.clientX : evt.touches[0].clientX,
-        y: evt instanceof MouseEvent ? evt.clientY : evt.touches[0].clientY
-    }
+    // `evt instanceof MouseEvent` does not work in new windows.
+    // See https://forum.obsidian.md/t/why-file-in-clipboardevent-is-not-an-instanceof-file-for-notes-opened-in-new-window/76648/3
+    // @ts-ignore
+    const MouseEventInTheWindow: new () => MouseEvent = evt.win.MouseEvent;
+    return evt instanceof MouseEventInTheWindow
+        ? { x: evt.clientX, y: evt.clientY }
+        : { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
 }
 
 /** EmbedLike includes embeds, canvas cards, Obsidian's native hover popovers, and Hover Editor. */
