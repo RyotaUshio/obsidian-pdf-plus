@@ -1,4 +1,4 @@
-import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, addIcon, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView } from 'patchers/pdf-view';
@@ -64,6 +64,7 @@ export default class PDFPlus extends Plugin {
 
 	async onload() {
 		this.checkVersion();
+		this.addIcons();
 
 		await loadPdfJs();
 
@@ -100,6 +101,10 @@ export default class PDFPlus extends Plugin {
 		if (requireApiVersion('1.5.9')) {
 			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian v1.5.9 or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).`);
 		}
+	}
+
+	private addIcons() {
+		addIcon('file-pen', '<g id="surface1"><path style="fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:4;" d="M 12 22.000312 L 18 22.000312 C 19.104375 22.000312 19.999688 21.105 19.999688 19.999688 L 19.999688 7.000312 L 15 1.999687 L 6 1.999687 C 4.895625 1.999687 4.000312 2.895 4.000312 4.000312 L 4.000312 13.999688 " transform="matrix(4.166667,0,0,4.166667,0,0)"/><path style="fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:4;" d="M 13.999688 1.999687 L 13.999688 6 C 13.999688 7.104375 14.895 7.999687 16.000312 7.999687 L 19.999688 7.999687 " transform="matrix(4.166667,0,0,4.166667,0,0)"/><path style="fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:4;" d="M 10.399687 12.6 C 11.228438 11.77125 12.571875 11.77125 13.399687 12.6 C 14.228438 13.42875 14.228438 14.77125 13.399687 15.6 L 7.999687 21 L 4.000312 22.000312 L 4.999687 18 Z M 10.399687 12.6 " transform="matrix(4.166667,0,0,4.166667,0,0)"/></g>');
 	}
 
 	async loadSettings() {
