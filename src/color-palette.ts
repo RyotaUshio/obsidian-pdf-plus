@@ -237,7 +237,7 @@ export class ColorPalette extends Component {
 
     addWriteFileToggle(paletteEl: HTMLElement) {
         this.writeFileButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
-            setIcon(el, 'file-pen');
+            setIcon(el, 'lucide-save');
             setTooltip(el, `${this.plugin.manifest.name}: Add highlights to file directly`);
             el.addEventListener('click', () => {
                 this.setWriteFile(!this.writeFile);
