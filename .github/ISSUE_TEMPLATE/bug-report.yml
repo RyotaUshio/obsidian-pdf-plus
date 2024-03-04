@@ -19,7 +19,7 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: 'Describe the detailed steps to reproduce the behavior **IN THE SANDBOX VAULT**. If possible, attach a PDF file where you face the problem.'
+      description: 'Describe the detailed steps to reproduce the behavior **IN THE SANDBOX VAULT**. If possible, attach a PDF file where you face the problem. If you mind sharing the PDF publically, send it via email: ushio@ms.k.u-tokyo.ac.jp.'
       placeholder: |
         1. Go to '...'
         2. Click on '....'
