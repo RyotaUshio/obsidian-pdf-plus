@@ -6,7 +6,7 @@ import { KeysOfType, getEventCoord, isHexString } from 'utils';
 import { Rect } from 'typings';
 
 
-type ColorPaletteState = Pick<ColorPalette, 'selectedColorName' | 'actionIndex' | 'displayTextFormatIndex' | 'writeFile'>;
+export type ColorPaletteState = Pick<ColorPalette, 'selectedColorName' | 'actionIndex' | 'displayTextFormatIndex' | 'writeFile'>;
 
 export class ColorPalette extends Component {
     static readonly CLS = 'pdf-plus-color-palette';
@@ -22,6 +22,7 @@ export class ColorPalette extends Component {
     actionMenuEl: HTMLElement | null;
     displayTextFormatMenuEl: HTMLElement | null;
     writeFileButtonEl: HTMLElement | null;
+    cropButtonEl: HTMLElement | null;
     statusContainerEl: HTMLElement | null;
     statusEl: HTMLElement | null;
 
@@ -42,6 +43,7 @@ export class ColorPalette extends Component {
         this.actionMenuEl = null;
         this.displayTextFormatMenuEl = null;
         this.writeFileButtonEl = null;
+        this.cropButtonEl = null;
         this.statusContainerEl = null;
         this.statusEl = null;
 
@@ -238,7 +240,7 @@ export class ColorPalette extends Component {
     addWriteFileToggle(paletteEl: HTMLElement) {
         this.writeFileButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
             setIcon(el, 'lucide-save');
-            setTooltip(el, `${this.plugin.manifest.name}: Add highlights to file directly`);
+            setTooltip(el, `${this.plugin.manifest.name}: Add ${this.plugin.settings.selectionBacklinkVisualizeStyle}s to file directly`);
             el.addEventListener('click', () => {
                 this.setWriteFile(!this.writeFile);
 
@@ -257,95 +259,103 @@ export class ColorPalette extends Component {
     }
 
     addCropButton(paletteEl: HTMLElement) {
-        paletteEl.createDiv('clickable-icon pdf-plus-rect-select', (el) => {
+        this.cropButtonEl = paletteEl.createDiv('clickable-icon pdf-plus-rect-select', (el) => {
             setIcon(el, 'lucide-box-select');
             setTooltip(el, 'Copy embed link to rectangular selection')
 
             el.addEventListener('click', () => {
-                const child = this.lib.getPDFViewerChildAssociatedWithNode(this.paletteEl!);
-                if (!child || !child.pdfViewer.pdfViewer) return;
-                const pageView = child.getPage(child.pdfViewer.pdfViewer.currentPageNumber);
-                const pageEl = pageView.div
-                if (!pageEl) return;
-
-                const selectBox = { left: 0, top: 0, width: 0, height: 0 };
-                const onMouseDown = (evt: MouseEvent | TouchEvent) => {
-                    const { x, y } = getEventCoord(evt);
-                    selectBox.left = x;
-                    selectBox.top = y;
-
-                    const boxEl = pageEl.createDiv('pdf-plus-select-box');
-                    const pageRect = pageEl.getBoundingClientRect();
-                    boxEl.setCssStyles({
-                        left: (selectBox.left - pageRect.left) + 'px',
-                        top: (selectBox.top - pageRect.top) + 'px',
-                    });
-
-                    const onMouseMove = (evt: MouseEvent | TouchEvent) => {
-                        const { x, y } = getEventCoord(evt);
-                        selectBox.width = x - selectBox.left;
-                        selectBox.height = y - selectBox.top;
-
-                        boxEl.setCssStyles({
-                            width: selectBox.width + 'px',
-                            height: selectBox.height + 'px',
-                        });
-
-                        // Prevent scrolling on mobile
-                        evt.preventDefault();
-                        evt.stopImmediatePropagation();
-                    };
-
-                    const onMouseUp = () => {
-                        pageEl.removeEventListener('mousemove', onMouseMove);
-                        pageEl.removeEventListener('touchmove', onMouseMove);
-                        pageEl.removeEventListener('mouseup', onMouseUp);
-                        pageEl.removeEventListener('touchend', onMouseUp);
-                        pageEl.removeChild(boxEl);
-
-                        const left = selectBox.left - pageRect.left;
-                        const top = selectBox.top - pageRect.top;
-                        const right = left + selectBox.width;
-                        const bottom = top + selectBox.height;
-
-                        const rect = window.pdfjsLib.Util.normalizeRect([
-                            ...pageView.getPagePoint(left, bottom),
-                            ...pageView.getPagePoint(right, top)
-                        ]) as Rect;
-
-                        this.lib.copyLink.copyEmbedLinkToRect(
-                            false, child, pageView.id, rect,
-                            this.plugin.settings.includeColorWhenCopyingRectLink
-                                ? this.selectedColorName ?? undefined
-                                : undefined
-                        );
-                        toggle();
-                    };
-
-                    pageEl.addEventListener('mousemove', onMouseMove);
-                    pageEl.addEventListener('touchmove', onMouseMove);
-                    pageEl.addEventListener('mouseup', onMouseUp);
-                    pageEl.addEventListener('touchend', onMouseUp);
-                };
-
-                const toggle = () => {
-                    el.toggleClass('is-active', !el.hasClass('is-active'));
-                    pageEl.toggleClass('pdf-plus-selecting', el.hasClass('is-active'));
-
-                    activeWindow.getSelection()?.empty();
-
-                    if (el.hasClass('is-active')) {
-                        pageEl.addEventListener('mousedown', onMouseDown);
-                        pageEl.addEventListener('touchstart', onMouseDown);
-                    } else {
-                        pageEl.removeEventListener('mousedown', onMouseDown);
-                        pageEl.removeEventListener('touchstart', onMouseDown);
-                    }
-                };
-
-                toggle();
+                this.startRectangularSelection(false);
             });
         });
+    }
+
+    startRectangularSelection(autoPaste: boolean) {
+        const cropButtonEl = this.cropButtonEl;
+        if (!cropButtonEl) return;
+
+        const child = this.lib.getPDFViewerChildAssociatedWithNode(this.paletteEl!);
+        if (!child || !child.pdfViewer.pdfViewer) return;
+        const pageView = child.getPage(child.pdfViewer.pdfViewer.currentPageNumber);
+        const pageEl = pageView.div
+        if (!pageEl) return;
+
+        const selectBox = { left: 0, top: 0, width: 0, height: 0 };
+        const onMouseDown = (evt: MouseEvent | TouchEvent) => {
+            const { x, y } = getEventCoord(evt);
+            selectBox.left = x;
+            selectBox.top = y;
+
+            const boxEl = pageEl.createDiv('pdf-plus-select-box');
+            const pageRect = pageEl.getBoundingClientRect();
+            boxEl.setCssStyles({
+                left: (selectBox.left - pageRect.left) + 'px',
+                top: (selectBox.top - pageRect.top) + 'px',
+            });
+
+            const onMouseMove = (evt: MouseEvent | TouchEvent) => {
+                const { x, y } = getEventCoord(evt);
+                selectBox.width = x - selectBox.left;
+                selectBox.height = y - selectBox.top;
+
+                boxEl.setCssStyles({
+                    width: selectBox.width + 'px',
+                    height: selectBox.height + 'px',
+                });
+
+                // Prevent scrolling on mobile
+                evt.preventDefault();
+                evt.stopImmediatePropagation();
+            };
+
+            const onMouseUp = () => {
+                pageEl.removeEventListener('mousemove', onMouseMove);
+                pageEl.removeEventListener('touchmove', onMouseMove);
+                pageEl.removeEventListener('mouseup', onMouseUp);
+                pageEl.removeEventListener('touchend', onMouseUp);
+                pageEl.removeChild(boxEl);
+
+                const left = selectBox.left - pageRect.left;
+                const top = selectBox.top - pageRect.top;
+                const right = left + selectBox.width;
+                const bottom = top + selectBox.height;
+
+                const rect = window.pdfjsLib.Util.normalizeRect([
+                    ...pageView.getPagePoint(left, bottom),
+                    ...pageView.getPagePoint(right, top)
+                ]) as Rect;
+
+                this.lib.copyLink.copyEmbedLinkToRect(
+                    false, child, pageView.id, rect,
+                    this.plugin.settings.includeColorWhenCopyingRectLink
+                        ? this.selectedColorName ?? undefined
+                        : undefined,
+                    autoPaste
+                );
+                toggle();
+            };
+
+            pageEl.addEventListener('mousemove', onMouseMove);
+            pageEl.addEventListener('touchmove', onMouseMove);
+            pageEl.addEventListener('mouseup', onMouseUp);
+            pageEl.addEventListener('touchend', onMouseUp);
+        };
+
+        const toggle = () => {
+            cropButtonEl.toggleClass('is-active', !cropButtonEl.hasClass('is-active'));
+            pageEl.toggleClass('pdf-plus-selecting', cropButtonEl.hasClass('is-active'));
+
+            activeWindow.getSelection()?.empty();
+
+            if (cropButtonEl.hasClass('is-active')) {
+                pageEl.addEventListener('mousedown', onMouseDown);
+                pageEl.addEventListener('touchstart', onMouseDown);
+            } else {
+                pageEl.removeEventListener('mousedown', onMouseDown);
+                pageEl.removeEventListener('touchstart', onMouseDown);
+            }
+        };
+
+        toggle();
     }
 
     setStatus(text: string, durationMs: number) {
@@ -364,7 +374,7 @@ export class ColorPalette extends Component {
     setTooltipToActionItem(itemEl: HTMLElement, name: string | null) {
         const pickerEl = itemEl.querySelector<HTMLInputElement>(':scope > .' + ColorPalette.CLS + '-item-inner')!;
         const commandName = this.plugin.settings.copyCommands[this.actionIndex].name;
-        const tooltip = name !== null ? `Copy link with format "${commandName}" & add ${name.toLowerCase()} highlight` : `Copy link with "${commandName}" format without specifying color`;
+        const tooltip = name !== null ? `Copy link with format "${commandName}" & add ${name.toLowerCase()} ${this.plugin.settings.selectionBacklinkVisualizeStyle}` : `Copy link with "${commandName}" format without specifying color`;
         setTooltip(pickerEl, tooltip);
     }
 

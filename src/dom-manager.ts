@@ -1,18 +1,17 @@
-import { App, Component, MarkdownRenderChild, RGB } from 'obsidian';
+import { MarkdownRenderChild, RGB } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
 import { DEFAULT_BACKLINK_HOVER_COLOR } from 'settings';
 import { hexToRgb, isHexString, rgbStringToObject } from 'utils';
+import { PDFPlusComponent } from 'lib/component';
 
 
-export class DomManager extends Component {
-	app: App;
+export class DomManager extends PDFPlusComponent {
 	styleEl: HTMLStyleElement;
 
-	constructor(public plugin: PDFPlus) {
-		super();
-		this.app = plugin.app;
+	constructor(plugin: PDFPlus) {
+		super(plugin);
 		this.styleEl = plugin.registerEl(createEl('style', { attr: { id: 'pdf-plus-style' } }));
 		document.head.append(this.styleEl);
 	}
@@ -36,7 +35,9 @@ export class DomManager extends Component {
 
 		this.updateStyleEl();
 
-		this.updateClass('pdf-plus-click-embed-to-open-link', this.plugin.settings.dblclickEmbedToOpenLink);
+		this.updateClass('pdf-plus-click-embed-to-open-link', this.settings.dblclickEmbedToOpenLink);
+		this.updateClass('pdf-plus-backlink-selection-highlight', this.settings.selectionBacklinkVisualizeStyle === 'highlight');
+		this.updateClass('pdf-plus-backlink-selection-underline', this.settings.selectionBacklinkVisualizeStyle === 'underline');
 
 		this.app.workspace.trigger('css-change');
 	}

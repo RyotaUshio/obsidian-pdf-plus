@@ -33,6 +33,14 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'copy-auto-paste-link-to-selection',
                 name: 'Copy & auto-paste link to selection or annotation',
                 checkCallback: (checking) => this.copyLink(checking, true)
+            }, {
+                id: 'rectangular-selection',
+                name: 'Start rectangular selection',
+                checkCallback: (checking) => this.copyEmbedLinkToRectangularSelection(checking, false)
+            }, {
+                id: 'rectangular-selection-auto-paste',
+                name: 'Start rectangular selection and auto-paste',
+                checkCallback: (checking) => this.copyEmbedLinkToRectangularSelection(checking, true)
             },
             // {
             //     id: 'create-canvas-card-from-selection',
@@ -254,6 +262,17 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         const colorName = palette.selectedColorName ?? undefined;
 
         return this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
+    }
+
+    copyEmbedLinkToRectangularSelection(checking: boolean, autoPaste: boolean) {
+        const palette = this.lib.getColorPalette();
+        if (!palette || !palette.cropButtonEl) return false;
+
+        if (!checking) {
+            palette.startRectangularSelection(autoPaste);
+        }
+
+        return true;
     }
 
     createCanvasCardFromSelection(checking: boolean) {

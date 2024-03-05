@@ -4,12 +4,12 @@ import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNull, PDFNumb
 import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { formatAnnotationID, getBorderRadius, hexToRgb } from 'utils';
 import { Rect, DestArray } from 'typings';
-import { IPdfIo } from '.';
+import { IPdfIo, TextMarkupAnnotationSubtype } from '.';
 
 
 export class PdfLibIO extends PDFPlusLibSubmodule implements IPdfIo {
 
-    async addHighlightAnnotation(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string) {
+    async addTextMarkupAnnotation(file: TFile, pageNumber: number, rects: Rect[], subtype: TextMarkupAnnotationSubtype, colorName?: string, contents?: string) {
         if (!this.plugin.settings.author) {
             throw new Error(`${this.plugin.manifest.name}: The author name is not set. Please set it in the plugin settings.`);
         }
@@ -28,7 +28,7 @@ export class PdfLibIO extends PDFPlusLibSubmodule implements IPdfIo {
             // - 12.5.6.2 "Markup Annotations" and 
             // - 12.5.6.10 "Text Markup Annotations".
             const ref = this.addAnnotation(page, {
-                Subtype: 'Highlight',
+                Subtype: subtype,
                 Rect: geometry.mergeRectangles(...rects),
                 QuadPoints: geometry.rectsToQuadPoints(rects),
                 // For Contents & T, make sure to pass a PDFString, not a raw string!!
@@ -36,14 +36,18 @@ export class PdfLibIO extends PDFPlusLibSubmodule implements IPdfIo {
                 Contents: PDFHexString.fromText(contents ?? ''),
                 M: PDFString.fromDate(new Date()),
                 T: PDFHexString.fromText(this.plugin.settings.author),
-                CA: this.plugin.settings.writeHighlightToFileOpacity,
-                Border: [borderRadius, borderRadius, 0],
+                CA: subtype === 'Highlight' ? this.plugin.settings.writeHighlightToFileOpacity : 1.0,
+                Border: subtype === 'Highlight' ? [borderRadius, borderRadius, 0] : undefined,
                 C: [r / 255, g / 255, b / 255],
             });
 
             const annotationID = formatAnnotationID(ref.objectNumber, ref.generationNumber);
             return annotationID;
         });
+    }
+    
+    async addHighlightAnnotation(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string) {
+        return await this.addTextMarkupAnnotation(file, pageNumber, rects, 'Highlight', colorName, contents);
     }
 
     async addLinkAnnotation(file: TFile, pageNumber: number, rects: Rect[], dest: DestArray | string, colorName?: string, contents?: string) {

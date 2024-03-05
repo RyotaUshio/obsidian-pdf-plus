@@ -1,6 +1,10 @@
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, HexString, RGB, Keymap, App } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Keymap, App } from 'obsidian';
 import { ObsidianViewer } from 'typings';
+
+export * from './color';
+export * from './typescript';
+export * from './maps';
 
 
 export function getDirectPDFObj(dict: PDFDict, key: string) {
@@ -16,50 +20,36 @@ export function range(from: number, to: number): number[] {
     return Array.from({ length: to - from }, (_, i) => from + i);
 }
 
-export function isHexString(color: string) {
-    // It's actually /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i
-    // but it will be overkill
-    return color.length === 7 && color.startsWith('#');
-}
+// Taken from app.js
+export function getTextLayerNode(pageEl: HTMLElement, node: Node) {
+    // Thanks to this line, we can detect if the selection spans across pages or not.
+    if (!pageEl.contains(node)) return null;
 
-// Thanks https://stackoverflow.com/a/5624139
-export function hexToRgb(hexColor: HexString) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hexColor);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
+    if (node.instanceOf(HTMLElement) && node.hasClass('textLayerNode')) return node;
 
-// Thanks https://stackoverflow.com/a/5624139
-export function rgbToHex(rgb: RGB) {
-    const { r, g, b } = rgb;
-    return '#' + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
-}
-
-export function rgbStringToObject(rgbString: string): RGB {
-    const [r, g, b] = rgbString // "R, G, B"
-        .split(',')
-        .map((s) => parseInt(s.trim())) // [R, G, B];
-    return { r, g, b };
-}
-
-export function getObsidianDefaultHighlightColorRGB(): RGB {
-    const [r, g, b] = getComputedStyle(document.body)
-        .getPropertyValue('--text-highlight-bg-rgb') // "R, G, B"
-        .split(',')
-        .map((s) => parseInt(s.trim())) // [R, G, B];
-    return { r, g, b };
-}
-
-export function getBorderRadius() {
-    const cssValue = getComputedStyle(document.body).getPropertyValue('--radius-s');
-    if (cssValue.endsWith('px')) {
-        const px = parseInt(cssValue.slice(0, -2));
-        if (!isNaN(px)) return px;
+    let n: Node | null = node;
+    while (n = n.parentNode) {
+        if (n === pageEl) return null;
+        if (n.instanceOf(HTMLElement) && n.hasClass('textLayerNode'))
+            return n
     }
-    return 0;
+
+    return null
+}
+
+// Taken from app.js.
+// Takes care of the cases where the textLayerNode has multiple text nodes (I haven't experienced it though).
+export function getOffsetInTextLayerNode(textLayerNode: HTMLElement, node: Node, offsetInNode: number) {
+    if (!textLayerNode.contains(node)) return null;
+
+    const iterator = textLayerNode.doc.createNodeIterator(textLayerNode, NodeFilter.SHOW_TEXT);
+    let textNode;
+    let offset = offsetInNode;
+    while ((textNode = iterator.nextNode()) && node !== textNode) { // Iterate over text nodes that come before `node`.
+        offset += textNode.textContent!.length;
+    }
+
+    return offset;
 }
 
 export function getModifierNameInPlatform(mod: Modifier): string {
@@ -297,50 +287,30 @@ export function cropCanvas(srcCanvas: HTMLCanvasElement, crop: { left: number, t
     return dstCanvas;
 }
 
-//////////////////////////
-// Typescript utilities //
-//////////////////////////
-
-// Inspired by https://stackoverflow.com/a/50851710/13613783
-export type KeysOfType<Obj, Type> = NonNullable<{ [k in keyof Obj]: Obj[k] extends Type ? k : never }[keyof Obj]>;
-
-/** Similar to Required<T>, but only makes the specified properties (Prop) required */
-export type PropRequired<T, Prop extends keyof T> = T & Pick<Required<T>, Prop>;
-
-/** 
- * Parameters<T> but for functions with multiple overloads
- * Thanks @derekrjones (https://github.com/microsoft/TypeScript/issues/32164#issuecomment-890824817)
+/**
+ * Rotate a canvas around the upper-left corner.
+ * @param srcCanvas 
+ * @param rotate Must be a multiple of 90.
+ * @returns 
  */
-export type OverloadParameters<T extends FN> = TupleArrayUnion<filterUnknowns<_Params<T>>>;
+export function rotateCanvas(srcCanvas: HTMLCanvasElement, rotate: number) {
+    // make sure the rotation angle is one of 0, 90, 180, 270
+    rotate = (rotate % 360 + 360) % 360;
+    if (![0, 90, 180, 270].includes(rotate)) throw new Error('rotate must be 0, 90, 180, or 270');
+    if (!rotate) return srcCanvas;
 
-type FN = (...args: unknown[]) => unknown;
-
-// current typescript version infers 'unknown[]' for any additional overloads
-// we can filter them out to get the correct result
-type _Params<T> = T extends {
-    (...args: infer A1): unknown;
-    (...args: infer A2): unknown;
-    (...args: infer A3): unknown;
-    (...args: infer A4): unknown;
-    (...args: infer A5): unknown;
-    (...args: infer A6): unknown;
-    (...args: infer A7): unknown;
-    (...args: infer A8): unknown;
-    (...args: infer A9): unknown;
+    const dstCanvas = createEl('canvas');
+    const ctx = dstCanvas.getContext('2d')!;
+    if (rotate === 90 || rotate === 270) {
+        dstCanvas.width = srcCanvas.height;
+        dstCanvas.height = srcCanvas.width;
+    } else {
+        dstCanvas.width = srcCanvas.width;
+        dstCanvas.height = srcCanvas.height;
+    }
+    // rotate the canvas with the upper-left corner as the origin
+    ctx.translate(dstCanvas.width / 2, dstCanvas.height / 2);
+    ctx.rotate(rotate * Math.PI / 180);
+    ctx.drawImage(srcCanvas, -srcCanvas.width / 2, -srcCanvas.height / 2);
+    return dstCanvas;
 }
-    ? [A1, A2, A3, A4, A5, A6, A7, A8, A9]
-    : never;
-
-// type T1 = filterUnknowns<[unknown[], string[]]>; // [string[]]
-type filterUnknowns<T> = T extends [infer A, ...infer Rest]
-    ? unknown[] extends A
-    ? filterUnknowns<Rest>
-    : [A, ...filterUnknowns<Rest>]
-    : T;
-
-// type T1 = TupleArrayUnion<[[], [string], [string, number]]>; // [] | [string] | [string, number]
-type TupleArrayUnion<A extends readonly unknown[][]> = A extends (infer T)[]
-    ? T extends unknown[]
-    ? T
-    : []
-    : [];

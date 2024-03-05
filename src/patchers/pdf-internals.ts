@@ -260,7 +260,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         },
         /** 
          * Modified applySubpath() from Obsidian's app.js so that 
-         * - it can interpret the `rect` parameter as FitR
+         * - it can interpret the `rect` parameter as FitR,
+         * - it supports `zoomToFitRect` setting,
          * - and the `offset` & `rect` parameters can be parsed as float numbers, not integers
          */
         applySubpath(old) {
@@ -299,9 +300,16 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         if (params.has('rect')) {
                             const rect = params.get('rect')!.split(',').map(_parseFloat);
                             if (rect.length === 4 && rect.every((n) => n !== null)) {
-                                dest = [page - 1, {
-                                    name: 'FitR'
-                                }, ...rect];
+                                if (plugin.settings.zoomToFitRect) {
+                                    dest = [page - 1, {
+                                        name: 'FitR'
+                                    }, ...rect];
+                                } else {
+                                    // only align the top of the rect
+                                    dest = [page - 1, {
+                                        name: 'XYZ'
+                                    }, null, rect[3], null];
+                                }
                             }
                         }
 

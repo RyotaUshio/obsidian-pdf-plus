@@ -124,7 +124,10 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             markdownLeaf = this.getMarkdownLeafForLinkFromPDF(linktext, sourcePath);
         }
 
-        const openViewState: OpenViewState = typeof line === 'number' ? { eState: { line } } : {};
+        // About eState:
+        // - `scroll`: For scrolling to the target line
+        // - `line`: For highlighting the target line
+        const openViewState: OpenViewState = typeof line === 'number' ? { eState: { scroll: line, line } } : {};
         // Ignore the "dontActivateAfterOpenMD" option when opening a link in a tab in the same split as the current tab
         // I believe using activeLeaf (which is deprecated) is inevitable here
         if (!(markdownLeaf.parentSplit instanceof WorkspaceTabs && markdownLeaf.parentSplit === this.app.workspace.activeLeaf?.parentSplit)) {

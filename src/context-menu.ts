@@ -391,19 +391,20 @@ export class PDFPlusContextMenu extends Menu {
 
         // const canvas = lib.workspace.getActiveCanvasView()?.canvas;
 
-        const selection = toSingleLine(evt.win.getSelection()?.toString() ?? '');
-
-        // Get page number
-        const pageNumber = lib.getPageNumberFromEvent(evt);
-        if (pageNumber === null) return;
+        const selectionObj = evt.win.getSelection();
+        const pageAndSelection = lib.copyLink.getPageAndTextRangeFromSelection(selectionObj);
+        if (!pageAndSelection) return;
+        // selection is undefined when the selection spans multiple pages
+        const { page: pageNumber, selection } = pageAndSelection;
+        const selectedText = toSingleLine(selectionObj?.toString() ?? '');
 
         // If macOS, add "look up selection" action
-        if (Platform.isMacOS && Platform.isDesktopApp && evt.win.electron && selection) {
+        if (Platform.isMacOS && Platform.isDesktopApp && evt.win.electron && selectedText) {
             this.addItem((item) => {
                 return item
-                    .setSection("action")
-                    .setTitle(`Look up "${selection.length <= 25 ? selection : selection.slice(0, 24).trim() + '…'}"`)
-                    .setIcon("lucide-library")
+                    .setSection('action')
+                    .setTitle(`Look up "${selectedText.length <= 25 ? selectedText : selectedText.slice(0, 24).trim() + '…'}"`)
+                    .setIcon('lucide-library')
                     .onClick(() => {
                         // @ts-ignore
                         evt.win.electron!.remote.getCurrentWebContents().showDefinitionForSelection();
@@ -416,7 +417,7 @@ export class PDFPlusContextMenu extends Menu {
         const formats = plugin.settings.copyCommands;
 
         // copy selected text only //
-        if (selection) {
+        if (selectedText) {
             this.addItem((item) => {
                 return item
                     .setSection('selection')
@@ -424,7 +425,7 @@ export class PDFPlusContextMenu extends Menu {
                     .setIcon('lucide-copy')
                     .onClick(() => {
                         // How does the electron version differ?
-                        navigator.clipboard.writeText(selection);
+                        navigator.clipboard.writeText(selectedText);
                     });
             });
 
@@ -437,49 +438,48 @@ export class PDFPlusContextMenu extends Menu {
             // const writeFile = palette?.writeFile;
 
 
-            // if (!writeFile) {
-            for (const { name, template } of formats) {
-                this.addItem((item) => {
-                    return item
-                        .setSection('selection')
-                        .setTitle(`Copy link to selection with format "${name}"`)
-                        .setIcon('lucide-copy')
-                        .onClick(() => {
-                            lib.copyLink.copyLinkToSelection(false, template, colorName);
-                        });
-                });
-            }
-
-            // // Create a Canvas card
-            // if (canvas && plugin.settings.canvasContextMenu) {
-            //     for (const { name, template } of formats) {
-            //         this.addItem((item) => {
-            //             return item
-            //                 .setSection('selection-canvas')
-            //                 .setTitle(`Create Canvas card from selection with format "${name}"`)
-            //                 .setIcon('lucide-sticky-note')
-            //                 .onClick(() => {
-            //                     lib.copyLink.makeCanvasTextNodeFromSelection(false, canvas, template, colorName);
-            //                 });
-            //         });
-            //     }
-            // }
-
-            // } else {
-            if (plugin.settings.enablePDFEdit) {
+            if (selectedText && selection) {
                 for (const { name, template } of formats) {
                     this.addItem((item) => {
                         return item
-                            .setSection('write-file')
-                            .setTitle(`Write highlight & copy link with format "${name}"`)
-                            .setIcon('lucide-save')
+                            .setSection('selection')
+                            .setTitle(`Copy link to selection with format "${name}"`)
+                            .setIcon('lucide-copy')
                             .onClick(() => {
-                                lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
+                                lib.copyLink.copyLinkToSelection(false, template, colorName);
                             });
                     });
                 }
+
+                // // Create a Canvas card
+                // if (canvas && plugin.settings.canvasContextMenu) {
+                //     for (const { name, template } of formats) {
+                //         this.addItem((item) => {
+                //             return item
+                //                 .setSection('selection-canvas')
+                //                 .setTitle(`Create Canvas card from selection with format "${name}"`)
+                //                 .setIcon('lucide-sticky-note')
+                //                 .onClick(() => {
+                //                     lib.copyLink.makeCanvasTextNodeFromSelection(false, canvas, template, colorName);
+                //                 });
+                //         });
+                //     }
+                // }                    
+
+                if (plugin.settings.enablePDFEdit) {
+                    for (const { name, template } of formats) {
+                        this.addItem((item) => {
+                            return item
+                                .setSection('write-file')
+                                .setTitle(`Write ${plugin.settings.selectionBacklinkVisualizeStyle} & copy link with format "${name}"`)
+                                .setIcon('lucide-save')
+                                .onClick(() => {
+                                    lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
+                                });
+                        });
+                    }
+                }
             }
-            // }
         }
 
         // Get annotation & annotated text
@@ -599,7 +599,7 @@ export class PDFPlusContextMenu extends Menu {
         })();
 
         // Add a PDF internal link to selection
-        if (selection
+        if (selectedText && selection
             && plugin.settings.enablePDFEdit
             && plugin.lastCopiedDestInfo
             && plugin.lastCopiedDestInfo.file === child.file) {
@@ -630,7 +630,7 @@ export class PDFPlusContextMenu extends Menu {
 
         app.workspace.trigger('pdf-menu', this, {
             pageNumber,
-            selection,
+            selection: selectedText,
             annot
         });
     }
@@ -651,7 +651,7 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
     const oldColor = cache.getColor();
     const oldColorName = oldColor?.type === 'name' ? oldColor.name : undefined;
 
-    const menu = new Menu().addSections(['color', 'image']);
+    const menu = new Menu().addSections(['copy', 'color', 'image']);
 
     if (oldColor) {
         menu.addItem((item) => {
@@ -676,6 +676,39 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
             });
         }
     }
+
+    // if (cache.page) {
+    //     const pageNumber = cache.page;
+
+    //     let text = '';
+    //     if (cache.selection) {
+    //         const pageView = child.getPage(pageNumber);
+    //         const textContentItems = pageView.textLayer?.textContentItems;
+    //         if (textContentItems) {
+    //             const { beginIndex, beginOffset, endIndex, endOffset } = cache.selection;
+    //             text = lib.getSelectedText(textContentItems, beginIndex, beginOffset, endIndex, endOffset);    
+    //         }
+    //     }
+
+    //     menu.addItem((item) => {
+    //         item.setSection('copy')
+    //             .setTitle('Copy the same link')
+    //             .setIcon('lucide-copy')
+    //             .onClick(() => {
+    //                 const { actionIndex, displayTextFormatIndex } = lib.getColorPaletteOptions();
+    //                 const { subpath } = parseLinktext(cache.refCache.link);
+    //                 const color = cache.getColor();
+    //                 const evaluated = lib.copyLink.getTextToCopy(
+    //                     child,
+    //                     settings.copyCommands[actionIndex].template,
+    //                     settings.displayTextFormats[displayTextFormatIndex].template,
+    //                     file, pageNumber, subpath, text, 
+    //                     (color && color.type === 'name') ? color.name : ''                        
+    //                 );
+    //                 navigator.clipboard.writeText(evaluated);
+    //             });
+    //     });
+    // }
 
     if (cache.page && cache.FitR) {
         const page = child.getPage(cache.page).pdfPage;

@@ -2,10 +2,11 @@ import { HoverParent, HoverPopover, Keymap, TFile, setIcon } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
-import { PDFBacklinkCache, PDFBacklinkIndex } from 'lib/pdf-backlink-index';
+import { PDFBacklinkCache, PDFBacklinkIndex, PDFPageBacklinkIndex } from 'lib/pdf-backlink-index';
 import { PDFPageView, PDFViewerChild } from 'typings';
 import { isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { onBacklinkVisualizerContextMenu } from 'context-menu';
+import { BidirectionalMultiValuedMap } from 'utils';
 
 
 export class PDFBacklinkVisualizer extends PDFPlusComponent {
@@ -22,17 +23,28 @@ export class PDFBacklinkVisualizer extends PDFPlusComponent {
             ?? (this._index = this.addChild(new PDFBacklinkIndex(this.plugin, this.file)));
     }
 
-    processSelection(pageNumber: number, cache: PDFBacklinkCache) { }
+    processSelection(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) { }
     processAnnotation(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) { }
-    processXYZ(pageNumber: number, cache: PDFBacklinkCache) { }
-    processFitBH(pageNumber: number, cache: PDFBacklinkCache) { }
-    processFitR(pageNumber: number, cache: PDFBacklinkCache) { }
+    processXYZ(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) { }
+    processFitBH(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) { }
+    processFitR(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) { }
 }
 
 
-class BacklinkDomManager {
+export class BacklinkDomManager extends PDFPlusComponent {
+    visualizer: PDFViewerBacklinkVisualizer;
+
     private pagewiseCacheToDomsMap = new Map<number, BidirectionalMultiValuedMap<PDFBacklinkCache, HTMLElement>>;
     private pagewiseStatus = new Map<number, { onPageReady: boolean, onTextLayerReady: boolean, onAnnotationLayerReady: boolean }>;
+
+    constructor(visualizer: PDFViewerBacklinkVisualizer) {
+        super(visualizer.plugin);
+        this.visualizer = visualizer;
+    }
+
+    get file() {
+        return this.visualizer.file;
+    }
 
     getCacheToDomsMap(pageNumber: number) {
         let cacheToDoms = this.pagewiseCacheToDomsMap.get(pageNumber);
@@ -78,6 +90,94 @@ class BacklinkDomManager {
         const status = this.getStatus(pageNumber);
         Object.assign(status, update);
     }
+
+    postProcessPageIfReady(pageNumber: number) {
+        if (this.isPageProcessed(pageNumber)) {
+            this.postProcessPage(pageNumber);
+        }
+    }
+
+    postProcessPage(pageNumber: number) {
+        const cacheToDoms = this.getCacheToDomsMap(pageNumber);
+        for (const cache of cacheToDoms.keys()) {
+            const color = cache.getColor();
+
+            for (const el of cacheToDoms.get(cache)) {
+                this.hookBacklinkOpeners(el, cache);
+                this.hookBacklinkViewEventHandlers(el, cache);
+                this.registerDomEvent(el, 'contextmenu', (evt) => {
+                    onBacklinkVisualizerContextMenu(evt, this.visualizer, cache);
+                });
+
+                if (color?.type === 'name') {
+                    el.dataset.highlightColor = color.name.toLowerCase();
+                } else if (color?.type === 'rgb') {
+                    const { r, g, b } = color.rgb;
+                    el.setCssProps({
+                        '--pdf-plus-color': `rgb(${r}, ${g}, ${b})`,
+                        '--pdf-plus-backlink-icon-color': `rgb(${r}, ${g}, ${b})`,
+                        '--pdf-plus-rect-color': `rgb(${r}, ${g}, ${b})`,
+                    });
+                }
+            }
+        }
+    }
+
+    hookBacklinkOpeners(el: HTMLElement, cache: PDFBacklinkCache) {
+        const lineNumber = 'position' in cache.refCache ? cache.refCache.position.start.line : undefined;
+
+        this.registerDomEvent(el, 'mouseover', (event) => {
+            this.app.workspace.trigger('hover-link', {
+                event,
+                source: 'pdf-plus',
+                hoverParent: this,
+                targetEl: el,
+                linktext: cache.sourcePath,
+                sourcePath: this.file.path,
+                state: typeof lineNumber === 'number' ? { scroll: lineNumber } : undefined
+            });
+        });
+
+        this.registerDomEvent(el, 'dblclick', (event) => {
+            if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
+                const paneType = Keymap.isModEvent(event);
+                if (paneType) {
+                    this.app.workspace.openLinkText(cache.sourcePath, this.file.path, paneType, {
+                        eState: typeof lineNumber === 'number' ? { scroll: lineNumber, line: lineNumber } : undefined
+                    });
+                    return;
+                }
+                this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, lineNumber);
+            }
+        });
+    }
+
+    hookBacklinkViewEventHandlers(el: HTMLElement, cache: PDFBacklinkCache) {
+        this.registerDomEvent(el, 'mouseover', (event) => {
+            // highlight the corresponding item in backlink pane
+            if (this.plugin.settings.highlightBacklinksPane) {
+                this.lib.workspace.iterateBacklinkViews((view) => {
+                    if (this.file !== view.file) return;
+                    if (!view.containerEl.isShown()) return;
+                    if (!view.pdfManager) return;
+
+                    const backlinkItemEl = view.pdfManager.findBacklinkItemEl(cache);
+                    if (backlinkItemEl) {
+                        backlinkItemEl.addClass('hovered-backlink');
+
+                        // clear highlights in backlink pane
+                        const listener = (event: MouseEvent) => {
+                            if (isMouseEventExternal(event, backlinkItemEl)) {
+                                backlinkItemEl.removeClass('hovered-backlink');
+                                el.removeEventListener('mouseout', listener);
+                            }
+                        }
+                        el.addEventListener('mouseout', listener);
+                    }
+                });
+            }
+        });
+    }
 }
 
 
@@ -88,7 +188,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     constructor(plugin: PDFPlus, file: TFile, child: PDFViewerChild) {
         super(plugin, file);
         this.child = child;
-        this.domManager = new BacklinkDomManager();
+        this.domManager = new BacklinkDomManager(this);
     }
 
     static create(plugin: PDFPlus, file: TFile, child: PDFViewerChild) {
@@ -132,18 +232,18 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
             const pageIndex = this.index.getPageIndex(pageNumber);
 
-            for (const cache of pageIndex.XYZs) {
-                this.processXYZ(pageNumber, cache);
+            for (const [id, caches] of pageIndex.XYZs) {
+                this.processXYZ(pageNumber, id, caches);
             }
-            for (const cache of pageIndex.FitBHs) {
-                this.processFitBH(pageNumber, cache);
+            for (const [id, caches] of pageIndex.FitBHs) {
+                this.processFitBH(pageNumber, id, caches);
             }
-            for (const cache of pageIndex.FitRs) {
-                this.processFitR(pageNumber, cache);
+            for (const [id, caches] of pageIndex.FitRs) {
+                this.processFitR(pageNumber, id, caches);
             }
 
             this.domManager.updateStatus(pageNumber, { onPageReady: true });
-            if (this.domManager.isPageProcessed(pageNumber)) this.postProcessPage(pageNumber);
+            this.domManager.postProcessPageIfReady(pageNumber);
         });
 
         this.lib.onTextLayerReady(viewer, this, (pageNumber) => {
@@ -152,12 +252,12 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
             const pageIndex = this.index.getPageIndex(pageNumber);
 
-            for (const cache of pageIndex.selections) {
-                this.processSelection(pageNumber, cache);
+            for (const [id, caches] of pageIndex.selections) {
+                this.processSelection(pageNumber, id, caches);
             }
 
             this.domManager.updateStatus(pageNumber, { onTextLayerReady: true });
-            if (this.domManager.isPageProcessed(pageNumber)) this.postProcessPage(pageNumber);
+            this.domManager.postProcessPageIfReady(pageNumber);
         });
 
         this.lib.onAnnotationLayerReady(viewer, this, (pageNumber) => {
@@ -171,20 +271,16 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
             }
 
             this.domManager.updateStatus(pageNumber, { onAnnotationLayerReady: true });
-            if (this.domManager.isPageProcessed(pageNumber)) this.postProcessPage(pageNumber);
+            this.domManager.postProcessPageIfReady(pageNumber);
         });
     }
 
-    processSelection(pageNumber: number, cache: PDFBacklinkCache) {
-        if (!cache.selection) {
-            throw new Error('Selection cache does not have a selection info');
-        }
-
-        super.processSelection(pageNumber, cache);
+    processSelection(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        super.processSelection(pageNumber, id, caches);
 
         const pageView = this.child.getPage(pageNumber);
         const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
-        const { beginIndex, beginOffset, endIndex, endOffset } = cache.selection;
+        const { beginIndex, beginOffset, endIndex, endOffset } = PDFPageBacklinkIndex.selectionIdToParams(id);
 
         const textLayer = pageView.textLayer;
         if (!textLayer) return;
@@ -205,19 +301,25 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
             // indices of the text content items contained in this highlight (merged rectangle)
             rectEl.dataset.textIndices = indices.join(',');
 
-            cacheToDoms.set(cache, rectEl);
+            for (const cache of caches) {
+                cacheToDoms.addValue(cache, rectEl);
+            }
         }
 
         if (this.settings.showBacklinkIconForSelection) {
             const lastRect = rects.last()?.rect;
             if (lastRect) {
                 const iconEl = this.showIcon(lastRect[2], lastRect[3], pageView);
-                cacheToDoms.set(cache, iconEl);
+                for (const cache of caches) {
+                    cacheToDoms.addValue(cache, iconEl);
+                }
             }
         }
     }
 
     processAnnotation(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        super.processAnnotation(pageNumber, id, caches);
+
         const pageView = this.child.getPage(pageNumber);
         const annotationLayer = pageView.annotationLayer?.annotationLayer;
         if (!annotationLayer) return;
@@ -239,57 +341,63 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
         const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
         for (const cache of caches) {
-            cacheToDoms.set(cache, annot.container);
-            if (iconEl) cacheToDoms.set(cache, iconEl);
-            if (rectEl) cacheToDoms.set(cache, rectEl);
+            cacheToDoms.addValue(cache, annot.container);
+            if (iconEl) cacheToDoms.addValue(cache, iconEl);
+            if (rectEl) cacheToDoms.addValue(cache, rectEl);
 
             const [r, g, b] = annot.data.color;
             cache.setColor({ rgb: { r, g, b } });
         }
     }
 
-    processXYZ(pageNumber: number, cache: PDFBacklinkCache) {
-        if (!cache.XYZ) {
-            throw new Error('XYZ cache does not have a XYZ info');
-        }
+    processXYZ(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        super.processXYZ(pageNumber, id, caches);
 
         if (this.settings.showBacklinkIconForOffset) {
             const pageView = this.child.getPage(pageNumber);
-            const { left, top } = cache.XYZ;
+            const { left, top } = PDFPageBacklinkIndex.XYZIdToParams(id);
             const iconEl = this.showIcon(left, top, pageView, 'left');
-            this.domManager.getCacheToDomsMap(pageNumber).set(cache, iconEl);
+
+            const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
+            for (const cache of caches) {
+                cacheToDoms.addValue(cache, iconEl);
+            }
         }
     }
 
-    processFitBH(pageNumber: number, cache: PDFBacklinkCache) {
-        if (!cache.FitBH) {
-            throw new Error('FitBH cache does not have a FitBH info');
-        }
+    processFitBH(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        super.processFitBH(pageNumber, id, caches);
 
         if (this.settings.showBacklinkIconForOffset) {
             const pageView = this.child.getPage(pageNumber);
-            const { top } = cache.FitBH;
+            const { top } = PDFPageBacklinkIndex.FitBHIdToParams(id);
             const iconEl = this.showIcon(0, top, pageView);
-            this.domManager.getCacheToDomsMap(pageNumber).set(cache, iconEl);
+
+            const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
+            for (const cache of caches) {
+                cacheToDoms.addValue(cache, iconEl);
+            }
         }
     }
 
-    processFitR(pageNumber: number, cache: PDFBacklinkCache) {
-        if (!cache.FitR) {
-            throw new Error('FitR cache does not have a FitR info');
-        }
+    processFitR(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        super.processFitR(pageNumber, id, caches);
 
         const pageView = this.child.getPage(pageNumber);
-        const { left, bottom, right, top } = cache.FitR;
+        const { left, bottom, right, top } = PDFPageBacklinkIndex.FitRIdToParams(id);
         const rectEl = this.lib.highlight.viewer.placeRectInPage([left, bottom, right, top], pageView);
         rectEl.addClasses(['pdf-plus-backlink', 'pdf-plus-backlink-fit-r']);
 
         const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
-        cacheToDoms.set(cache, rectEl);
+        for (const cache of caches) {
+            cacheToDoms.addValue(cache, rectEl);
+        }
 
         if (this.settings.showBacklinkIconForRect) {
             const iconEl = this.showIcon(right, top, pageView);
-            cacheToDoms.set(cache, iconEl);
+            for (const cache of caches) {
+                cacheToDoms.addValue(cache, iconEl);
+            }
         }
     }
 
@@ -305,88 +413,6 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
         svg?.setAttribute('stroke', 'var(--pdf-plus-backlink-icon-color)');
         return iconEl;
     }
-
-    postProcessPage(pageNumber: number) {
-        const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
-        for (const cache of cacheToDoms.keys()) {
-            const color = cache.getColor();
-
-            for (const el of cacheToDoms.get(cache)) {
-                this.hookBacklinkOpeners(el, cache);
-                this.hookBacklinkViewEventHandlers(el, cache);
-                this.registerDomEvent(el, 'contextmenu', (evt) => {
-                    onBacklinkVisualizerContextMenu(evt, this, cache);
-                });
-
-                if (color?.type === 'name') {
-                    el.dataset.highlightColor = color.name.toLowerCase();
-                } else if (color?.type === 'rgb') {
-                    const { r, g, b } = color.rgb;
-                    el.setCssProps({
-                        '--pdf-plus-color': `rgb(${r}, ${g}, ${b})`,
-                        '--pdf-plus-backlink-icon-color': `rgb(${r}, ${g}, ${b})`,
-                        '--pdf-plus-rect-color': `rgb(${r}, ${g}, ${b})`,
-                    });
-                }
-            }
-        }
-    }
-
-    hookBacklinkOpeners(el: HTMLElement, cache: PDFBacklinkCache) {
-        const lineNumber = 'position' in cache.refCache ? cache.refCache.position.start.line : undefined;
-
-        this.registerDomEvent(el, 'mouseover', (event) => {
-            this.app.workspace.trigger('hover-link', {
-                event,
-                source: 'pdf-plus',
-                hoverParent: this,
-                targetEl: el,
-                linktext: cache.sourcePath,
-                sourcePath: this.file.path,
-                state: typeof lineNumber === 'number' ? { scroll: lineNumber } : undefined
-            });
-        });
-
-        this.registerDomEvent(el, 'dblclick', (event) => {
-            if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
-                const paneType = Keymap.isModEvent(event);
-                if (paneType) {
-                    this.app.workspace.openLinkText(cache.sourcePath, this.file.path, paneType, {
-                        eState: typeof lineNumber === 'number' ? { line: lineNumber } : undefined
-                    });
-                    return;
-                }
-                this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, lineNumber);
-            }
-        });
-    }
-
-    hookBacklinkViewEventHandlers(el: HTMLElement, cache: PDFBacklinkCache) {
-        this.registerDomEvent(el, 'mouseover', (event) => {
-            // highlight the corresponding item in backlink pane
-            if (this.plugin.settings.highlightBacklinksPane) {
-                this.lib.workspace.iterateBacklinkViews((view) => {
-                    if (this.file !== view.file) return;
-                    if (!view.containerEl.isShown()) return;
-                    if (!view.pdfManager) return;
-
-                    const backlinkItemEl = view.pdfManager.findBacklinkItemEl(cache);
-                    if (backlinkItemEl) {
-                        backlinkItemEl.addClass('hovered-backlink');
-
-                        // clear highlights in backlink pane
-                        const listener = (event: MouseEvent) => {
-                            if (isMouseEventExternal(event, backlinkItemEl)) {
-                                backlinkItemEl.removeClass('hovered-backlink');
-                                el.removeEventListener('mouseout', listener);
-                            }
-                        }
-                        el.addEventListener('mouseout', listener);
-                    }
-                });
-            }
-        });
-    }
 }
 
 
@@ -398,73 +424,3 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 // class PDFExportBacklinkVisualizer extends PDFBacklinkVisualizer {
 //     // not implemented yet
 // }
-
-
-class BidirectionalMultiValuedMap<Key, Value> {
-    private keyToValues = new Map<Key, Set<Value>>();
-    private valueToKeys = new Map<Value, Set<Key>>();
-
-    set(key: Key, value: Value) {
-        if (!this.keyToValues.has(key)) this.keyToValues.set(key, new Set());
-        this.keyToValues.get(key)!.add(value);
-
-        if (!this.valueToKeys.has(value)) this.valueToKeys.set(value, new Set());
-        this.valueToKeys.get(value)!.add(key);
-    }
-
-    get(key: Key): Set<Value> {
-        return this.keyToValues.get(key) ?? new Set();
-    }
-
-    getKeys(value: Value): Set<Key> {
-        return this.valueToKeys.get(value) ?? new Set();
-    }
-
-    delete(key: Key) {
-        const values = this.keyToValues.get(key);
-        if (values) {
-            for (const value of values) {
-                const keys = this.valueToKeys.get(value)
-                if (!keys) {
-                    throw new Error('Value has no keys');
-                }
-                keys.delete(key);
-                if (keys.size === 0) this.valueToKeys.delete(value);
-            }
-        }
-
-        this.keyToValues.delete(key);
-    }
-
-    deleteValue(value: Value) {
-        const keys = this.valueToKeys.get(value);
-        if (keys) {
-            for (const key of keys) {
-                const values = this.keyToValues.get(key);
-                if (!values) {
-                    throw new Error('Key has no values');
-                }
-                values.delete(value);
-                if (values.size === 0) this.keyToValues.delete(key);
-            }
-        }
-
-        this.valueToKeys.delete(value);
-    }
-
-    has(key: Key) {
-        return this.keyToValues.has(key) && this.keyToValues.get(key)!.size > 0;
-    }
-
-    hasValue(value: Value) {
-        return this.valueToKeys.has(value) && this.valueToKeys.get(value)!.size > 0;
-    }
-
-    keys() {
-        return this.keyToValues.keys();
-    }
-
-    values() {
-        return this.valueToKeys.keys();
-    }
-}

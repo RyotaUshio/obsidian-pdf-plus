@@ -7,6 +7,12 @@ import { KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals/pdf-composer-modals';
 
 
+const SELECTION_BACKLINK_VISUALIZE_STYLE = {
+	'highlight': 'Highlight',
+	'underline': 'Underline',
+} as const;
+export type SelectionBacklinkVisualizeStyle = keyof typeof SELECTION_BACKLINK_VISUALIZE_STYLE;
+
 const HOVER_HIGHLIGHT_ACTIONS = {
 	'open': 'Open backlink',
 	'preview': 'Popover preview of backlink',
@@ -86,6 +92,7 @@ export interface PDFPlusSettings {
 	persistentTextHighlightsInEmbed: boolean;
 	persistentAnnotationHighlightsInEmbed: boolean;
 	highlightBacklinks: boolean;
+	selectionBacklinkVisualizeStyle: SelectionBacklinkVisualizeStyle;
 	dblclickEmbedToOpenLink: boolean;
 	highlightBacklinksPane: boolean;
 	highlightOnHoverBacklinkPane: boolean;
@@ -199,6 +206,7 @@ export interface PDFPlusSettings {
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
 	rectImageExtension: ImageExtension;
+	zoomToFitRect: boolean;
 	includeColorWhenCopyingRectLink: boolean;
 	backlinkIconSize: number;
 	showBacklinkIconForSelection: boolean;
@@ -278,6 +286,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	persistentTextHighlightsInEmbed: true,
 	persistentAnnotationHighlightsInEmbed: false,
 	highlightBacklinks: true,
+	selectionBacklinkVisualizeStyle: 'highlight',
 	dblclickEmbedToOpenLink: true,
 	highlightBacklinksPane: true,
 	highlightOnHoverBacklinkPane: true,
@@ -396,6 +405,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	rectEmbedStaticImage: false,
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
+	zoomToFitRect: false,
 	includeColorWhenCopyingRectLink: true,
 	backlinkIconSize: 50,
 	showBacklinkIconForSelection: false,
@@ -441,7 +451,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	scrollTo(settingName: keyof PDFPlusSettings) {
-		this.items[settingName]?.settingEl.scrollIntoView();
+		const el = this.items[settingName]?.settingEl;
+		(el?.previousElementSibling ?? el)?.scrollIntoView();
 	}
 
 	addHeading(heading: string, icon?: IconName, processHeaderDom?: (dom: { headerEl: HTMLElement, iconEl: HTMLElement, titleEl: HTMLElement }) => void) {
@@ -1021,6 +1032,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 	}
 
+	createLinkToSetting(id: keyof PDFPlusSettings, name?: string) {
+		return createEl('a', '', (el) => {
+			el.onclick = () => {
+				this.scrollTo(id);
+			}
+			window.setTimeout(() => {
+				const setting = this.items[id];
+				el.setText(name ?? setting?.nameEl.textContent ?? '');
+			});
+		});
+	}
+
 	/** Refresh the setting tab and then scroll back to the original position. */
 	redisplay() {
 		const scrollTop = this.contentEl.scrollTop;
@@ -1093,6 +1116,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks in PDF viewer')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
+		this.addDropdownSetting('selectionBacklinkVisualizeStyle', SELECTION_BACKLINK_VISUALIZE_STYLE)
+			.setName('Highlight style')
+			.setDesc('How backlinks to a text selection should be visualized.')
 		this.addDropdownSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
 			.setName('Action when hovering over highlighted text')
 			.setDesc(`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`)
@@ -1215,6 +1241,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('includeColorWhenCopyingRectLink')
 			.setName('Include the selected color\'s name when copying a link to a rectangular selection')
 			.setDesc('When enabled, the name of the color selected in the color palette will be included in the link text. As a result, the rectangular selection will be highlighted with the specified color in the PDF viewer.');
+		this.addToggleSetting('zoomToFitRect')
+			.setName('Zoom to fit rectangular selection when opening link')
+			.setDesc(createFragment((el) => {
+				el.appendText('When enabled, the PDF viewer will zoom to fit the rectangular selection when you open a link to it. Otherwise, the viewer will keep the current zoom level.');
+				el.appendText('Note: check out the ');
+				el.appendChild(this.createLinkToSetting('dblclickEmbedToOpenLink'));
+				el.appendText(' option as well.');
+			}));
 
 
 		this.addHeading('PDF++ callouts', 'lucide-quote')
@@ -1685,43 +1719,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
 			}
 		}
-
-
-		this.addHeading('Annotations', 'lucide-message-square');
-		if (this.plugin.settings.enablePDFEdit) {
-			this.addSliderSetting('writeHighlightToFileOpacity', 0, 1, 0.01)
-				.setName('Highlight opacity');
-			this.addToggleSetting('defaultWriteFileToggle')
-				.setName('Write highlight to file by default')
-				.setDesc('You can turn this on and off with the toggle button in the PDF viewer toolbar.');
-			this.addToggleSetting('syncWriteFileToggle')
-				.setName('Share the same toggle state among all PDF viewers')
-				.setDesc('If disabled, you can specify whether to write highlights to files for each PDF viewer.');
-			if (this.plugin.settings.syncWriteFileToggle) {
-				this.addToggleSetting('syncDefaultWriteFileToggle')
-					.setName('Share the state with newly opened PDF viewers as well')
-			}
-			this.addToggleSetting('enableAnnotationContentEdit', () => this.redisplay())
-				.setName('Enable editing annotation contents')
-				.setDesc('If enabled, you can edit the text contents of annotations embedded in PDF files by clicking the "Edit" button in the annotation popup.');
-			this.addToggleSetting('enableAnnotationDeletion', () => this.redisplay())
-				.setName('Enable annotation deletion')
-				.setDesc('If enabled, you can delete annotations embedded in PDF files by clicking the "Delete" button in the annotation popup.');
-			if (this.plugin.settings.enableAnnotationDeletion) {
-				this.addToggleSetting('warnEveryAnnotationDelete', () => this.redisplay())
-					.setName('Always warn when deleting an annotation');
-				if (!this.plugin.settings.warnEveryAnnotationDelete) {
-					this.addToggleSetting('warnBacklinkedAnnotationDelete')
-						.setName('Warn when deleting an annotation with backlinks');
-				}
-			}
-		}
-		this.addToggleSetting('annotationPopupDrag')
-			.setName('Drag & drop annotation popup to insert a link to the annotation')
-			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
-		this.addToggleSetting('renderMarkdownInStickyNote')
-			.setName('Render markdown in annotation popups when the annotation has text contents');
-
 
 
 		this.addHeading('PDF sidebar', 'sidebar-left')

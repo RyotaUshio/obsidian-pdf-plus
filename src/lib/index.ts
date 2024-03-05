@@ -3,17 +3,17 @@ import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
-import { ColorPalette } from 'color-palette';
+import { ColorPalette, ColorPaletteState } from 'color-palette';
 import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
-import { cropCanvas, encodeLinktext, getDirectPDFObj, parsePDFSubpath, removeExtension } from 'utils';
+import { cropCanvas, encodeLinktext, getDirectPDFObj, parsePDFSubpath, removeExtension, rotateCanvas, toSingleLine } from 'utils';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 
@@ -76,7 +76,7 @@ export class PDFPlusLib {
     onPageReady(viewer: ObsidianViewer, component: Component | null, cb: (pageNumber: number, pageView: PDFPageView, newlyRendered: boolean) => any) {
         viewer.pdfViewer?._pages
             .forEach((pageView, pageIndex) => {
-                    cb(pageIndex + 1, pageView, false); // page number is 1-based
+                cb(pageIndex + 1, pageView, false); // page number is 1-based
             });
         this.registerPDFEvent('pagerendered', viewer.eventBus, component, (data: { source: PDFPageView, pageNumber: number }) => {
             cb(data.pageNumber, data.source, true);
@@ -190,6 +190,20 @@ export class PDFPlusLib {
         return this.getColorPaletteAssociatedWithSelection();
     }
 
+    getColorPaletteOptions(): ColorPaletteState {
+        const palette = this.getColorPalette();
+        if (palette) {
+            return palette.getState();
+        }
+        const settings = this.plugin.settings;
+        return {
+            selectedColorName: [null, ...Object.keys(settings.colors)][settings.defaultColorPaletteItemIndex],
+            actionIndex: settings.defaultColorPaletteActionIndex,
+            displayTextFormatIndex: settings.defaultDisplayTextFormatIndex,
+            writeFile: settings.defaultWriteFileToggle,
+        };
+    }
+
     getColorPaletteAssociatedWithNode(node: Node) {
         const toolbarEl = this.getToolbarAssociatedWithNode(node);
         if (!toolbarEl) return null;
@@ -292,7 +306,7 @@ export class PDFPlusLib {
             dest[1].name,
             ...dest
                 .slice(2) as (number | null)[]
-                // .filter((param: number | null): param is number => typeof param === 'number')
+            // .filter((param: number | null): param is number => typeof param === 'number')
         ]
     }
 
@@ -479,7 +493,7 @@ export class PDFPlusLib {
 
     async getLatestBacklinksForAnnotation(file: TFile, pageNumber: number, id: string) {
         const index = await this.getLatestBacklinkIndexForFile(file);
-        return index.getPageIndex(pageNumber).annotations.get(id) ?? new Set();
+        return index.getPageIndex(pageNumber).annotations.get(id);
     }
 
     // TODO: rewrite using PDFBacklinkIndex
@@ -793,15 +807,16 @@ export class PDFPlusLib {
 
         if (!cropRect) return canvas.toDataURL(type, encoderOptions);
 
-        const scaleX = canvas.width / pageWidth;
-        const scaleY = canvas.height / pageHeight;
+        const rotatedCanvas = rotateCanvas(canvas, 360 - page.rotate);
+        const scaleX = rotatedCanvas.width / pageWidth;
+        const scaleY = rotatedCanvas.height / pageHeight;
         const crop = {
             left: (cropRect[0] - left) * scaleX,
             top: (bottom + pageHeight - cropRect[3]) * scaleY,
             width: (cropRect[2] - cropRect[0]) * scaleX,
             height: (cropRect[3] - cropRect[1]) * scaleY,
         };
-        const croppedCanvas = cropCanvas(canvas, crop);
+        const croppedCanvas = rotateCanvas(cropCanvas(rotatedCanvas, crop), page.rotate);
         return croppedCanvas.toDataURL(type, encoderOptions);
     }
 
@@ -813,5 +828,18 @@ export class PDFPlusLib {
         const base64 = dataUrl.match(/^data:image\/\w+;base64,(.*)/)?.[1];
         if (!base64) throw new Error('Failed to convert data URL to base64');
         return base64ToArrayBuffer(base64);
+    }
+
+    getSelectedText(textContentItems: TextContentItem[], beginIndex: number, beginOffset: number, endIndex: number, endOffset: number) {
+        if (beginIndex === endIndex) {
+            return toSingleLine(textContentItems[beginIndex].str.slice(beginOffset, endOffset));
+        }
+        const texts = [];
+        texts.push(textContentItems[beginIndex].str.slice(beginOffset));
+        for (let i = beginIndex + 1; i < endIndex; i++) {
+            texts.push(textContentItems[i].str);
+        }
+        texts.push(textContentItems[endIndex].str.slice(0, endOffset));
+        return toSingleLine(texts.join('\n'));
     }
 }

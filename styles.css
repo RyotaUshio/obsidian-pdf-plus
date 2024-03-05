@@ -232,6 +232,7 @@ settings:
     bottom: 0;
     left: 0;
     z-index: 2;
+    transform-origin: 0 0;
     pointer-events: none;
 }
 
@@ -242,12 +243,40 @@ settings:
 
 .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-selection {
     box-sizing: content-box;
+    cursor: text;
+}
+
+body:not(.pdf-plus-backlink-selection-underline) .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-selection {
     background-color: var(--pdf-plus-color);
     opacity: var(--pdf-plus-highlight-opacity, 0.2);
     padding: var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em));
     margin: calc(var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) * -1) calc(var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em)) * -1);
     border-radius: var(--radius-s);
-    cursor: text;
+}
+
+body.pdf-plus-backlink-selection-underline {
+    .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-selection {
+        padding: 0;
+        margin: 0;
+        opacity: 1.0;
+        border-radius: 0;
+    }
+
+    .pdf-plus-backlink-highlight-layer[data-main-rotation="0"] .pdf-plus-backlink.pdf-plus-backlink-selection {
+        border-bottom: 0.1em solid var(--pdf-plus-color);
+    }
+
+    .pdf-plus-backlink-highlight-layer[data-main-rotation="90"] .pdf-plus-backlink.pdf-plus-backlink-selection {
+        border-right: 0.1em solid var(--pdf-plus-color);
+    }
+
+    .pdf-plus-backlink-highlight-layer[data-main-rotation="180"] .pdf-plus-backlink.pdf-plus-backlink-selection {
+        border-top: 0.1em solid var(--pdf-plus-color);
+    }
+
+    .pdf-plus-backlink-highlight-layer[data-main-rotation="270"] .pdf-plus-backlink.pdf-plus-backlink-selection {
+        border-left: 0.1em solid var(--pdf-plus-color);
+    }
 }
 
 .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-fit-r {
@@ -258,6 +287,18 @@ settings:
 .pdf-plus-backlink-icon {
     position: absolute;
     --icon-size: 100%;
+}
+
+[data-main-rotation="90"] .pdf-plus-backlink-icon {
+    transform: rotate(270deg);
+}
+
+[data-main-rotation="180"] .pdf-plus-backlink-icon {
+    transform: rotate(180deg);
+}
+
+[data-main-rotation="270"] .pdf-plus-backlink-icon {
+    transform: rotate(90deg);
 }
 
 .pdf-plus-annotation-edit-modal {

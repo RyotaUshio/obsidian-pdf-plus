@@ -2,7 +2,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian'
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
-import { encodeLinktext, paramsToSubpath, parsePDFSubpath, toSingleLine } from 'utils';
+import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerNode, paramsToSubpath, parsePDFSubpath, toSingleLine } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
 
@@ -17,6 +17,48 @@ export type AutoFocusTarget =
 
 export class copyLinkLib extends PDFPlusLibSubmodule {
     statusDurationMs = 2000;
+
+    getPageAndTextRangeFromSelection(selection?: Selection | null): { page: number, selection?: { beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } } | null{
+        selection = selection ?? activeWindow.getSelection();
+        if (!selection) return null;
+
+        const pageEl = this.lib.getPageElFromSelection(selection);
+        if (!pageEl || pageEl.dataset.pageNumber === undefined) return null;
+        
+        const pageNumber = +pageEl.dataset.pageNumber;
+
+        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        if (range) {
+            const selectionRange = this.getTextSelectionRange(pageEl, range);
+            if (selectionRange) {
+                return { page: pageNumber, selection: selectionRange };
+            }
+        }
+
+        return { page: pageNumber };
+    }
+
+    // The same of getTextSelectionRangeStr in app.js, but returns an object instead of a string.
+    getTextSelectionRange(pageEl: HTMLElement, range: Range) {
+        if (range && !range.collapsed) {
+            const startTextLayerNode = getTextLayerNode(pageEl, range.startContainer);
+            const endTextLayerNode = getTextLayerNode(pageEl, range.endContainer);
+            if (startTextLayerNode && endTextLayerNode) {
+                const beginIndex = startTextLayerNode.dataset.idx;
+                const endIndex = endTextLayerNode.dataset.idx;
+                const beginOffset = getOffsetInTextLayerNode(startTextLayerNode, range.startContainer, range.startOffset);
+                const endOffset = getOffsetInTextLayerNode(endTextLayerNode, range.endContainer, range.endOffset);
+                if (beginIndex !== undefined && endIndex !== undefined && beginOffset !== null && endOffset !== null)
+                    return {
+                        beginIndex: +beginIndex,
+                        beginOffset,
+                        endIndex: +endIndex,
+                        endOffset
+                    };
+            }
+        }
+        return null
+    }
 
     getTemplateVariables(subpathParams: Record<string, any>) {
         const selection = activeWindow.getSelection();
@@ -288,7 +330,10 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (!checking) {
             const palette = this.lib.getColorPaletteAssociatedWithSelection();
             palette?.setStatus('Writing highlight annotation into file...', 10000);
-            this.lib.highlight.writeFile.addHighlightAnnotationToSelection(colorName)
+            this.lib.highlight.writeFile.addTextMarkupAnnotationToSelection(
+                this.settings.selectionBacklinkVisualizeStyle === 'highlight' ? 'Highlight' : 'Underline',
+                colorName
+            )
                 .then((result) => {
                     if (!result) return;
 
@@ -663,6 +708,13 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             if (clipboardTextNormalized === copiedTextNormalized) {
                 this.plugin.lastPasteFile = info.file;
                 onPaste?.();
+            }
+
+            if (info instanceof MarkdownView) {
+                // MarkdownView's file saving is debounced, so we need to
+                // explicitly save the new data right after pasting so that
+                // the backlink highlight will be visibile as soon as possible.
+                setTimeout(() => info.save());
             }
         });
     }

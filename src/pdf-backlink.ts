@@ -155,7 +155,7 @@ export class BacklinkPanePDFManager extends PDFPlusComponent {
 
             this.lib.workspace.iteratePDFViewerComponents((viewer) => {
                 if (viewer.visualizer) {
-                    const caches = viewer.visualizer.index.sourcePaths.get(sourcePath) ?? new Set();
+                    const caches = viewer.visualizer.index.sourcePaths.get(sourcePath);
                     for (const cache of caches) {
                         if (cache.page === null) continue;
 

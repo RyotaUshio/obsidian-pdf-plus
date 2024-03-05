@@ -2,29 +2,22 @@ import { RGB, TFile, parseLinktext, getLinkpath, CachedMetadata, FrontmatterLink
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from './component';
+import { MultiValuedMap } from 'utils';
 
 
 export class PDFBacklinkIndex extends PDFPlusComponent {
     file: TFile;
-    #events: Events;
+    private events: Events;
 
-    #pagesMap: Map<number, PDFPageBacklinkIndex>;
+    private pagesMap: Map<number, PDFPageBacklinkIndex>;
 
-    sourcePaths: Map<string, Set<PDFBacklinkCache>>;
+    sourcePaths: MultiValuedMap<string, PDFBacklinkCache>;
     backlinks: Set<PDFBacklinkCache>;
 
     constructor(plugin: PDFPlus, file: TFile) {
         super(plugin);
         this.file = file;
-        this.#events = new Events();
-    }
-
-    getPageIndex(pageNumber: number) {
-        if (!this.#pagesMap.has(pageNumber)) {
-            this.#pagesMap.set(pageNumber, new PDFPageBacklinkIndex(this, pageNumber));
-        }
-
-        return this.#pagesMap.get(pageNumber)!;
+        this.events = new Events();
     }
 
     onload() {
@@ -42,8 +35,8 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
     }
 
     init() {
-        this.#pagesMap = new Map();
-        this.sourcePaths = new Map();
+        this.pagesMap = new Map();
+        this.sourcePaths = new MultiValuedMap();
         this.backlinks = new Set();
 
         const dict = this.app.metadataCache.getBacklinksForFile(this.file);
@@ -57,10 +50,8 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
     }
 
     update(sourcePath: string, cache: CachedMetadata) {
-        if (this.sourcePaths.has(sourcePath)) {
-            for (const cache of this.sourcePaths.get(sourcePath)!) {
-                this.delete(cache);
-            }
+        for (const cache of this.sourcePaths.get(sourcePath)) {
+            this.delete(cache);
         }
 
         const refs = [...cache.links ?? [], ...cache.embeds ?? [], ...cache.frontmatterLinks ?? []];
@@ -75,10 +66,18 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
 
     delete(cache: PDFBacklinkCache) {
         this.backlinks.delete(cache);
-        this.sourcePaths.get(cache.sourcePath)!.delete(cache);
+        this.sourcePaths.deleteValue(cache.sourcePath, cache);
         if (cache.page) {
             this.getPageIndex(cache.page).delete(cache);
         }
+    }
+
+    getPageIndex(pageNumber: number) {
+        if (!this.pagesMap.has(pageNumber)) {
+            this.pagesMap.set(pageNumber, new PDFPageBacklinkIndex(this, pageNumber));
+        }
+
+        return this.pagesMap.get(pageNumber)!;
     }
 
     createCache(refCache: LinkCache | EmbedCache | FrontmatterLinkCache, sourcePath: string) {
@@ -145,27 +144,34 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
 
     on(name: 'update', callback: () => any, ctx?: any): EventRef;
     on(name: string, callback: (...args: any[]) => any, ctx?: any): EventRef {
-        return this.#events.on(name, callback, ctx);
+        return this.events.on(name, callback, ctx);
     }
 
     trigger(name: string, ...args: any[]) {
-        this.#events.trigger(name, ...args);
+        this.events.trigger(name, ...args);
     }
 }
 
 
-class PDFPageBacklinkIndex {
+export class PDFPageBacklinkIndex {
     index: PDFBacklinkIndex;
     pageNumber: number;
 
-    sourcePaths = new Map<string, Set<PDFBacklinkCache>>();
-
+    sourcePaths = new MultiValuedMap<string, PDFBacklinkCache>();
     backlinks = new Set<PDFBacklinkCache>();
-    selections = new Set<PDFBacklinkCache>();
-    annotations = new Map<string, Set<PDFBacklinkCache>>();
-    XYZs = new Set<PDFBacklinkCache>();
-    FitBHs = new Set<PDFBacklinkCache>();
-    FitRs = new Set<PDFBacklinkCache>();
+
+    // selections, annotations, ... were previously implemented as Set<PDFBacklinkCache>,
+    // but it was changed to MultiValuedMap<string, PDFBacklinkCache> in order to better support
+    // multiple backlinks to single selection, annotation, ...
+
+    // By grouping different selection links to the same text selection, we can treat
+    // a text selection as a single object, and we can easily manage the backlinks to it and
+    // related visualizer DOMs.
+    selections = new MultiValuedMap<string, PDFBacklinkCache>();
+    annotations = new MultiValuedMap<string, PDFBacklinkCache>();
+    XYZs = new MultiValuedMap<string, PDFBacklinkCache>();
+    FitBHs = new MultiValuedMap<string, PDFBacklinkCache>();
+    FitRs = new MultiValuedMap<string, PDFBacklinkCache>();
 
     constructor(index: PDFBacklinkIndex, pageNumber: number) {
         this.index = index;
@@ -174,45 +180,84 @@ class PDFPageBacklinkIndex {
 
     add(cache: PDFBacklinkCache) {
         this.backlinks.add(cache);
-        if (!this.sourcePaths.has(cache.sourcePath)) {
-            this.sourcePaths.set(cache.sourcePath, new Set());
-        }
-        this.sourcePaths.get(cache.sourcePath)!.add(cache);
+
+        this.sourcePaths.addValue(cache.sourcePath, cache);
 
         if (cache.selection) {
-            this.selections.add(cache);
+            this.selections.addValue(PDFPageBacklinkIndex.selectionId(cache.selection), cache);
         }
 
         if (cache.annotation) {
-            if (!this.annotations.has(cache.annotation.id)) {
-                this.annotations.set(cache.annotation.id, new Set());
-            }
-            this.annotations.get(cache.annotation.id)!.add(cache);
+            this.annotations.addValue(cache.annotation.id, cache);
         }
 
         if (cache.XYZ) {
-            this.XYZs.add(cache);
+            this.XYZs.addValue(PDFPageBacklinkIndex.XYZId(cache.XYZ), cache);
         }
 
         if (cache.FitBH) {
-            this.FitBHs.add(cache);
+            this.FitBHs.addValue(PDFPageBacklinkIndex.FitBHId(cache.FitBH), cache);
         }
 
         if (cache.FitR) {
-            this.FitRs.add(cache);
+            this.FitRs.addValue(PDFPageBacklinkIndex.FitRId(cache.FitR), cache);
         }
     }
 
     delete(cache: PDFBacklinkCache) {
         this.backlinks.delete(cache);
-        this.sourcePaths.get(cache.sourcePath)?.delete(cache);
-        this.selections.delete(cache);
-        if (cache.annotation) {
-            this.annotations.get(cache.annotation.id)?.delete(cache);
+        this.sourcePaths.deleteValue(cache.sourcePath, cache);
+        if (cache.selection) {
+            this.selections.deleteValue(PDFPageBacklinkIndex.selectionId(cache.selection), cache);
         }
-        this.XYZs.delete(cache);
-        this.FitBHs.delete(cache);
-        this.FitRs.delete(cache);
+        if (cache.annotation) {
+            this.annotations.deleteValue(cache.annotation.id, cache);
+        }
+        if (cache.XYZ) {
+            this.XYZs.deleteValue(PDFPageBacklinkIndex.XYZId(cache.XYZ), cache);
+        }
+        if (cache.FitBH) {
+            this.FitBHs.deleteValue(PDFPageBacklinkIndex.FitBHId(cache.FitBH), cache);
+        }
+        if (cache.FitR) {
+            this.FitRs.deleteValue(PDFPageBacklinkIndex.FitRId(cache.FitR), cache);
+        }
+    }
+
+    static selectionId(selection: NonNullable<PDFBacklinkCache['_selection']>): string {
+        return `${selection.beginIndex},${selection.beginOffset},${selection.endIndex},${selection.endOffset}`;
+    }
+
+    static selectionIdToParams(id: string): NonNullable<PDFBacklinkCache['_selection']> {
+        const [beginIndex, beginOffset, endIndex, endOffset] = id.split(',').map((s) => parseInt(s));
+        return { beginIndex, beginOffset, endIndex, endOffset };
+    }
+
+    static XYZId(xyz: NonNullable<PDFBacklinkCache['_XYZ']>): string {
+        return `${xyz.left},${xyz.top},${xyz.zoom}`;
+    }
+
+    static XYZIdToParams(id: string): NonNullable<PDFBacklinkCache['_XYZ']> {
+        const [left, top, zoom] = id.split(',').map((s) => parseFloat(s));
+        return { left, top, zoom };
+    }
+
+    static FitBHId(fitBh: NonNullable<PDFBacklinkCache['_FitBH']>): string {
+        return `${fitBh.top}`;
+    }
+
+    static FitBHIdToParams(id: string): NonNullable<PDFBacklinkCache['_FitBH']> {
+        const top = parseFloat(id);
+        return { top };
+    }
+
+    static FitRId(fitR: NonNullable<PDFBacklinkCache['_FitR']>): string {
+        return `${fitR.left},${fitR.bottom},${fitR.right},${fitR.top}`;
+    }
+
+    static FitRIdToParams(id: string): NonNullable<PDFBacklinkCache['_FitR']> {
+        const [left, bottom, right, top] = id.split(',').map((s) => parseFloat(s));
+        return { left, bottom, right, top };
     }
 }
 
@@ -221,14 +266,14 @@ export class PDFBacklinkCache {
     index: PDFBacklinkIndex;
 
     refCache: LinkCache | EmbedCache | FrontmatterLinkCache;
-    _sourcePath: string = '';
-    _page: number | null = null;
-    _selection: { beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } | null = null;
-    _annotation: { id: string } | null = null;
-    _XYZ: { left: number, top: number, zoom: number } | null = null;
-    _FitBH: { top: number } | null = null;
-    _FitR: { left: number, bottom: number, right: number, top: number } | null = null;
-    _color: { type: 'rgb', rgb: RGB } | { type: 'name', name: string } | null = null;
+    private _sourcePath: string = '';
+    private _page: number | null = null;
+    private _selection: { beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } | null = null;
+    private _annotation: { id: string } | null = null;
+    private _XYZ: { left: number, top: number, zoom: number } | null = null;
+    private _FitBH: { top: number } | null = null;
+    private _FitR: { left: number, bottom: number, right: number, top: number } | null = null;
+    private _color: { type: 'rgb', rgb: RGB } | { type: 'name', name: string } | null = null;
 
     constructor(index: PDFBacklinkIndex, refCache: LinkCache | EmbedCache | FrontmatterLinkCache) {
         this.index = index;
@@ -250,17 +295,11 @@ export class PDFBacklinkCache {
     set sourcePath(sourcePath: string) {
         this._sourcePath = sourcePath;
 
-        if (!this.index.sourcePaths.has(sourcePath)) {
-            this.index.sourcePaths.set(sourcePath, new Set());
-        }
-        this.index.sourcePaths.get(sourcePath)!.add(this);
+        this.index.sourcePaths.addValue(sourcePath, this);
 
         if (this.page) {
             const pageIndex = this.index.getPageIndex(this.page);
-            if (!pageIndex.sourcePaths.has(sourcePath)) {
-                pageIndex.sourcePaths.set(sourcePath, new Set());
-            }
-            pageIndex.sourcePaths.get(sourcePath)!.add(this);
+            pageIndex.sourcePaths.addValue(sourcePath, this);
         }
     }
 
@@ -286,13 +325,18 @@ export class PDFBacklinkCache {
     }
 
     set selection(selection: PDFBacklinkCache['_selection']) {
-        this._selection = selection;
+        const pageIndex = this.getPageIndex()
 
-        if (this.selection) {
-            this.getPageIndex()?.selections.add(this);
-        } else {
-            this.getPageIndex()?.selections.delete(this);
+        if (pageIndex) {
+            if (this.selection) {
+                pageIndex?.selections.deleteValue(PDFPageBacklinkIndex.selectionId(this.selection), this);
+            }
+            if (selection) {
+                pageIndex.selections.addValue(PDFPageBacklinkIndex.selectionId(selection), this);
+            }
         }
+
+        this._selection = selection;
     }
 
     get annotation() {
@@ -304,13 +348,10 @@ export class PDFBacklinkCache {
 
         if (pageIndex) {
             if (this.annotation) {
-                pageIndex?.annotations.get(this.annotation.id)?.delete(this);
+                pageIndex?.annotations.deleteValue(this.annotation.id, this);
             }
             if (annotation) {
-                if (!pageIndex.annotations.has(annotation.id)) {
-                    pageIndex.annotations.set(annotation.id, new Set());
-                }
-                pageIndex.annotations.get(annotation.id)!.add(this);
+                pageIndex.annotations.addValue(annotation.id, this);
             }
         }
 
@@ -322,13 +363,18 @@ export class PDFBacklinkCache {
     }
 
     set XYZ(XYZ: PDFBacklinkCache['_XYZ']) {
-        this._XYZ = XYZ;
+        const pageIndex = this.getPageIndex();
 
-        if (this.XYZ) {
-            this.getPageIndex()?.XYZs.add(this);
-        } else {
-            this.getPageIndex()?.XYZs.delete(this);
+        if (pageIndex) {
+            if (this.XYZ) {
+                pageIndex?.XYZs.deleteValue(PDFPageBacklinkIndex.XYZId(this.XYZ), this);
+            }
+            if (XYZ) {
+                pageIndex.XYZs.addValue(PDFPageBacklinkIndex.XYZId(XYZ), this);
+            }
         }
+
+        this._XYZ = XYZ;
     }
 
     get FitBH() {
@@ -336,13 +382,18 @@ export class PDFBacklinkCache {
     }
 
     set FitBH(FitBH: PDFBacklinkCache['_FitBH']) {
-        this._FitBH = FitBH;
+        const pageIndex = this.getPageIndex();
 
-        if (this.FitBH) {
-            this.getPageIndex()?.FitBHs.add(this);
-        } else {
-            this.getPageIndex()?.FitBHs.delete(this);
+        if (pageIndex) {
+            if (this.FitBH) {
+                pageIndex?.FitBHs.deleteValue(PDFPageBacklinkIndex.FitBHId(this.FitBH), this);
+            }
+            if (FitBH) {
+                pageIndex.FitBHs.addValue(PDFPageBacklinkIndex.FitBHId(FitBH), this);
+            }
         }
+
+        this._FitBH = FitBH;
     }
 
     get FitR() {
@@ -350,13 +401,18 @@ export class PDFBacklinkCache {
     }
 
     set FitR(FitR: PDFBacklinkCache['_FitR']) {
-        this._FitR = FitR;
+        const pageIndex = this.getPageIndex();
 
-        if (this.FitR) {
-            this.getPageIndex()?.FitRs.add(this);
-        } else {
-            this.getPageIndex()?.FitRs.delete(this);
+        if (pageIndex) {
+            if (this.FitR) {
+                pageIndex?.FitRs.deleteValue(PDFPageBacklinkIndex.FitRId(this.FitR), this);
+            }
+            if (FitR) {
+                pageIndex.FitRs.addValue(PDFPageBacklinkIndex.FitRId(FitR), this);
+            }
         }
+
+        this._FitR = FitR;
     }
 
     setColor(color: { rgb: RGB } | { name: string }) {

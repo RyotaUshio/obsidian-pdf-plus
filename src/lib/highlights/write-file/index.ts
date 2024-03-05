@@ -7,6 +7,8 @@ import { parsePDFSubpath } from 'utils';
 import { DestArray, PDFViewerChild, Rect } from 'typings';
 
 
+export type TextMarkupAnnotationSubtype = 'Highlight' | 'Underline' | 'Squiggly' | 'StrikeOut';
+
 export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
     pdflib: PdfLibIO;
 
@@ -19,10 +21,10 @@ export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
         return this.pdflib;
     }
 
-    async addHighlightAnnotationToSelection(colorName?: string) {
+    async addTextMarkupAnnotationToSelection(subtype: TextMarkupAnnotationSubtype, colorName?: string) {
         return this.addAnnotationToSelection(async (file, page, rects) => {
             const io = this.getPdfIo();
-            return await io.addHighlightAnnotation(file, page, rects, colorName);
+            return await io.addTextMarkupAnnotation(file, page, rects, subtype, colorName);
         });
     }
 
@@ -98,6 +100,7 @@ export interface IPdfIo {
      * containing the given rectangles "grouped" using quadpoints.
      */
     addHighlightAnnotation(file: TFile, pageNumber: number, rects: Rect[], colorName?: string, contents?: string): Promise<string>;
+    addTextMarkupAnnotation(file: TFile, pageNumber: number, rects: Rect[], subtype: 'Highlight' | 'Underline' | 'Squiggly' | 'StrikeOut', colorName?: string, contents?: string): Promise<string>
     addLinkAnnotation(file: TFile, pageNumber: number, rects: Rect[], dest: DestArray | string, colorName?: string, contents?: string): Promise<string>;
     deleteAnnotation(file: TFile, pageNumber: number, id: string): Promise<void>;
     getAnnotationContents(file: TFile, pageNumber: number, id: string): Promise<string | null>;

@@ -9,9 +9,12 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
     /**
      * @param pageDiv div.page
      */
-    getPDFPlusBacklinkHighlightLayer(pageDiv: HTMLElement): HTMLElement {
+    getPDFPlusBacklinkHighlightLayer(pageView: PDFPageView): HTMLElement {
+        const pageDiv = pageView.div;
         return pageDiv.querySelector<HTMLElement>('div.pdf-plus-backlink-highlight-layer')
-            ?? pageDiv.createDiv('pdf-plus-backlink-highlight-layer');
+            ?? pageDiv.createDiv('pdf-plus-backlink-highlight-layer', (layerEl) => {
+                window.pdfjsLib.setLayerDimensions(layerEl, pageView.viewport);
+            });
     }
 
     placeRectInPage(rect: Rect, page: PDFPageView) {
@@ -22,7 +25,7 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
         const pageHeight = viewBox[3] - viewBox[1];
 
         const mirroredRect = window.pdfjsLib.Util.normalizeRect([rect[0], viewBox[3] - rect[1] + viewBox[1], rect[2], viewBox[3] - rect[3] + viewBox[1]]) as [number, number, number, number];
-        const layerEl = this.getPDFPlusBacklinkHighlightLayer(page.div);
+        const layerEl = this.getPDFPlusBacklinkHighlightLayer(page);
         const rectEl = layerEl.createDiv('pdf-plus-backlink');
         rectEl.setCssStyles({
             left: `${100 * (mirroredRect[0] - pageX) / pageWidth}%`,
