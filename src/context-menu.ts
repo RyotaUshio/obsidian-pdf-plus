@@ -318,7 +318,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                         if (settings.openAfterExtractPages) {
                                             const leaf = lib.workspace.getLeaf(settings.howToOpenExtractedPDF);
                                             await leaf.openFile(file);
-                                            app.workspace.revealLeaf(leaf);
+                                            lib.workspace.revealLeaf(leaf);
                                         }
                                     });
                             });
@@ -380,7 +380,7 @@ export class PDFPlusContextMenu extends Menu {
 
     static async fromMouseEvent(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {
         const menu = new PDFPlusContextMenu(plugin, child);
-        menu.addSections(['action', 'selection', 'selection-canvas', 'write-file', 'annotation', 'annotation-canvas', 'modify-annotation', 'link']);
+        menu.addSections(['action', 'selection', 'selection-canvas', 'write-file', 'annotation', 'annotation-canvas', 'modify-annotation', 'link', 'search']);
         await menu.addItems(evt);
         return menu;
     }
@@ -626,6 +626,17 @@ export class PDFPlusContextMenu extends Menu {
                         });
                 });
             }
+        }
+
+        if (plugin.settings.showCopyLinkToSearchInContextMenu) {
+            this.addItem((item) => {
+                item.setSection('search')
+                    .setTitle('Copy link to search')
+                    .setIcon('lucide-copy')
+                    .onClick(() => {
+                        lib.copyLink.copyLinkToSearch(false, child, pageNumber, selectedText.trim());
+                    });
+            });
         }
 
         app.workspace.trigger('pdf-menu', this, {

@@ -1,4 +1,4 @@
-import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platform } from 'obsidian';
+import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platform, WorkspaceSplit } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -53,7 +53,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                         if (plugin.settings.openLinkNextToExistingPDFTab || plugin.settings.paneTypeForFirstPDFLeaf) {
                             const pdfLeaf = lib.getPDFView()?.leaf;
                             if (pdfLeaf) {
-                                if (plugin.settings.openLinkNextToExistingPDFTab) {
+                                if (plugin.settings.openLinkNextToExistingPDFTab && pdfLeaf.parentSplit instanceof WorkspaceSplit) {
                                     const newLeaf = app.workspace.createLeafInParent(pdfLeaf.parentSplit, -1);
                                     return lib.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState)
                                 }

@@ -62,7 +62,8 @@ interface PDFViewerChild {
     opts: any;
     pdfViewer: ObsidianViewer;
     subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight | null;
-    toolbar?: PDFToolbar;
+    toolbar: PDFToolbar;
+    findBar: PDFFindBar;
     highlightedText: [number, number][]; // [page, textContentItemindex][]
     annotationHighlight: HTMLElement | null;
     activeAnnotationPopupEl: HTMLElement | null;
@@ -123,7 +124,9 @@ interface ObsidianViewer {
     pdfSidebar: PDFSidebar;
     pdfOutlineViewer: PDFOutlineViewer;
     pdfThumbnailViewer: PDFThumbnailViewer;
-    toolbar?: PDFToolbar;
+    toolbar: PDFToolbar;
+    findBar: PDFFindBar;
+    findController: PDFFindController;
     pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
     setHeight(height?: number | 'page' | 'auto'): void;
     applySubpath(subpath: string): void;
@@ -216,6 +219,66 @@ interface PDFToolbar {
     zoomInEl: HTMLElement;
     zoomOutEl: HTMLElement;
     reset(): void;
+}
+
+interface PDFFindBar {
+    app: App;
+    containerEl: HTMLElement;
+    barEl: HTMLElement; // div.pdf-findbar.pdf-toolbar.mod-hidden
+    findResultsCountEl: HTMLElement; // span.pdf-toolbar-label.pdf-find-results-count
+    findPreviousButtonEl: HTMLButtonElement; // button.pdf-toolbar-button
+    findNextButtonEl: HTMLButtonElement; // button.pdf-toolbar-button
+    settingsToggleEl: HTMLElement; // div.clickable-icon.pdf-findbar-settings-btn
+    settingsEl: HTMLElement; // div.pdf-findbar-settings
+    searchComponent: SearchComponent;
+    scope: Scope;
+    eventBus: EventBus;
+    opened: boolean;
+    searchSettings: PDFSearchSettings;
+    clickOutsideHandler: (evt: MouseEvent) => void;
+    /** Toggle whether to show the search settings menu ("Highlight all" etc) under the search bar. */
+    toggleSetting(show: boolean): void;
+    /** Saves the current search settings to the local storage. */
+    saveSettings(): void;
+    /** Just calls this.updateUIState(). */
+    reset(): void;
+    /**
+     * Make the event bus dispatch a "find" event with the query retrieved from the search component.
+     * @param type 
+     * @param findPrevious Defaults to false.
+     */
+    dispatchEvent(type: '' | 'again' | 'highlightallchange' | 'casesensitivitychange' | 'diacriticmatchingchange' | 'entirewordchange', findPrevious?: boolean): void;
+    /**
+     * @param findState 0: FOUND, 1: NOT_FOUND, 2: WRAPPED, 3: PENDING. Defined in `window.pdfjsViewer.FindState`.
+     * @param unusedArg This parameter seems to be unused.
+     * @param counts See the explanation for `updateResultsCount()`.
+     */
+    updateUIState(findState: number, unusedArg: any, counts?: PDFSearchMatchCounts): void;
+    /**
+     * @param counts Defaults to `{ current: 0, total: 0 }`.
+     */
+    updateResultsCount(counts?: PDFSearchMatchCounts): void;
+    open(): void;
+    close(): void;
+    toggle(): void;
+    /** Show and focus on the search bar. */
+    showSearch(): void;
+}
+
+interface PDFSearchSettings {
+    highlightAll: boolean;
+    caseSensitive: boolean;
+    matchDiacritics: boolean;
+    entireWord: boolean;
+}
+
+interface PDFSearchMatchCounts {
+    current: number;
+    total: number;
+}
+
+interface PDFFindController {
+
 }
 
 interface PDFViewer {
@@ -848,7 +911,9 @@ declare module 'obsidian' {
 
     interface WorkspaceLeaf {
         group: string | null;
-        readonly parentSplit: WorkspaceSplit;
+        /** As of Obsidian v1.5.8, this is just a read-only alias for `this.parent`. */
+        readonly parentSplit?: WorkspaceParent;
+        parent?: WorkspaceParent;
         containerEl: HTMLElement;
         openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
         highlight(): void;
@@ -861,6 +926,11 @@ declare module 'obsidian' {
 
     interface WorkspaceTabs {
         children: WorkspaceItem[];
+        selectTab(tab: WorkspaceItem): void;
+    }
+
+    interface WorkspaceContainer {
+        focus(): void;
     }
 
     interface Menu {
@@ -906,5 +976,9 @@ declare module 'obsidian' {
 
     interface HoverPopover {
         hide(): void;
+    }
+
+    interface SearchComponent {
+        containerEl: HTMLElement;
     }
 }

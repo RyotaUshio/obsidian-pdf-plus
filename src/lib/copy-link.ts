@@ -18,13 +18,13 @@ export type AutoFocusTarget =
 export class copyLinkLib extends PDFPlusLibSubmodule {
     statusDurationMs = 2000;
 
-    getPageAndTextRangeFromSelection(selection?: Selection | null): { page: number, selection?: { beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } } | null{
+    getPageAndTextRangeFromSelection(selection?: Selection | null): { page: number, selection?: { beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } } | null {
         selection = selection ?? activeWindow.getSelection();
         if (!selection) return null;
 
         const pageEl = this.lib.getPageElFromSelection(selection);
         if (!pageEl || pageEl.dataset.pageNumber === undefined) return null;
-        
+
         const pageNumber = +pageEl.dataset.pageNumber;
 
         const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
@@ -38,7 +38,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return { page: pageNumber };
     }
 
-    // The same of getTextSelectionRangeStr in app.js, but returns an object instead of a string.
+    // The same as getTextSelectionRangeStr in Obsidian's app.js, but returns an object instead of a string.
     getTextSelectionRange(pageEl: HTMLElement, range: Range) {
         if (range && !range.collapsed) {
             const startTextLayerNode = getTextLayerNode(pageEl, range.startContainer);
@@ -238,26 +238,31 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             }
 
             if (!checking) {
-                const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text, colorName?.toLowerCase() ?? '');
-                navigator.clipboard.writeText(evaluated);
-                this.onCopyFinish(evaluated);
+                (async () => {
+                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text, colorName?.toLowerCase() ?? '');
+                    // Without await, the focus can move to a different document before `writeText` is completed
+                    // if auto-focus is on and the PDF is opened in a secondary window, which causes the copy to fail.
+                    // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/93
+                    await navigator.clipboard.writeText(evaluated);
+                    this.onCopyFinish(evaluated);
 
-                const palette = this.lib.getColorPaletteFromChild(child);
-                palette?.setStatus('Link copied', this.statusDurationMs);
-                this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+                    const palette = this.lib.getColorPaletteFromChild(child);
+                    palette?.setStatus('Link copied', this.statusDurationMs);
+                    this.afterCopy(evaluated, autoPaste, palette ?? undefined);
 
-                // TODO: Needs refactor
-                const result = parsePDFSubpath(subpath);
-                if (result && 'beginIndex' in result) {
-                    const item = child.getPage(page).textLayer?.textContentItems[result.beginIndex];
-                    if (item) {
-                        const left = item.transform[4];
-                        const top = item.transform[5] + item.height;
-                        if (typeof left === 'number' && typeof top === 'number') {
-                            this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
+                    // TODO: Needs refactor
+                    const result = parsePDFSubpath(subpath);
+                    if (result && 'beginIndex' in result) {
+                        const item = child.getPage(page).textLayer?.textContentItems[result.beginIndex];
+                        if (item) {
+                            const left = item.transform[4];
+                            const top = item.transform[5] + item.height;
+                            if (typeof left === 'number' && typeof top === 'number') {
+                                this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
+                            }
                         }
                     }
-                }
+                })()
             }
 
             return true;
@@ -282,7 +287,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         subpath += `&rect=${rect[0]},${rect[1]},${rect[2]},${rect[3]}`;
                     }
                     const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text ?? '', color);
-                    navigator.clipboard.writeText(evaluated);
+                    await navigator.clipboard.writeText(evaluated);
                     this.onCopyFinish(evaluated);
 
                     const palette = this.lib.getColorPaletteFromChild(child);
@@ -305,13 +310,15 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
     copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, colorName: string, autoPaste?: boolean) {
         if (!checking) {
-            const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, colorName)
-            navigator.clipboard.writeText(evaluated);
-            this.onCopyFinish(evaluated);
+            (async () => {
+                const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, colorName)
+                await navigator.clipboard.writeText(evaluated);
+                this.onCopyFinish(evaluated);
 
-            const palette = this.lib.getColorPaletteFromChild(child);
-            palette?.setStatus('Link copied', this.statusDurationMs);
-            this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+                const palette = this.lib.getColorPaletteFromChild(child);
+                palette?.setStatus('Link copied', this.statusDurationMs);
+                this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+            })();
         }
 
         return true;
@@ -386,7 +393,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 const extension = this.settings.rectImageExtension;
 
                 if (!this.settings.rectEmbedStaticImage) {
-                    navigator.clipboard.writeText(text);
+                    await navigator.clipboard.writeText(text);
 
                     this.onCopyFinish(text);
                 } else if (this.settings.rectImageFormat === 'file') {
@@ -395,7 +402,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     const imageEmbedLink = useWikilinks ? `![[${imagePath}]]` : `![](${encodeLinktext(imagePath)})`;
                     text = imageEmbedLink + '\n\n' + embedLink.slice(1);
 
-                    navigator.clipboard.writeText(text);
+                    await navigator.clipboard.writeText(text);
 
                     const createImageFile = async () => {
                         const buffer = await this.lib.pdfPageToImageArrayBuffer(page, { type: `image/${extension}`, cropRect: rect });
@@ -412,7 +419,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     const imageEmbedLink = `![](${dataUrl})`;
                     text = imageEmbedLink + '\n\n' + embedLink.slice(1);
 
-                    navigator.clipboard.writeText(text);
+                    await navigator.clipboard.writeText(text);
 
                     this.onCopyFinish(text);
                 }
@@ -421,6 +428,27 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
                 palette?.setStatus('Link copied', this.statusDurationMs);
                 await this.afterCopy(text, autoPaste, palette ?? undefined);
+            })();
+        }
+
+        return true;
+    }
+
+    copyLinkToSearch(checking: boolean, child: PDFViewerChild, pageNumber: number, query: string, autoPaste?: boolean, sourcePath?: string): boolean {
+        if (!child.file) return false;
+        const file = child.file;
+
+        const palette = this.lib.getColorPaletteFromChild(child);
+
+        if (!checking) {
+            const display = this.lib.copyLink.getDisplayText(child, undefined, file, pageNumber, query);
+            const link = this.lib.generateMarkdownLink(file, '', `#search=${query}`, display).slice(1);
+
+            (async () => {
+                await navigator.clipboard.writeText(link);
+                this.onCopyFinish(link);
+                palette?.setStatus('Link copied', this.statusDurationMs);
+                await this.afterCopy(link, autoPaste, palette ?? undefined);
             })();
         }
 
@@ -538,7 +566,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (file) { // auto-focus target found
             const { leaf, isExistingLeaf } = await this.prepareMarkdownLeafForPaste(file);
             if (leaf) {
-                this.app.workspace.revealLeaf(leaf);
+                this.lib.workspace.revealLeaf(leaf);
                 this.app.workspace.setActiveLeaf(leaf);
                 const view = leaf.view;
                 if (view instanceof MarkdownView) {
@@ -646,7 +674,8 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (leaf && isExistingLeaf && leaf.view instanceof MarkdownView) {
             // If the file is already opened in some tab, use the editor interface to respect the current cursor position
             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/71
-            const editor = leaf.view.editor;
+            const view = leaf.view;
+            const editor = view.editor;
 
             if (this.settings.respectCursorPositionWhenAutoPaste) {
                 editor.replaceSelection(text);
@@ -658,8 +687,14 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 editor.setValue(data);
             }
 
+            // MarkdownView's file saving is debounced, so we need to
+            // explicitly save the new data right after pasting so that
+            // the backlink highlight will be visibile as soon as possible.
+            view.save();
+
             if (this.settings.focusEditorAfterAutoPaste) {
                 editor.focus();
+                this.lib.workspace.revealLeaf(leaf);
             }
         } else {
             // Otherwise we just use the vault interface
@@ -680,7 +715,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         this.app.workspace.offref(eventRef);
 
                         if (info instanceof MarkdownView) {
-                            this.app.workspace.revealLeaf(info.leaf);
+                            this.lib.workspace.revealLeaf(info.leaf);
                         }
 
                         if (!editor.hasFocus()) editor.focus();

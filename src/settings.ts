@@ -215,6 +215,11 @@ export interface PDFPlusSettings {
 	showBacklinkIconForRect: boolean;
 	showBoundingRectForBacklinkedAnnot: boolean;
 	hideReplyAnnotation: boolean;
+	showCopyLinkToSearchInContextMenu: boolean;
+	searchLinkHighlightAll: 'true' | 'false' | 'default';
+	searchLinkCaseSensitive: 'true' | 'false' | 'default';
+	searchLinkMatchDiacritics: 'true' | 'false' | 'default';
+	searchLinkEntireWord: 'true' | 'false' | 'default';
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -254,11 +259,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		},
 		{
 			name: 'Callout',
-			template: '> [!{{calloutType}}|{{colorName}}] {{linkWithDisplay}}\n> {{text}}\n',
+			template: '> [!{{calloutType}}|{{color}}] {{linkWithDisplay}}\n> {{text}}\n',
 		},
 		{
 			name: 'Quote in callout',
-			template: '> [!{{calloutType}}|{{colorName}}] {{linkWithDisplay}}\n> > {{text}}\n> \n> ',
+			template: '> [!{{calloutType}}|{{color}}] {{linkWithDisplay}}\n> > {{text}}\n> \n> ',
 		}
 	],
 	useAnotherCopyTemplateWhenNoSelection: false,
@@ -414,6 +419,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	showBacklinkIconForRect: false,
 	showBoundingRectForBacklinkedAnnot: false,
 	hideReplyAnnotation: false,
+	showCopyLinkToSearchInContextMenu: true,
+	searchLinkHighlightAll: 'true',
+	searchLinkCaseSensitive: 'true',
+	searchLinkMatchDiacritics: 'default',
+	searchLinkEntireWord: 'false',
 };
 
 
@@ -450,9 +460,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		return item;
 	}
 
-	scrollTo(settingName: keyof PDFPlusSettings) {
+	scrollTo(settingName: keyof PDFPlusSettings, options?: { behavior: ScrollBehavior }) {
 		const el = this.items[settingName]?.settingEl;
-		(el?.previousElementSibling ?? el)?.scrollIntoView();
+		if (el) this.containerEl.scrollTo({ top: el.offsetTop - this.headerContainerEl.offsetHeight, ...options });
 	}
 
 	addHeading(heading: string, icon?: IconName, processHeaderDom?: (dom: { headerEl: HTMLElement, iconEl: HTMLElement, titleEl: HTMLElement }) => void) {
@@ -1035,11 +1045,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	createLinkToSetting(id: keyof PDFPlusSettings, name?: string) {
 		return createEl('a', '', (el) => {
 			el.onclick = () => {
-				this.scrollTo(id);
+				this.scrollTo(id, { behavior: 'smooth' });
 			}
 			window.setTimeout(() => {
 				const setting = this.items[id];
-				el.setText(name ?? setting?.nameEl.textContent ?? '');
+				if (!name && setting) {
+					name = '"' + setting.nameEl.textContent + '"'
+				}
+				el.setText(name ?? '');
 			});
 		});
 	}
@@ -1282,7 +1295,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'I recommend setting this as a custom color palette action in the setting below, like so:',
 					'',
 					'```markdown',
-					'> [!{{calloutType}}|{{colorName}}] {{linkWithDisplay}}',
+					'> [!{{calloutType}}|{{color}}] {{linkWithDisplay}}',
 					'> {{text}}',
 					'```',
 				], setting.descEl);
@@ -1319,7 +1332,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Right-click menu in PDF viewer', 'lucide-mouse-pointer-click')
 			.setDesc('Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.')
 		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
-			.setName('Replace the built-in right-click menu and show color palette actions instead');
+			.setName('Replace the built-in right-click menu with PDF++\'s custom menu');
 		if (!this.plugin.settings.replaceContextMenu) {
 			this.addSetting()
 				.setName('Display text format')
@@ -1479,14 +1492,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'',
 				'In addition to the variables listed above, here you can use',
 				'',
-				'- `link`: The link without display text, e.g. `[[file.pdf#page = 1 & selection=0, 1, 2, 3 & color=red]]`,',
-				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page = 1 & selection=0, 1, 2, 3 & color=red | file, page 1]]`,',
-				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page = 1 & selection=0, 1, 2, 3 & color=red` <br>(if the "Use \\[\\[Wikilinks\\]\\]" setting is turned off, `linktext` will be properly encoded for use in markdown links),',
+				'- `link`: The link without display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red]]`,',
+				'- `linkWithDisplay`: The link with display text, e.g. `[[file.pdf#page=1&selection=0,1,2,3&color=red|file, page 1]]`,',
+				'- `linktext`: The text content of the link without brackets and the display text, e.g. `file.pdf#page=1&selection=0,1,2,3&color=red`<br>(if the "Use \\[\\[Wikilinks\\]\\]" setting is turned off, `linktext` will be properly encoded for use in markdown links),',
 				'- `display`: The display text formatted according to the above setting, e.g. `file, page 1`,',
-				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page = 1]]`,',
-				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page = 1 | file, page 1]]`,',
+				'- `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page=1]]`,',
+				'- `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page=1|file, page 1]]`,',
 				'- `calloutType`: The callout type you specify in the "Callout type name" setting above, in this case, ' + `"${this.plugin.settings.calloutType}", and`,
-				'- `colorName`: In the case of text selections, this is the name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string. For text markup annotations (e.g. highlights and underlines), this is the RGB value of the color, e.g. `255, 208, 0`.',
+				'- `color` (or `colorName`): In the case of text selections, this is the name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string. For text markup annotations (e.g. highlights and underlines), this is the RGB value of the color, e.g. `255,208,0`.',
 			], setting.descEl))
 			.addButton((button) => {
 				button
@@ -2037,6 +2050,46 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Highlight color for hover sync (Backlinks pane → PDF viewer)')
 				.setDesc('To add a new color, click the "+" button in the "highlight colors" setting above.');
 		}
+
+
+		this.addHeading('Search from links', 'lucide-search')
+			.then((setting) => {
+				this.renderMarkdown([
+					'You can trigger full-text search by opening a link to a PDF file with a search query appended, e.g. `[[file.pdf#search=keyword]]`.',
+				], setting.descEl);
+			});
+		this.addToggleSetting('showCopyLinkToSearchInContextMenu')
+			.setName('Show "Copy link to search" in the right-click menu')
+			.setDesc(createFragment((el) => {
+				el.appendText('Requires the ');
+				el.appendChild(this.createLinkToSetting('replaceContextMenu'));
+				el.appendText(' option to be enabled.');
+			}));
+		this.addHeading('Search options')
+			.then((setting) => {
+				this.renderMarkdown([
+					'The behavior of the search links can be customized globally by the following settings. ',
+					'Alternatively, you can specify the behavior for each link by including the following query parameters in the link text: ',
+					'',
+					'- `&case-sensitive=true` or `&case-sensitive=false`',
+					'- `&highlight-all=true` or `&highlight-all=false`',
+					'- `&match-diacritics=true` or `&match-diacritics=false`',
+					'- `&entire-word=true` or `&entire-word=false`',
+				], setting.descEl);
+			});
+		const searchLinkDisplays = {
+			'true': 'Yes',
+			'false': 'No',
+			'default': 'Follow default setting',
+		};
+		this.addDropdownSetting('searchLinkCaseSensitive', searchLinkDisplays)
+			.setName('Case sensitive search');
+		this.addDropdownSetting('searchLinkHighlightAll', searchLinkDisplays)
+			.setName('Highlight all search results');
+		this.addDropdownSetting('searchLinkMatchDiacritics', searchLinkDisplays)
+			.setName('Match diacritics');
+		this.addDropdownSetting('searchLinkEntireWord', searchLinkDisplays)
+			.setName('Match whole word');
 
 
 		this.addHeading('Integration with external apps (desktop-only)', 'lucide-share');

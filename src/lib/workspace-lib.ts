@@ -1,4 +1,4 @@
-import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, Platform, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, WorkspaceWindow, parseLinktext } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
@@ -135,7 +135,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         }
 
         await markdownLeaf.openLinkText(linktext, sourcePath, openViewState);
-        this.app.workspace.revealLeaf(markdownLeaf);
+        this.revealLeaf(markdownLeaf);
 
         return;
     }
@@ -260,14 +260,46 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         return leaf;
     }
 
-    openPDFLinkTextInLeaf(leaf: WorkspaceLeaf, linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void> {
-        return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
+    /**
+     * Almost the same as Workspace.prototype.revealLeaf, but this version
+     * properly reveals a leaf even when it is contained in a secondary window.
+     */
+    revealLeaf(leaf: WorkspaceLeaf) {
+        if (!Platform.isDesktopApp) {
+            // on mobile, we don't need to care about new windows so just use the original method
             this.app.workspace.revealLeaf(leaf);
+            return;
+        }
+
+        const root = leaf.getRoot();
+        if (root instanceof WorkspaceSidedock && root.collapsed) {
+            root.toggle();
+        }
+
+        const parent = leaf.parent;
+        if (parent instanceof WorkspaceTabs) {
+            parent.selectTab(leaf);
+        }
+
+        // This is the only difference from the original `revealLeaf` method.
+        // Obsidian's `revealLeaf` uses `root.getContainer().focus()` instead, which causes a bug that the main window is focused when the leaf is in a secondary window.
+        leaf.getContainer().focus();
+    }
+
+    openPDFLinkTextInLeaf(leaf: WorkspaceLeaf, linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void> {
+        const { subpath } = parseLinktext(linktext);
+        if (!this.plugin.patchStatus.pdfInternals) {
+            this.plugin.subpathWhenPatched = subpath;
+        }
+
+        return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
+            this.revealLeaf(leaf);
+
             const view = leaf.view as PDFView;
+
             view.viewer.then((child) => {
                 const duration = this.plugin.settings.highlightDuration;
-                const { subpath } = parseLinktext(linktext);
-                this.lib.highlight.viewer.highlightSubpath(child, subpath, duration);
+                this.lib.highlight.viewer.highlightSubpath(child, duration);
             });
         });
     }
@@ -315,7 +347,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                     this.app.workspace.offref(eventRef);
                 }
             });
-        }        
+        }
     }
 }
 

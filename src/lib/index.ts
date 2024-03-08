@@ -13,7 +13,7 @@ import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 
@@ -652,6 +652,26 @@ export class PDFPlusLib {
 
     getPDFDocument(activeOnly: boolean = false) {
         return this.getPDFViewer(activeOnly)?.pdfDocument;
+    }
+
+    search(findBar: PDFFindBar, query: string, settings?: Partial<PDFSearchSettings>) {
+        findBar.showSearch();
+        findBar.searchComponent.setValue(query);
+
+        Object.assign(findBar.searchSettings, settings);
+        findBar.dispatchEvent('');
+
+        // Update the search settings UI accordingly
+        const toggleEls = findBar.settingsEl.querySelectorAll<HTMLElement>('div.checkbox-container');
+        const highlightAllToggleEl = toggleEls[0];
+        const matchDiacriticsToggleEl = toggleEls[1];
+        const entireWordToggleEl = toggleEls[2];
+        const caseSensitiveToggleIconEl = findBar.searchComponent.containerEl.querySelector('.input-right-decorator.clickable-icon');
+
+        if (highlightAllToggleEl) highlightAllToggleEl.toggleClass('is-enabled', findBar.searchSettings.highlightAll);
+        if (matchDiacriticsToggleEl) matchDiacriticsToggleEl.toggleClass('is-enabled', findBar.searchSettings.matchDiacritics);
+        if (entireWordToggleEl) entireWordToggleEl.toggleClass('is-enabled', findBar.searchSettings.entireWord);
+        if (caseSensitiveToggleIconEl) caseSensitiveToggleIconEl.toggleClass('is-active', findBar.searchSettings.caseSensitive);
     }
 
     async loadPDFDocument(file: TFile): Promise<PDFDocumentProxy> {

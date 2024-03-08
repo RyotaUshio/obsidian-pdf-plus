@@ -40,6 +40,11 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
     }) {
         const { app } = plugin;
 
+        // colorName is an alias for color
+        if ('colorName' in variables) {
+            variables.color = variables.colorName;
+        }
+
         super(plugin, {
             ...variables,
             app,

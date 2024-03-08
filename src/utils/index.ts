@@ -15,6 +15,15 @@ export function getDirectPDFObj(dict: PDFDict, key: string) {
     return obj;
 }
 
+// Thanks https://stackoverflow.com/a/54246501
+export function camelCaseToKebabCase(camelCaseStr: string) {
+    return camelCaseStr.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+}
+
+export function kebabCaseToCamelCase(kebabCaseStr: string) {
+    return kebabCaseStr.replace(/(-\w)/g, m => m[1].toUpperCase());
+}
+
 /** Return an array of numbers from `from` (inclusive) to `to` (exclusive). */
 export function range(from: number, to: number): number[] {
     return Array.from({ length: to - from }, (_, i) => from + i);

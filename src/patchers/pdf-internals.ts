@@ -7,8 +7,8 @@ import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotat
 import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
-import { hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
-import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild } from 'typings';
+import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
+import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings } from 'typings';
 import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 
@@ -52,7 +52,7 @@ function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
         // especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
         viewer.unload();
         viewer.load();
-        if (file) viewer.loadFile(file);
+        if (file) viewer.loadFile(file, plugin.subpathWhenPatched);
     });
 }
 
@@ -262,7 +262,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
          * Modified applySubpath() from Obsidian's app.js so that 
          * - it can interpret the `rect` parameter as FitR,
          * - it supports `zoomToFitRect` setting,
-         * - and the `offset` & `rect` parameters can be parsed as float numbers, not integers
+         * - the `offset` & `rect` parameters can be parsed as float numbers, not integers,
+         * - and it can handle `search` parameter.
          */
         applySubpath(old) {
             return function (subpath?: string) {
@@ -282,10 +283,45 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                 if (subpath) {
                     const pdfViewer = self.pdfViewer;
+                    const params = new URLSearchParams(subpath.startsWith('#') ? subpath.substring(1) : subpath);
+
+                    if (params.has('search') && self.findBar) {
+                        const query = params.get('search')!
+
+                        const settings: Partial<PDFSearchSettings> = {};
+                        if (plugin.settings.searchLinkHighlightAll !== 'default') {
+                            settings.highlightAll = plugin.settings.searchLinkHighlightAll === 'true';
+                        }
+                        if (plugin.settings.searchLinkCaseSensitive !== 'default') {
+                            settings.caseSensitive = plugin.settings.searchLinkCaseSensitive === 'true';
+                        }
+                        if (plugin.settings.searchLinkMatchDiacritics !== 'default') {
+                            settings.matchDiacritics = plugin.settings.searchLinkMatchDiacritics === 'true';
+                        }
+                        if (plugin.settings.searchLinkEntireWord !== 'default') {
+                            settings.entireWord = plugin.settings.searchLinkEntireWord === 'true';
+                        }
+
+                        const parseSearchSettings = (key: keyof PDFSearchSettings) => {
+                            const kebabKey = camelCaseToKebabCase(key);
+                            if (params.has(kebabKey)) {
+                                const value = params.get(kebabKey);
+                                if (value === 'true' || value === 'false') {
+                                    settings[key] = value === 'true';
+                                }
+                            }
+                        }
+
+                        parseSearchSettings('highlightAll');
+                        parseSearchSettings('caseSensitive');
+                        parseSearchSettings('matchDiacritics');
+                        parseSearchSettings('entireWord');
+                               
+                        setTimeout(() => lib.search(self.findBar, query, settings));
+                        return;
+                    }
 
                     const { dest, highlight } = ((subpath) => {
-                        const params = new URLSearchParams(subpath.startsWith('#') ? subpath.substring(1) : subpath);
-
                         if (!params.has('page')) {
                             return {
                                 dest: subpath,
@@ -530,57 +566,59 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 const popupMetaEl = self.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupMeta');
 
                 if (popupMetaEl) {
-                    // replace the copy button with a custom one
-                    const copyButtonEl = popupMetaEl?.querySelector<HTMLElement>('.clickable-icon:last-child');
-                    if (copyButtonEl) {
-                        copyButtonEl.remove(); // We need to remove the default event lisnter so we should use remove() instead of detach()
+                    popupMetaEl.createDiv('pdf-plus-annotation-icon-container', (iconContainerEl) => {
+                        // replace the copy button with a custom one
+                        const copyButtonEl = popupMetaEl?.querySelector<HTMLElement>('.clickable-icon:last-child');
+                        if (copyButtonEl) {
+                            copyButtonEl.remove(); // We need to remove the default event lisnter so we should use remove() instead of detach()
 
-                        popupMetaEl.createDiv('clickable-icon pdf-plus-copy-annotation-link', (iconEl) => {
-                            setIcon(iconEl, 'lucide-copy');
-                            setTooltip(iconEl, 'Copy link');
-                            iconEl.addEventListener('click', async () => {
-                                const palette = lib.getColorPaletteAssociatedWithNode(popupMetaEl)
-                                if (!palette) return;
-                                const template = plugin.settings.copyCommands[palette.actionIndex].template;
+                            iconContainerEl.createDiv('clickable-icon pdf-plus-copy-annotation-link', (iconEl) => {
+                                setIcon(iconEl, 'lucide-copy');
+                                setTooltip(iconEl, 'Copy link');
+                                iconEl.addEventListener('click', async () => {
+                                    const palette = lib.getColorPaletteAssociatedWithNode(popupMetaEl)
+                                    if (!palette) return;
+                                    const template = plugin.settings.copyCommands[palette.actionIndex].template;
 
-                                lib.copyLink.copyLinkToAnnotation(self, false, template, page, id);
+                                    lib.copyLink.copyLinkToAnnotation(self, false, template, page, id);
 
-                                setIcon(iconEl, 'lucide-check');
+                                    setIcon(iconEl, 'lucide-check');
+                                });
                             });
-                        });
-                    }
+                        }
 
-                    // add edit button
-                    if (plugin.settings.enablePDFEdit
-                        && plugin.settings.enableAnnotationContentEdit
-                        && PDFAnnotationEditModal.isSubtypeSupported(annotationElement.data.subtype)) {
-                        const subtype = annotationElement.data.subtype;
-                        popupMetaEl.createDiv('clickable-icon pdf-plus-edit-annotation', (editButtonEl) => {
-                            setIcon(editButtonEl, 'lucide-pencil');
-                            setTooltip(editButtonEl, 'Edit');
-                            editButtonEl.addEventListener('click', async () => {
-                                if (self.file) {
-                                    PDFAnnotationEditModal
-                                        .forSubtype(subtype, plugin, self.file, page, id)
-                                        .open();
-                                }
+                        // add edit button
+                        if (plugin.settings.enablePDFEdit
+                            && plugin.settings.enableAnnotationContentEdit
+                            && PDFAnnotationEditModal.isSubtypeSupported(annotationElement.data.subtype)) {
+                            const subtype = annotationElement.data.subtype;
+                            iconContainerEl.createDiv('clickable-icon pdf-plus-edit-annotation', (editButtonEl) => {
+                                setIcon(editButtonEl, 'lucide-pencil');
+                                setTooltip(editButtonEl, 'Edit');
+                                editButtonEl.addEventListener('click', async () => {
+                                    if (self.file) {
+                                        PDFAnnotationEditModal
+                                            .forSubtype(subtype, plugin, self.file, page, id)
+                                            .open();
+                                    }
+                                });
                             });
-                        });
-                    }
+                        }
 
-                    // add delete button
-                    if (plugin.settings.enablePDFEdit && plugin.settings.enableAnnotationDeletion) {
-                        popupMetaEl.createDiv('clickable-icon pdf-plus-delete-annotation', (deleteButtonEl) => {
-                            setIcon(deleteButtonEl, 'lucide-trash');
-                            setTooltip(deleteButtonEl, 'Delete');
-                            deleteButtonEl.addEventListener('click', async () => {
-                                if (self.file) {
-                                    new PDFAnnotationDeleteModal(plugin, self.file, page, id)
-                                        .openIfNeccessary();
-                                }
+                        // add delete button
+                        if (plugin.settings.enablePDFEdit && plugin.settings.enableAnnotationDeletion) {
+                            iconContainerEl.createDiv('clickable-icon pdf-plus-delete-annotation', (deleteButtonEl) => {
+                                setIcon(deleteButtonEl, 'lucide-trash');
+                                setTooltip(deleteButtonEl, 'Delete');
+                                deleteButtonEl.addEventListener('click', async () => {
+                                    if (self.file) {
+                                        new PDFAnnotationDeleteModal(plugin, self.file, page, id)
+                                            .openIfNeccessary();
+                                    }
+                                });
                             });
-                        });
-                    }
+                        }
+                    });
                 }
 
                 if (plugin.settings.annotationPopupDrag && self.activeAnnotationPopupEl && self.file) {
@@ -595,8 +633,6 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         },
         destroyAnnotationPopup(old) {
             return function () {
-                // const self = this as PDFViewerChild;
-                // self.component?.unload();
                 plugin.lastAnnotationPopupChild = null;
                 return old.call(this);
             }

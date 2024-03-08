@@ -105,9 +105,8 @@ export class BacklinkDomManager extends PDFPlusComponent {
             for (const el of cacheToDoms.get(cache)) {
                 this.hookBacklinkOpeners(el, cache);
                 this.hookBacklinkViewEventHandlers(el, cache);
-                this.registerDomEvent(el, 'contextmenu', (evt) => {
-                    onBacklinkVisualizerContextMenu(evt, this.visualizer, cache);
-                });
+                this.hookContextMenuHandler(el, cache);
+                this.hookClassAdderOnMouseOver(el, cache);
 
                 if (color?.type === 'name') {
                     el.dataset.highlightColor = color.name.toLowerCase();
@@ -177,6 +176,34 @@ export class BacklinkDomManager extends PDFPlusComponent {
                 });
             }
         });
+    }
+
+    hookContextMenuHandler(el: HTMLElement, cache: PDFBacklinkCache) {
+        this.registerDomEvent(el, 'contextmenu', (evt) => {
+            onBacklinkVisualizerContextMenu(evt, this.visualizer, cache);
+        });
+    }
+
+    hookClassAdderOnMouseOver(el: HTMLElement, cache: PDFBacklinkCache) {
+        const pageNumber = cache.page;
+
+        if (typeof pageNumber === 'number') {
+            const className = 'is-hovered';
+
+            el.addEventListener('mouseover', () => {
+                for (const otherEl of this.getCacheToDomsMap(pageNumber).get(cache)) {
+                    otherEl.addClass(className);
+                }
+
+                const onMouseOut = () => {
+                    for (const otherEl of this.getCacheToDomsMap(pageNumber).get(cache)) {
+                        otherEl.removeClass(className);
+                    }
+                    el.removeEventListener('mouseout', onMouseOut);
+                };
+                el.addEventListener('mouseout', onMouseOut);
+            });
+        }
     }
 }
 

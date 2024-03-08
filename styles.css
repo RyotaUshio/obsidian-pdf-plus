@@ -251,7 +251,7 @@ body:not(.pdf-plus-backlink-selection-underline) .pdf-plus-backlink-highlight-la
     opacity: var(--pdf-plus-highlight-opacity, 0.2);
     padding: var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em));
     margin: calc(var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) * -1) calc(var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em)) * -1);
-    border-radius: var(--radius-s);
+    border-radius: 0.1em;
 }
 
 body.pdf-plus-backlink-selection-underline {
@@ -337,7 +337,22 @@ body.pdf-plus-backlink-selection-underline {
 }
 
 .popupWrapper {
-    --pdf-popup-width: 300px;
+    --pdf-popup-width: 310px;
+}
+
+.pdf-plus-annotation-icon-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+
+    margin-right: calc(var(--size-4-1) * -1);
+    margin-left: calc(var(--size-2-1) * -1);
+
+    .clickable-icon {
+        margin-right: 0;
+        margin-left: 0;
+    }
 }
 
 .pdf-plus-draggable .popup {

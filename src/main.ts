@@ -39,6 +39,18 @@ export default class PDFPlus extends Plugin {
 		pdfOutlineViewer: false,
 		backlink: false
 	};
+	/** 
+	 * When no PDF view or PDF embed is opened at the moment the plugin is loaded, the PDF internals will
+	 * patched when the user opens a PDF link for the first time.
+	 * After patching, the `onPDFInternalsPatchSuccess` function (defined in src/patchers/pdf-internals.ts) will be called,
+	 * in which `PDFViewerComponent.loadFile(file, subpath)` will be re-executed in order to refresh the PDF view and reflect the patch.
+	 * However, `PDFViewerComponent` does not have the information of the subpath to be opened at the moment, so we need to store it here
+	 * so that we can pass it to `loadFile` when the patch is successful.
+	 * 
+	 * Without this, when the user opens a link to PDF selection or annotation, it will not be highlighted (Obsidian-native highlight, not PDF++ highlight)
+	 * properly if it is the first time the user opens a PDF link.
+	 */
+	subpathWhenPatched?: string;
 	classes: {
 		PDFView?: Constructor<PDFView>;
 		PDFViewerComponent?: Constructor<PDFViewerComponent>;
@@ -161,8 +173,9 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private registerRibbonIcons() {
-		this.selectToCopyMode = this.addChild(new SelectToCopyMode(this));
+		this.selectToCopyMode = new SelectToCopyMode(this);
 		this.selectToCopyMode.unload(); // disabled by default
+		this.register(() => this.selectToCopyMode.unload());
 
 		if (this.settings.autoFocusToggleRibbonIcon) {
 			this.autoFocusToggleIconEl = this.addRibbonIcon('lucide-zap', `${this.manifest.name}: Toggle auto-focus`, () => {
@@ -433,5 +446,10 @@ export default class PDFPlus extends Plugin {
 		// @ts-ignore
 		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
 		return !noModKey;
+	}
+
+	openSettingTab(): PDFPlusSettingTab {
+		this.app.setting.open();
+		return this.app.setting.openTabById(this.manifest.id);
 	}
 }

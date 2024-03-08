@@ -37,8 +37,12 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
         return rectEl;
     }
 
-    highlightSubpath(child: PDFViewerChild, subpath: string, duration: number) {
-        child.applySubpath(subpath);
+    /**
+     * 
+     * @param child 
+     * @param duration The duration in seconds to highlight the subpath. If it's 0, the highlight will not be removed until the user clicks on the page.
+     */
+    highlightSubpath(child: PDFViewerChild, duration: number) {
         if (child.subpathHighlight?.type === 'text') {
             const component = new Component();
             component.load();

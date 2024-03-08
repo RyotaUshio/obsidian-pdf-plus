@@ -141,7 +141,7 @@ export class ColorPalette extends Component {
         });
     }
 
-    addDropdown(paletteEl: HTMLElement, itemNames: string[], checkedIndexKey: KeysOfType<ColorPalette, number>, tooltip: string, onItemClick?: () => void) {
+    addDropdown(paletteEl: HTMLElement, itemNames: string[], checkedIndexKey: KeysOfType<ColorPalette, number>, tooltip: string, onItemClick?: () => void, beforeShowMenu?: (menu: Menu) => void) {
         return paletteEl.createDiv('clickable-icon', (buttonEl) => {
             setIcon(buttonEl, 'lucide-chevron-down');
             setTooltip(buttonEl, tooltip);
@@ -168,6 +168,8 @@ export class ColorPalette extends Component {
                             });
                     });
                 }
+
+                beforeShowMenu?.(menu);
 
                 const { x, bottom, width } = buttonEl.getBoundingClientRect();
                 menu.setParentElement(buttonEl).showAtPosition({
@@ -215,6 +217,15 @@ export class ColorPalette extends Component {
                 if (this.plugin.settings.syncColorPaletteAction && this.plugin.settings.syncDefaultColorPaletteAction) {
                     this.plugin.settings.defaultColorPaletteActionIndex = this.actionIndex;
                 }
+            },
+            (menu) => {
+                menu.addItem((item) => {
+                    item.setTitle('Customize...')
+                        .onClick(() => {
+                            this.plugin.openSettingTab()
+                                .scrollTo('copyCommands');
+                        });
+                });
             }
         );
         buttonEl.addClass('pdf-plus-action-menu');
@@ -231,6 +242,15 @@ export class ColorPalette extends Component {
                 if (this.plugin.settings.syncDisplayTextFormat && this.plugin.settings.syncDefaultDisplayTextFormat) {
                     this.plugin.settings.defaultDisplayTextFormatIndex = this.displayTextFormatIndex;
                 }
+            },
+            (menu) => {
+                menu.addItem((item) => {
+                    item.setTitle('Customize...')
+                        .onClick(() => {
+                            this.plugin.openSettingTab()
+                                .scrollTo('displayTextFormats');
+                        });
+                });
             }
         );
         buttonEl.addClass('pdf-plus-display-text-format-menu');
