@@ -176,9 +176,10 @@ settings:
     overflow-y: hidden;
     white-space: nowrap;
 
+    display: flex;
+    align-items: center;
+
     .header {
-        display: inline-block;
-        vertical-align: middle;
         line-height: normal;
 
         .header-title {
