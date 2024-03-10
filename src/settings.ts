@@ -494,10 +494,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 				setTooltip(headerEl, heading);
 
-				this.component.registerDomEvent(headerEl, 'click', () => {
+				this.component.registerDomEvent(headerEl, 'click', (evt) => {
 					(setting.settingEl.previousElementSibling ?? setting.settingEl).scrollIntoView({ behavior: 'smooth' });
-					const timer = window.setInterval(() => this.updateHeaderElClass(), 50);
-					window.setTimeout(() => window.clearInterval(timer), 1000);
+					const win = evt.win;
+					const timer = win.setInterval(() => this.updateHeaderElClass(), 50);
+					win.setTimeout(() => win.clearInterval(timer), 1000);
 				});
 
 				processHeaderDom?.({ headerEl, iconEl, titleEl });
@@ -1047,7 +1048,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			el.onclick = () => {
 				this.scrollTo(id, { behavior: 'smooth' });
 			}
-			window.setTimeout(() => {
+			activeWindow.setTimeout(() => {
 				const setting = this.items[id];
 				if (!name && setting) {
 					name = '"' + setting.nameEl.textContent + '"'

@@ -29,9 +29,11 @@ export class DomManager extends PDFPlusComponent {
 	}
 
 	onload() {
-		for (const toolbarLeftEl of this.app.workspace.containerEl.querySelectorAll<HTMLElement>('.pdf-toolbar-left')) {
-			this.addChild(new ColorPalette(this.plugin, toolbarLeftEl));
-		}
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			for (const toolbarLeftEl of leaf.containerEl.querySelectorAll<HTMLElement>('.pdf-toolbar-left')) {
+				this.addChild(new ColorPalette(this.plugin, toolbarLeftEl));
+			}
+		});
 
 		this.updateStyleEl();
 
@@ -234,7 +236,7 @@ class PDFPlusCalloutRenderer extends MarkdownRenderChild {
 		const metadata = this.containerEl.dataset.calloutMetadata;
 		if (metadata) {
 			const rgb = metadata.split(',').map((val) => parseInt(val))
-			const isRgb = rgb.length === 3 && rgb.every((val) => 0 <= val  && val <= 255);
+			const isRgb = rgb.length === 3 && rgb.every((val) => 0 <= val && val <= 255);
 
 			if (isRgb) {
 				this.containerEl.style.setProperty('--callout-color', rgb.join(', '));
