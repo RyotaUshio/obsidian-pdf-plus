@@ -1,4 +1,4 @@
-import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platform, WorkspaceSplit } from 'obsidian';
+import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platform } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';

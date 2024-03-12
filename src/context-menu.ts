@@ -249,7 +249,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                     .setTitle('Extract to new file')
                     .setIcon('lucide-file-output')
                     .onClick(async () => {
-                        const { app, lib, settings } = plugin;
+                        const { lib, settings } = plugin;
 
                         const outlines = await PDFOutlines.fromFile(file, plugin);
                         const found = await outlines.findPDFjsOutlineTreeNode(item);
@@ -628,7 +628,7 @@ export class PDFPlusContextMenu extends Menu {
             }
         }
 
-        if (plugin.settings.showCopyLinkToSearchInContextMenu) {
+        if (selectedText && selection && plugin.settings.showCopyLinkToSearchInContextMenu) {
             this.addItem((item) => {
                 item.setSection('search')
                     .setTitle('Copy link to search')

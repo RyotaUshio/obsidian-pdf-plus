@@ -294,17 +294,29 @@ export class ColorPalette extends Component {
         if (!cropButtonEl) return;
 
         const child = this.lib.getPDFViewerChildAssociatedWithNode(this.paletteEl!);
-        if (!child || !child.pdfViewer.pdfViewer) return;
-        const pageView = child.getPage(child.pdfViewer.pdfViewer.currentPageNumber);
-        const pageEl = pageView.div
-        if (!pageEl) return;
+        if (!child || !child.pdfViewer.dom?.viewerEl) return;
+
+        const viewerEl = child.pdfViewer.dom.viewerEl;
 
         const selectBox = { left: 0, top: 0, width: 0, height: 0 };
         const onMouseDown = (evt: MouseEvent | TouchEvent) => {
+            // Determine the target page based on the event target
+            if (!(evt.target instanceof HTMLElement)) return;
+
+            const pageEl = evt.target.closest<HTMLElement>('.pdf-viewer div.page[data-page-number]')
+            if (!pageEl) return;
+
+            const pageNumber = pageEl.dataset.pageNumber;
+            if (!pageNumber) return;
+
+            const pageView = child.getPage(+pageNumber);
+
+            // Compute the top-left corner of the selection box
             const { x, y } = getEventCoord(evt);
             selectBox.left = x;
             selectBox.top = y;
 
+            // Display the selection box
             const boxEl = pageEl.createDiv('pdf-plus-select-box');
             const pageRect = pageEl.getBoundingClientRect();
             boxEl.setCssStyles({
@@ -313,9 +325,12 @@ export class ColorPalette extends Component {
             });
 
             const onMouseMove = (evt: MouseEvent | TouchEvent) => {
+                // Update the bottom-right corner of the selection box
                 const { x, y } = getEventCoord(evt);
-                selectBox.width = x - selectBox.left;
-                selectBox.height = y - selectBox.top;
+                const newPageRect = pageEl.getBoundingClientRect();
+                // `- (newPageRect.(left|top) - pageRect.(left|top))` is to account for the page's scroll position changing during the drag
+                selectBox.width = x - selectBox.left - (newPageRect.left - pageRect.left);
+                selectBox.height = y - selectBox.top - (newPageRect.top - pageRect.top);
 
                 boxEl.setCssStyles({
                     width: selectBox.width + 'px',
@@ -362,16 +377,16 @@ export class ColorPalette extends Component {
 
         const toggle = () => {
             cropButtonEl.toggleClass('is-active', !cropButtonEl.hasClass('is-active'));
-            pageEl.toggleClass('pdf-plus-selecting', cropButtonEl.hasClass('is-active'));
+            viewerEl.toggleClass('pdf-plus-selecting', cropButtonEl.hasClass('is-active'));
 
             activeWindow.getSelection()?.empty();
 
             if (cropButtonEl.hasClass('is-active')) {
-                pageEl.addEventListener('mousedown', onMouseDown);
-                pageEl.addEventListener('touchstart', onMouseDown);
+                viewerEl.addEventListener('mousedown', onMouseDown);
+                viewerEl.addEventListener('touchstart', onMouseDown);
             } else {
-                pageEl.removeEventListener('mousedown', onMouseDown);
-                pageEl.removeEventListener('touchstart', onMouseDown);
+                viewerEl.removeEventListener('mousedown', onMouseDown);
+                viewerEl.removeEventListener('touchstart', onMouseDown);
             }
         };
 

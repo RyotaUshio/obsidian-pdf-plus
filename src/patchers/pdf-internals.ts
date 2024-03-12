@@ -262,6 +262,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
          * Modified applySubpath() from Obsidian's app.js so that 
          * - it can interpret the `rect` parameter as FitR,
          * - it supports `zoomToFitRect` setting,
+         * - it supports `dontFitWidthWhenOpenPDFLink` & `preserveCurrentLeftOffsetWhenOpenPDFLink` settings,
          * - the `offset` & `rect` parameters can be parsed as float numbers, not integers,
          * - and it can handle `search` parameter.
          */
@@ -316,7 +317,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         parseSearchSettings('caseSensitive');
                         parseSearchSettings('matchDiacritics');
                         parseSearchSettings('entireWord');
-                               
+
                         setTimeout(() => lib.search(self.findBar, query, settings));
                         return;
                     }
@@ -350,15 +351,26 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         }
 
                         if (!dest) {
-                            const offset = params.has('offset') ? params.get('offset')!.split(',') : [];
-                            const left = _parseFloat(offset[0]);
-                            const top = _parseFloat(offset[1]);
-                            const zoom = _parseFloat(offset[2]);
-                            dest = null === zoom ? [page - 1, {
-                                name: 'FitBH'
-                            }, top] : [page - 1, {
-                                name: 'XYZ'
-                            }, left, top, zoom];
+                            if (params.has('offset')) {
+                                const offset = params.get('offset')!.split(',');
+                                const left = _parseFloat(offset[0]);
+                                const top = _parseFloat(offset[1]);
+                                const zoom = _parseFloat(offset[2]);
+                                dest = null === zoom
+                                    ? [page - 1, { name: 'FitBH' }, top]
+                                    : [page - 1, { name: 'XYZ' }, left, top, zoom];
+                            } else if (plugin.settings.dontFitWidthWhenOpenPDFLink) {
+                                if (plugin.settings.preserveCurrentLeftOffsetWhenOpenPDFLink) {
+                                    const currentLocation = self.pdfViewer?.pdfViewer?._location;
+                                    // As per the PDF spec, a null value for left/top/zoom means "leave unchanged"
+                                    // however, PDF.js doesn't seem to handle this correctly, so we need to pass in the current values explicitly
+                                    dest = [page - 1, { name: 'XYZ' }, currentLocation?.left ?? null, currentLocation?.top ?? null, null];    
+                                } else {
+                                    dest = [page - 1, { name: 'XYZ' }, null, null, null];
+                                }
+                            } else {
+                                dest = [page - 1, { name: 'FitBH' }, null];
+                            }
                         }
 
                         let highlight = null;

@@ -425,8 +425,8 @@ body {
     height: auto;
 }
 
-.pdf-plus-selecting {
-    cursor: crosshair;
+.pdf-plus-selecting * {
+    cursor: crosshair !important;
 
     .textLayer {
         user-select: none;

@@ -220,6 +220,8 @@ export interface PDFPlusSettings {
 	searchLinkCaseSensitive: 'true' | 'false' | 'default';
 	searchLinkMatchDiacritics: 'true' | 'false' | 'default';
 	searchLinkEntireWord: 'true' | 'false' | 'default';
+	dontFitWidthWhenOpenPDFLink: boolean;
+	preserveCurrentLeftOffsetWhenOpenPDFLink: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -277,7 +279,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightExistingTab: false,
 	existingTabHighlightOpacity: 0.5,
 	existingTabHighlightDuration: 0.75,
-	paneTypeForFirstPDFLeaf: '',
+	paneTypeForFirstPDFLeaf: 'left',
 	openLinkNextToExistingPDFTab: true,
 	openPDFWithDefaultApp: false,
 	openPDFWithDefaultAppAndObsidian: true,
@@ -424,6 +426,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	searchLinkCaseSensitive: 'true',
 	searchLinkMatchDiacritics: 'default',
 	searchLinkEntireWord: 'false',
+	dontFitWidthWhenOpenPDFLink: true,
+	preserveCurrentLeftOffsetWhenOpenPDFLink: false,
 };
 
 
@@ -1945,6 +1949,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.05)
 					.setName('Highlight duration of an existing tab (sec)')
 			}
+			this.addToggleSetting('dontFitWidthWhenOpenPDFLink', () => this.redisplay())
+				.setName('Preserve the current zoom level when opening a link to an already opened PDF file')
+				.setDesc('When you open a link to a PDF file that\'s already opened, Obsidian\'s default behavior causes the zoom level to be reset to fit the width of the PDF file to the viewer. If enabled, the current zoom level will be preserved.');
+			if (this.plugin.settings.dontFitWidthWhenOpenPDFLink) {
+				this.addToggleSetting('preserveCurrentLeftOffsetWhenOpenPDFLink')
+					.setName('Preserve the current horizontal scroll position');
+			}
+			
 		}
 		this.addDropdownSetting('paneTypeForFirstPDFLeaf', PANE_TYPE)
 			.setName(`How to open PDF links when there is no open PDF file`)
