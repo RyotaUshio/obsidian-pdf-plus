@@ -29,9 +29,9 @@ https://raw.githubusercontent.com/RyotaUshio/obsidian-pdf-plus/main/samples/Lore
 Then, save it as `example.pdf`.
 
 > [!NOTE]
-> Again, a dummy PDF file is just a plain text file although the extension `.pdf` looks as if it an actual PDF file.
+> Again, a dummy PDF file is just a plain text file although the extension `.pdf` looks as if it were an actual PDF file.
 
-Now, open `example.pdf` in Obsidian. Then, the following PDF file will be displayed in the built-in PDF viewer: https://raw.githubusercontent.com/RyotaUshio/obsidian-pdf-plus/main/samples/Lorem%20Ipsum.pdf.
+Open `example.pdf` in Obsidian. Then, the following PDF file will be displayed in the built-in PDF viewer: https://raw.githubusercontent.com/RyotaUshio/obsidian-pdf-plus/main/samples/Lorem%20Ipsum.pdf.
 
 It looks as if a normal PDF file located in your vault, and various PDF-related features work the same - you can copy a link to a text selection, [[Embedding rectangular selections|embed a rectangular selection]], [[Backlink highlighting - Basics|highlight backlinks]], and so on.
 
@@ -50,7 +50,7 @@ There are two ways to import an external PDF file:
 
 ## Future-proofness
 
-Note that dummy PDF files do not follow the PDF specification and thus cannot be recognized by other applications.
+Note that dummy PDF files do not follow the PDF specification and thus cannot be recognized by other PDF viewer applications such as Adobe Acrobat.
 If PDF++ stops working, they will not displayed properly even in Obsidian.
 
 However, they are just plain text files so you can easily open them with any text editor, and then replace them with actual PDF files.
