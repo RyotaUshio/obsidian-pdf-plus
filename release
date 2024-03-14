@@ -30,7 +30,7 @@ if __name__ == '__main__':
     assert manifest['version'] == package['version']
 
     if 'beta' in args.version:
-        ans = input(f'[Beta-release] Update beta version from {manifest_beta["version"]} to {args.version}? (y/[n]):').strip()
+        ans = input(f'[Beta-release] Update beta version from {manifest_beta["version"]} to {args.version}? (y/[n]): ').strip()
         if ans != 'y':
             exit(1)
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
             json.dump(manifest_beta, f, indent=4)
             
     else:
-        ans = input(f'Update version from {manifest["version"]} to {args.version}? (y/[n]):').strip()
+        ans = input(f'Update version from {manifest["version"]} to {args.version}? (y/[n]): ').strip()
         if ans != 'y':
             exit(1)
 
