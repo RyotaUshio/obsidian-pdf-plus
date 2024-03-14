@@ -1,6 +1,6 @@
 {
   "vaultName": "Obsidian PDF++",
-  "lastExport": 1710436997645,
+  "lastExport": 1710447754617,
   "pluginVersion": "1.8.01",
   "validBodyClasses": "publish css-settings-manager native-scrollbars theme-light",
   "useCustomHeadContent": false,
@@ -115,247 +115,247 @@
   ],
   "fileInfo": {
     "lib/scripts/graph-wasm.wasm": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 23377,
       "exportedPath": "lib/scripts/graph-wasm.wasm",
       "dependencies": []
     },
     "lib/fonts/94f2f163d4b698242fef.otf": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 66800,
       "exportedPath": "lib/fonts/94f2f163d4b698242fef.otf",
       "dependencies": []
     },
     "lib/fonts/72505e6a122c6acd5471.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 104232,
       "exportedPath": "lib/fonts/72505e6a122c6acd5471.woff2",
       "dependencies": []
     },
     "lib/fonts/2d5198822ab091ce4305.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 104332,
       "exportedPath": "lib/fonts/2d5198822ab091ce4305.woff2",
       "dependencies": []
     },
     "lib/fonts/c8ba52b05a9ef10f4758.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 98868,
       "exportedPath": "lib/fonts/c8ba52b05a9ef10f4758.woff2",
       "dependencies": []
     },
     "lib/fonts/cb10ffd7684cd9836a05.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 106876,
       "exportedPath": "lib/fonts/cb10ffd7684cd9836a05.woff2",
       "dependencies": []
     },
     "lib/fonts/b5f0f109bc88052d4000.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 105804,
       "exportedPath": "lib/fonts/b5f0f109bc88052d4000.woff2",
       "dependencies": []
     },
     "lib/fonts/cbe0ae49c52c920fd563.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 106108,
       "exportedPath": "lib/fonts/cbe0ae49c52c920fd563.woff2",
       "dependencies": []
     },
     "lib/fonts/535a6cf662596b3bd6a6.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 111708,
       "exportedPath": "lib/fonts/535a6cf662596b3bd6a6.woff2",
       "dependencies": []
     },
     "lib/fonts/70cc7ff27245e82ad414.ttf": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 192740,
       "exportedPath": "lib/fonts/70cc7ff27245e82ad414.ttf",
       "dependencies": []
     },
     "lib/fonts/454577c22304619db035.ttf": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 161376,
       "exportedPath": "lib/fonts/454577c22304619db035.ttf",
       "dependencies": []
     },
     "lib/fonts/52ac8f3034507f1d9e53.ttf": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 191568,
       "exportedPath": "lib/fonts/52ac8f3034507f1d9e53.ttf",
       "dependencies": []
     },
     "lib/fonts/05b618077343fbbd92b7.ttf": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 155288,
       "exportedPath": "lib/fonts/05b618077343fbbd92b7.ttf",
       "dependencies": []
     },
     "lib/fonts/4bb6ac751d1c5478ff3a.woff2": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 7876,
       "exportedPath": "lib/fonts/4bb6ac751d1c5478ff3a.woff2",
       "dependencies": []
     },
     "lib/media/874d8b8e340f75575caa.svg": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 317,
       "exportedPath": "lib/media/874d8b8e340f75575caa.svg",
       "dependencies": []
     },
     "lib/html/file-tree.html": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 13835,
       "exportedPath": "lib/html/file-tree.html",
       "dependencies": []
     },
     "lib/scripts/webpage.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 47290,
       "exportedPath": "lib/scripts/webpage.js",
       "dependencies": []
     },
     "lib/scripts/graph-view.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 15519,
       "exportedPath": "lib/scripts/graph-view.js",
       "dependencies": []
     },
     "lib/scripts/graph-wasm.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 14021,
       "exportedPath": "lib/scripts/graph-wasm.js",
       "dependencies": []
     },
     "lib/scripts/graph-render-worker.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 5179,
       "exportedPath": "lib/scripts/graph-render-worker.js",
       "dependencies": []
     },
     "lib/scripts/tinycolor.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 29832,
       "exportedPath": "lib/scripts/tinycolor.js",
       "dependencies": []
     },
     "lib/scripts/pixi.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 449509,
       "exportedPath": "lib/scripts/pixi.js",
       "dependencies": []
     },
     "lib/scripts/minisearch.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 29422,
       "exportedPath": "lib/scripts/minisearch.js",
       "dependencies": []
     },
     "lib/media/favicon.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 1105,
       "exportedPath": "lib/media/favicon.png",
       "dependencies": []
     },
     "lib/scripts/graph-data.js": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 1148,
       "exportedPath": "lib/scripts/graph-data.js",
       "dependencies": []
     },
     "lib/styles/obsidian.css": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 157356,
       "exportedPath": "lib/styles/obsidian.css",
       "dependencies": []
     },
     "lib/styles/global-variable-styles.css": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 236,
       "exportedPath": "lib/styles/global-variable-styles.css",
       "dependencies": []
     },
     "lib/styles/main-styles.css": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 23130,
       "exportedPath": "lib/styles/main-styles.css",
       "dependencies": []
     },
     "Attachments/Demo.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 18887701,
       "exportedPath": "attachments/demo.mov",
       "dependencies": []
     },
     "Attachments/Pasted image 20240224150625.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 384520,
       "exportedPath": "attachments/pasted-image-20240224150625.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240224153532.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 934500,
       "exportedPath": "attachments/pasted-image-20240224153532.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240224160002.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 745260,
       "exportedPath": "attachments/pasted-image-20240224160002.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240224161224.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 934362,
       "exportedPath": "attachments/pasted-image-20240224161224.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240224164428.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 229563,
       "exportedPath": "attachments/pasted-image-20240224164428.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240224164607.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 229563,
       "exportedPath": "attachments/pasted-image-20240224164607.png",
       "dependencies": []
     },
     "Attachments/Screen Recording 2024-02-24 at 15.31.40.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 3125786,
       "exportedPath": "attachments/screen-recording-2024-02-24-at-15.31.40.mov",
       "dependencies": []
     },
     "Attachments/Screen Recording 2024-02-24 at 15.51.47.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 1073314,
       "exportedPath": "attachments/screen-recording-2024-02-24-at-15.51.47.mov",
       "dependencies": []
     },
     "Attachments/Screen Recording 2024-02-24 at 16.17.34.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 7836579,
       "exportedPath": "attachments/screen-recording-2024-02-24-at-16.17.34.mov",
       "dependencies": []
     },
     "Attachments/Screen Recording 2024-02-24 at 16.21.33.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 15000070,
       "exportedPath": "attachments/screen-recording-2024-02-24-at-16.21.33.mov",
       "dependencies": []
     },
     "Attachments/Screen Recording 2024-02-24 at 16.23.02.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 24168666,
       "exportedPath": "attachments/screen-recording-2024-02-24-at-16.23.02.mov",
       "dependencies": []
     },
     "Settings/Backlink highlighting.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 449,
       "exportedPath": "settings/backlink-highlighting.html",
       "dependencies": [
@@ -363,19 +363,19 @@
       ]
     },
     "Annotating PDFs.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 349,
       "exportedPath": "annotating-pdfs.html",
       "dependencies": []
     },
     "Getting started.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 136,
       "exportedPath": "getting-started.html",
       "dependencies": []
     },
     "index.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 2167,
       "exportedPath": "index.html",
       "dependencies": [
@@ -383,31 +383,31 @@
       ]
     },
     "lib/media/pasted-image-20240224164607.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 229563,
       "exportedPath": "lib/media/pasted-image-20240224164607.png",
       "dependencies": []
     },
     "attachments/demo.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 18887701,
       "exportedPath": "attachments/demo.mov",
       "dependencies": []
     },
     "Attachments/Pasted image 20240226025524.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 27523,
       "exportedPath": "attachments/pasted-image-20240226025524.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240226030018.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 31781,
       "exportedPath": "attachments/pasted-image-20240226030018.png",
       "dependencies": []
     },
     "Backlink highlighting - Basics.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 2336,
       "exportedPath": "backlink-highlighting-basics.html",
       "dependencies": [
@@ -418,7 +418,7 @@
       ]
     },
     "Backlink highlighting - Colors.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 1331,
       "exportedPath": "backlink-highlighting-colors.html",
       "dependencies": [
@@ -428,7 +428,7 @@
       ]
     },
     "Link copy formats.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 3112,
       "exportedPath": "link-copy-formats.html",
       "dependencies": [
@@ -437,91 +437,91 @@
       ]
     },
     "Page labels.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 3219,
       "exportedPath": "page-labels.html",
       "dependencies": []
     },
     "Templating.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 4406,
       "exportedPath": "templating.html",
       "dependencies": []
     },
     "attachments/pasted-image-20240226025524.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 27523,
       "exportedPath": "attachments/pasted-image-20240226025524.png",
       "dependencies": []
     },
     "attachments/pasted-image-20240226030018.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 31781,
       "exportedPath": "attachments/pasted-image-20240226030018.png",
       "dependencies": []
     },
     "attachments/pasted-image-20240224150625.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 384520,
       "exportedPath": "attachments/pasted-image-20240224150625.png",
       "dependencies": []
     },
     "attachments/pasted-image-20240224153532.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 934500,
       "exportedPath": "attachments/pasted-image-20240224153532.png",
       "dependencies": []
     },
     "attachments/screen-recording-2024-02-24-at-15.51.47.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 1073314,
       "exportedPath": "attachments/screen-recording-2024-02-24-at-15.51.47.mov",
       "dependencies": []
     },
     "attachments/pasted-image-20240224160002.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 745260,
       "exportedPath": "attachments/pasted-image-20240224160002.png",
       "dependencies": []
     },
     "attachments/pasted-image-20240224161224.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 934362,
       "exportedPath": "attachments/pasted-image-20240224161224.png",
       "dependencies": []
     },
     "attachments/screen-recording-2024-02-24-at-16.23.02.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 24168666,
       "exportedPath": "attachments/screen-recording-2024-02-24-at-16.23.02.mov",
       "dependencies": []
     },
     "attachments/pasted-image-20240224164428.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 229563,
       "exportedPath": "attachments/pasted-image-20240224164428.png",
       "dependencies": []
     },
     "Editing PDFs.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 2391,
       "exportedPath": "editing-pdfs.html",
       "dependencies": []
     },
     "Attachments/Screen Recording 2024-02-27 at 9.23.54.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 19094249,
       "exportedPath": "attachments/screen-recording-2024-02-27-at-9.23.54.mov",
       "dependencies": []
     },
     "Attachments/Screen Recording 2024-02-27 at 9.32.25.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 12181891,
       "exportedPath": "attachments/screen-recording-2024-02-27-at-9.32.25.mov",
       "dependencies": []
     },
     "Embedding rectangular selections.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 1825,
       "exportedPath": "embedding-rectangular-selections.html",
       "dependencies": [
@@ -530,55 +530,55 @@
       ]
     },
     "attachments/screen-recording-2024-02-27-at-9.23.54.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 19094249,
       "exportedPath": "attachments/screen-recording-2024-02-27-at-9.23.54.mov",
       "dependencies": []
     },
     "attachments/screen-recording-2024-02-27-at-9.32.25.mov": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 12181891,
       "exportedPath": "attachments/screen-recording-2024-02-27-at-9.32.25.mov",
       "dependencies": []
     },
     "Attachments/Pasted image 20240228021038.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 133220,
       "exportedPath": "attachments/pasted-image-20240228021038.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240228021448.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 133315,
       "exportedPath": "attachments/pasted-image-20240228021448.png",
       "dependencies": []
     },
     "Attachments/Pasted image 20240228021747.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 176224,
       "exportedPath": "attachments/pasted-image-20240228021747.png",
       "dependencies": []
     },
     "attachments/pasted-image-20240228021448.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 133315,
       "exportedPath": "attachments/pasted-image-20240228021448.png",
       "dependencies": []
     },
     "attachments/pasted-image-20240228021038.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 133220,
       "exportedPath": "attachments/pasted-image-20240228021038.png",
       "dependencies": []
     },
     "attachments/pasted-image-20240228021747.png": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 176224,
       "exportedPath": "attachments/pasted-image-20240228021747.png",
       "dependencies": []
     },
     "Pasting a copied link to a text selection in PDF.md": {
-      "modifiedTime": 1710436997645,
+      "modifiedTime": 1710447754617,
       "sourceSize": 962,
       "exportedPath": "pasting-a-copied-link-to-a-text-selection-in-pdf.html",
       "dependencies": [
@@ -588,8 +588,8 @@
       ]
     },
     "External PDF files.md": {
-      "modifiedTime": 1710436997645,
-      "sourceSize": 4962,
+      "modifiedTime": 1710447754617,
+      "sourceSize": 5483,
       "exportedPath": "external-pdf-files.html",
       "dependencies": []
     }

@@ -1,5 +1,5 @@
 > [!warning]
-> This is an experimental feature, which will be available from 0.38.0.
+> This is an experimental feature, which will be available from 0.38.0-beta.
 
 With PDF++, you can seamlessly integrate PDF files located **outside your vault** as if they were inside.
 
@@ -20,6 +20,8 @@ A dummy PDF file is a plain text file that
 > [!NOTE]
 > For `file:///`, notice there are **three** slash signs.
 
+### Create a dummy file manually
+
 For example, open your favorite text editor and create a text file with the following content:
 
 ```
@@ -35,9 +37,13 @@ Open `example.pdf` in Obsidian. Then, the following PDF file will be displayed i
 
 It looks as if a normal PDF file located in your vault, and various PDF-related features work the same - you can copy a link to a text selection, [[Embedding rectangular selections|embed a rectangular selection]], [[Backlink highlighting - Basics|highlight backlinks]], and so on.
 
+### Create dummy files from the command
+
+PDF++ offers an alternative way to create dummy PDF files: the **PDF++: Create dummy file for external PDF** command.
+
 ## Importing external PDFs
 
-However, there is one thing you cannot do for external PDF files: editing/modification; external PDFs are read-only in some sense.
+There is one thing you cannot do for external PDF files: editing/modification; external PDFs are read-only in some sense.
 Moreover, the loading speed might also be an issue if the PDF is fetched from the Internet.
 
 To resolve these problems, you can "import" an external PDF file into your vault.
@@ -47,6 +53,11 @@ The dummy PDF is no longer a dummy, but instead, it's now an actual PDF file.
 There are two ways to import an external PDF file:
 - Click the **Import PDF into vault** button (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-import"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>) in the PDF toolbar. 
 - Run the command **PDF++: Import this PDF into vault**
+
+## Opening external PDFs in their original locations
+
+Run the **Open this PDF in the original location** command while opening an external PDF file to open it in the original location.
+If it's in the local file system, the OS-defined default PDF viewer will be opened. If it's on the web, the browser will open the original file.
 
 ## Future-proofness
 
