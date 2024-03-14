@@ -158,8 +158,9 @@ export class ExternalPDFModal extends PDFPlusModal {
                 new FuzzyFolderSuggest(this.app, text.inputEl, { blurOnSelect: false })
                     .onSelect(({ item: folder }) => {
                         setTimeout(() => {
-                            text.setValue(folder.path.endsWith('/') ? folder.path : folder.path + '/Untitled.pdf');
-                            text.inputEl.setSelectionRange(text.getValue().lastIndexOf('/') + 1, text.inputEl.value.lastIndexOf('.'))
+                            const path = normalizePath(folder.path + '/Untitled.pdf');
+                            text.setValue(path);
+                            text.inputEl.setSelectionRange(path.lastIndexOf('/') + 1, path.lastIndexOf('.'));
                         });
                     })
                 text.onChange((value) => {
