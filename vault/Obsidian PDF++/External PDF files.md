@@ -3,10 +3,15 @@
 
 With PDF++, you can seamlessly integrate PDF files located **outside your vault** as if they were inside.
 
-For example, PDF++ allows Obsidian's built-in PDF viewer to open PDF files from the internet or located externally on your local file system. 
+For example, PDF++ allows Obsidian's built-in PDF viewer to open PDF files **from the Internet** or **located externally on your local file system**. 
 Backlink highlighting works consistently across all PDFs, regardless of their location within or outside the vault.
 
 Thanks to this feature, you can manage PDF files without saving their actual contents in your vault folder. As a result, you don't need to worry about the storage limit of Obsidian Sync anymore, for example.
+
+> [!NOTE]
+> For local PDF files, use symbolic links instead if possible.
+> 
+> See also the following page from the official help docs: https://help.obsidian.md/Files+and+folders/Symbolic+links+and+junctions
 
 ## Dummy PDF files
 
