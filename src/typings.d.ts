@@ -8,6 +8,7 @@ import { PDFName, PDFNumber, PDFRef, PDFNull } from '@cantoo/pdf-lib';
 import PDFPlus from 'main';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
+import { ColorPalette } from 'color-palette';
 
 
 declare global {
@@ -50,7 +51,9 @@ interface PDFViewerComponent extends Component {
     opts: any;
     then(cb: (child: PDFViewerChild) => void): void; // register a callback executed when the child gets ready
     loadFile(file: TFile, subpath?: string): Promise<void>;
-    /** Added by this plugin */
+    //////////////////////////
+    // Added by this plugin //
+    //////////////////////////
     visualizer?: PDFViewerBacklinkVisualizer;
 }
 
@@ -88,10 +91,20 @@ interface PDFViewerChild {
     renderAnnotationPopup(annotationElement: AnnotationElement): void;
     destroyAnnotationPopup(): void;
     getAnnotatedText(pageView: PDFPageView, id: string): Promise<string | null>;
-    /** Added by this plugin */
+    //////////////////////////
+    // Added by this plugin //
+    //////////////////////////
     component?: Component;
     parent?: PDFViewerComponent;
     hoverPopover: HoverPopover | null;
+    palette: ColorPalette | null;
+    /** 
+     * true if the file is located outside the vault; see the comment in the
+     * patcher for `PDFViewerChild.prototype.loadFile` for the details.
+     */
+    isFileExternal: boolean;
+    /** The URL of the external file. Set when `isFileExternal` is true. */
+    externalFileUrl: string | null;
 }
 
 interface PDFHighlight {
@@ -424,7 +437,9 @@ interface AnnotationLayer {
 interface BacklinkView extends FileView {
     backlink: BacklinkRenderer;
     update(): void;
-    /** Added by this plugin */
+    //////////////////////////
+    // Added by this plugin //
+    //////////////////////////
     pdfManager?: BacklinkPanePDFManager;
 }
 
@@ -517,7 +532,9 @@ interface SearchResultDom {
     getMatchCount(): number;
     setFocusedItem(item: SearchResultItemDom | null): void;
     changeFocusedItem(item: SearchResultItemDom | null): void;
-    /** Added by this plugin */
+    //////////////////////////
+    // Added by this plugin //
+    //////////////////////////
     filter?: (file: TFile, linkCache: Reference) => boolean;
 }
 

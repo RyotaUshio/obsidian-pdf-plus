@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, parseLinktext } from 'obsidian';
+import { App, Component, EditableFileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, parseLinktext, requestUrl } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 
@@ -674,14 +674,51 @@ export class PDFPlusLib {
         if (caseSensitiveToggleIconEl) caseSensitiveToggleIconEl.toggleClass('is-active', findBar.searchSettings.caseSensitive);
     }
 
+    /**
+     * If the given PDF file is a "dummy" file containing only a URL (https://, http://, file:///),
+     * return the URL. Otherwise, return null.
+     * For the exact usage, refer to the comment in the patcher for `PDFViewerChild.prototype.loadFile`.
+     * 
+     * @param file 
+     * @returns 
+     */
+    async getExternalPDFUrl(file: TFile): Promise<string | null> {
+        if (file.stat.size > 300) return null;
+
+        const content = (await this.app.vault.read(file)).trim();
+
+        // A PDF file must start with a header of the form "%PDF-x.y"
+        // so it's safe to assume that a file starting with "https://", "http://" or "file:///"
+        // is not a usual PDF file.
+        if (content.startsWith('https://') || content.startsWith('http://')) {
+            const res = await requestUrl(content);
+            if (res.status === 200) {
+                const url = URL.createObjectURL(new Blob([res.arrayBuffer], { type: 'application/pdf' }));
+                return url;
+            }
+        } else if (content.startsWith('file:///')) {
+            return Platform.resourcePathPrefix + content.substring(8);
+        }
+        return null;
+    }
+
     async loadPDFDocument(file: TFile): Promise<PDFDocumentProxy> {
+        const url = await this.getExternalPDFUrl(file);
+        if (url) {
+            return await this.loadPDFDocumentFromArrayBufferOrUrl({ url });
+        }
+
         const buffer = await this.app.vault.readBinary(file);
-        return await this.loadPDFDocumentFromArrayBuffer(buffer);
+        return await this.loadPDFDocumentFromArrayBufferOrUrl({ data: buffer });
     }
 
     async loadPDFDocumentFromArrayBuffer(buffer: ArrayBuffer): Promise<PDFDocumentProxy> {
+        return await this.loadPDFDocumentFromArrayBufferOrUrl({ data: buffer });
+    }
+
+    async loadPDFDocumentFromArrayBufferOrUrl(source: { data: ArrayBuffer } | { url: string }): Promise<PDFDocumentProxy> {
         const loadingTask = window.pdfjsLib.getDocument({
-            data: buffer,
+            ...source,
             cMapPacked: true,
             cMapUrl: '/lib/pdfjs/cmaps/',
             standardFontDataUrl: '/lib/pdfjs/standard_fonts/',
@@ -861,5 +898,9 @@ export class PDFPlusLib {
         }
         texts.push(textContentItems[endIndex].str.slice(0, endOffset));
         return toSingleLine(texts.join('\n'));
+    }
+
+    isEditable(child: PDFViewerChild) {
+        return this.plugin.settings.enablePDFEdit && !child.isFileExternal;
     }
 }

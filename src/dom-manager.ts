@@ -29,11 +29,12 @@ export class DomManager extends PDFPlusComponent {
 	}
 
 	onload() {
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			for (const toolbarLeftEl of leaf.containerEl.querySelectorAll<HTMLElement>('.pdf-toolbar-left')) {
-				this.addChild(new ColorPalette(this.plugin, toolbarLeftEl));
-			}
-		});
+		this.plugin.trigger('update-dom');
+		// this.app.workspace.iterateAllLeaves((leaf) => {
+		// 	for (const toolbarLeftEl of leaf.containerEl.querySelectorAll<HTMLElement>('.pdf-toolbar-left')) {
+		// 		this.addChild(new ColorPalette(this.plugin, toolbarLeftEl));
+		// 	}
+		// });
 
 		this.updateStyleEl();
 

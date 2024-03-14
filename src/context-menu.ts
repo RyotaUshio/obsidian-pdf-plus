@@ -39,7 +39,7 @@ export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt:
 }
 
 export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): void => {
-    const { lib, settings } = plugin;
+    const { lib } = plugin;
 
     const node = evt.targetNode;
     if (node && node.instanceOf(HTMLElement) && node.hasClass('thumbnail') && node.dataset.pageNumber !== undefined) {
@@ -64,7 +64,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                     })
             });
 
-        if (settings.enablePDFEdit) {
+        if (lib.isEditable(child)) {
             menu
                 .addItem((item) => {
                     item.setTitle('Insert page before this page')
@@ -164,7 +164,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                 })
         });
 
-    if (plugin.settings.enablePDFEdit) {
+    if (lib.isEditable(child)) {
         menu.addItem((menuItem) => {
             menuItem
                 .setTitle('Add subitem')
@@ -333,7 +333,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
 export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, evt: MouseEvent) => {
     const { lib } = plugin;
 
-    if (plugin.settings.enablePDFEdit) {
+    if (lib.isEditable(child)) {
         new Menu()
             .addItem((menuItem) => {
                 menuItem
@@ -466,7 +466,7 @@ export class PDFPlusContextMenu extends Menu {
                 //     }
                 // }                    
 
-                if (plugin.settings.enablePDFEdit) {
+                if (lib.isEditable(child)) {
                     for (const { name, template } of formats) {
                         this.addItem((item) => {
                             return item
@@ -562,7 +562,7 @@ export class PDFPlusContextMenu extends Menu {
                 // }
 
                 // edit & delete annotation //
-                if (plugin.settings.enablePDFEdit) {
+                if (lib.isEditable(child)) {
                     if (plugin.settings.enableAnnotationContentEdit && PDFAnnotationEditModal.isSubtypeSupported(annot.data.subtype)) {
                         const subtype = annot.data.subtype;
                         this.addItem((item) => {
@@ -600,7 +600,7 @@ export class PDFPlusContextMenu extends Menu {
 
         // Add a PDF internal link to selection
         if (selectedText && selection
-            && plugin.settings.enablePDFEdit
+            && lib.isEditable(child)
             && plugin.lastCopiedDestInfo
             && plugin.lastCopiedDestInfo.file === child.file) {
             if ('destArray' in plugin.lastCopiedDestInfo) {

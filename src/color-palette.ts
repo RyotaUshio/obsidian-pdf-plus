@@ -1,20 +1,21 @@
-import { App, Component, Menu, setIcon, setTooltip } from 'obsidian';
+import { Menu, Notice, Platform, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusLib } from 'lib';
 import { KeysOfType, getEventCoord, isHexString } from 'utils';
-import { Rect } from 'typings';
+import { PDFViewerChild, Rect } from 'typings';
+import { PDFPlusComponent } from 'lib/component';
 
 
 export type ColorPaletteState = Pick<ColorPalette, 'selectedColorName' | 'actionIndex' | 'displayTextFormatIndex' | 'writeFile'>;
 
-export class ColorPalette extends Component {
+export class ColorPalette extends PDFPlusComponent {
     static readonly CLS = 'pdf-plus-color-palette';
     /** Maps a paletteEl to the corresponding ColorPalette instance */
     static elInstanceMap = new Map<HTMLElement, ColorPalette>();
 
-    app: App;
-    lib: PDFPlusLib;
+    child: PDFViewerChild;
+
+    toolbarLeftEl: HTMLElement;
 
     spacerEl: HTMLElement | null;
     paletteEl: HTMLElement | null;
@@ -25,6 +26,7 @@ export class ColorPalette extends Component {
     cropButtonEl: HTMLElement | null;
     statusContainerEl: HTMLElement | null;
     statusEl: HTMLElement | null;
+    importButtonEl: HTMLElement | null;
 
     /** The state of a color palette is specified by a 4-tuple consisting of the following. */
     selectedColorName: string | null;
@@ -32,10 +34,10 @@ export class ColorPalette extends Component {
     displayTextFormatIndex: number;
     writeFile: boolean;
 
-    constructor(public plugin: PDFPlus, public toolbarLeftEl: HTMLElement) {
-        super();
-        this.app = plugin.app;
-        this.lib = plugin.lib;
+    constructor(plugin: PDFPlus, child: PDFViewerChild, toolbarLeftEl: HTMLElement) {
+        super(plugin);
+        this.child = child;
+        this.toolbarLeftEl = toolbarLeftEl;
 
         this.spacerEl = null;
         this.paletteEl = null;
@@ -46,11 +48,12 @@ export class ColorPalette extends Component {
         this.cropButtonEl = null;
         this.statusContainerEl = null;
         this.statusEl = null;
+        this.importButtonEl = null;
 
         this.selectedColorName = null;
         this.actionIndex = plugin.settings.defaultColorPaletteActionIndex;
         this.displayTextFormatIndex = plugin.settings.defaultDisplayTextFormatIndex;
-        this.writeFile = plugin.settings.enablePDFEdit && plugin.settings.defaultWriteFileToggle;
+        this.writeFile = this.lib.isEditable(this.child) && plugin.settings.defaultWriteFileToggle;
     }
 
     onload() {
@@ -77,8 +80,10 @@ export class ColorPalette extends Component {
 
         this.addCropButton(this.paletteEl);
 
-        if (this.plugin.settings.enablePDFEdit) {
+        if (this.lib.isEditable(this.child)) {
             this.addWriteFileToggle(this.paletteEl);
+        } else if (this.child.isFileExternal) {
+            this.addImportButton(this.paletteEl);
         }
 
         this.statusContainerEl = this.paletteEl.createDiv('pdf-plus-color-palette-status-container');
@@ -258,6 +263,8 @@ export class ColorPalette extends Component {
     }
 
     addWriteFileToggle(paletteEl: HTMLElement) {
+        this.removeWriteFileToggle();
+
         this.writeFileButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
             setIcon(el, 'lucide-save');
             setTooltip(el, `${this.plugin.manifest.name}: Add ${this.plugin.settings.selectionBacklinkVisualizeStyle}s to file directly`);
@@ -271,6 +278,78 @@ export class ColorPalette extends Component {
                 this.plugin.trigger('color-palette-state-change', { source: this });
             });
         });
+
+        if (this.cropButtonEl) {
+            paletteEl.insertAfter(this.writeFileButtonEl, this.cropButtonEl);
+        }
+    }
+
+    removeWriteFileToggle() {
+        this.writeFileButtonEl?.remove();
+        this.writeFileButtonEl = null;
+    }
+
+    addImportButton(paletteEl: HTMLElement) {
+        this.removeImportButton();
+
+        this.importButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
+            setIcon(el, 'lucide-import');
+            setTooltip(el, `${this.plugin.manifest.name}: Import PDF into vault`);
+            el.addEventListener('click', () => {
+                this.importFile();
+            });
+        });
+
+        if (this.cropButtonEl) {
+            paletteEl.insertAfter(this.importButtonEl, this.cropButtonEl);
+        }
+    }
+
+    removeImportButton() {
+        this.importButtonEl?.remove();
+        this.importButtonEl = null;
+    }
+
+    async importFile() {
+        const url = this.child.externalFileUrl;
+        const file = this.child.file;
+        if (!url || !file) return;
+
+        if (!Platform.isDesktopApp && url.startsWith(Platform.resourcePathPrefix)) {
+            new Notice(`${this.plugin.manifest.name}: Importing local PDFs outside the vault is supported only on the desktop app.`);
+            return;
+        }
+        // if (url.startsWith('https://') || url.startsWith('http://')) {
+        //     const res = await requestUrl(url);
+        //     if (res.status === 200 && res.headers['content-type'] === 'application/pdf') {
+        //         await this.app.vault.modifyBinary(file, res.arrayBuffer);
+        //         success = true;
+        //     } else {
+        //         new Notice(`${this.plugin.manifest.name}: Import failed because the URL is invalid or the file is not a PDF.`);
+        //     }
+        // } else if (url.startsWith(Platform.resourcePathPrefix)) {
+        //     if (Platform.isDesktopApp) { // `fs` is only availabel in the desktop app
+        //         const buffer = readFileSync(url.slice(Platform.resourcePathPrefix.length));
+        //         await this.app.vault.modifyBinary(file, buffer);
+        //         success = true;
+        //     } else {
+        //         new Notice(`${this.plugin.manifest.name}: Importing local PDFs outside the vault is supported only on the desktop app.`);
+        //     }
+
+        const res = await fetch(url);
+        if (res.ok) {
+            const buffer = await res.arrayBuffer();
+            await this.app.vault.modifyBinary(file, buffer);
+
+            this.removeImportButton();
+            if (this.lib.isEditable(this.child) && this.paletteEl) {
+                this.addWriteFileToggle(this.paletteEl);
+            }
+            new Notice(`${this.plugin.manifest.name}: Successfully imported the PDF file into the vault.`);
+            return;
+        }
+
+        new Notice(`${this.plugin.manifest.name}: Import failed. Response status: ${res.status}`);
     }
 
     setWriteFile(value: boolean) {

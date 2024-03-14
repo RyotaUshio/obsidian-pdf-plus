@@ -9,6 +9,7 @@ import { TemplateProcessor } from 'template';
 import { parsePDFSubpath } from 'utils';
 import { DestArray } from 'typings';
 import { PDFPlusSettingTab } from 'settings';
+import { ExternalPDFModal } from 'modals/external-pdf-modals';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -169,6 +170,18 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'create-pdf',
                 name: 'Create new PDF',
                 callback: () => this.createPDF()
+            }, {
+                id: 'import',
+                name: 'Import this PDF into vault',
+                checkCallback: (checking) => this.importExternalFileIntoVault(checking)
+            }, {
+                id: 'open-external',
+                name: 'Open this PDF in the original location',
+                checkCallback: (checking) => this.openExternalSource(checking)
+            }, {
+                id: 'create-dummy',
+                name: 'Create dummy file for external PDF',
+                callback: () => this.createDummyForExternalPDF()
             }
         ];
 
@@ -449,9 +462,9 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     setWriteFile(checking: boolean, writeFile: boolean) {
-        if (!this.settings.enablePDFEdit) return false;
         const palette = this.lib.getColorPalette();
         if (!palette) return false;
+        if (!this.lib.isEditable(palette.child)) return false;
         if (palette.writeFile === writeFile) return false;
         if (!checking) {
             palette.setWriteFile(writeFile);
@@ -648,10 +661,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     editPageLabels(checking: boolean) {
-        if (!this.settings.enablePDFEdit) return false;
-
         const view = this.lib.workspace.getActivePDFView();
         if (!view) return false;
+        if (!view.viewer.child) return false;
+        if (!this.lib.isEditable(view.viewer.child)) return false;
+
         const file = view.file;
         if (!file) return false;
 
@@ -716,11 +730,12 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     addOutlineItem(checking: boolean) {
-        if (!this.settings.enablePDFEdit) return false;
-
         const view = this.lib.workspace.getActivePDFView();
         const file = view?.file;
-        if (!view || !file) return false;
+        const child = view?.viewer.child;
+        if (!view || !file || !child) return false;
+
+        if (!this.lib.isEditable(child)) return false;
 
         const state = view.getState();
         const destArray = this.lib.viewStateToDestArray(state, true);
@@ -898,5 +913,33 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         }
 
         return true;
+    }
+
+    importExternalFileIntoVault(checking: boolean) {
+        const child = this.lib.getPDFViewerChild(true);
+        if (!child || !child.isFileExternal || !child.palette) return false;
+
+        if (!checking) child.palette.importFile();
+
+        return true;
+    }
+
+    openExternalSource(checking: boolean) {
+        const child = this.lib.getPDFViewerChild(true);
+        const file = child?.file;
+        if (!child || !child.isFileExternal || !file) return false;
+
+        if (!checking) {
+            (async () => {
+                const url = (await this.app.vault.read(file)).trim();
+                window.open(url, '_blank');
+            })();
+        }
+
+        return true;
+    }
+
+    createDummyForExternalPDF() {
+        new ExternalPDFModal(this.plugin).open();
     }
 }

@@ -5,6 +5,7 @@ import { ObsidianViewer } from 'typings';
 export * from './color';
 export * from './typescript';
 export * from './maps';
+export * from './suggest';
 
 
 export function getDirectPDFObj(dict: PDFDict, key: string) {

@@ -77,7 +77,7 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
         // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
         // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
         // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
-        const offsetTo = (index === endIndex ? endOffset : trimmedChars.length) - 1;
+        const offsetTo = (index === endIndex ? Math.min(endOffset, trimmedChars.length) : trimmedChars.length) - 1;
 
         if (offsetFrom > trimmedChars.length - 1 || offsetTo < 0) return null;
 
