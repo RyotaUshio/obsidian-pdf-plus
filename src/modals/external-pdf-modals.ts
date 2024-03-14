@@ -11,6 +11,14 @@ export class ExternalPDFModal extends PDFPlusModal {
     // for source = 'web'
     filePath: string | null = null;
 
+    constructor(...args: ConstructorParameters<typeof PDFPlusModal>) {
+        super(...args);
+
+        this.scope.register([], 'Enter', () => {
+            this.submit();
+        });
+    }
+
     onOpen() {
         super.onOpen();
         this.titleEl.setText(`${this.plugin.manifest.name}: Create dummy file for external PDF`);
@@ -160,6 +168,7 @@ export class ExternalPDFModal extends PDFPlusModal {
                         setTimeout(() => {
                             const path = normalizePath(folder.path + '/Untitled.pdf');
                             text.setValue(path);
+                            this.filePath = path;
                             text.inputEl.setSelectionRange(path.lastIndexOf('/') + 1, path.lastIndexOf('.'));
                         });
                     })
@@ -194,14 +203,7 @@ export class ExternalPDFModal extends PDFPlusModal {
         this.contentEl.createDiv('modal-button-container', (buttonContainerEl) => {
             buttonContainerEl.createEl('button', { text: 'Create', cls: 'mod-cta' }, (buttonEl) => {
                 buttonEl.addEventListener('click', () => {
-                    this.urls = this.urls.filter((url) => url);
-
-                    if (this.urls.length) {
-                        this.createDummyFiles();
-                        this.close();
-                    } else {
-                        new Notice(`${this.plugin.manifest.name}: The external PDF location is not specified.`)
-                    }
+                    this.submit();
                 });
             });
 
@@ -211,6 +213,26 @@ export class ExternalPDFModal extends PDFPlusModal {
                 });
             });
         });
+    }
+
+    submit() {
+        this.urls = this.urls.filter((url) => url);
+
+        if (!this.urls.length) {
+            new Notice(`${this.plugin.manifest.name}: The external PDF location is not specified.`)
+            return;
+        }
+        if (this.source === 'file' && !this.folderPath) {
+            new Notice(`${this.plugin.manifest.name}: The folder to save the dummy files is not specified.`)
+            return;
+        }
+        if (this.source === 'web' && !this.filePath) {
+            new Notice(`${this.plugin.manifest.name}: The dummy file path is not specified.`)
+            return;
+        }
+
+        this.createDummyFiles();
+        this.close();
     }
 
     async createDummyFiles() {
