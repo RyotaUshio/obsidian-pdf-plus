@@ -65973,56 +65973,30 @@ var _ObsidianStyles = class extends Asset {
     super("obsidian.css", "", "style" /* Style */, "autohead" /* AutoHead */, true, "dynamic" /* Dynamic */, "" /* Default */, 10);
     this.content = "";
   }
-  removeSelectors(css, containing) {
-    let regex = new RegExp(`([w :*+~\\-\\.\\>\\[\\]()"=]*${containing}[\\w\\s:*+~\\-\\.\\>\\[\\]()"=]+)(,|{)`, "gm");
-    let toRemove = [...css.matchAll(regex)];
-    for (let match of toRemove) {
-      css = css.replace(match[1], "");
-    }
-    css = css.trim();
-    return css;
-  }
   async load(options) {
     var _a2;
     this.content = "";
     let appSheet = document.styleSheets[1];
-    let stylesheets = document.styleSheets;
-    for (let i = 0; i < stylesheets.length; i++) {
-      if (stylesheets[i].href && ((_a2 = stylesheets[i].href) == null ? void 0 : _a2.includes("app.css"))) {
-        appSheet = stylesheets[i];
+    let stylesheets = Array.from(document.styleSheets);
+    for (const element of stylesheets) {
+      if (element.href && ((_a2 = element.href) == null ? void 0 : _a2.includes("app.css"))) {
+        appSheet = element;
         break;
       }
     }
-    this.content += obsidian_styles_txt_default;
-    for (let i = 0; i < appSheet.cssRules.length; i++) {
-      let rule = appSheet.cssRules[i];
-      if (rule) {
-        let skip = false;
-        let cssText = rule.cssText;
-        let selector = cssText.split("{")[0];
-        for (let keep of _ObsidianStyles.stylesKeep) {
-          if (!selector.includes(keep)) {
-            for (let filter of _ObsidianStyles.stylesFilter) {
-              if (selector.includes(filter)) {
-                skip = true;
-                break;
-              }
-            }
-          } else {
-            skip = false;
-            break;
-          }
-        }
-        if (skip)
-          continue;
-        cssText = this.removeSelectors(cssText, "\\.cm-");
-        if (cssText.startsWith("{"))
-          continue;
-        cssText += "\n";
-        this.content += cssText;
-      }
+    let cssRules = Array.from(appSheet.cssRules);
+    for (const element of cssRules) {
+      let rule = element;
+      let selectors = rule.cssText.split("{")[0].split(",");
+      let declarations = rule.cssText.split("{")[1].split("}")[0].split(";");
+      selectors = selectors.map((selector) => selector.trim());
+      selectors = selectors.filter((selector) => _ObsidianStyles.stylesKeep.some((keep) => selector.includes(keep)) || !_ObsidianStyles.stylesFilter.some((filter) => selector.includes(filter)));
+      if (selectors.length == 0)
+        continue;
+      let newRule = selectors.join(", ") + " { " + declarations.join("; ") + " }";
+      this.content += newRule + "\n";
     }
-    this.modifiedTime = Date.now();
+    this.content += obsidian_styles_txt_default;
     await super.load(options);
   }
 };
@@ -66030,6 +66004,7 @@ var ObsidianStyles = _ObsidianStyles;
 ObsidianStyles.stylesFilter = [
   "workspace-",
   "cm-",
+  "cm6",
   "ghost",
   "leaf",
   "CodeMirror",
@@ -66082,9 +66057,10 @@ ObsidianStyles.stylesFilter = [
   "show-view-header",
   "is-maximized",
   "is-translucent",
-  "community"
+  "community",
+  "Layer"
 ];
-ObsidianStyles.stylesKeep = ["scrollbar", "input[type", "table", "markdown-rendered", "css-settings-manager", "inline-embed", "background", "token"];
+ObsidianStyles.stylesKeep = ["tree", "scrollbar", "input[type", "table", "markdown-rendered", "css-settings-manager", "inline-embed", "background", "token"];
 
 // scripts/html-generation/html-generation-helpers.ts
 var HTMLGeneration;
@@ -69969,7 +69945,7 @@ This feature does not require "File & folder icons" to be enbaled.`);
           allowRelative: true,
           allowFiles: true,
           requireExists: true,
-          requireExtentions: ["html, htm, txt"]
+          requireExtentions: ["html", "htm", "txt"]
         })
       });
       _SettingsPage.createFileInput(section2, () => Settings.faviconPath, (value) => Settings.faviconPath = value, {
