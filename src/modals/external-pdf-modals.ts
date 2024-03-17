@@ -114,7 +114,10 @@ export class ExternalPDFModal extends PDFPlusModal {
                             ]
                         });
                         if (paths && paths.length > 0) {
-                            this.urls = paths.map((path) => 'file://' + path.replace(/\\/g, '/'));
+                            this.urls = paths.map((path) => {
+                                path = path.replace(/\\/g, '/').replace(/ /g, '%20');
+                                return 'file://' + (path.startsWith('/') ? '' : '/') + path;
+                            });
                             this.display();
                         }
                     });
