@@ -32,7 +32,7 @@ export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
     return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
 }
 
-export function getEventCoord(evt: MouseEvent | TouchEvent) {
+export function getEventCoords(evt: MouseEvent | TouchEvent) {
     // `evt instanceof MouseEvent` does not work in new windows.
     // See https://forum.obsidian.md/t/why-file-in-clipboardevent-is-not-an-instanceof-file-for-notes-opened-in-new-window/76648/3
     // @ts-ignore

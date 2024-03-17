@@ -1,7 +1,7 @@
 import { Menu, Notice, Platform, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { KeysOfType, getEventCoord, isHexString } from 'utils';
+import { KeysOfType, getEventCoords, isHexString } from 'utils';
 import { PDFViewerChild, Rect } from 'typings';
 import { PDFPlusComponent } from 'lib/component';
 
@@ -393,21 +393,27 @@ export class ColorPalette extends PDFPlusComponent {
             const pageView = child.getPage(+pageNumber);
 
             // Compute the top-left corner of the selection box
-            const { x, y } = getEventCoord(evt);
+            const { x, y } = getEventCoords(evt);
             selectBox.left = x;
             selectBox.top = y;
 
             // Display the selection box
             const boxEl = pageEl.createDiv('pdf-plus-select-box');
-            const pageRect = pageEl.getBoundingClientRect();
+            const pageRect = pageEl.getBoundingClientRect(); // includes border width & padding
+            const style = getComputedStyle(pageEl);
+            const borderTop = parseFloat(style.borderTopWidth);
+            const borderLeft = parseFloat(style.borderLeftWidth);
+            const paddingTop = parseFloat(style.paddingTop);
+            const paddingLeft = parseFloat(style.paddingLeft);
+
             boxEl.setCssStyles({
-                left: (selectBox.left - pageRect.left) + 'px',
-                top: (selectBox.top - pageRect.top) + 'px',
+                left: (selectBox.left - (pageRect.left + borderLeft + paddingLeft)) + 'px',
+                top: (selectBox.top - (pageRect.top + borderTop + paddingTop)) + 'px',
             });
 
             const onMouseMove = (evt: MouseEvent | TouchEvent) => {
                 // Update the bottom-right corner of the selection box
-                const { x, y } = getEventCoord(evt);
+                const { x, y } = getEventCoords(evt);
                 const newPageRect = pageEl.getBoundingClientRect();
                 // `- (newPageRect.(left|top) - pageRect.(left|top))` is to account for the page's scroll position changing during the drag
                 selectBox.width = x - selectBox.left - (newPageRect.left - pageRect.left);
@@ -430,8 +436,8 @@ export class ColorPalette extends PDFPlusComponent {
                 pageEl.removeEventListener('touchend', onMouseUp);
                 pageEl.removeChild(boxEl);
 
-                const left = selectBox.left - pageRect.left;
-                const top = selectBox.top - pageRect.top;
+                const left = selectBox.left - (pageRect.left + borderLeft + paddingLeft);
+                const top = selectBox.top - (pageRect.top + borderTop + paddingTop);
                 const right = left + selectBox.width;
                 const bottom = top + selectBox.height;
 

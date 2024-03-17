@@ -200,7 +200,7 @@ settings:
 }
 
 .pdf-plus-settings .top-note {
-    height: 0;
+    min-height: var(--pdf-plus-settings-header-height);
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
 }

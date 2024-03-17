@@ -1126,8 +1126,21 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const hoverCmd = `hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`;
 
 
-		this.contentEl.createDiv('top-note', (el) => {
-			el.setText('Note: some of the settings below require reopening tabs to take effect.');
+		// eslint-disable-next-line prefer-const
+		let fundingHeading: Setting;
+		this.contentEl.createDiv('top-note', async (el) => {
+			await this.renderMarkdown([
+				'> [!TIP]',
+				'> - You can easily navigate through the settings by clicking the icons in the header above.',
+				'> - Some settings below require reopening tabs or reloading the plugin to take effect.',
+				'> - [Visit the docs](https://ryotaushio.github.io/obsidian-pdf-plus/)',
+				'> - <a id="pdf-plus-funding-link-placeholder"></a>',
+			], el);
+			const linkEl = document.getElementById('pdf-plus-funding-link-placeholder');
+			if (linkEl) {
+				linkEl.textContent = 'Help me keep PDF++ alive!';
+				linkEl.onclick = () => this.scrollToSetting(fundingHeading);
+			}
 		});
 
 
@@ -1424,7 +1437,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					text: '"Auto-copy / auto-focus / auto-paste"'
 				}, (anchorEl) => {
 					this.component.registerDomEvent(anchorEl, 'click', () => {
-						this.scrollToSetting(autoCopyHeading, { behavior: 'smooth'});
+						this.scrollToSetting(autoCopyHeading, { behavior: 'smooth' });
 					});
 				});
 				el.appendText(' section below.');
@@ -2294,7 +2307,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
-		this.addFundingButton();
+		fundingHeading = this.addFundingButton();
 
 
 		await Promise.all(this.promises);
