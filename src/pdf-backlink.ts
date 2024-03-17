@@ -10,12 +10,11 @@ import { PDFPlusComponent } from 'lib/component';
 /** A component that will be loaded as a child of the backlinks pane while the active file is PDF. */
 export class BacklinkPanePDFManager extends PDFPlusComponent {
     renderer: BacklinkRenderer;
-    file: TFile
+    file: TFile;
 
     navButtonEl: HTMLElement | null = null;
     pageTracker: BacklinkPanePDFPageTracker;
     isTrackingPage: boolean;
-
 
     constructor(plugin: PDFPlus, renderer: BacklinkRenderer, file: TFile) {
         super(plugin);
@@ -38,19 +37,34 @@ export class BacklinkPanePDFManager extends PDFPlusComponent {
 
         this.registerDomEvent(this.renderer.backlinkDom.el, 'mouseover', (evt) => {
             this.processBacklinkVisualizerDomForEvent(evt, (backlinkItemEl, visDoms, cache, viewer) => {
+                if (!this.settings.highlightOnHoverBacklinkPane) return;
+
                 if (!isMouseEventExternal(evt, backlinkItemEl)) return;
 
                 for (const dom of visDoms) dom.addClass('hovered-highlight');
 
                 let rectEl: HTMLElement | null = null;
                 if (cache.page && cache.annotation) {
+                    const pageNumber = cache.page;
+                    const annotId = cache.annotation.id;
+
                     viewer.then((child) => {
-                        const pageView = child.getPage(cache.page!);
-                        const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(cache.annotation!.id);
+                        const pageView = child.getPage(pageNumber);
+                        const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(annotId);
                         if (annot) {
                             rectEl = this.lib.highlight.viewer.placeRectInPage(annot.data.rect, pageView);
                             rectEl.addClass('pdf-plus-annotation-bounding-rect');
                         }
+                    });
+                }
+                if (cache.page && cache.FitR) {
+                    const pageNumber = cache.page;
+                    const { left, bottom, right, top } = cache.FitR;
+
+                    viewer.then((child) => {
+                        const pageView = child.getPage(pageNumber);
+                        rectEl = this.lib.highlight.viewer.placeRectInPage([left, bottom, right, top], pageView);
+                        rectEl.addClass('rect-highlight');
                     });
                 }
 
@@ -144,14 +158,12 @@ export class BacklinkPanePDFManager extends PDFPlusComponent {
     }
 
     processBacklinkVisualizerDomForEvent(evt: MouseEvent, callback: (backlinkItemEl: HTMLElement, visualizerEls: Set<HTMLElement>, cache: PDFBacklinkCache, viewer: PDFViewerComponent) => void) {
-        if (evt.defaultPrevented) return;
         const targetEl = evt.target;
         if (!(targetEl instanceof HTMLElement)) return;
 
         const fileDom = this.renderer.backlinkDom.vChildren.children.find((fileDom) => fileDom.el.contains(targetEl));
         if (fileDom) {
             const sourcePath = fileDom.file.path;
-            evt.preventDefault();
 
             this.lib.workspace.iteratePDFViewerComponents((viewer) => {
                 if (viewer.visualizer) {

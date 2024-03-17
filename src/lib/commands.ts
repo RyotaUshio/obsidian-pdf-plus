@@ -107,12 +107,16 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 checkCallback: (checking) => this.setWriteFile(checking, false)
             }, {
                 id: 'toggle-auto-focus',
-                name: 'Toggle auto focus',
+                name: 'Toggle auto-focus',
                 callback: () => this.toggleAutoFocus()
             }, {
-                id: 'toggle-select-to-copy',
-                name: 'Toggle "select text to copy" mode',
-                callback: () => this.plugin.selectToCopyMode.toggle()
+                id: 'toggle-auto-paste',
+                name: 'Toggle auto-paste',
+                callback: () => this.toggleAutoPaste()
+            }, {
+                id: 'toggle-auto-copy',
+                name: 'Toggle auto-copy',
+                callback: () => this.plugin.autoCopyMode.toggle()
             }, {
                 id: 'add-page',
                 name: 'Add new page at the end',
@@ -473,10 +477,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     toggleAutoFocus() {
-        const iconEl = this.plugin.autoFocusToggleIconEl;
-        iconEl.toggleClass('is-active', !iconEl.hasClass('is-active'));
-        this.settings.autoFocus = iconEl.hasClass('is-active');
-        this.plugin.saveSettings();
+        this.plugin.toggleAutoFocus();
+    }
+
+    toggleAutoPaste() {
+        this.plugin.toggleAutoPaste();
     }
 
     addPage(checking: boolean) {

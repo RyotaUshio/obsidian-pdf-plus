@@ -1,4 +1,4 @@
-import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, Platform, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext } from 'obsidian';
+import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
@@ -114,20 +114,37 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         return this.app.workspace.getGroupLeaves(activeGroup);
     }
 
-    async openMarkdownLinkFromPDF(linktext: string, sourcePath: string, line?: number) {
+    async openMarkdownLinkFromPDF(linktext: string, sourcePath: string, paneType: PaneType | boolean, position?: { pos: Pos } | { line: number }) {
         let markdownLeaf: WorkspaceLeaf | undefined;
 
-        // first handle the sidebar case
-        if (isSidebarType(this.settings.paneTypeForFirstMDLeaf) && this.settings.alwaysUseSidebar) {
-            markdownLeaf = this.getMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
+        if (paneType) {
+            markdownLeaf = this.app.workspace.getLeaf(paneType);
         } else {
-            markdownLeaf = this.getMarkdownLeafForLinkFromPDF(linktext, sourcePath);
+            // first handle the sidebar case
+            if (isSidebarType(this.settings.paneTypeForFirstMDLeaf) && this.settings.alwaysUseSidebar) {
+                markdownLeaf = this.getMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
+            } else {
+                markdownLeaf = this.getMarkdownLeafForLinkFromPDF(linktext, sourcePath);
+            }
         }
 
         // About eState:
-        // - `scroll`: For scrolling to the target line
-        // - `line`: For highlighting the target line
-        const openViewState: OpenViewState = typeof line === 'number' ? { eState: { scroll: line, line } } : {};
+        // - `line`, `startLoc` & `endLoc`: Highlight & scroll to the specified location in the target markdown file.
+        //   In live preview, it requires `focus` to be `true`. Otherwise, the location is not highlighted nor scrolled to.
+        // - `scroll`: Scroll to the specified line in the target markdown file.
+        const openViewState: OpenViewState = {};
+        if (position) {
+            if ('pos' in position) {
+                const { pos } = position;
+                openViewState.eState = { line: pos.start.line, startLoc: pos.start, endLoc: pos.end };
+            } else {
+                const { line } = position;
+                openViewState.eState = { line };
+            }
+
+            openViewState.eState.scroll = openViewState.eState.line;
+            openViewState.eState.focus = !this.settings.dontActivateAfterOpenMD;
+        }
         // Ignore the "dontActivateAfterOpenMD" option when opening a link in a tab in the same split as the current tab
         // I believe using activeLeaf (which is deprecated) is inevitable here
         if (!(markdownLeaf.parentSplit instanceof WorkspaceTabs && markdownLeaf.parentSplit === this.app.workspace.activeLeaf?.parentSplit)) {
@@ -263,14 +280,22 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     /**
      * Almost the same as Workspace.prototype.revealLeaf, but this version
      * properly reveals a leaf even when it is contained in a secondary window.
+     * 
+     * (Update: The upstream bug of Obsidian has been fixed in v1.5.11: https://obsidian.md/changelog/2024-03-13-desktop-v1.5.11/)
      */
     revealLeaf(leaf: WorkspaceLeaf) {
+        if (requireApiVersion('1.5.11')) {
+            this.app.workspace.revealLeaf(leaf);
+            return;
+        }
+
         if (!Platform.isDesktopApp) {
             // on mobile, we don't need to care about new windows so just use the original method
             this.app.workspace.revealLeaf(leaf);
             return;
         }
 
+        // Fix the bug that had existed before Obsidian v1.5.11
         const root = leaf.getRoot();
         if (root instanceof WorkspaceSidedock && root.collapsed) {
             root.toggle();

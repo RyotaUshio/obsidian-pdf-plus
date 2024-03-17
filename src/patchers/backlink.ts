@@ -9,7 +9,7 @@ import { BacklinkView, FileSearchResult, SearchResultDom, SearchResultFileDom } 
 
 
 export const patchBacklink = (plugin: PDFPlus): boolean => {
-    const app = plugin.app;
+    const { app, lib } = plugin;
 
     // 1. Try to access a BacklinkRenderer instance from a backlinks view
     const backlinkView = app.workspace.getLeavesOfType('backlink')[0]?.view as BacklinkView | undefined;
@@ -80,6 +80,13 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
             }
         }
     }));
+
+    lib.workspace.iterateBacklinkViews((view) => {
+        // reflect the patch to existing backlink views
+        if (view.file?.extension === 'pdf') {
+            view.onLoadFile(view.file);
+        }
+    });
 
     plugin.patchStatus.backlink = true;
 

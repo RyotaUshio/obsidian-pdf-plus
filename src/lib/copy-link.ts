@@ -248,7 +248,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
                     const palette = this.lib.getColorPaletteFromChild(child);
                     palette?.setStatus('Link copied', this.statusDurationMs);
-                    this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+                    this.autoFocusOrAutoPaste(evaluated, autoPaste, palette ?? undefined);
 
                     // TODO: Needs refactor
                     const result = parsePDFSubpath(subpath);
@@ -293,7 +293,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     const palette = this.lib.getColorPaletteFromChild(child);
                     // This can be redundant because the copy button already shows the status.
                     if (shouldShowStatus) palette?.setStatus('Link copied', this.statusDurationMs);
-                    this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+                    this.autoFocusOrAutoPaste(evaluated, autoPaste, palette ?? undefined);
 
                     // TODO: Needs refactor
                     const rect = annotData?.rect;
@@ -317,7 +317,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
                 const palette = this.lib.getColorPaletteFromChild(child);
                 palette?.setStatus('Link copied', this.statusDurationMs);
-                this.afterCopy(evaluated, autoPaste, palette ?? undefined);
+                this.autoFocusOrAutoPaste(evaluated, autoPaste, palette ?? undefined);
             })();
         }
 
@@ -427,7 +427,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 this.plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'FitR', ...rect] };
 
                 palette?.setStatus('Link copied', this.statusDurationMs);
-                await this.afterCopy(text, autoPaste, palette ?? undefined);
+                await this.autoFocusOrAutoPaste(text, autoPaste, palette ?? undefined);
             })();
         }
 
@@ -448,7 +448,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 await navigator.clipboard.writeText(link);
                 this.onCopyFinish(link);
                 palette?.setStatus('Link copied', this.statusDurationMs);
-                await this.afterCopy(link, autoPaste, palette ?? undefined);
+                await this.autoFocusOrAutoPaste(link, autoPaste, palette ?? undefined);
             })();
         }
 
@@ -522,7 +522,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             const eventRef = this.app.workspace.on('file-open', async (file) => {
                 if (file && file.extension === 'md') {
                     this.app.workspace.offref(eventRef);
-                    await this.pasteTextToFile(text, file);
+                    await this.pasteTextToFile(text, file, true);
                     this.plugin.lastPasteFile = file;
                     resolve(true);
                 }
@@ -546,13 +546,20 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // However, for commands such as "Quick switcher: Open quick switcher", the file-open will be triggered after a long time.
             activeWindow.setTimeout(() => {
                 if (!isResolved) {
-                    new Notice(`${this.plugin.manifest.name}: The link will be pasted into the first markdown file you open within the next 20 seconds.`);
-                    activeWindow.setTimeout(() => {
-                        this.app.workspace.offref(eventRef);
-                        resolve(false);
-                    }, 20000);
+                    const { noticeEl } = new Notice(`${this.plugin.manifest.name}: Could not find the auto-paste target markdown file within ${this.settings.autoPasteTargetDialogTimeoutSec} seconds.`);
+                    noticeEl.appendText(' Click ');
+                    noticeEl.createEl('a', { text: 'here' }, (anchorEl) => {
+                        anchorEl.addEventListener('click', () => {
+                            this.plugin.openSettingTab()
+                                .scrollTo('autoPasteTargetDialogTimeoutSec');
+                        });
+                    });
+                    noticeEl.appendText(' to change the timeout duration.');
+
+                    this.app.workspace.offref(eventRef);
+                    resolve(false);
                 }
-            }, 3000);
+            }, this.settings.autoPasteTargetDialogTimeoutSec * 1000);
         })
             .then((success) => {
                 isResolved = true;
@@ -565,18 +572,11 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
         if (file) { // auto-focus target found
             const { leaf, isExistingLeaf } = await this.prepareMarkdownLeafForPaste(file);
-            if (leaf) {
-                this.lib.workspace.revealLeaf(leaf);
-                this.app.workspace.setActiveLeaf(leaf);
-                const view = leaf.view;
-                if (view instanceof MarkdownView) {
-                    const editor = view.editor;
-                    editor.focus();
-                    // Don't goEnd if this is an existing leaf; preserve the previous cursor position
-                    if (!isExistingLeaf) {
-                        editor.exec('goEnd');
-                    }
-                }
+            if (leaf && leaf.view instanceof MarkdownView) {
+                this.updateAndRevealCursorInEditor(leaf.view, {
+                    focus: true,
+                    goEnd: !isExistingLeaf
+                });
             }
 
             return true;
@@ -668,14 +668,23 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return { leaf, isExistingLeaf };
     }
 
-    async pasteTextToFile(text: string, file: TFile) {
+    async pasteTextToFile(text: string, file: TFile, forceUseVault = false) {
         const { leaf, isExistingLeaf } = await this.prepareMarkdownLeafForPaste(file);
 
-        if (leaf && isExistingLeaf && leaf.view instanceof MarkdownView) {
+        if (!forceUseVault && leaf && isExistingLeaf && leaf.view instanceof MarkdownView) {
             // If the file is already opened in some tab, use the editor interface to respect the current cursor position
             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/71
             const view = leaf.view;
             const editor = view.editor;
+
+            // When auto-pasting to a target markdown file that is specified by the quick switcher,
+            // the editor is sometimes not ready at this point, so we had to wait for the editor to be ready.
+            // otherwise, the pasted text would be overwritten by the initial content of the editor
+            // I don't fully understand why this happens, so there should be a better solution.
+            // TODO: Figure it out!
+
+            // First, I handled this by `setTimeout` but now, I have added the new `forceUseVault` parameter
+            // and don't use the combination of `Editor` & `setTimeout` anymore.
 
             if (this.settings.respectCursorPositionWhenAutoPaste) {
                 editor.replaceSelection(text);
@@ -692,10 +701,10 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // the backlink highlight will be visibile as soon as possible.
             view.save();
 
-            if (this.settings.focusEditorAfterAutoPaste) {
-                editor.focus();
-                this.lib.workspace.revealLeaf(leaf);
-            }
+            this.updateAndRevealCursorInEditor(leaf.view, {
+                focus: this.settings.focusEditorAfterAutoPaste,
+                goEnd: !this.settings.respectCursorPositionWhenAutoPaste
+            });
         } else {
             // Otherwise we just use the vault interface
             await this.app.vault.process(file, (data) => {
@@ -706,25 +715,43 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 return data;
             });
 
-            if (this.settings.focusEditorAfterAutoPaste && leaf) {
-                // If the file opened in some tab, focus the tab and move the cursor to the end of the file.
-                // To this end, we listen to the editor-change event so that we can detect when the editor update
-                // triggered by the auto-paste is done.
-                const eventRef = this.app.workspace.on('editor-change', (editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-                    if (info.file?.path === file.path) {
-                        this.app.workspace.offref(eventRef);
-
-                        if (info instanceof MarkdownView) {
-                            this.lib.workspace.revealLeaf(info.leaf);
-                        }
-
-                        if (!editor.hasFocus()) editor.focus();
-                        editor.exec('goEnd');
+            if (leaf) {
+                // When the file opened in some tab, 
+                // - focus the tab and move the cursor to the end of the file if the `focusEditorAfterAutoPaste` option is on
+                // - scroll to the end of the file without focusing if `focusEditorAfterAutoPaste` option is off
+                activeWindow.setTimeout(() => {
+                    if (leaf.view instanceof MarkdownView) {
+                        this.updateAndRevealCursorInEditor(leaf.view, {
+                            focus: this.settings.focusEditorAfterAutoPaste,
+                            goEnd: true
+                        });
                     }
                 });
-
-                this.plugin.registerEvent(eventRef);
             }
+        }
+    }
+
+    updateAndRevealCursorInEditor(view: MarkdownView, options: { focus: boolean, goEnd: boolean }) {
+        const { focus, goEnd } = options;
+
+        const editor = view.editor;
+
+        if (focus && goEnd) editor.exec('goEnd');
+        
+        // Scroll to the cursor position if it is not visible
+        const line = goEnd
+            ? editor.lineCount() - 1
+            : editor.getCursor().line;
+        const coords = editor.coordsAtPos(editor.getCursor(), true);
+        const scrollInfo = editor.getScrollInfo();
+        if (coords.top < scrollInfo.top || coords.top > scrollInfo.top + scrollInfo.clientHeight) {
+            view.currentMode.applyScroll(line);
+        }
+
+        if (focus) {
+            this.lib.workspace.revealLeaf(view.leaf);
+            this.app.workspace.setActiveLeaf(view.leaf);
+            editor.focus();
         }
     }
 
@@ -760,8 +787,17 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         this.plugin.lastCopiedDestInfo = null;
     }
 
-    async afterCopy(evaluated: string, autoPaste?: boolean, palette?: ColorPalette) {
-        if (autoPaste) {
+    /**
+     * Performs auto-focus or auto-paste as a post-processing according to the user's preferences and the executed commands.
+     * If `this.settings.autoPaste` is `true` or this method is called via the auto-paste commands, perform auto-paste.
+     * Otherwise, perform auto-focus if `this.settings.autoFocus` is `true`.
+     * 
+     * @param evaluated The text that has just been copied.
+     * @param autoPaste True if called via the auto-paste commands and false otherwise even if the auto-paste toggle is on.
+     * @param palette The relevant color palette instance whose status text will be updated.
+     */
+    async autoFocusOrAutoPaste(evaluated: string, autoPaste?: boolean, palette?: ColorPalette) {
+        if (autoPaste || this.settings.autoPaste) {
             const success = await this.autoPaste(evaluated);
             if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
             else palette?.setStatus('Link copied but paste target not identified', this.statusDurationMs);

@@ -2,7 +2,6 @@ import { HoverParent, parseLinktext } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
-import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 
 
 export const patchPagePreview = (plugin: PDFPlus): boolean => {
@@ -19,8 +18,8 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
                 const { path: linkpath, subpath } = parseLinktext(linktext);
                 const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
-                if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && hoverParent instanceof PDFViewerBacklinkVisualizer) {
-                    lib.workspace.openMarkdownLinkFromPDF(linktext, sourcePath, state.scroll);
+                if ((!sourcePath || sourcePath.endsWith('.pdf')) && plugin.settings.hoverHighlightAction === 'open' && state.isTriggeredFromBacklinkVisualizer) {
+                    lib.workspace.openMarkdownLinkFromPDF(linktext, sourcePath, false, { line: state.scroll });
                     return;
                 }
 

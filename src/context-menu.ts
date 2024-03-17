@@ -632,7 +632,7 @@ export class PDFPlusContextMenu extends Menu {
             this.addItem((item) => {
                 item.setSection('search')
                     .setTitle('Copy link to search')
-                    .setIcon('lucide-copy')
+                    .setIcon('lucide-search')
                     .onClick(() => {
                         lib.copyLink.copyLinkToSearch(false, child, pageNumber, selectedText.trim());
                     });

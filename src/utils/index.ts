@@ -1,11 +1,14 @@
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Keymap, App } from 'obsidian';
+
 import { ObsidianViewer } from 'typings';
 
 export * from './color';
-export * from './typescript';
-export * from './maps';
 export * from './suggest';
+export * from './maps';
+export * from './html-canvas';
+export * from './events';
+export * from './typescript';
 
 
 export function getDirectPDFObj(dict: PDFDict, key: string) {
@@ -149,47 +152,6 @@ export class MutationObservingChild extends Component {
     }
 }
 
-export function hookInternalLinkMouseEventHandlers(app: App, containerEl: HTMLElement, sourcePath: string) {
-    containerEl.querySelectorAll('a.internal-link').forEach((el) => {
-        el.addEventListener('click', (evt: MouseEvent) => {
-            evt.preventDefault();
-            const linktext = el.getAttribute('href');
-            if (linktext) {
-                app.workspace.openLinkText(linktext, sourcePath, Keymap.isModEvent(evt));
-            }
-        });
-
-        el.addEventListener('mouseover', (event: MouseEvent) => {
-            event.preventDefault();
-            const linktext = el.getAttribute('href');
-            if (linktext) {
-                app.workspace.trigger('hover-link', {
-                    event,
-                    source: 'pdf-plus',
-                    hoverParent: { hoverPopover: null },
-                    targetEl: event.currentTarget,
-                    linktext,
-                    sourcePath
-                });
-            }
-        });
-    });
-}
-
-export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
-    return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
-}
-
-export function getEventCoord(evt: MouseEvent | TouchEvent) {
-    // `evt instanceof MouseEvent` does not work in new windows.
-    // See https://forum.obsidian.md/t/why-file-in-clipboardevent-is-not-an-instanceof-file-for-notes-opened-in-new-window/76648/3
-    // @ts-ignore
-    const MouseEventInTheWindow: new () => MouseEvent = evt.win.MouseEvent;
-    return evt instanceof MouseEventInTheWindow
-        ? { x: evt.clientX, y: evt.clientY }
-        : { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
-}
-
 /** EmbedLike includes embeds, canvas cards, Obsidian's native hover popovers, and Hover Editor. */
 export function isNonEmbedLike(pdfViewer: ObsidianViewer): boolean {
     return !pdfViewer.isEmbed && !isHoverEditor(pdfViewer);
@@ -282,45 +244,4 @@ export function toSingleLine(str: string): string {
 export function encodeLinktext(linktext: string) {
     // eslint-disable-next-line no-control-regex
     return linktext.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (component) => encodeURIComponent(component));
-}
-
-// Thanks https://stackoverflow.com/a/54555834
-export function cropCanvas(srcCanvas: HTMLCanvasElement, crop: { left: number, top: number, width: number, height: number }, output: { width: number, height: number } = { width: crop.width, height: crop.height }) {
-    const dstCanvas = createEl('canvas');
-    dstCanvas.width = output.width;
-    dstCanvas.height = output.height;
-    dstCanvas.getContext('2d')!.drawImage(
-        srcCanvas,
-        crop.left, crop.top, crop.width, crop.height,
-        0, 0, output.width, output.height
-    );
-    return dstCanvas;
-}
-
-/**
- * Rotate a canvas around the upper-left corner.
- * @param srcCanvas 
- * @param rotate Must be a multiple of 90.
- * @returns 
- */
-export function rotateCanvas(srcCanvas: HTMLCanvasElement, rotate: number) {
-    // make sure the rotation angle is one of 0, 90, 180, 270
-    rotate = (rotate % 360 + 360) % 360;
-    if (![0, 90, 180, 270].includes(rotate)) throw new Error('rotate must be 0, 90, 180, or 270');
-    if (!rotate) return srcCanvas;
-
-    const dstCanvas = createEl('canvas');
-    const ctx = dstCanvas.getContext('2d')!;
-    if (rotate === 90 || rotate === 270) {
-        dstCanvas.width = srcCanvas.height;
-        dstCanvas.height = srcCanvas.width;
-    } else {
-        dstCanvas.width = srcCanvas.width;
-        dstCanvas.height = srcCanvas.height;
-    }
-    // rotate the canvas with the upper-left corner as the origin
-    ctx.translate(dstCanvas.width / 2, dstCanvas.height / 2);
-    ctx.rotate(rotate * Math.PI / 180);
-    ctx.drawImage(srcCanvas, -srcCanvas.width / 2, -srcCanvas.height / 2);
-    return dstCanvas;
 }

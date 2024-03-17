@@ -106,6 +106,7 @@ export interface PDFPlusSettings {
 	noColorButtonInColorPalette: boolean;
 	colorPaletteInEmbedToolbar: boolean;
 	showStatusInToolbar: boolean;
+	/** Currently not working due to the major refactor in 0.37.0. */
 	highlightColorSpecifiedOnly: boolean;
 	doubleClickHighlightToOpenBacklink: boolean;
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
@@ -168,7 +169,9 @@ export interface PDFPlusSettings {
 	clickThumbnailWithModifierKey: boolean;
 	focusEditorAfterAutoPaste: boolean;
 	respectCursorPositionWhenAutoPaste: boolean;
+	autoCopy: boolean;
 	autoFocus: boolean;
+	autoPaste: boolean;
 	autoFocusTarget: AutoFocusTarget;
 	autoPasteTarget: AutoFocusTarget;
 	openAutoFocusTargetIfNotOpened: boolean;
@@ -178,8 +181,13 @@ export interface PDFPlusSettings {
 	openAutoFocusTargetInEditingView: boolean;
 	executeCommandWhenTargetNotIdentified: boolean;
 	commandToExecuteWhenTargetNotIdentified: string;
-	selectToCopyToggleRibbonIcon: boolean;
+	autoPasteTargetDialogTimeoutSec: number;
+	autoCopyToggleRibbonIcon: boolean;
+	autoCopyIconName: string;
 	autoFocusToggleRibbonIcon: boolean;
+	autoFocusIconName: string;
+	autoPasteToggleRibbonIcon: boolean;
+	autoPasteIconName: string;
 	viewSyncFollowPageNumber: boolean;
 	viewSyncPageDebounceInterval: number;
 	openAfterExtractPages: boolean;
@@ -206,6 +214,7 @@ export interface PDFPlusSettings {
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
 	rectImageExtension: ImageExtension;
+	rectEmbedResolution: number;
 	zoomToFitRect: boolean;
 	includeColorWhenCopyingRectLink: boolean;
 	backlinkIconSize: number;
@@ -374,7 +383,9 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	clickThumbnailWithModifierKey: true,
 	focusEditorAfterAutoPaste: true,
 	respectCursorPositionWhenAutoPaste: true,
+	autoCopy: false,
 	autoFocus: false,
+	autoPaste: false,
 	autoFocusTarget: 'last-active-and-open-then-last-paste',
 	autoPasteTarget: 'last-active-and-open-then-last-paste',
 	openAutoFocusTargetIfNotOpened: true,
@@ -383,9 +394,14 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	closeSidebarWhenLostFocus: true,
 	openAutoFocusTargetInEditingView: true,
 	executeCommandWhenTargetNotIdentified: true,
-	commandToExecuteWhenTargetNotIdentified: 'pdf-plus:create-new-note',
-	selectToCopyToggleRibbonIcon: true,
+	commandToExecuteWhenTargetNotIdentified: 'switcher:open',
+	autoPasteTargetDialogTimeoutSec: 20,
+	autoCopyToggleRibbonIcon: true,
+	autoCopyIconName: 'highlighter',
 	autoFocusToggleRibbonIcon: true,
+	autoFocusIconName: 'zap',
+	autoPasteToggleRibbonIcon: true,
+	autoPasteIconName: 'clipboard-paste',
 	viewSyncFollowPageNumber: true,
 	viewSyncPageDebounceInterval: 0.3,
 	openAfterExtractPages: true,
@@ -413,6 +429,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
 	zoomToFitRect: false,
+	rectEmbedResolution: 100,
 	includeColorWhenCopyingRectLink: true,
 	backlinkIconSize: 50,
 	showBacklinkIconForSelection: false,
@@ -465,7 +482,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	scrollTo(settingName: keyof PDFPlusSettings, options?: { behavior: ScrollBehavior }) {
-		const el = this.items[settingName]?.settingEl;
+		const setting = this.items[settingName];
+		if (setting) this.scrollToSetting(setting, options);
+	}
+
+	scrollToSetting(setting: Setting, options?: { behavior: ScrollBehavior }) {
+		const el = setting.settingEl;
 		if (el) this.containerEl.scrollTo({ top: el.offsetTop - this.headerContainerEl.offsetHeight, ...options });
 	}
 
@@ -527,8 +549,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 	}
 
-	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlur?: () => any) {
-		return this.addSetting(settingName)
+	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlurOrEnter?: (setting: Setting) => any) {
+		const setting = this.addSetting(settingName)
 			.addText((text) => {
 				text.setValue(this.plugin.settings[settingName])
 					.setPlaceholder(placeholder ?? '')
@@ -542,8 +564,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						this.plugin.settings[settingName] = value;
 						await this.plugin.saveSettings();
 					});
-				if (onBlur) this.component.registerDomEvent(text.inputEl, 'blur', onBlur);
+				if (onBlurOrEnter) {
+					this.component.registerDomEvent(text.inputEl, 'blur', () => {
+						onBlurOrEnter(setting)
+					});
+					this.component.registerDomEvent(text.inputEl, 'keypress', (evt) => {
+						if (evt.key === 'Enter') onBlurOrEnter(setting);
+					});
+				}
 			});
+		return setting;
 	}
 
 	addTextAreaSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlur?: () => any) {
@@ -1010,41 +1040,49 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		});
 	}
 
-	addCalloutIconSetting() {
+	addIconSetting(settingName: KeysOfType<PDFPlusSettings, string>, leaveBlankToRemoveIcon: boolean) {
 		const normalizeIconNameNoPrefix = (name: string) => {
 			if (name.startsWith('lucide-')) {
 				return name.slice(7);
 			}
 			return name;
-		}
+		};
 
 		const normalizeIconNameWithPrefix = (name: string) => {
 			if (!name.startsWith('lucide-')) {
 				return 'lucide-' + name;
 			}
 			return name;
-		}
+		};
 
-		this.addTextSetting('calloutIcon', undefined, () => {
-			this.plugin.settings.calloutIcon = normalizeIconNameNoPrefix(this.plugin.settings.calloutIcon);
+		const renderAndValidateIcon = (setting: Setting) => {
+			const iconPreviewEl = setting.controlEl.querySelector<HTMLElement>(':scope>.icon-preview')
+				?? setting.controlEl.createDiv('icon-preview');
+			setIcon(iconPreviewEl, normalizeIconNameWithPrefix(this.plugin.settings[settingName]));
+
+			const text = setting.components[0] as TextComponent;
+			if ((!leaveBlankToRemoveIcon || this.plugin.settings[settingName]) && !iconPreviewEl.childElementCount) {
+				text.inputEl.addClass('error');
+				setTooltip(text.inputEl, 'No icon found');
+			} else {
+				text.inputEl.removeClass('error');
+				setTooltip(text.inputEl, '');
+			}
+		};
+
+		return this.addTextSetting(settingName, undefined, (setting) => {
+			// @ts-ignore
+			this.plugin.settings[settingName] = normalizeIconNameNoPrefix(this.plugin.settings[settingName]);
 			this.plugin.saveSettings();
-			this.redisplay();
+			renderAndValidateIcon(setting);
 		})
-			.setName('Callout icon')
 			.then((setting) => {
 				this.renderMarkdown([
-					'You can use any icon from [Lucide](https://lucide.dev/icons). Leave blank to remove icons.',
+					'You can use any icon from [Lucide](https://lucide.dev/icons).'
+					+ (leaveBlankToRemoveIcon ? ' Leave blank to remove icons.' : ''),
 				], setting.descEl);
 			})
-			.then((setting) => {
-				const iconPreviewEl = setting.controlEl.createDiv();
-				setIcon(iconPreviewEl, normalizeIconNameWithPrefix(this.plugin.settings.calloutIcon));
-				if (this.plugin.settings.calloutIcon && !iconPreviewEl.childElementCount) {
-					const text = setting.components[0] as TextComponent;
-					text.inputEl.addClass('error');
-					setTooltip(text.inputEl, 'No icon found');
-				}
-			});
+			.then(renderAndValidateIcon);
 	}
 
 	createLinkToSetting(id: keyof PDFPlusSettings, name?: string) {
@@ -1102,7 +1140,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'- Add, edit and delete highlights and links in PDF files.',
 					'- Add, insert, delete or extract PDF pages and auto-update links.',
 					'- Add, rename, move and delete outline items.',
-					'- Edit page labels.',
+					'- Edit [page labels](https://ryotaushio.github.io/obsidian-pdf-plus/page-labels.html).',
+					'',
+					'[Learn more](https://ryotaushio.github.io/obsidian-pdf-plus/editing-pdfs.html)'
 				], setting.descEl);
 			});
 		this.addToggleSetting('enablePDFEdit', () => this.redisplay())
@@ -1113,8 +1153,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				], setting.descEl);
 			});
 		if (this.plugin.settings.enablePDFEdit) {
-			this.addTextSetting('author', 'Your name', function () {
-				const inputEl = this as HTMLInputElement;
+			this.addTextSetting('author', 'Your name', (setting) => {
+				const inputEl = (setting.components[0] as TextComponent).inputEl;
 				inputEl.toggleClass('error', !inputEl.value);
 			})
 				.setName('Annotation author')
@@ -1200,20 +1240,24 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setClass('no-border');
 		}
 
-		this.addToggleSetting('highlightColorSpecifiedOnly', () => this.redisplay())
-			.setName('Highlight a backlink only if a color is specified')
-			.setDesc('By default, all backlinks are highlighted. If this option is enabled, a backlink will be highlighted only when a color is specified in the link text.');
+		// Commented out because the `highlightColorSpecifiedOnly` option is currently not working
+		// due to the major refactoring of the backlink highlighting feature in 0.37.0.
+		// TODO: Fix this!
 
-		if (!this.plugin.settings.highlightColorSpecifiedOnly) {
-			this.addDropdownSetting(
-				'defaultColor',
-				['', ...Object.keys(this.plugin.settings.colors)],
-				(option) => option || 'Obsidian default',
-				() => this.plugin.loadStyle()
-			)
-				.setName('Default highlight color')
-				.setDesc('If no color is specified in link text, this color will be used.');
-		}
+		// this.addToggleSetting('highlightColorSpecifiedOnly', () => this.redisplay())
+		// 	.setName('Highlight a backlink only if a color is specified')
+		// 	.setDesc('By default, all backlinks are highlighted. If this option is enabled, a backlink will be highlighted only when a color is specified in the link text.');
+
+		// if (!this.plugin.settings.highlightColorSpecifiedOnly) {
+		this.addDropdownSetting(
+			'defaultColor',
+			['', ...Object.keys(this.plugin.settings.colors)],
+			(option) => option || 'Obsidian default',
+			() => this.plugin.loadStyle()
+		)
+			.setName('Default highlight color')
+			.setDesc('If no color is specified in link text, this color will be used.');
+		// }
 
 		this.addHeading('Backlink indicator bounding rectangles');
 		this.addToggleSetting('showBoundingRectForBacklinkedAnnot')
@@ -1241,6 +1285,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'You can embed a specified rectangular area from a PDF page into your note. [Learn more](https://ryotaushio.github.io/obsidian-pdf-plus/embedding-rectangular-selections.html)'
 				], setting.descEl);
 			});
+		this.addSliderSetting('rectEmbedResolution', 10, 200, 1)
+			.setName('Rendering resolution')
+			.setDesc('The higher the value, the better the rendering quality, but the longer time it takes to render. The default value is 100.');
 		this.addToggleSetting('rectEmbedStaticImage', () => this.redisplay())
 			.setName('Paste as image')
 			.setDesc('By default, rectangular selection embeds are re-rendered every time you open the markdown file, which can slow down the loading time. Turn on this option to replace them with static images and improve the performance.');
@@ -1305,7 +1352,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'```',
 				], setting.descEl);
 			});
-		this.addCalloutIconSetting();
+		this.addIconSetting('calloutIcon', true)
+			.setName('Callout icon');
 
 
 		this.addHeading('Color palette', 'lucide-palette')
@@ -1366,12 +1414,21 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				], setting.descEl);
 			})
 			.then((setting) => this.addHotkeySettingButton(setting));
-		this.addToggleSetting('selectToCopyToggleRibbonIcon')
-			.setName('Show an icon to toggle "select text to copy" mode in the left ribbon menu')
-			.setDesc('While the "select text to copy" mode is turned on, the **Copy link to selection or annotation** command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link. You can also toggle this mode via a command. Reload the plugin after changing this setting to take effect.');
+		// eslint-disable-next-line prefer-const
+		let autoCopyHeading: Setting;
 		this.addSetting()
-			.setName('More options')
-			.setDesc('You can find more options related to the auto-pasting command in the "Auto-focus / auto-paste" section below.')
+			.setName('Further workflow enhancements')
+			.setDesc(createFragment((el) => {
+				el.appendText('See the ')
+				el.createEl('a', {
+					text: '"Auto-copy / auto-focus / auto-paste"'
+				}, (anchorEl) => {
+					this.component.registerDomEvent(anchorEl, 'click', () => {
+						this.scrollToSetting(autoCopyHeading, { behavior: 'smooth'});
+					});
+				});
+				el.appendText(' section below.');
+			}));
 
 
 		this.addHeading('Other shortcut commands', 'lucide-layers-2')
@@ -1541,25 +1598,85 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Auto-focus / auto-paste', 'lucide-zap');
-		this.addToggleSetting('autoFocus', () => {
-			this.plugin.autoFocusToggleIconEl.toggleClass('is-active', this.plugin.settings.autoFocus);
-		})
-			.setName('Auto-focus markdown after copying link from PDF')
-			.setDesc('If enabled, the last active note or the note that you last pasted a link to will be focused automatically after copying a link by clicking a color palette or with the "Copy link to selection or annotation" command.');
-		this.addToggleSetting('autoFocusToggleRibbonIcon')
+		autoCopyHeading = this.addHeading('Auto-copy / auto-focus / auto-paste', 'lucide-zap')
+			.setDesc('Speed up the process of copying & pasting PDF links to your notes with some automation. Note that you can\'t activate both of auto-focus and auto-paste at the same time.');
+
+		this.addHeading('Auto-copy')
+			.setDesc('If enabled, the "Copy link to selection or annotation" command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link.');
+		this.addToggleSetting('autoCopy', () => this.plugin.autoCopyMode.toggle(this.plugin.settings.autoCopy))
+			.setName('Enable')
+			.setDesc('You can also toggle auto-focus via an icon in the left ribbon menu if the next setting is enabled.');
+		this.addToggleSetting('autoCopyToggleRibbonIcon', () => this.redisplay())
+			.setName('Show an icon to toggle auto-copy in the left ribbon menu')
+			.setDesc('You can also toggle this mode via a command. Reload the plugin after changing this setting to take effect.')
+		if (this.plugin.settings.autoCopyToggleRibbonIcon) {
+			this.addIconSetting('autoCopyIconName', false)
+				.setName('Icon name')
+				.then((setting) => {
+					setting.descEl.appendText(' Reload the plugin after changing this setting to take effect.');
+				});
+		}
+
+		this.addHeading('Auto-focus')
+			.setDesc('If enabled, a markdown file will be focused automatically after copying a link to PDF text selection or annotation.');
+		this.addSetting('autoFocus')
+			.setName('Enable')
+			.setDesc('Recommended if you prefer something less agressive than auto-paste. You can also toggle auto-focus via an icon in the left ribbon menu if the next setting is enabled.')
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.autoFocus)
+					.onChange((value) => {
+						this.plugin.toggleAutoFocus(value);
+						this.redisplay(); // Reflect the change to the auto-paste toggle (you canot activate both of them at the same time)
+					});
+			});
+		this.addToggleSetting('autoFocusToggleRibbonIcon', () => this.redisplay())
 			.setName('Show an icon to toggle auto-focus in the left ribbon menu')
-			.setDesc('You can also toggle auto-focus via a command. Reload the plugin after changing this setting to take effect.')
+			.setDesc('You can also toggle auto-focus via a command. Reload the plugin after changing this setting to take effect.');
+		if (this.plugin.settings.autoFocusToggleRibbonIcon) {
+			this.addIconSetting('autoFocusIconName', false)
+				.setName('Icon name')
+				.then((setting) => {
+					setting.descEl.appendText(' Reload the plugin after changing this setting to take effect.');
+				});
+		}
 		this.addDropdownSetting('autoFocusTarget', AUTO_FOCUS_TARGETS)
-			.setName('Auto-focus target');
+			.setName('Target markdown file to focus on');
+
+		this.addHeading('Auto-paste')
+			.setDesc('If enabled, the copied link to PDF text selection or annotation will be automatically pasted into a markdown file right after copying.');
+		this.addSetting('autoPaste')
+			.setName('Enable')
+			.setDesc('You can also toggle auto-paste via an icon in the left ribbon menu if the next setting is enabled.')
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.autoPaste)
+					.onChange((value) => {
+						this.plugin.toggleAutoPaste(value);
+						this.redisplay(); // Reflect the change to the auto-focus toggle (you canot activate both of them at the same time)
+					});
+			});
+		this.addToggleSetting('autoPasteToggleRibbonIcon', () => this.redisplay())
+			.setName('Show an icon to toggle auto-paste in the left ribbon menu')
+			.setDesc('You can also toggle auto-paste via a command. Reload the plugin after changing this setting to take effect.');
+		if (this.plugin.settings.autoPasteToggleRibbonIcon) {
+			this.addIconSetting('autoPasteIconName', false)
+				.setName('Icon name')
+				.then((setting) => {
+					setting.descEl.appendText(' Reload the plugin after changing this setting to take effect.');
+				});
+		}
 		this.addDropdownSetting('autoPasteTarget', AUTO_FOCUS_TARGETS)
-			.setName('Auto-paste target');
+			.setName('Target markdown file to paste links to');
 		this.addToggleSetting('focusEditorAfterAutoPaste')
-			.setName('Focus editor after auto-paste')
+			.setName('Focus editor after pasting')
 			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
 		this.addToggleSetting('respectCursorPositionWhenAutoPaste')
-			.setName('Respect current cursor position when auto-pasting')
+			.setName('Respect current cursor position')
 			.setDesc('When enabled, the auto-paste command will paste the copied text at the current cursor position if the target note is already opened. If disabled, the text will be always appended to the end of the note.');
+
+		this.addHeading('General')
+			.setDesc('General settings that apply to both auto-focus and auto-paste.');
 		this.addToggleSetting('openAutoFocusTargetIfNotOpened', () => this.redisplay())
 			.setName('Open target markdown file if not opened');
 		if (this.plugin.settings.openAutoFocusTargetIfNotOpened) {
@@ -1623,6 +1740,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					text.inputEl.size = 30;
 					new CommandSuggest(this, text.inputEl);
 				});
+			this.addSliderSetting('autoPasteTargetDialogTimeoutSec', 1, 60, 1)
+				.setName('[Auto-paste] Maximum time to wait for the command to open the target file (sec)')
+				.setDesc('The link will be auto-pasted into the first markdown file that you open within this time frame after the command is executed. If you don\'t open any markdown file during this time, the auto-paste will not occur. This option is not related to auto-focus.');
 		}
 
 		this.addHeading(`The "${commandName}" command`)
@@ -1646,7 +1766,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'In that case, make sure the "Trigger templater on new file creation" option is enabled in the Templater settings.',
 					'',
 					'Example:',
-					'```markdown',
+					'```',
 					'---',
 					`${this.plugin.settings.proxyMDProperty}: "[[{{ file.path }}|{{ file.basename }}]]"`,
 					'---',
@@ -1956,7 +2076,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addToggleSetting('preserveCurrentLeftOffsetWhenOpenPDFLink')
 					.setName('Preserve the current horizontal scroll position');
 			}
-			
+
 		}
 		this.addDropdownSetting('paneTypeForFirstPDFLeaf', PANE_TYPE)
 			.setName(`How to open PDF links when there is no open PDF file`)
@@ -2199,6 +2319,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.plugin.settings.enablePDFEdit = false;
 			new Notice(`${this.plugin.manifest.name}: Cannot enable writing highlights into PDF files because the "Annotation author" option is empty.`)
 		}
+
+		this.plugin.validateAutoFocusAndAutoPasteSettings();
 
 		await this.plugin.saveSettings();
 

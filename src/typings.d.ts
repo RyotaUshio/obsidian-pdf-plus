@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey } from 'obsidian';
 import { CanvasData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -57,25 +57,43 @@ interface PDFViewerComponent extends Component {
     visualizer?: PDFViewerBacklinkVisualizer;
 }
 
+/**
+ * A child of `PDFViewerComponent` that bridges between the PDF.js viewer (`ObsidianViewer`) and Obsidian.
+ * Most of PDF-related features are implemented in this class.
+ * 
+ * A child is not a `Component`, but is created and loaded when the parent `PDFViewerComponent` is loaded, and is unloaded when the parent is unloaded.
+ */
 interface PDFViewerChild {
+    /** Initially set to `false`, and set to `true` in `unload()`. */
     unloaded: boolean;
     app: App;
     scope: Scope;
     containerEl: HTMLElement;
     opts: any;
     pdfViewer: ObsidianViewer;
-    subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight | null;
+    subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight
+    | PDFRectHighlight // Added by this plugin
+    | null;
     toolbar: PDFToolbar;
     findBar: PDFFindBar;
-    highlightedText: [number, number][]; // [page, textContentItemindex][]
+    /** `[page, textContentItemindex][]` */
+    highlightedText: [number, number][];
+    /** The bounding rectangle that shows up when you open a link to an annotation. */
     annotationHighlight: HTMLElement | null;
+    /** The popup that shows up when you click an annotation in the PDF viewer. */
     activeAnnotationPopupEl: HTMLElement | null;
+    /** The PDF file that is currently loaded in the viewer. */
     file: TFile | null;
+    /** Called right after the instantiation. Performs various initialization that is not file-specific. */
     load(): Promise<void>;
+    /** Called when the parent `PDFViewerComponent` is unloaded. */
     unload(): void;
+    /** Performs file-specific initialization. */
     loadFile(file: TFile, subpath?: string): Promise<void>;
+    /** Returns the `PDFPageView` object for the specified page number. */
     getPage(page: number): PDFPageView;
-    getTextByRect(pageView: PDFPageView, rect: number[]): string;
+    /** Get text contained in the given rectangular area. */
+    getTextByRect(pageView: PDFPageView, rect: Rect): string;
     getAnnotationFromEvt(pageView: PDFPageView, evt: MouseEvent): AnnotationElement | null;
     getPageLinkAlias(page: number): string;
     getTextSelectionRangeStr(el: HTMLElement): string;
@@ -97,6 +115,7 @@ interface PDFViewerChild {
     component?: Component;
     parent?: PDFViewerComponent;
     hoverPopover: HoverPopover | null;
+    /** The color palette (and other PDF++-related UI elements) mounted on this PDF viewer. */
     palette: ColorPalette | null;
     /** 
      * true if the file is located outside the vault; see the comment in the
@@ -105,6 +124,8 @@ interface PDFViewerChild {
     isFileExternal: boolean;
     /** The URL of the external file. Set when `isFileExternal` is true. */
     externalFileUrl: string | null;
+    /** `annotationHighlight`'s counterpart for rectangle selections. */
+    rectHighlight: HTMLElement | null;
 }
 
 interface PDFHighlight {
@@ -119,6 +140,11 @@ interface PDFTextHighlight extends PDFHighlight {
 interface PDFAnnotationHighlight extends PDFHighlight {
     type: 'annotation';
     id: string;
+}
+
+interface PDFRectHighlight extends PDFHighlight {
+    type: 'rect';
+    rect: Rect;
 }
 
 interface ObsidianViewer {
@@ -843,6 +869,18 @@ interface CanvasGroupNode {
     app: App;
 }
 
+interface HotkeyManager {
+    save(): Promise<void>;
+    load(): Promise<void>;
+    getDefaultHotkeys(id: string): Hotkey[] | undefined;
+    addDefaultHotkeys(id: string, hotkeys: Hotkey[]): void;
+    removeDefaultHotkeys(id: string): void;
+    getHotkeys(id: string): Hotkey[] | undefined;
+    setHotkeys(id: string, hotkeys: Hotkey[]): void;
+    removeHotkeys(id: string): void;
+    printHotkeyForCommand(id: string): string;
+}
+
 declare module 'obsidian' {
     interface App {
         setting: AppSetting;
@@ -884,11 +922,7 @@ declare module 'obsidian' {
             executeCommandById(id: string): boolean;
             findCommand(id: string): Command | undefined;
         }
-        hotkeyManager: {
-            getDefaultHotkeys(id: string): Hotkey[] | undefined;
-            getHotkeys(id: string): Hotkey[] | undefined;
-            printHotkeyForCommand(id: string): string;
-        }
+        hotkeyManager: HotkeyManager;
         dragManager: DragManager;
         embedRegistry: EmbedRegistry;
         openWithDefaultApp(path: string): Promise<void>;
@@ -957,6 +991,9 @@ declare module 'obsidian' {
 
     interface Editor {
         cm: EditorView;
+        coordsAtPos(pos: EditorPosition, arg?: boolean): { top: number, bottom: number, left: number, right: number };
+        // @ts-ignore
+        getScrollInfo(): EditorScrollInfo;
     }
 
     interface MarkdownView {

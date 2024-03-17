@@ -1,14 +1,11 @@
 import { Component } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from 'lib/submodule';
-import { PDFAnnotationHighlight, PDFPageView, PDFTextHighlight, PDFViewerChild, Rect } from 'typings';
+import { PDFPageView, PDFViewerChild, Rect } from 'typings';
 
 
 /** Adding text highlight in PDF viewers without writing into files */
 export class ViewerHighlightLib extends PDFPlusLibSubmodule {
-    /**
-     * @param pageDiv div.page
-     */
     getPDFPlusBacklinkHighlightLayer(pageView: PDFPageView): HTMLElement {
         const pageDiv = pageView.div;
         return pageDiv.querySelector<HTMLElement>('div.pdf-plus-backlink-highlight-layer')
@@ -38,6 +35,8 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
     }
 
     /**
+     * Render highlighting DOM elements for `subpathHighlight` of the given `child`.
+     * `subpathHighlight` must be set by `child.applySubpath` before calling this method.
      * 
      * @param child 
      * @param duration The duration in seconds to highlight the subpath. If it's 0, the highlight will not be removed until the user clicks on the page.
@@ -48,8 +47,8 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
             component.load();
 
             this.lib.onTextLayerReady(child.pdfViewer, component, (pageNumber) => {
-                if (!child.subpathHighlight) return;
-                const { page, range } = child.subpathHighlight as PDFTextHighlight;
+                if (child.subpathHighlight?.type !== 'text') return;
+                const { page, range } = child.subpathHighlight;
                 if (page !== pageNumber) return;
 
                 child.highlightText(page, range);
@@ -66,8 +65,8 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
             component.load();
 
             this.lib.onAnnotationLayerReady(child.pdfViewer, component, (pageNumber) => {
-                if (!child.subpathHighlight) return;
-                const { page, id } = child.subpathHighlight as PDFAnnotationHighlight;
+                if (child.subpathHighlight?.type !== 'annotation') return;
+                const { page, id } = child.subpathHighlight;
                 if (page !== pageNumber) return;
 
                 child.highlightAnnotation(page, id);
@@ -75,6 +74,61 @@ export class ViewerHighlightLib extends PDFPlusLibSubmodule {
 
                 component.unload();
             });
+        } else if (child.subpathHighlight?.type === 'rect') {
+            const component = new Component();
+            component.load();
+
+            this.lib.onPageReady(child.pdfViewer, component, (pageNumber) => {
+                if (child.subpathHighlight?.type !== 'rect') return;
+
+                const { page, rect } = child.subpathHighlight;
+                if (page !== pageNumber) return;
+
+                this.highlightRect(child, page, rect);
+                if (duration > 0) {
+                    setTimeout(() => {
+                        this.clearRectHighlight(child);
+                    }, duration * 1000);
+                }
+
+                component.unload();
+            });
+        }
+    }
+
+    /** 
+     * The counterpart of `PDFViewerChild.prototype.highlightText` and `PDFViewerChild.prototype.highlightAnnotation`
+     * for rectangular selections.
+     */
+    highlightRect(child: PDFViewerChild, page: number, rect: Rect) {
+        this.clearRectHighlight(child);
+
+        if (1 <= page && page <= child.pdfViewer.pagesCount) {
+            const pageView = child.getPage(page);
+            if (pageView?.div.dataset.loaded) {
+                child.rectHighlight = this.placeRectInPage(rect, pageView);
+                child.rectHighlight.addClass('rect-highlight');
+
+                // If `zoomToFitRect === true`, it will be handled by `PDFViewerChild.prototype.applySubpath` as a FitR destination.
+                if (!this.settings.zoomToFitRect) {
+                    activeWindow.setTimeout(() => {
+                        window.pdfjsViewer.scrollIntoView(child.rectHighlight, {
+                            top: - this.settings.embedMargin
+                        });
+                    });    
+                }
+            }
+        }
+    }
+
+    /** 
+     * The counterpart of `PDFViewerChild.prototype.clearTextHighlight` and `PDFViewerChild.prototype.clearAnnotationHighlight`
+     * for rectangular selections.
+     */
+    clearRectHighlight(child: PDFViewerChild) {
+        if (child.rectHighlight) {
+            child.rectHighlight.detach();
+            child.rectHighlight = null;
         }
     }
 }

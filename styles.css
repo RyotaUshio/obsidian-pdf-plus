@@ -169,14 +169,14 @@ settings:
     text-align: center;
     background-color: var(--background-secondary);
     border-bottom: 1px solid var(--divider-color);
-    padding-left: var(--size-4-4);
-    padding-right: var(--size-4-4);
+    padding: 0 var(--size-4-4);
 
     overflow-x: scroll;
     overflow-y: hidden;
     white-space: nowrap;
 
     display: flex;
+    justify-content: space-between;
     align-items: center;
 
     .header {
@@ -245,6 +245,12 @@ settings:
 .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-selection {
     box-sizing: content-box;
     cursor: text;
+}
+
+.pdf-plus-backlink-highlight-layer .rect-highlight {
+    background-color: rgb(var(--text-highlight-bg-rgb));
+    border-radius: var(--radius-m);
+    opacity: 0.2;
 }
 
 body:not(.pdf-plus-backlink-selection-underline) .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-selection {

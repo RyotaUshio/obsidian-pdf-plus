@@ -282,6 +282,8 @@ export class ColorPalette extends PDFPlusComponent {
         if (this.cropButtonEl) {
             paletteEl.insertAfter(this.writeFileButtonEl, this.cropButtonEl);
         }
+
+        this.setWriteFile(this.writeFile);
     }
 
     removeWriteFileToggle() {

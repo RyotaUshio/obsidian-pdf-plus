@@ -855,9 +855,13 @@ export class PDFPlusLib {
 
         const type = options?.type;
         const encoderOptions = options?.encoderOptions;
-        const resolution = options?.resolution ??
-            // Requiring too much resolution on mobile devices seems to cause the rendering to fail
-            Platform.isDesktop ? 7 : Platform.isTablet ? 4 : undefined;
+        let resolution = options?.resolution;
+        if (typeof resolution !== 'number') {
+            resolution =
+                // Requiring too much resolution on mobile devices seems to cause the rendering to fail
+                (Platform.isDesktop ? 7 : Platform.isTablet ? 4 : (window.devicePixelRatio || 1))
+                * (this.plugin.settings.rectEmbedResolution / 100);
+        }
         const cropRect = options?.cropRect;
 
         const canvas = await this.renderPDFPageToCanvas(page, resolution);

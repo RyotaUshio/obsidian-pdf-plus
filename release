@@ -45,9 +45,12 @@ if __name__ == '__main__':
             exit(1)
 
         manifest['version'] = args.version
+        manifest_beta['version'] = args.version
         package['version'] = args.version
 
         with open('./manifest.json', 'w') as f:
+            json.dump(manifest, f, indent=4)
+        with open('./manifest-beta.json', 'w') as f:
             json.dump(manifest, f, indent=4)
         with open('./package.json', 'w') as f:
             json.dump(package, f, indent=4)

@@ -1,15 +1,9 @@
-import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, addIcon, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
-import { patchPDFView } from 'patchers/pdf-view';
-import { patchPDFInternals } from 'patchers/pdf-internals';
-import { patchBacklink } from 'patchers/backlink';
-import { patchWorkspace } from 'patchers/workspace';
-import { patchPagePreview } from 'patchers/page-preview';
-import { patchClipboardManager } from 'patchers/clipboard-manager';
-import { patchPDFInternalFromPDFEmbed } from 'patchers/pdf-embed';
+import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed } from 'patchers';
 import { PDFPlusLib } from 'lib';
-import { SelectToCopyMode } from 'select-to-copy';
+import { AutoCopyMode } from 'auto-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
@@ -19,17 +13,21 @@ import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewer
 
 
 export default class PDFPlus extends Plugin {
-	/** Not intended to be used by other plugins. */
+	/** The core internal API. Not intended to be used by other plugins. */
 	lib: PDFPlusLib = new PDFPlusLib(this);
 	/** User's preferences. */
 	settings: PDFPlusSettings;
+	/** The plugin setting tab. */
+	settingTab: PDFPlusSettingTab;
 	events: Events = new Events();
 	/** Manages DOMs and event handlers introduced by this plugin. */
 	domManager: DomManager;
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
-	selectToCopyMode: SelectToCopyMode;
+	autoCopyMode: AutoCopyMode;
 	/** A ribbon icon to toggle auto-focus mode */
-	autoFocusToggleIconEl: HTMLElement;
+	autoFocusToggleIconEl: HTMLElement | null = null;
+	/** A ribbon icon to toggle auto-paste mode */
+	autoPasteToggleIconEl: HTMLElement | null = null;
 	/** PDF++ relies on monkey-patching several aspects of Obsidian's internals. This property keeps track of the patching status (succeeded or not). */
 	patchStatus = {
 		workspace: false,
@@ -76,13 +74,12 @@ export default class PDFPlus extends Plugin {
 
 	async onload() {
 		this.checkVersion();
-		this.addIcons();
 
 		await loadPdfJs();
 
 		await this.loadSettings();
 		await this.saveSettings();
-		this.addSettingTab(new PDFPlusSettingTab(this));
+		this.addSettingTab(this.settingTab = new PDFPlusSettingTab(this));
 
 		this.domManager = this.addChild(new DomManager(this));
 		this.domManager.registerCalloutRenderer();
@@ -115,10 +112,6 @@ export default class PDFPlus extends Plugin {
 		}
 	}
 
-	private addIcons() {
-		addIcon('file-pen', '<g id="surface1"><path style="fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:4;" d="M 12 22.000312 L 18 22.000312 C 19.104375 22.000312 19.999688 21.105 19.999688 19.999688 L 19.999688 7.000312 L 15 1.999687 L 6 1.999687 C 4.895625 1.999687 4.000312 2.895 4.000312 4.000312 L 4.000312 13.999688 " transform="matrix(4.166667,0,0,4.166667,0,0)"/><path style="fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:4;" d="M 13.999688 1.999687 L 13.999688 6 C 13.999688 7.104375 14.895 7.999687 16.000312 7.999687 L 19.999688 7.999687 " transform="matrix(4.166667,0,0,4.166667,0,0)"/><path style="fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(0%,0%,0%);stroke-opacity:1;stroke-miterlimit:4;" d="M 10.399687 12.6 C 11.228438 11.77125 12.571875 11.77125 13.399687 12.6 C 14.228438 13.42875 14.228438 14.77125 13.399687 15.6 L 7.999687 21 L 4.000312 22.000312 L 4.999687 18 Z M 10.399687 12.6 " transform="matrix(4.166667,0,0,4.166667,0,0)"/></g>');
-	}
-
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
@@ -129,6 +122,8 @@ export default class PDFPlus extends Plugin {
 		if (this.settings.defaultColorPaletteActionIndex < 0 || this.settings.defaultColorPaletteActionIndex >= this.settings.copyCommands.length) {
 			this.settings.defaultColorPaletteActionIndex = 0;
 		}
+
+		this.validateAutoFocusAndAutoPasteSettings();
 
 		for (const [name, hex] of Object.entries(this.settings.colors)) {
 			this.settings.colors[name] = hex.toLowerCase();
@@ -160,11 +155,34 @@ export default class PDFPlus extends Plugin {
 			delete this.settings.aliasFormat;
 		}
 
-		if (this.settings.hasOwnProperty('enalbeWriteHighlightToFile')) {
+		this.renameSetting('enalbeWriteHighlightToFile', 'enablePDFEdit');
+
+		this.renameSetting('selectToCopyToggleRibbonIcon', 'autoCopyToggleRibbonIcon');
+		this.renameCommand('pdf-plus:toggle-select-to-copy', `${this.manifest.id}:toggle-auto-copy`);
+	}
+
+	private renameSetting(oldId: string, newId: keyof PDFPlusSettings) {
+		if (this.settings.hasOwnProperty(oldId)) {
 			// @ts-ignore
-			this.settings.enablePDFEdit = this.settings.enalbeWriteHighlightToFile;
+			this.settings[newId] = this.settings[oldId];
 			// @ts-ignore
-			delete this.settings.enalbeWriteHighlightToFile;
+			delete this.settings[oldId];
+		}
+	}
+
+	private renameCommand(oldId: string, newId: string) {
+		const { hotkeyManager } = this.app;
+		const oldHotkeys = hotkeyManager.getHotkeys(oldId);
+		if (oldHotkeys) {
+			hotkeyManager.removeHotkeys(oldId);
+			hotkeyManager.setHotkeys(newId, oldHotkeys);
+		}
+	}
+
+	validateAutoFocusAndAutoPasteSettings() {
+		// We can't have both of them on simultaneously
+		if (this.settings.autoFocus && this.settings.autoPaste) {
+			this.settings.autoFocus = false;
 		}
 	}
 
@@ -173,15 +191,66 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private registerRibbonIcons() {
-		this.selectToCopyMode = new SelectToCopyMode(this);
-		this.selectToCopyMode.unload(); // disabled by default
-		this.register(() => this.selectToCopyMode.unload());
+		this.autoCopyMode = new AutoCopyMode(this);
+		this.autoCopyMode.toggle(this.settings.autoCopy);
+		this.register(() => this.autoCopyMode.unload());
 
 		if (this.settings.autoFocusToggleRibbonIcon) {
-			this.autoFocusToggleIconEl = this.addRibbonIcon('lucide-zap', `${this.manifest.name}: Toggle auto-focus`, () => {
-				this.lib.commands.toggleAutoFocus();
+			this.autoFocusToggleIconEl = this.addRibbonIcon(this.settings.autoFocusIconName, `${this.manifest.name}: Toggle auto-focus`, () => {
+				this.toggleAutoFocus();
 			});
 			this.autoFocusToggleIconEl.toggleClass('is-active', this.settings.autoFocus);
+		}
+
+		if (this.settings.autoPasteToggleRibbonIcon) {
+			this.autoPasteToggleIconEl = this.addRibbonIcon(this.settings.autoPasteIconName, `${this.manifest.name}: Toggle auto-paste`, () => {
+				this.toggleAutoPaste();
+			});
+			this.autoPasteToggleIconEl.toggleClass('is-active', this.settings.autoPaste);
+		}
+	}
+
+	toggleAutoFocusRibbonIcon(enable?: boolean) {
+		const iconEl = this.autoFocusToggleIconEl;
+		if (iconEl) {
+			enable = enable ?? !iconEl.hasClass('is-active');
+			iconEl.toggleClass('is-active', enable);
+		}
+	}
+
+	toggleAutoPasteRibbonIcon(enable?: boolean) {
+		const iconEl = this.autoPasteToggleIconEl;
+		if (iconEl) {
+			enable = enable ?? !iconEl.hasClass('is-active');
+			iconEl.toggleClass('is-active', enable);
+		}
+	}
+
+	async toggleAutoFocus(enable?: boolean, save?: boolean) {
+		enable = enable ?? !this.settings.autoFocus;
+		this.toggleAutoFocusRibbonIcon(enable);
+		this.settings.autoFocus = enable;
+
+		if (this.settings.autoFocus && this.settings.autoPaste) {
+			this.toggleAutoPaste(false, false);
+		}
+
+		if (save ?? true) {
+			await this.saveSettings();
+		}
+	}
+
+	async toggleAutoPaste(enable?: boolean, save?: boolean) {
+		enable = enable ?? !this.settings.autoPaste;
+		this.toggleAutoPasteRibbonIcon(enable);
+		this.settings.autoPaste = enable;
+
+		if (this.settings.autoPaste && this.settings.autoFocus) {
+			this.toggleAutoFocus(false, false);
+		}
+
+		if (save ?? true) {
+			await this.saveSettings();
 		}
 	}
 
@@ -192,22 +261,14 @@ export default class PDFPlus extends Plugin {
 		});
 		this.tryPatchUntilSuccess(patchPDFView);
 		this.tryPatchUntilSuccess(patchPDFInternalFromPDFEmbed);
-		this.tryPatchUntilSuccess(patchBacklink, () => {
-			this.lib.workspace.iterateBacklinkViews((view) => {
-				// reflect the patch to existing backlink views
-				if (view.file?.extension === 'pdf') {
-					view.onLoadFile(view.file);
-				}
-			});
-		});
+		this.tryPatchUntilSuccess(patchBacklink);
 		this.tryPatchUntilSuccess(patchClipboardManager);
 	}
 
-	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, onSuccess?: () => any, noticeOnFail?: () => Notice | undefined) {
+	tryPatchUntilSuccess(patcher: (plugin: PDFPlus) => boolean, noticeOnFail?: () => Notice | undefined) {
 		this.app.workspace.onLayoutReady(() => {
 			const success = patcher(this);
-			if (success) onSuccess?.();
-			else {
+			if (!success) {
 				const notice = noticeOnFail?.();
 
 				const eventRef = this.app.workspace.on('layout-change', () => {
@@ -215,7 +276,6 @@ export default class PDFPlus extends Plugin {
 					if (success) {
 						this.app.workspace.offref(eventRef);
 						notice?.hide();
-						onSuccess?.();
 					}
 				});
 				this.registerEvent(eventRef);

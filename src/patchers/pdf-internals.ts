@@ -8,7 +8,7 @@ import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'con
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
-import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings } from 'typings';
+import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight } from 'typings';
 import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 
@@ -88,6 +88,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 self.isFileExternal = false;
                 self.externalFileUrl = null;
                 self.palette = null;
+                self.rectHighlight = null;
 
                 if (!self.component) {
                     self.component = new Component();
@@ -95,6 +96,13 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 self.component.load();
 
                 const ret = await old.call(self, ...args);
+
+                const viewerContainerEl = self.pdfViewer?.dom?.viewerContainerEl;
+                if (viewerContainerEl) {
+                    viewerContainerEl.addEventListener('pointerdown', () => {
+                        lib.highlight.viewer.clearRectHighlight(self);
+                    });
+                }
 
                 const addColorPaletteToToolbar = () => {
                     try {
@@ -114,7 +122,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 window.clearInterval(timer);
                             }, 1000);
                         }
-    
+
                         const viewerContainerEl = self.pdfViewer?.dom?.viewerContainerEl;
                         if (plugin.settings.autoHidePDFSidebar && viewerContainerEl) {
                             if (!self.component) self.component = new Component();
@@ -127,7 +135,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     } catch (e) {
                         new Notice(`${plugin.manifest.name}: An error occurred while mounting the color palette to the toolbar.`);
                         console.error(e);
-                    }    
+                    }
                 }
 
                 addColorPaletteToToolbar();
@@ -388,19 +396,12 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                         let dest: [number, { name: string }, ...(number | null)[]] | null = null;
 
-                        if (params.has('rect')) {
+                        // If `zootToFitRect === false`, it will be handled by 
+                        // `pdfjsViewer.scrollIntoView` inside `lib.highlight.viewer.highlightRect`.
+                        if (plugin.settings.zoomToFitRect && params.has('rect')) {
                             const rect = params.get('rect')!.split(',').map(_parseFloat);
                             if (rect.length === 4 && rect.every((n) => n !== null)) {
-                                if (plugin.settings.zoomToFitRect) {
-                                    dest = [page - 1, {
-                                        name: 'FitR'
-                                    }, ...rect];
-                                } else {
-                                    // only align the top of the rect
-                                    dest = [page - 1, {
-                                        name: 'XYZ'
-                                    }, null, rect[3], null];
-                                }
+                                dest = [page - 1, { name: 'FitR' }, ...rect];
                             }
                         }
 
@@ -427,7 +428,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             }
                         }
 
-                        let highlight = null;
+                        let highlight: PDFTextHighlight | PDFAnnotationHighlight | PDFRectHighlight | null = null;
                         if (params.has('annotation')) {
                             highlight = {
                                 type: 'annotation',
@@ -435,17 +436,24 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 id: params.get('annotation')!
                             };
                         } else if (params.has('selection')) {
-                            const selection = params.get('selection')!.split(',');
-                            const beginIndex = _parseInt(selection[0]);
-                            const beginOffset = _parseInt(selection[1]);
-                            const endIndex = _parseInt(selection[2]);
-                            const endOffset = _parseInt(selection[3]);
+                            const selection = params.get('selection')!.split(',').map(_parseInt);
+                            const [beginIndex, beginOffset, endIndex, endOffset] = selection;
+
                             if (null !== beginIndex && null !== beginOffset && null !== endIndex && null !== endOffset) {
                                 highlight = {
                                     type: 'text',
                                     page,
                                     range: [[beginIndex, beginOffset], [endIndex, endOffset]]
-                                }
+                                };
+                            }
+                        } else if (params.has('rect')) {
+                            const rect = params.get('rect')!.split(',').map(_parseFloat);
+                            if (rect.length === 4 && rect.every((n) => n !== null)) {
+                                highlight = {
+                                    type: 'rect',
+                                    page,
+                                    rect: rect as Rect
+                                };
                             }
                         }
 
@@ -465,8 +473,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         pdfViewer.subpath = dest;
                     }
 
-                    // @ts-ignore
-                    self.subpathHighlight = highlight || null;
+                    self.subpathHighlight = highlight;
                 }
             }
         },
@@ -577,7 +584,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         clearTextHighlight(old) {
             return function () {
                 const self = this as PDFViewerChild;
-                if (plugin.settings.persistentTextHighlightsInEmbed && self.pdfViewer.isEmbed) {
+                if (plugin.settings.persistentTextHighlightsInEmbed && (self.pdfViewer?.isEmbed ?? self.opts.isEmbed)) {
                     return;
                 }
                 old.call(this);
@@ -590,6 +597,12 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     return;
                 }
                 old.call(this);
+            }
+        },
+        clearEphemeralUI(old) {
+            return function (this: PDFViewerChild) {
+                old.call(this);
+                lib.highlight.viewer.clearRectHighlight(this);
             }
         },
         renderAnnotationPopup(old) {

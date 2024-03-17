@@ -123,30 +123,29 @@ export class BacklinkDomManager extends PDFPlusComponent {
     }
 
     hookBacklinkOpeners(el: HTMLElement, cache: PDFBacklinkCache) {
-        const lineNumber = 'position' in cache.refCache ? cache.refCache.position.start.line : undefined;
+        const pos = 'position' in cache.refCache ? cache.refCache.position : undefined;
+        const lineNumber = pos?.start.line;
 
+        const state: any = { isTriggeredFromBacklinkVisualizer: true };
+        if (typeof lineNumber === 'number') {
+            state.scroll = lineNumber;
+        }
         this.registerDomEvent(el, 'mouseover', (event) => {
             this.app.workspace.trigger('hover-link', {
                 event,
                 source: 'pdf-plus',
-                hoverParent: this,
+                hoverParent: this.visualizer,
                 targetEl: el,
                 linktext: cache.sourcePath,
                 sourcePath: this.file.path,
-                state: typeof lineNumber === 'number' ? { scroll: lineNumber } : undefined
+                state
             });
         });
 
         this.registerDomEvent(el, 'dblclick', (event) => {
             if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
                 const paneType = Keymap.isModEvent(event);
-                if (paneType) {
-                    this.app.workspace.openLinkText(cache.sourcePath, this.file.path, paneType, {
-                        eState: typeof lineNumber === 'number' ? { scroll: lineNumber, line: lineNumber } : undefined
-                    });
-                    return;
-                }
-                this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, lineNumber);
+                this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, paneType, pos ? { pos } : undefined);
             }
         });
     }
