@@ -250,7 +250,7 @@ export class ExternalPDFModal extends PDFPlusModal {
 
         if (this.source === 'file' && this.folderPath) {
             for (const url of this.urls) {
-                const filePath = normalizePath(this.folderPath + '/' + url.split('/').pop());
+                const filePath = normalizePath(this.folderPath + '/' + url.split('/').pop()?.replace(/%20/g, ' ') ?? '');
                 if (!filePath.endsWith('.pdf')) {
                     failed.push(url);
                     continue;
