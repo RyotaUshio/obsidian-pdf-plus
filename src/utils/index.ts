@@ -81,6 +81,11 @@ export function getModifierNameInPlatform(mod: Modifier): string {
     return 'Ctrl';
 }
 
+/** Returns the platform-specific path separator. */
+export function getPathSeparator() {
+    return Platform.isWin ? '\\' : '/';
+}
+
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
     return cache.links?.find((link) => start <= link.position.start.offset && link.position.end.offset <= end)
         ?? cache.embeds?.find((embed) => start <= embed.position.start.offset && embed.position.end.offset <= end);

@@ -1,6 +1,6 @@
 import { PDFPlusModal } from 'modals';
 import { Notice, Platform, Setting, normalizePath } from 'obsidian';
-import { FuzzyFolderSuggest } from 'utils';
+import { FuzzyFolderSuggest, getPathSeparator } from 'utils';
 
 
 export class ExternalPDFModal extends PDFPlusModal {
@@ -237,6 +237,7 @@ export class ExternalPDFModal extends PDFPlusModal {
 
     async createDummyFiles() {
         let failed: string[] = [];
+        const promises: Promise<any>[] = [];
 
         const createDummyFile = async (url: string, filePath: string) => {
             const availableFilePath = this.app.vault.getAvailablePath(filePath.slice(0, -4), 'pdf')
@@ -245,25 +246,38 @@ export class ExternalPDFModal extends PDFPlusModal {
         };
 
         if (this.source === 'file' && this.folderPath) {
+            const sep = getPathSeparator();
             for (const url of this.urls) {
-                const filePath = normalizePath(this.folderPath + '/' + url.split('/').pop());
+                const filePath = normalizePath(this.folderPath + '/' + url.split(sep).pop());
                 if (!filePath.endsWith('.pdf')) {
                     failed.push(url);
                     continue;
                 }
 
-                createDummyFile(url, filePath);
+                promises.push(
+                    createDummyFile(url, filePath).catch((err) => {
+                        failed.push(url);
+                        console.error(err);
+                    })
+                );
             }
         } else if (this.source === 'web' && this.filePath && this.urls.length) {
             const filePath = normalizePath(this.filePath);
             if (!filePath.endsWith('.pdf')) {
                 failed = this.urls;
             } else {
-                createDummyFile(this.urls[0], filePath);
+                promises.push(
+                    createDummyFile(this.urls[0], filePath).catch((err) => {
+                        failed = this.urls;
+                        console.error(err);
+                    })
+                );
             }
         } else {
             failed = this.urls;
         }
+
+        await Promise.all(promises);
 
         if (failed.length) {
             new Notice(`${this.plugin.manifest.name}: Failed to create dummy files for the following URLs: ${failed.join(', ')}`);
