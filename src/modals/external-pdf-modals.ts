@@ -1,6 +1,6 @@
 import { PDFPlusModal } from 'modals';
 import { Notice, Platform, Setting, normalizePath } from 'obsidian';
-import { FuzzyFolderSuggest, getPathSeparator } from 'utils';
+import { FuzzyFolderSuggest } from 'utils';
 
 
 export class ExternalPDFModal extends PDFPlusModal {
@@ -114,7 +114,7 @@ export class ExternalPDFModal extends PDFPlusModal {
                             ]
                         });
                         if (paths && paths.length > 0) {
-                            this.urls = paths.map((path) => 'file://' + path);
+                            this.urls = paths.map((path) => 'file://' + path.replace(/\\/g, '/'));
                             this.display();
                         }
                     });
@@ -246,9 +246,8 @@ export class ExternalPDFModal extends PDFPlusModal {
         };
 
         if (this.source === 'file' && this.folderPath) {
-            const sep = getPathSeparator();
             for (const url of this.urls) {
-                const filePath = normalizePath(this.folderPath + '/' + url.split(sep).pop());
+                const filePath = normalizePath(this.folderPath + '/' + url.split('/').pop());
                 if (!filePath.endsWith('.pdf')) {
                     failed.push(url);
                     continue;
