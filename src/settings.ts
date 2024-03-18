@@ -451,8 +451,9 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 export class PDFPlusSettingTab extends PluginSettingTab {
 	component: Component;
 	items: Partial<Record<keyof PDFPlusSettings, Setting>>;
-	headings: Setting[];
-	headerEls: HTMLElement[];
+	headings: Map<string, Setting>;
+	iconHeadings: Map<string, Setting>;
+	headerEls: Map<string, HTMLElement>;
 	promises: Promise<any>[];
 
 	contentEl: HTMLElement;
@@ -462,17 +463,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		super(plugin.app, plugin);
 		this.component = new Component();
 		this.items = {};
-		this.headings = [];
-		this.headerEls = [];
+		this.headings = new Map();
+		this.iconHeadings = new Map();
+		this.headerEls = new Map();
 		this.promises = [];
 
 		this.containerEl.addClass('pdf-plus-settings');
 		this.headerContainerEl = this.containerEl.createDiv('header-container');
 		this.contentEl = this.containerEl.createDiv('content');
-	}
-
-	get(settingName: keyof PDFPlusSettings) {
-		return this.plugin.settings[settingName];
 	}
 
 	addSetting(settingName?: keyof PDFPlusSettings) {
@@ -481,17 +479,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		return item;
 	}
 
-	scrollTo(settingName: keyof PDFPlusSettings, options?: { behavior: ScrollBehavior }) {
-		const setting = this.items[settingName];
-		if (setting) this.scrollToSetting(setting, options);
-	}
-
-	scrollToSetting(setting: Setting, options?: { behavior: ScrollBehavior }) {
-		const el = setting.settingEl;
-		if (el) this.containerEl.scrollTo({ top: el.offsetTop - this.headerContainerEl.offsetHeight, ...options });
-	}
-
-	addHeading(heading: string, icon?: IconName, processHeaderDom?: (dom: { headerEl: HTMLElement, iconEl: HTMLElement, titleEl: HTMLElement }) => void) {
+	addHeading(heading: string, id: string, icon?: IconName, processHeaderDom?: (dom: { headerEl: HTMLElement, iconEl: HTMLElement, titleEl: HTMLElement }) => void) {
 		const setting = this.addSetting()
 			.setName(heading)
 			.setHeading()
@@ -510,6 +498,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				}
 			});
 
+		this.headings.set(id, setting);
+
 		if (icon) {
 			this.headerContainerEl.createDiv('clickable-icon header', (headerEl) => {
 				const iconEl = headerEl.createDiv();
@@ -522,15 +512,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 				this.component.registerDomEvent(headerEl, 'click', (evt) => {
 					(setting.settingEl.previousElementSibling ?? setting.settingEl).scrollIntoView({ behavior: 'smooth' });
-					const win = evt.win;
-					const timer = win.setInterval(() => this.updateHeaderElClass(), 50);
-					win.setTimeout(() => win.clearInterval(timer), 1000);
+					this.updateHeaderElClassOnScroll(evt);
 				});
 
 				processHeaderDom?.({ headerEl, iconEl, titleEl });
 
-				this.headings.push(setting);
-				this.headerEls.push(headerEl);
+				this.iconHeadings.set(id, setting);
+				this.headerEls.set(id, headerEl);
 			});
 		}
 
@@ -540,13 +528,36 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	updateHeaderElClass() {
 		const tabHeight = this.containerEl.getBoundingClientRect().height;
 
-		for (let i = 0; i < this.headings.length; i++) {
-			const top = this.headings[i].settingEl.getBoundingClientRect().top;
-			const bottom = this.headings[i + 1]?.settingEl.getBoundingClientRect().top
+		const headingEntries = Array.from(this.iconHeadings.entries());
+		for (let i = 0; i < headingEntries.length; i++) {
+			const top = headingEntries[i][1].settingEl.getBoundingClientRect().top;
+			const bottom = headingEntries[i + 1]?.[1].settingEl.getBoundingClientRect().top
 				?? this.contentEl.getBoundingClientRect().bottom;
 			const isVisible = top <= tabHeight * 0.85 && bottom >= tabHeight * 0.2 + this.headerContainerEl.clientHeight;
-			this.headerEls[i].toggleClass('is-active', isVisible);
+			const id = headingEntries[i][0];
+			this.headerEls.get(id)?.toggleClass('is-active', isVisible);
 		}
+	}
+
+	updateHeaderElClassOnScroll(evt?: MouseEvent) {
+		const win = evt?.win ?? activeWindow;
+		const timer = win.setInterval(() => this.updateHeaderElClass(), 50);
+		win.setTimeout(() => win.clearInterval(timer), 1500);
+	}
+
+	scrollTo(settingName: keyof PDFPlusSettings, options?: { behavior: ScrollBehavior }) {
+		const setting = this.items[settingName];
+		if (setting) this.scrollToSetting(setting, options);
+	}
+
+	scrollToHeading(id: string, options?: { behavior: ScrollBehavior }) {
+		const setting = this.headings.get(id);
+		if (setting) this.scrollToSetting(setting, options);
+	}
+
+	scrollToSetting(setting: Setting, options?: { behavior: ScrollBehavior }) {
+		const el = setting.settingEl;
+		if (el) this.containerEl.scrollTo({ top: el.offsetTop - this.headerContainerEl.offsetHeight, ...options });
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlurOrEnter?: (setting: Setting) => any) {
@@ -741,6 +752,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		return this.addHeading(
 			'Support development',
+			'funding',
 			'lucide-heart',
 			({ iconEl }) => postProcessIcon(iconEl)
 		)
@@ -1030,12 +1042,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		});
 	}
 
-	addHotkeySettingButton(setting: Setting) {
+	addHotkeySettingButton(setting: Setting, query?: string) {
 		setting.addButton((button) => {
 			button.setButtonText('Open hotkeys settings')
 				.onClick(() => {
 					const tab = this.app.setting.openTabById('hotkeys');
-					tab.setQuery(this.plugin.manifest.id);
+					tab.setQuery(query ?? this.plugin.manifest.id);
 				});
 		});
 	}
@@ -1085,13 +1097,30 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.then(renderAndValidateIcon);
 	}
 
-	createLinkToSetting(id: keyof PDFPlusSettings, name?: string) {
+	createLinkTo(id: keyof PDFPlusSettings, name?: string) {
 		return createEl('a', '', (el) => {
-			el.onclick = () => {
+			el.onclick = (evt) => {
 				this.scrollTo(id, { behavior: 'smooth' });
+				this.updateHeaderElClassOnScroll(evt);
 			}
 			activeWindow.setTimeout(() => {
 				const setting = this.items[id];
+				if (!name && setting) {
+					name = '"' + setting.nameEl.textContent + '"'
+				}
+				el.setText(name ?? '');
+			});
+		});
+	}
+
+	createLinkToHeading(id: string, name?: string) {
+		return createEl('a', '', (el) => {
+			el.onclick = (evt) => {
+				this.scrollToHeading(id, { behavior: 'smooth' });
+				this.updateHeaderElClassOnScroll(evt);
+			}
+			activeWindow.setTimeout(() => {
+				const setting = this.headings.get(id);
 				if (!name && setting) {
 					name = '"' + setting.nameEl.textContent + '"'
 				}
@@ -1114,7 +1143,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.component.load();
 
 
-		setTimeout(() => this.updateHeaderElClass());
+		activeWindow.setTimeout(() => this.updateHeaderElClass());
 		this.component.registerDomEvent(
 			this.contentEl, 'wheel',
 			debounce(() => this.updateHeaderElClass(), 100)
@@ -1126,10 +1155,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const hoverCmd = `hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`;
 
 
-		// eslint-disable-next-line prefer-const
-		let fundingHeading: Setting;
 		this.contentEl.createDiv('top-note', async (el) => {
 			await this.renderMarkdown([
+				'> [!IMPORTANT]',
+				'> The **Copy & auto-paste link to selection or annotation** command is planned to be removed in the near future. Instead, use the **Copy link to selection or annotation** command after enabling auto-paste using the **Toggle auto-paste** icon in the left ribbon menu or the **Toggle auto-paste** command.',
+				'> ',
+				'> If you don\'t like this change, feel free to let me know via [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/112).',
+				'',
 				'> [!TIP]',
 				'> - You can easily navigate through the settings by clicking the icons in the header above.',
 				'> - Some settings below require reopening tabs or reloading the plugin to take effect.',
@@ -1139,12 +1171,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			const linkEl = document.getElementById('pdf-plus-funding-link-placeholder');
 			if (linkEl) {
 				linkEl.textContent = 'Help me keep PDF++ alive!';
-				linkEl.onclick = () => this.scrollToSetting(fundingHeading);
+				linkEl.onclick = (evt) => {
+					this.scrollToHeading('funding', { behavior: 'smooth' })
+					this.updateHeaderElClassOnScroll(evt);
+				};
 			}
 		});
 
 
-		this.addHeading('Editing PDF files', 'lucide-save')
+		this.addHeading('Editing PDF files', 'edit', 'lucide-save')
 			.then((setting) => {
 				this.renderMarkdown([
 					'To make the best of PDF++\'s powerful features, it is strongly recommended to enable PDF editing.',
@@ -1181,7 +1216,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Backlink highlighting', 'lucide-highlighter')
+		this.addHeading('Backlink highlighting', 'backlink-highlight', 'lucide-highlighter')
 			.setDesc('Annotate PDF files with highlights just by linking to text selection. You can easily copy links to selections using color palette in the toolbar. See the "Color palette" section for the details.')
 			.then((setting) => setting.settingEl.addClass('normal-margin-top'));
 		this.addToggleSetting('highlightBacklinks')
@@ -1272,13 +1307,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('If no color is specified in link text, this color will be used.');
 		// }
 
-		this.addHeading('Backlink indicator bounding rectangles');
+		this.addHeading('Backlink indicator bounding rectangles', 'backlink-bounding-rect');
 		this.addToggleSetting('showBoundingRectForBacklinkedAnnot')
 			.setName('Show bounding rectangles for backlinked annotations')
 			.setDesc('Bounding rectangles will be shown for annotations with backlinks.');
 
 
-		this.addHeading('Backlink indicator icons')
+		this.addHeading('Backlink indicator icons', 'backlink-icon')
 			.setDesc('Show icons for text selections, annotations, offsets and rectangular selections with backlinks.');
 		this.addToggleSetting('showBacklinkIconForSelection')
 			.setName('Show icon for text selection with backlinks');
@@ -1292,7 +1327,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Icon size');
 
 
-		this.addHeading('Rectangular selection embeds', 'lucide-box-select')
+		this.addHeading('Rectangular selection embeds', 'rect', 'lucide-box-select')
 			.then((setting) => {
 				this.renderMarkdown([
 					'You can embed a specified rectangular area from a PDF page into your note. [Learn more](https://ryotaushio.github.io/obsidian-pdf-plus/embedding-rectangular-selections.html)'
@@ -1324,12 +1359,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc(createFragment((el) => {
 				el.appendText('When enabled, the PDF viewer will zoom to fit the rectangular selection when you open a link to it. Otherwise, the viewer will keep the current zoom level.');
 				el.appendText('Note: check out the ');
-				el.appendChild(this.createLinkToSetting('dblclickEmbedToOpenLink'));
+				el.appendChild(this.createLinkTo('dblclickEmbedToOpenLink'));
 				el.appendText(' option as well.');
 			}));
 
 
-		this.addHeading('PDF++ callouts', 'lucide-quote')
+		this.addHeading('PDF++ callouts', 'callout', 'lucide-quote')
 			.then((setting) => {
 				this.renderMarkdown(
 					'Create [callouts](https://help.obsidian.md/Editing+and+formatting/Callouts) with the same color as the highlight color without any CSS snippet scripting.',
@@ -1369,7 +1404,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Callout icon');
 
 
-		this.addHeading('Color palette', 'lucide-palette')
+		this.addHeading('Color palette', 'palette', 'lucide-palette')
 			.setDesc('Clicking a color while selecting a range of text will copy a link to the selection with "&color=..." appended.');
 		this.addToggleSetting('colorPaletteInToolbar', () => {
 			this.redisplay();
@@ -1395,7 +1430,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Right-click menu in PDF viewer', 'lucide-mouse-pointer-click')
+		this.addHeading('Right-click menu in PDF viewer', 'context-menu', 'lucide-mouse-pointer-click')
 			.setDesc('Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.')
 		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
 			.setName('Replace the built-in right-click menu with PDF++\'s custom menu');
@@ -1406,7 +1441,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Copying links via hotkeys', 'lucide-keyboard');
+		this.addHeading('Copying links via hotkeys', 'copy-hotkeys', 'lucide-keyboard');
 		this.addSetting()
 			.setName('Set up hotkeys for copying links')
 			.then((setting) => {
@@ -1418,6 +1453,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'   <br>If the "Add highlights to file directly" toggle switch in the PDF toolbar is on, it first adds a highlight annotation directly to the PDF file, and then copies the link to the created annotation.',
 					'2. **Copy & auto-paste link to selection or annotation:**',
 					'  In addition to copying the link, it automatically pastes the copied link at the end of the last active note or the note where you last pasted a link. Note that Canvas is not supported.',
+					'  > [!IMPORTANT]',
+					'  > This command is planned to be removed in the near future. Instead, use the "Copy link to selection or annotation" command after enabling auto-paste using the "Toggle auto-paste" icon in the left ribbon menu or the "Toggle auto-paste" command. If you don\'t like this change, feel free to let me know via [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/112).',
 					'',
 					'The third command is very different from the first two:',
 					'',
@@ -1426,25 +1463,17 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'After running this command, you can add the copied link to the PDF file itself: select a range of text, right-click, and then click "Paste copied link to selection".'
 				], setting.descEl);
 			})
-			.then((setting) => this.addHotkeySettingButton(setting));
-		// eslint-disable-next-line prefer-const
-		let autoCopyHeading: Setting;
+			.then((setting) => this.addHotkeySettingButton(setting, `${this.plugin.manifest.name}: Copy link`));
 		this.addSetting()
 			.setName('Further workflow enhancements')
 			.setDesc(createFragment((el) => {
 				el.appendText('See the ')
-				el.createEl('a', {
-					text: '"Auto-copy / auto-focus / auto-paste"'
-				}, (anchorEl) => {
-					this.component.registerDomEvent(anchorEl, 'click', () => {
-						this.scrollToSetting(autoCopyHeading, { behavior: 'smooth' });
-					});
-				});
+				el.appendChild(this.createLinkToHeading('auto', '"Auto-copy / auto-focus / auto-paste"'))
 				el.appendText(' section below.');
 			}));
 
 
-		this.addHeading('Other shortcut commands', 'lucide-layers-2')
+		this.addHeading('Other shortcut commands', 'other-hotkeys', 'lucide-layers-2')
 		this.addSetting()
 			.then((setting) => {
 				this.renderMarkdown([
@@ -1479,7 +1508,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
-		this.addHeading('Link copy templates', 'lucide-copy')
+		this.addHeading('Link copy templates', 'template', 'lucide-copy')
 			.setDesc('The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ')
 		this.addSetting()
 			.then((setting) => this.renderMarkdown([
@@ -1611,10 +1640,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		autoCopyHeading = this.addHeading('Auto-copy / auto-focus / auto-paste', 'lucide-zap')
+		this.addHeading('Auto-copy / auto-focus / auto-paste', 'auto', 'lucide-zap')
 			.setDesc('Speed up the process of copying & pasting PDF links to your notes with some automation. Note that you can\'t activate both of auto-focus and auto-paste at the same time.');
 
-		this.addHeading('Auto-copy')
+		this.addHeading('Auto-copy', 'auto-copy')
 			.setDesc('If enabled, the "Copy link to selection or annotation" command will be triggered automatically every time you select a range of text in a PDF viewer, meaning you don\'t even have to press a hotkey to copy a link.');
 		this.addToggleSetting('autoCopy', () => this.plugin.autoCopyMode.toggle(this.plugin.settings.autoCopy))
 			.setName('Enable')
@@ -1630,7 +1659,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				});
 		}
 
-		this.addHeading('Auto-focus')
+		this.addHeading('Auto-focus', 'auto-focus')
 			.setDesc('If enabled, a markdown file will be focused automatically after copying a link to PDF text selection or annotation.');
 		this.addSetting('autoFocus')
 			.setName('Enable')
@@ -1656,7 +1685,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addDropdownSetting('autoFocusTarget', AUTO_FOCUS_TARGETS)
 			.setName('Target markdown file to focus on');
 
-		this.addHeading('Auto-paste')
+		this.addHeading('Auto-paste', 'auto-paste')
 			.setDesc('If enabled, the copied link to PDF text selection or annotation will be automatically pasted into a markdown file right after copying.');
 		this.addSetting('autoPaste')
 			.setName('Enable')
@@ -1688,7 +1717,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Respect current cursor position')
 			.setDesc('When enabled, the auto-paste command will paste the copied text at the current cursor position if the target note is already opened. If disabled, the text will be always appended to the end of the note.');
 
-		this.addHeading('General')
+		this.addHeading('General', 'auto-general')
 			.setDesc('General settings that apply to both auto-focus and auto-paste.');
 		this.addToggleSetting('openAutoFocusTargetIfNotOpened', () => this.redisplay())
 			.setName('Open target markdown file if not opened');
@@ -1758,7 +1787,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setDesc('The link will be auto-pasted into the first markdown file that you open within this time frame after the command is executed. If you don\'t open any markdown file during this time, the auto-paste will not occur. This option is not related to auto-focus.');
 		}
 
-		this.addHeading(`The "${commandName}" command`)
+		this.addHeading(`The "${commandName}" command`, 'create-new-note-command')
 			.setDesc('Creates a new note and opens it in a new pane specified in the "How to open target markdown file when not opened" option.');
 		this.addTextSetting('newFileNameFormat', 'Leave blank not to specify')
 			.setName(`New note title format`)
@@ -1797,7 +1826,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
-		this.addHeading('PDF Annotations', 'lucide-message-square');
+		this.addHeading('PDF Annotations', 'annot', 'lucide-message-square');
 		this.addToggleSetting('annotationPopupDrag')
 			.setName('Drag & drop annotation popup to insert a link to the annotation')
 			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
@@ -1833,7 +1862,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('PDF internal links', 'link')
+		this.addHeading('PDF internal links', 'pdf-link', 'link')
 			.setDesc('Make it easier to work with internal links embedded in PDF files.');
 		this.addToggleSetting('clickPDFInternalLinkWithModifierKey')
 			.then((setting) => {
@@ -1872,14 +1901,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('PDF sidebar', 'sidebar-left')
+		this.addHeading('PDF sidebar', 'sidebar', 'sidebar-left')
 			.setDesc('General settings for the PDF sidebar. The options specific to the outline and thumbnails are located in the corresponding sections below.');
 		this.addToggleSetting('autoHidePDFSidebar')
 			.setName('Click on PDF content to hide sidebar')
 			.setDesc('Requires reopening the tabs after changing this option.');
 
 
-		this.addHeading('PDF outline (table of contents)', 'lucide-list')
+		this.addHeading('PDF outline (table of contents)', 'outline', 'lucide-list')
 			.setDesc('Power up the outline view of the built-in PDF viewer: add, rename, or delete items via the right-click menu and the "Add to outline" command, drag & drop items to insert a section link, and more.');
 		this.addToggleSetting('clickOutlineItemWithModifierKey')
 			.then((setting) => {
@@ -1919,7 +1948,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					textarea.inputEl.cols = 30;
 				});
 		}
-		this.addHeading('Copy outline as markdown')
+		this.addHeading('Copy outline as markdown', 'outline-copy')
 			.setDesc('You can copy PDF outline as a markdown list or headings using the commands "Copy outline as markdown list" and "Copy outline as markdown headings".');
 		this.addTextSetting('copyOutlineAsListDisplayTextFormat')
 			.setName('List: display text format')
@@ -1954,7 +1983,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('The copied headings will start at this level.');
 
 
-		this.addHeading('PDF thumbnails', 'lucide-gallery-thumbnails')
+		this.addHeading('PDF thumbnails', 'thumbnail', 'lucide-gallery-thumbnails')
 		this.addToggleSetting('clickThumbnailWithModifierKey')
 			.then((setting) => {
 				this.renderMarkdown(
@@ -2001,7 +2030,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('PDF page composer (experimental)', 'lucide-blocks')
+		this.addHeading('PDF page composer (experimental)', 'composer', 'lucide-blocks')
 			.then((setting) => {
 				this.renderMarkdown([
 					`Add, insert, delete or extract PDF pages via commands and **automatically update all the related links in the entire vault**. The "Editing PDF files directly" option has to be enabled to use these features.`
@@ -2025,7 +2054,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('How to open');
 		}
 
-		this.addHeading('Page labels')
+		this.addHeading('Page labels', 'page-label')
 			.then((setting) => {
 				this.renderMarkdown([
 					'Each page in a PDF document can be assigned a ***page label***, which can be different from the page indices.',
@@ -2053,14 +2082,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Extract: ask whether to update');
 
 
-		// this.addHeading('Canvas', 'lucide-layout-dashboard')
+		// this.addHeading('Canvas', 'canvas', 'lucide-layout-dashboard')
 		// 	.setDesc('Embed PDF files in Canvas and create a card from text selection or annotation using the "Create canvas card from selection or annotation" command.')
 		// this.addToggleSetting('canvasContextMenu')
 		// 	.setName('Show "Create Canvas card from ..." in the right-click menu in Canvas')
 		// 	.setDesc('Turn this off if you don\'t want to clutter the right-click menu. You can always use the "Create canvas card from selection or annotation" command via a hotkey.');
 
 
-		this.addHeading('Opening links to PDF files', 'lucide-book-open');
+		this.addHeading('Opening links to PDF files', 'open-link', 'lucide-book-open');
 		this.addToggleSetting('alwaysRecordHistory')
 			.setName('Always record to history when opening PDF links')
 			.setDesc('By default, the history is recorded only when you open a link to a different PDF file. If enabled, the history will be recorded even when you open a link to the same PDF file as the current one, and you will be able to go back and forth the history by clicking the left/right arrow buttons even within a single PDF file.');
@@ -2136,7 +2165,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Obsidian lets you specify the height of a PDF embed by appending "&height=..." to a link, and this also applies to popover previews. Enable this option if you want to ignore the height parameter in popover previews.')
 
 
-		this.addHeading('Embedding PDF files', 'picture-in-picture-2');
+		this.addHeading('Embedding PDF files', 'embed', 'picture-in-picture-2');
 		this.addToggleSetting('dblclickEmbedToOpenLink', () => this.plugin.loadStyle())
 			.setName('Double click PDF embeds to open links')
 			.setDesc('Double-clicking a PDF embed will open the embedded file.');
@@ -2169,7 +2198,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Make PDF embeds with a page specified unscrollable');
 
 
-		this.addHeading('Backlinks pane for PDF files', 'links-coming-in')
+		this.addHeading('Backlinks pane for PDF files', 'backlink-view', 'links-coming-in')
 			.then((setting) => this.renderMarkdown(
 				`Improve the built-in [backlinks pane](https://help.obsidian.md/Plugins/Backlinks) for better PDF experience.`,
 				setting.descEl
@@ -2198,7 +2227,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Search from links', 'lucide-search')
+		this.addHeading('Search from links', 'search-link', 'lucide-search')
 			.then((setting) => {
 				this.renderMarkdown([
 					'You can trigger full-text search by opening a link to a PDF file with a search query appended, e.g. `[[file.pdf#search=keyword]]`.',
@@ -2208,10 +2237,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Show "Copy link to search" in the right-click menu')
 			.setDesc(createFragment((el) => {
 				el.appendText('Requires the ');
-				el.appendChild(this.createLinkToSetting('replaceContextMenu'));
+				el.appendChild(this.createLinkTo('replaceContextMenu'));
 				el.appendText(' option to be enabled.');
 			}));
-		this.addHeading('Search options')
+		this.addHeading('Search options', 'search-option')
 			.then((setting) => {
 				this.renderMarkdown([
 					'The behavior of the search links can be customized globally by the following settings. ',
@@ -2238,7 +2267,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Match whole word');
 
 
-		this.addHeading('Integration with external apps (desktop-only)', 'lucide-share');
+		this.addHeading('Integration with external apps (desktop-only)', 'external-app', 'lucide-share');
 		this.addToggleSetting('openPDFWithDefaultApp', () => this.redisplay())
 			.setName('Open PDF links with an external app')
 			.setDesc('Open PDF links with the OS-defined default application for PDF files.')
@@ -2255,7 +2284,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Otherwise, the focus will be moved to the external app.');
 
 
-		this.addHeading('View Sync', 'lucide-eye')
+		this.addHeading('View Sync', 'view-sync', 'lucide-eye')
 			.then((setting) => {
 				this.renderMarkdown([
 					'Integrate more seamlessly with the [View Sync](https://github.com/RyotaUshio/obsidian-view-sync) plugin.'
@@ -2269,7 +2298,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Misc', 'lucide-more-horizontal');
+		this.addHeading('Misc', 'misc', 'lucide-more-horizontal');
 		this.addToggleSetting('showStatusInToolbar')
 			.setName('Show status in PDF toolbar')
 			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');
@@ -2292,7 +2321,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
-		this.addHeading('Style settings', 'lucide-external-link')
+		this.addHeading('Style settings', 'style-settings', 'lucide-external-link')
 			.setDesc('You can find more options in Style Settings > PDF++.')
 			.addButton((button) => {
 				button.setButtonText('Open style settings')
@@ -2307,7 +2336,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
-		fundingHeading = this.addFundingButton();
+		this.addFundingButton();
 
 
 		await Promise.all(this.promises);

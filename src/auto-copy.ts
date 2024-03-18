@@ -24,11 +24,13 @@ export class AutoCopyMode extends PDFPlusComponent {
 
     enable() {
         this.settings.autoCopy = true;
+        this.plugin.saveSettings();
         this.load();
     }
 
     disable() {
         this.settings.autoCopy = false;
+        this.plugin.saveSettings();
         this.unload();
     }
 
