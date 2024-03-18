@@ -1,5 +1,5 @@
 > [!warning]
-> This is an experimental feature, which will be available from 0.38.0-beta.
+> This is an **experimental** feature.
 
 With PDF++, you can seamlessly integrate PDF files located **outside your vault** as if they were inside.
 
@@ -30,7 +30,7 @@ A dummy PDF file is a plain text file that
 For example, open your favorite text editor and create a text file with the following content:
 
 ```
-https://raw.githubusercontent.com/RyotaUshio/obsidian-pdf-plus/main/samples/Lorem%20Ipsum.pdf
+https://pdfobject.com/pdf/sample.pdf
 ```
 
 Then, save it as `example.pdf`.
@@ -38,13 +38,18 @@ Then, save it as `example.pdf`.
 > [!NOTE]
 > Again, a dummy PDF file is just a plain text file although the extension `.pdf` looks as if it were an actual PDF file.
 
-Open `example.pdf` in Obsidian. Then, the following PDF file will be displayed in the built-in PDF viewer: https://raw.githubusercontent.com/RyotaUshio/obsidian-pdf-plus/main/samples/Lorem%20Ipsum.pdf.
+Open `example.pdf` in Obsidian. Then, the following PDF file will be displayed in the built-in PDF viewer: https://pdfobject.com/pdf/sample.pdf.
 
 It looks as if a normal PDF file located in your vault, and various PDF-related features work the same - you can copy a link to a text selection, [[Embedding rectangular selections|embed a rectangular selection]], [[Backlink highlighting - Basics|highlight backlinks]], and so on.
 
 ### Create dummy files from the command
 
 PDF++ offers an alternative way to create dummy PDF files: the **PDF++: Create dummy file for external PDF** command.
+
+### Create dummy files with a bookmarklet
+
+You can create a bookmarklet for quickly creating dummy files from your browser.
+See here for the details: [[Bookmarklet to create dummy PDF files]].
 
 ## Importing external PDFs
 
