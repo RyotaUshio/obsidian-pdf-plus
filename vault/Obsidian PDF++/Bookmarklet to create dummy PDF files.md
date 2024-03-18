@@ -43,6 +43,6 @@ If the folder path contains whitespaces, replace each of them with `%20`.
 
 ## Demo
 
-The following demo uses the following PDF: https://pdfobject.com/pdf/sample.pdf
+The following demo uses [this PDF](https://pdfobject.com/pdf/sample.pdf).
 
 ![[Screen Recording 2024-03-18 at 17.16.50.mov]]
