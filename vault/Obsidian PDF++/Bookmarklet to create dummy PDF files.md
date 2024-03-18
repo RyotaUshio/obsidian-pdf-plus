@@ -8,7 +8,7 @@ A bookmarklet ([Wikipedia](https://en.wikipedia.org/wiki/Bookmarklet)) is just l
 
 ## Create a bookmarklet
 
-1. Open the bookmark manager: chrome://bookmarks/
+1. Open the bookmark manager ([click here](chrome://bookmarks/)).
 2. Select **Add new bookmark**.
     ![[Untitled.png]]
 4. Enter some name, and copy & paste the following to the URL box.
