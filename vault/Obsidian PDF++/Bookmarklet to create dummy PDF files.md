@@ -1,4 +1,4 @@
-By creating a bookmarklet, you can easily create dummy files for external PDFs (see [[External PDF files|here]] for the details) with just one click.
+By creating a bookmarklet, you can easily create dummy files for external PDFs (see [[External PDF files|here]] for the details) with just one click from your browser.
 
 The following instruction assumes that you are using Google Chrome, but the steps are almost the same for other browsers.
 
