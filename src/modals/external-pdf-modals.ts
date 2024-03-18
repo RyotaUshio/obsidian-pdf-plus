@@ -308,8 +308,14 @@ export class ExternalPDFModal extends PDFPlusModal {
         // So, for now, I open only the first file.
         const firstFile = files.find((file): file is TFile => !!file);
         if (firstFile) {
-            const leaf = this.app.workspace.getLeaf(true);
-            await leaf.openFile(firstFile);
+            // Again, for some reasons that I don't understand, opening the file fails without `setTimeout`.
+            await new Promise<void>((resolve) => {
+                activeWindow.setTimeout(async () => {
+                    const leaf = this.app.workspace.getLeaf(true);
+                    await leaf.openFile(firstFile);
+                    resolve();
+                }, 300);
+            });
         }
     }
 
