@@ -1,10 +1,10 @@
-import { Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, ObsidianProtocolData, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
 import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
-import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals/pdf-composer-modals';
+import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
 
 
 const SELECTION_BACKLINK_VISUALIZE_STYLE = {
@@ -448,6 +448,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 };
 
 
+export function isPDFPlusSettingsKey(key: string): key is keyof PDFPlusSettings {
+	return DEFAULT_SETTINGS.hasOwnProperty(key);
+}
+
+
 export class PDFPlusSettingTab extends PluginSettingTab {
 	component: Component;
 	items: Partial<Record<keyof PDFPlusSettings, Setting>>;
@@ -558,6 +563,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	scrollToSetting(setting: Setting, options?: { behavior: ScrollBehavior }) {
 		const el = setting.settingEl;
 		if (el) this.containerEl.scrollTo({ top: el.offsetTop - this.headerContainerEl.offsetHeight, ...options });
+	}
+
+	openFromObsidianUrl(params: ObsidianProtocolData) {
+		const id = params.setting;
+		if (id.startsWith('heading:')) {
+			this.plugin.openSettingTab()
+				.scrollToHeading(id.slice('heading:'.length));
+		} else if (isPDFPlusSettingsKey(id)) {
+			this.plugin.openSettingTab()
+				.scrollTo(id);
+		}
+		return;
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlurOrEnter?: (setting: Setting) => any) {
@@ -2139,7 +2156,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc(`Press ${getModifierNameInPlatform('Mod').toLowerCase()} while hovering a PDF link to actually open it if the target PDF is already opened in another tab.`)
 		this.addSetting()
 			.setName('Open PDF links with an external app')
-			.setDesc('See the "Integration with external apps" section for the details.');
+			.setDesc(createFragment((el) => {
+				el.appendText('See the ');
+				el.appendChild(this.createLinkToHeading('external-app'));
+				el.appendText(' section for the details.');
+			}));
 
 
 		this.addSetting()

@@ -1,15 +1,12 @@
 import { Command, MarkdownView, Notice, TFile, normalizePath, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
-import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal } from 'modals/pdf-composer-modals';
-import { PDFPageLabelEditModal } from 'modals/page-label-modals';
+import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, ExternalPDFModal } from 'modals';
 import { PDFOutlines } from './outlines';
-import { PDFOutlineTitleModal } from 'modals/outline-modals';
 import { TemplateProcessor } from 'template';
 import { parsePDFSubpath } from 'utils';
 import { DestArray } from 'typings';
 import { PDFPlusSettingTab } from 'settings';
-import { ExternalPDFModal } from 'modals/external-pdf-modals';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {

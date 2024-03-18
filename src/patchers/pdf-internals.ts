@@ -3,7 +3,7 @@ import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
 import { ColorPalette } from 'color-palette';
-import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals/annotation-modals';
+import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals';
 import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';

@@ -1,5 +1,6 @@
+import PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
-import { Notice, Platform, Setting, normalizePath } from 'obsidian';
+import { Notice, ObsidianProtocolData, Platform, Setting, TFile, normalizePath } from 'obsidian';
 import { FuzzyFolderSuggest } from 'utils';
 
 
@@ -190,6 +191,7 @@ export class ExternalPDFModal extends PDFPlusModal {
             .setDesc('Must start with "https://" or "http://".')
             .addText((text) => {
                 text.inputEl.size = 30;
+                if (this.urls.length) text.setValue(this.urls[0]);
                 text.onChange((value) => {
                     if (!value || value.startsWith('https://') || value.startsWith('http://')) {
                         this.urls = [value];
@@ -240,10 +242,22 @@ export class ExternalPDFModal extends PDFPlusModal {
 
     async createDummyFiles() {
         let failed: string[] = [];
-        const promises: Promise<any>[] = [];
+        const promises: Promise<TFile | null>[] = [];
 
         const createDummyFile = async (url: string, filePath: string) => {
+            // Create the parent folder if it doesn't exist
+            const folderPath = normalizePath(filePath.split('/').slice(0, -1).join('/'));
+            if (folderPath) {
+                const folderExists = !!(this.app.vault.getAbstractFileByPath(folderPath));
+                if (!folderExists) {
+                    await this.app.vault.createFolder(folderPath);
+                }
+            }
+
+            // Find an available file path in that folder
             const availableFilePath = this.app.vault.getAvailablePath(filePath.slice(0, -4), 'pdf')
+
+            // Create the dummy file
             const file = await this.app.vault.create(availableFilePath, url);
             return file;
         };
@@ -260,6 +274,7 @@ export class ExternalPDFModal extends PDFPlusModal {
                     createDummyFile(url, filePath).catch((err) => {
                         failed.push(url);
                         console.error(err);
+                        return null;
                     })
                 );
             }
@@ -272,6 +287,7 @@ export class ExternalPDFModal extends PDFPlusModal {
                     createDummyFile(this.urls[0], filePath).catch((err) => {
                         failed = this.urls;
                         console.error(err);
+                        return null;
                     })
                 );
             }
@@ -279,12 +295,43 @@ export class ExternalPDFModal extends PDFPlusModal {
             failed = this.urls;
         }
 
-        await Promise.all(promises);
+        const files = await Promise.all(promises);
 
         if (failed.length) {
             new Notice(`${this.plugin.manifest.name}: Failed to create dummy files for the following URLs: ${failed.join(', ')}`);
         } else {
             new Notice(`${this.plugin.manifest.name}: Dummy files created successfully.`);
         }
+
+        // Ideally, I want to open all the created files, but it does not work as expected for some reasons that I don't understand.
+        // TODO: Figure it out!
+        // So, for now, I open only the first file.
+        const firstFile = files.find((file): file is TFile => !!file);
+        if (firstFile) {
+            const leaf = this.app.workspace.getLeaf(true);
+            await leaf.openFile(firstFile);
+        }
+    }
+
+    static async createDummyFilesFromObsidianUrl(plugin: PDFPlus, params: ObsidianProtocolData) {
+        // Ignore everything before https://, http:// or file:///, e.g. "chrome-extension://..."
+        const url = params['create-dummy'].replace(/^.*((https?)|(file):\/\/)/, '$1');
+        const modal = new ExternalPDFModal(plugin);
+        modal.source = url.startsWith('http') ? 'web' : 'file';
+        modal.urls = [url];
+
+        if ('folder' in params) {
+            const folderPath = params.folder;
+            if (modal.source === 'web') {
+                modal.filePath = normalizePath(folderPath + '/Untitled.pdf');
+            } else {
+                modal.folderPath = normalizePath(folderPath);
+            }
+            await modal.createDummyFiles();
+            return;
+        }
+
+        // If the folder path is not provided, ask the user for it
+        modal.open();
     }
 }

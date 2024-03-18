@@ -1,4 +1,4 @@
-import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed } from 'patchers';
@@ -10,6 +10,7 @@ import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters, focusObsidian } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
+import { ExternalPDFModal } from 'modals';
 
 
 export default class PDFPlus extends Plugin {
@@ -104,6 +105,8 @@ export default class PDFPlus extends Plugin {
 		this.registerEvents();
 
 		this.startTrackingActiveMarkdownFile();
+
+		this.registerObsidianProtocolHandler('pdf-plus', this.obsidianProtocolHandler.bind(this));
 	}
 
 	private checkVersion() {
@@ -478,6 +481,16 @@ export default class PDFPlus extends Plugin {
 				}
 			}));
 		});
+	}
+
+	obsidianProtocolHandler(params: ObsidianProtocolData) {
+		if ('create-dummy' in params) {
+			return ExternalPDFModal.createDummyFilesFromObsidianUrl(this, params);
+		}
+
+		if ('setting' in params) {
+			return this.settingTab.openFromObsidianUrl(params);
+		}
 	}
 
 	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
