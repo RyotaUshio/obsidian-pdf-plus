@@ -182,11 +182,13 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 if (file.stat.size < 300) {
                     const url = await lib.getExternalPDFUrl(file);
                     if (url) {
+                        let uninstalled = false;
                         const uninstaller = around(Vault.prototype, {
                             getResourcePath(old) {
                                 return function (this: Vault, f: TFile) {
                                     if (f === file) {
                                         uninstaller();
+                                        uninstalled = true;
                                         return url;
                                     }
                                     return old.call(this, file);
@@ -195,7 +197,10 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         });
 
                         await old.call(this, file, subpath);
-                        uninstaller();
+                        if (!uninstalled) {
+                            uninstaller();
+                            uninstalled = true;
+                        }
 
                         this.component.register(() => URL.revokeObjectURL(url));
 

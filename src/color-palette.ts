@@ -296,7 +296,7 @@ export class ColorPalette extends PDFPlusComponent {
 
         this.importButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
             setIcon(el, 'lucide-import');
-            setTooltip(el, `${this.plugin.manifest.name}: Import PDF into vault`);
+            setTooltip(el, `Import external PDF into vault`);
             el.addEventListener('click', () => {
                 this.importFile();
             });

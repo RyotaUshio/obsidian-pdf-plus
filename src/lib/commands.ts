@@ -29,7 +29,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 checkCallback: (checking) => this.copyLink(checking, false)
             }, {
                 id: 'copy-auto-paste-link-to-selection',
-                name: 'Copy & auto-paste link to selection or annotation',
+                name: '(Deprecated) Copy & auto-paste link to selection or annotation',
                 checkCallback: (checking) => this.copyLink(checking, true)
             }, {
                 id: 'rectangular-selection',
@@ -37,7 +37,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 checkCallback: (checking) => this.copyEmbedLinkToRectangularSelection(checking, false)
             }, {
                 id: 'rectangular-selection-auto-paste',
-                name: 'Start rectangular selection and auto-paste',
+                name: '(Deprecated) Start rectangular selection and auto-paste',
                 checkCallback: (checking) => this.copyEmbedLinkToRectangularSelection(checking, true)
             },
             // {
