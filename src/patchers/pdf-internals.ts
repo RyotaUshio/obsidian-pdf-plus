@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, Notice, TFile, Vault, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -8,7 +8,7 @@ import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'con
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
-import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight } from 'typings';
+import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer } from 'typings';
 import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 
@@ -28,6 +28,10 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
             if (!toolbar) return resolve(false);
 
             patchPDFViewerChild(plugin, child);
+
+            // This check should be unnecessary, but just in case
+            if (!child.pdfViewer) return resolve(false);
+            patchObsidianViewer(plugin, child.pdfViewer);
 
             plugin.patchStatus.pdfInternals = true;
 
@@ -172,41 +176,25 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 this.component.load();
 
                 // If the file is small enough, first check the text content.
-                // If it's a URL to a PDF located outside the vault, monkey-patch
-                // `Vault.prototype.getResourcePath` (which will be called inside `old` to load the PDF content to the viewer)
+                // If it's a URL to a PDF located outside the vault, tell ObsidianViewer to use the URL instead of `app.vault.getResourcePath(file)` (which is called inside the original `loadFile` method)
                 // so that it can directly load the PDF content from the URL.
                 // This way, we can open local PDF files outside the vault or PDF files on the web
                 // as if it were in the vault.
                 let externalFileLoaded = false;
 
                 if (file.stat.size < 300) {
-                    const url = await lib.getExternalPDFUrl(file);
-                    if (url) {
-                        let uninstalled = false;
-                        const uninstaller = around(Vault.prototype, {
-                            getResourcePath(old) {
-                                return function (this: Vault, f: TFile) {
-                                    if (f === file) {
-                                        uninstaller();
-                                        uninstalled = true;
-                                        return url;
-                                    }
-                                    return old.call(this, file);
-                                }
-                            }
-                        });
+                    const redirectTo = await lib.getExternalPDFUrl(file);
+                    if (redirectTo) {
+                        const redirectFrom = app.vault.getResourcePath(file).replace(/\?\d+$/, '');
+                        this.pdfViewer.pdfPlusRedirect = { from: redirectFrom, to: redirectTo };
 
                         await old.call(this, file, subpath);
-                        if (!uninstalled) {
-                            uninstaller();
-                            uninstalled = true;
-                        }
 
-                        this.component.register(() => URL.revokeObjectURL(url));
+                        this.component.register(() => URL.revokeObjectURL(redirectTo));
 
                         externalFileLoaded = true;
                         this.isFileExternal = true;
-                        this.externalFileUrl = url;
+                        this.externalFileUrl = redirectTo;
 
                         if (this.palette && this.palette.paletteEl) {
                             this.palette.removeWriteFileToggle();
@@ -737,6 +725,29 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 onThumbnailContextMenu(plugin, this, evt);
+            }
+        }
+    }));
+}
+
+/** Monkey-patch ObsidianViewer so that it can open external PDF files. */
+const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
+    plugin.register(around(pdfViewer.constructor.prototype, { // equivalent to window.pdfjsViewer.ObsidianViewer
+        open(old) {
+            return async function (this: ObsidianViewer, args: any) {
+                if (this.pdfPlusRedirect) {
+                    const { from, to } = this.pdfPlusRedirect;
+                    const url = args.url;
+                    if (typeof url === 'string'
+                        && url.startsWith(from) // on desktop, Vault.getResourcePath() returns a path with a query string like "?1629350400000"
+                    ) {
+                        args.url = to;
+                    }
+                }
+
+                delete this.pdfPlusRedirect;
+
+                return await old.call(this, args);
             }
         }
     }));

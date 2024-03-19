@@ -172,6 +172,11 @@ interface ObsidianViewer {
     zoomIn(): void;
     zoomOut(): void;
     open(options: any): Promise<void>;
+    //////////////////////////
+    // Added by this plugin //
+    //////////////////////////
+    /** Used to open external PDFs. */
+    pdfPlusRedirect?: { from: string, to: string };
 }
 
 interface PDFSidebar {

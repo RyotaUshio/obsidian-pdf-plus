@@ -16,7 +16,9 @@ export class ExternalPDFModal extends PDFPlusModal {
         super(...args);
 
         this.scope.register([], 'Enter', () => {
-            this.submit();
+            if (activeDocument.activeElement?.tagName === 'INPUT') {
+                this.submit();
+            }
         });
     }
 
@@ -295,7 +297,7 @@ export class ExternalPDFModal extends PDFPlusModal {
             failed = this.urls;
         }
 
-        // const files = await Promise.all(promises);
+        const files = await Promise.all(promises);
 
         if (failed.length) {
             new Notice(`${this.plugin.manifest.name}: Failed to create dummy files for the following URLs: ${failed.join(', ')}`);
@@ -303,22 +305,12 @@ export class ExternalPDFModal extends PDFPlusModal {
             new Notice(`${this.plugin.manifest.name}: Dummy files created successfully.`);
         }
 
-        // Sometimes file opening fails even with `setTimeout`. Commented out for now.
-
-        // // Ideally, I want to open all the created files, but it does not work as expected for some reasons that I don't understand.
-        // // TODO: Figure it out!
-        // // So, for now, I open only the first file.
-        // const firstFile = files.find((file): file is TFile => !!file);
-        // if (firstFile) {
-        //     // Again, for some reasons that I don't understand, opening the file fails without `setTimeout`.
-        //     await new Promise<void>((resolve) => {
-        //         activeWindow.setTimeout(async () => {
-        //             const leaf = this.app.workspace.getLeaf(true);
-        //             await leaf.openFile(firstFile);
-        //             resolve();
-        //         }, 300);
-        //     });
-        // }
+        for (const file of files) {
+            if (file) {
+                const leaf = this.app.workspace.getLeaf(true);
+                await leaf.openFile(file);
+            }
+        }
     }
 
     static async createDummyFilesFromObsidianUrl(plugin: PDFPlus, params: ObsidianProtocolData) {
