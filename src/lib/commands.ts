@@ -7,6 +7,7 @@ import { TemplateProcessor } from 'template';
 import { parsePDFSubpath } from 'utils';
 import { DestArray } from 'typings';
 import { PDFPlusSettingTab } from 'settings';
+import { SidebarView } from 'pdfjs-enums';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -357,7 +358,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 return false;
             }
             if (!checking) {
-                sidebar.switchView(2, true);
+                sidebar.switchView(SidebarView.OUTLINE, true);
             }
             return true;
         }
@@ -386,7 +387,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             return false;
         }
         if (!checking) {
-            sidebar.switchView(1, true);
+            sidebar.switchView(SidebarView.THUMBS, true);
         }
         return true;
     }

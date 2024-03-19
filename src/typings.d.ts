@@ -9,6 +9,7 @@ import PDFPlus from 'main';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { ColorPalette } from 'color-palette';
+import { ScrollMode, SidebarView, SpreadMode } from 'pdfjs-enums';
 
 
 declare global {
@@ -109,6 +110,7 @@ interface PDFViewerChild {
     renderAnnotationPopup(annotationElement: AnnotationElement): void;
     destroyAnnotationPopup(): void;
     getAnnotatedText(pageView: PDFPageView, id: string): Promise<string | null>;
+    onCSSChange(): void;
     //////////////////////////
     // Added by this plugin //
     //////////////////////////
@@ -159,6 +161,7 @@ interface ObsidianViewer {
     subpath: string | null;
     isEmbed: boolean;
     eventBus: EventBus;
+    externalServices: ObsidianServices;
     pdfViewer: PDFViewer | null;
     pdfSidebar: PDFSidebar;
     pdfOutlineViewer: PDFOutlineViewer;
@@ -179,6 +182,23 @@ interface ObsidianViewer {
     pdfPlusRedirect?: { from: string, to: string };
 }
 
+interface ObsidianServices {
+    preferences: PDFJsAppOptions;
+    createPreferences(): ObsidianPreferences;
+}
+
+interface ObsidianPreferences {
+    preferences: PDFJsAppOptions;
+    getAll(): Promise<PDFJsAppOptions>;
+}
+
+export interface PDFJsAppOptions {
+    defaultZoomValue: string;
+    spreadModeOnLoad: SpreadMode;
+    scrollModeOnLoad: ScrollMode;
+    [key: string]: any;
+}
+
 interface PDFSidebar {
     isOpen: boolean;
     haveOutline: boolean;
@@ -188,8 +208,7 @@ interface PDFSidebar {
     thumbnailView: HTMLElement;
     /** See the explation for switchView() */
     active: number;
-    /** availabe view modes are UNKNOWN:-1, NONE: 0, THUMBS: 1, OUTLINE: 2, ATTACHMENTS: 3, LAYERS: 4 */
-    switchView(view: number, forceOpen?: boolean): void;
+    switchView(view: SidebarView, forceOpen?: boolean): void;
     setInitialView(view?: number): void;
     open(): void;
     close(): void;
@@ -332,8 +351,10 @@ interface PDFViewer {
     /** 1-based page number. This is an accessor property; the setter can be used to scroll to a page and dispatches 'pagechanging' event */
     currentPageNumber: number;
     _pages: PDFPageView[];
-    /** Accessor property. 0 for "single page", 1 for "two page (odd)", 2 for "two page (even)" */
-    spreadMode: number;
+    /** Accessor property. */
+    scrollMode: ScrollMode;
+    /** Accessor property. */
+    spreadMode: SpreadMode;
     /** Accessor property */
     currentScale: number;
     /** Accessor property */
@@ -446,7 +467,9 @@ interface EventBus {
     off(name: string, callback: (...args: any[]) => any): void;
     dispatch(name: string, data: { source?: any }): void;
     dispatch(name: 'togglesidebar', data: { open: boolean, source?: any }): void;
-    dispatch(name: 'switchspreadmode', data: { mode: number, source?: any }): void;
+    dispatch(name: 'switchspreadmode', data: { mode: SpreadMode, source?: any }): void;
+    dispatch(name: 'switchscrollmode', data: { mode: ScrollMode, source?: any }): void;
+    dispatch(name: 'scalechanged', data: { value: string, source?: any }): void;
 }
 
 interface PDFEmbed extends Embed {
@@ -932,6 +955,11 @@ declare module 'obsidian' {
         embedRegistry: EmbedRegistry;
         openWithDefaultApp(path: string): Promise<void>;
         getObsidianUrl(file: TFile): string;
+        loadLocalStorage(key: string): string | null;
+		// - If the second argument is not provided, it will remove the key from the local storage.
+		// - `value` can be anything that can be serialized to JSON, but be careful that values
+		//   that become false when casted to boolean will cause the key being removed from the local storage.
+		saveLocalStorage(key: string, value?: any): void;
     }
 
     interface FileManager {
@@ -990,13 +1018,17 @@ declare module 'obsidian' {
     }
 
     interface Menu {
+        /** div.menu */
+        dom: HTMLElement;
+        /** .has-active-menu */
+        parentEl?: HTMLElement;
         setParentElement(el: HTMLElement): Menu;
         addSections(sections: string[]): Menu;
     }
 
     interface Editor {
         cm: EditorView;
-        coordsAtPos(pos: EditorPosition, arg?: boolean): { top: number, bottom: number, left: number, right: number };
+        coordsAtPos(pos: EditorPosition, arg?: boolean): { top: number, bottom: number, left: number, right: number } | null;
         // @ts-ignore
         getScrollInfo(): EditorScrollInfo;
     }

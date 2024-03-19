@@ -1,7 +1,7 @@
-import { Constructor, EditableFileView, EventRef, Events, Keymap, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
-import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed } from 'patchers';
+import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
 import { PDFPlusLib } from 'lib';
 import { AutoCopyMode } from 'auto-copy';
 import { ColorPalette } from 'color-palette';
@@ -71,6 +71,8 @@ export default class PDFPlus extends Plugin {
 	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
 	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
 	pdfViewerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
+	/** Stores all the shown context menu objects. Used to close all visible menus programatically. */
+	shownMenus: Set<Menu> = new Set();
 	isDebugMode: boolean = false;
 
 	async onload() {
@@ -106,7 +108,7 @@ export default class PDFPlus extends Plugin {
 
 		this.startTrackingActiveMarkdownFile();
 
-		this.registerObsidianProtocolHandler('pdf-plus', this.obsidianProtocolHandler.bind(this));
+		this.registerObsidianProtocolHandler('pdf-plus', this.obsidianProtocolHandler.bind(this));		
 	}
 
 	private checkVersion() {
@@ -261,6 +263,7 @@ export default class PDFPlus extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			patchWorkspace(this);
 			patchPagePreview(this);
+			patchMenu(this);
 		});
 		this.tryPatchUntilSuccess(patchPDFView);
 		this.tryPatchUntilSuccess(patchPDFInternalFromPDFEmbed);

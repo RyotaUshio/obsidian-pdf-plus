@@ -152,6 +152,20 @@ settings:
     }
 }
 
+/* .pdf-page-input, */
+.pdf-zoom-level-input {
+    width: 6ch;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.pdf-zoom-level-percent {
+    white-space: nowrap;
+    margin-right: var(--size-4-1);
+    font-size: var(--font-ui-small);
+    font-variant-numeric: tabular-nums;
+}   
+
 .pdf-plus-settings {
     --pdf-plus-settings-header-height: var(--size-4-12);
 

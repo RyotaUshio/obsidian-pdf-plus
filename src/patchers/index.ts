@@ -6,3 +6,4 @@ export * from './workspace';
 export * from './page-preview';
 export * from './backlink';
 export * from './clipboard-manager';
+export * from './menu';

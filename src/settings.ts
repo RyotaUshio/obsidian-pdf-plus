@@ -5,6 +5,7 @@ import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
 import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
+import { ScrollMode, SpreadMode } from 'pdfjs-enums';
 
 
 const SELECTION_BACKLINK_VISUALIZE_STYLE = {
@@ -231,6 +232,11 @@ export interface PDFPlusSettings {
 	searchLinkEntireWord: 'true' | 'false' | 'default';
 	dontFitWidthWhenOpenPDFLink: boolean;
 	preserveCurrentLeftOffsetWhenOpenPDFLink: boolean;
+	defaultZoomValue: string; // 'page-width' | 'page-height' | 'page-fit' | '<PERCENTAGE>'
+	scrollModeOnLoad: ScrollMode;
+	spreadModeOnLoad: SpreadMode;
+	hoverableDropdownMenuInToolbar: boolean;
+	zoomLevelInputBoxInToolbar: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -445,6 +451,11 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	searchLinkEntireWord: 'false',
 	dontFitWidthWhenOpenPDFLink: true,
 	preserveCurrentLeftOffsetWhenOpenPDFLink: false,
+	defaultZoomValue: 'page-width',
+	scrollModeOnLoad: ScrollMode.VERTICAL,
+	spreadModeOnLoad: SpreadMode.NONE,
+	hoverableDropdownMenuInToolbar: true,
+	zoomLevelInputBoxInToolbar: true,
 };
 
 
@@ -577,6 +588,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		return;
 	}
 
+	getVisibilityToggler(setting: Setting, condition: () => boolean) {
+		const toggleVisibility = () => {
+			condition() ? setting.settingEl.show() : setting.settingEl.hide();
+		}
+		toggleVisibility();
+		return toggleVisibility;
+	}
+
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlurOrEnter?: (setting: Setting) => any) {
 		const setting = this.addSetting(settingName)
 			.addText((text) => {
@@ -702,10 +721,29 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						const newIndex = options.indexOf(value);
 						if (newIndex !== -1) {
+							// @ts-ignore
 							this.plugin.settings[settingName] = newIndex;
 							await this.plugin.saveSettings();
 							extraOnChange?.(newIndex);
 						}
+					});
+			});
+	}
+
+	addEnumDropdownSetting(settingName: KeysOfType<PDFPlusSettings, number>, enumObj: Record<string, string>, extraOnChange?: (value: number) => void) {
+		return this.addSetting(settingName)
+			.addDropdown((dropdown) => {
+				for (const [key, value] of Object.entries(enumObj)) {
+					if (parseInt(key).toString() === key) {
+						dropdown.addOption(key, value);
+					}
+				}
+				dropdown.setValue('' + this.plugin.settings[settingName])
+					.onChange(async (value) => {
+						// @ts-ignore
+						this.plugin.settings[settingName] = +value;
+						await this.plugin.saveSettings();
+						extraOnChange?.(+value);
 					});
 			});
 	}
@@ -997,6 +1035,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						if (this.plugin.settings[defaultIndexKey] > index) {
 							this.plugin.settings[defaultIndexKey]--;
 						} else if (this.plugin.settings[defaultIndexKey] === index) {
+							// @ts-ignore
 							this.plugin.settings[defaultIndexKey] = 0;
 						}
 						await this.plugin.saveSettings();
@@ -1421,7 +1460,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Callout icon');
 
 
-		this.addHeading('Color palette', 'palette', 'lucide-palette')
+		this.addHeading('PDF toolbar', 'toolbar', 'lucide-palette')
+		this.addToggleSetting('hoverableDropdownMenuInToolbar')
+			.setName('Hoverable dropdown menus')
+			.setDesc('When enabled, the dropdown menus (⌄) in the PDF toolbar will be opened by hovering over the icon, and you don\'t need to click it.');
+		this.addToggleSetting('zoomLevelInputBoxInToolbar')
+			.setName('Show zoom level box')
+			.setDesc('A input box will be added to the PDF toolbar, which indicated the current zoom level and allows you to set the zoom level by typing a number.');
+
+		this.addHeading('Color palette', 'palette')
 			.setDesc('Clicking a color while selecting a range of text will copy a link to the selection with "&color=..." appended.');
 		this.addToggleSetting('colorPaletteInToolbar', () => {
 			this.redisplay();
@@ -1445,6 +1492,56 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setName('Share the color with newly opened color palettes as well');
 			}
 		}
+
+
+		this.addHeading('Viewer options', 'viewer-option', 'lucide-monitor');
+		this.addSetting('defaultZoomValue')
+			.setName('Default zoom level')
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOptions({
+						'page-width': 'Fit width',
+						'page-height': 'Fit height',
+						'page-fit': 'Fit page',
+						'custom': 'Custom...',
+					})
+					.setValue(this.plugin.settings.defaultZoomValue.startsWith('page-') ? this.plugin.settings.defaultZoomValue : 'custom')
+					.onChange(async (value) => {
+						if (value === 'custom') value = '100';
+						this.plugin.settings.defaultZoomValue = value;
+						toggleCustomZoomLevelSettingVisibility();
+						await this.plugin.saveSettings();
+					});
+			});
+		const toggleCustomZoomLevelSettingVisibility = this.getVisibilityToggler(
+			this.addSetting()
+				.setName('Custom zoom level (%)')
+				.addSlider((slider) => {
+					slider.setLimits(10, 400, 5)
+						.setDynamicTooltip()
+						.setValue(this.plugin.settings.defaultZoomValue.startsWith('page-') ? 100 : parseInt(this.plugin.settings.defaultZoomValue))
+						.onChange(async (value) => {
+							this.plugin.settings.defaultZoomValue = '' + value;
+							await this.plugin.saveSettings();
+						});
+				}),
+			() => !this.plugin.settings.defaultZoomValue.startsWith('page-')
+		);
+		this.addEnumDropdownSetting('scrollModeOnLoad', {
+			[ScrollMode.VERTICAL]: 'Vertical',
+			[ScrollMode.HORIZONTAL]: 'Horizontal',
+			[ScrollMode.WRAPPED]: 'Wrapped',
+		}, () => toggleSpreadModeOnLoadSettingVisibility())
+			.setName('Default scroll mode');
+		const toggleSpreadModeOnLoadSettingVisibility = this.getVisibilityToggler(
+		this.addEnumDropdownSetting('spreadModeOnLoad', {
+			[SpreadMode.NONE]: 'Single page',
+			[SpreadMode.ODD]: 'Two page (odd)',
+			[SpreadMode.EVEN]: 'Two page (even)',
+		})
+			.setName('Default spread mode'),
+			() => this.plugin.settings.scrollModeOnLoad !== ScrollMode.WRAPPED
+		);
 
 
 		this.addHeading('Right-click menu in PDF viewer', 'context-menu', 'lucide-mouse-pointer-click')

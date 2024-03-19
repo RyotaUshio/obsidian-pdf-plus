@@ -2,15 +2,16 @@ import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setToolt
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
-import { ColorPalette } from 'color-palette';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals';
 import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
-import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer } from 'typings';
+import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices } from 'typings';
 import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
+import { SidebarView, SpreadMode } from 'pdfjs-enums';
+import { PDFPlusToolbar } from 'toolbar';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -32,6 +33,8 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
             // This check should be unnecessary, but just in case
             if (!child.pdfViewer) return resolve(false);
             patchObsidianViewer(plugin, child.pdfViewer);
+
+            patchObsidianServices(plugin);
 
             plugin.patchStatus.pdfInternals = true;
 
@@ -111,14 +114,12 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 const addColorPaletteToToolbar = () => {
                     try {
                         if (self.toolbar) {
-                            const toolbar = self.toolbar;
-                            self.palette = plugin.domManager.addChild(new ColorPalette(plugin, self, toolbar.toolbarLeftEl));
+                            plugin.domManager.addChild(new PDFPlusToolbar(plugin, self.toolbar, self));
                         } else {
                             // Should not happen, but just in case
                             const timer = window.setInterval(() => {
-                                const toolbar = self.toolbar;
-                                if (toolbar) {
-                                    self.palette = plugin.domManager.addChild(new ColorPalette(plugin, self, toolbar.toolbarLeftEl));
+                                if (self.toolbar) {
+                                    plugin.domManager.addChild(new PDFPlusToolbar(plugin, self.toolbar, self));
                                     window.clearInterval(timer);
                                 }
                             }, 100);
@@ -133,7 +134,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             self.component.load();
 
                             self.component.registerDomEvent(viewerContainerEl, 'click', () => {
-                                self.pdfViewer.pdfSidebar.switchView(0);
+                                self.pdfViewer.pdfSidebar.switchView(SidebarView.NONE);
                             });
                         }
                     } catch (e) {
@@ -283,7 +284,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                 if (plugin.settings.noSpreadModeInEmbed && !isNonEmbedLike(this.pdfViewer)) {
                     lib.registerPDFEvent('pagerendered', this.pdfViewer.eventBus, null, () => {
-                        this.pdfViewer.eventBus.dispatch('switchspreadmode', { mode: 0 });
+                        this.pdfViewer.eventBus.dispatch('switchspreadmode', { mode: SpreadMode.NONE });
                     });
                 }
 
@@ -751,4 +752,19 @@ const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
             }
         }
     }));
-}
+};
+
+const patchObsidianServices = (plugin: PDFPlus) => {
+    plugin.register(around(window.pdfjsViewer.ObsidianServices.prototype, {
+        createPreferences(old) {
+            return function (this: ObsidianServices, ...args: any[]) {
+                Object.assign(this.preferences, {
+                    defaultZoomValue: plugin.settings.defaultZoomValue,
+                    scrollModeOnLoad: plugin.settings.scrollModeOnLoad,
+                    spreadModeOnLoad: plugin.settings.spreadModeOnLoad,
+                });
+                return old.call(this, ...args);
+            }
+        }
+    }));
+};

@@ -736,22 +736,24 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
         const editor = view.editor;
 
-        if (focus && goEnd) editor.exec('goEnd');
-        
+        if (focus) {
+            if (goEnd) editor.exec('goEnd');
+
+            this.lib.workspace.revealLeaf(view.leaf);
+            this.app.workspace.setActiveLeaf(view.leaf);
+            editor.focus();
+        }
+
         // Scroll to the cursor position if it is not visible
         const line = goEnd
             ? editor.lineCount() - 1
             : editor.getCursor().line;
         const coords = editor.coordsAtPos(editor.getCursor(), true);
-        const scrollInfo = editor.getScrollInfo();
-        if (coords.top < scrollInfo.top || coords.top > scrollInfo.top + scrollInfo.clientHeight) {
-            view.currentMode.applyScroll(line);
-        }
-
-        if (focus) {
-            this.lib.workspace.revealLeaf(view.leaf);
-            this.app.workspace.setActiveLeaf(view.leaf);
-            editor.focus();
+        if (coords) {
+            const scrollInfo = editor.getScrollInfo();
+            if (coords.top < scrollInfo.top || coords.top > scrollInfo.top + scrollInfo.clientHeight) {
+                view.currentMode.applyScroll(line);
+            }    
         }
     }
 
