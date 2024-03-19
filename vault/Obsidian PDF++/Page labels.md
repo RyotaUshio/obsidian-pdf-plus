@@ -1,4 +1,4 @@
-Each page in a PDF document can be assigned a ***page label***, which can be different from the page number/index.
+Each page in a PDF document can be assigned a **page label**, which can be different from the page number/index.
 For example, a book might have a preface numbered "i", "ii", "iii", ... and the main content numbered "1", "2", "3", ...
 
 > [!NOTE]

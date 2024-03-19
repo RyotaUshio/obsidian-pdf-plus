@@ -61,7 +61,7 @@ It means that the actual binary content of the external PDF is saved in the dumm
 The dummy PDF is no longer a dummy, but instead, it's now an actual PDF file.
 
 There are two ways to import an external PDF file:
-- Click the **Import PDF into vault** button (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-import"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>) in the PDF toolbar. 
+- Click the **Import external PDF into vault** button (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-import"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>) in the PDF toolbar. 
 - Run the command **PDF++: Import this PDF into vault**
 
 ## Opening external PDFs in their original locations
