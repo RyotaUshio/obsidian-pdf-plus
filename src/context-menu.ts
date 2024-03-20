@@ -5,7 +5,7 @@ import { PDFPlusLib } from 'lib';
 import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import { PDFOutlineMoveModal, PDFOutlineTitleModal, PDFComposerModal, PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals';
 import { toSingleLine } from 'utils';
-import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
+import { PDFOutlineTreeNode, PDFViewerChild, TextContentItem } from 'typings';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
 
@@ -386,11 +386,12 @@ export class PDFPlusContextMenu extends Menu {
     // TODO: divide into smaller methods
     async addItems(evt: MouseEvent) {
         const { child, plugin, lib, app } = this;
-
+        const pdfViewer = child.pdfViewer.pdfViewer;
         // const canvas = lib.workspace.getActiveCanvasView()?.canvas;
 
         const selectionObj = evt.win.getSelection();
-        const pageAndSelection = lib.copyLink.getPageAndTextRangeFromSelection(selectionObj);
+        const pageAndSelection = lib.copyLink.getPageAndTextRangeFromSelection(selectionObj)
+            ?? (pdfViewer ? { page: pdfViewer.currentPageNumber } : null);
         if (!pageAndSelection) return;
         // selection is undefined when the selection spans multiple pages
         const { page: pageNumber, selection } = pageAndSelection;
@@ -496,8 +497,7 @@ export class PDFPlusContextMenu extends Menu {
                         const file = child.file;
                         // copy PDF internal link as Obsidian wikilink (or markdown link) //
                         this.addItem((item) => {
-                            return item
-                                .setSection('link')
+                            item.setSection('link')
                                 .setTitle('Copy PDF link')
                                 .setIcon('lucide-copy')
                                 .onClick(async () => {
@@ -513,7 +513,59 @@ export class PDFPlusContextMenu extends Menu {
                                         plugin.lastCopiedDestInfo = { file, destName: destId };
                                     }
                                 });
-                        })
+                        }).addItem((item) => {
+                            item.setSection('link')
+                                .setTitle('Search on Google Scholar')
+                                .setIcon('lucide-search')
+                                .onClick(async () => {
+                                    const dest = await doc.getDestination(destId);
+                                    if (dest) {
+                                        const pageNumber = await doc.getPageIndex(dest[0]) + 1;
+                                        const page = await doc.getPage(pageNumber);
+                                        const items = (await page.getTextContent()).items as TextContentItem[];
+
+                                        let beginIndex = -1;
+                                        if (dest[1].name === 'XYZ') {
+                                            const left: number = dest[2];
+                                            const top: number = dest[3];
+                                            beginIndex = items.findIndex((item: TextContentItem) => {
+                                                const itemLeft = item.transform[4];
+                                                const itemTop = item.transform[5] + item.height;
+                                                return left <= itemLeft && itemTop <= top;
+                                            });
+                                        } else if (dest[1].name === 'FitBH') {
+                                            const top: number = dest[2];
+                                            beginIndex = items.findIndex((item: TextContentItem) => {
+                                                const itemTop = item.transform[5] + item.height;
+                                                return itemTop <= top;
+                                            });
+                                        }
+
+                                        if (beginIndex === -1) {
+                                            new Notice(`${plugin.manifest.name}: Failed to find bibliographic information.`);
+                                            return;
+                                        }
+
+                                        const beginItemLeft = items[beginIndex].transform[4];
+                                        let text = items[beginIndex].str;
+                                        let idx = beginIndex + 1;
+                                        while (true) {
+                                            const item = items[idx];
+                                            if (!item) break;
+
+                                            const itemLeft = item.transform[4];
+
+                                            if (itemLeft <= beginItemLeft + Math.max(item.height, 8) * 0.1) {
+                                                break;
+                                            }
+                                            text += item.str;
+                                            idx++;
+                                        }
+
+                                        window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(text)}`, '_blank');
+                                    }
+                                });
+                        });
                     }
                 }
 

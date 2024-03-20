@@ -108,7 +108,8 @@ settings:
     background-color: var(--text-selection);
 }
 
-.setting-item.no-border {
+.setting-item.no-border,
+.pdf-plus-settings.vertical-tab-content .setting-item.no-border {
     border-top: none;
 }
 
