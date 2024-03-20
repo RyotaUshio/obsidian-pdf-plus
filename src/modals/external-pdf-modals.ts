@@ -328,6 +328,14 @@ export class ExternalPDFModal extends PDFPlusModal {
                 modal.folderPath = normalizePath(folderPath);
             }
             await modal.createDummyFiles();
+
+            // If the folder path is provided, a dummy file named "Untitled.pdf" is created.
+            // The user will want to rename it, so we focus on the title bar so that the user can start typing right away.
+            const view = plugin.lib.workspace.getActivePDFView();
+            if (view) {
+                view.setEphemeralState({ rename: 'all' });
+            }
+
             return;
         }
 

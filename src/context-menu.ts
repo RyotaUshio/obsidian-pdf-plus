@@ -8,6 +8,7 @@ import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild, TextContentItem } from 'typings';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
+import { PDFDocumentProxy } from 'pdfjs-dist';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
@@ -513,59 +514,11 @@ export class PDFPlusContextMenu extends Menu {
                                         plugin.lastCopiedDestInfo = { file, destName: destId };
                                     }
                                 });
-                        }).addItem((item) => {
-                            item.setSection('link')
-                                .setTitle('Search on Google Scholar')
-                                .setIcon('lucide-search')
-                                .onClick(async () => {
-                                    const dest = await doc.getDestination(destId);
-                                    if (dest) {
-                                        const pageNumber = await doc.getPageIndex(dest[0]) + 1;
-                                        const page = await doc.getPage(pageNumber);
-                                        const items = (await page.getTextContent()).items as TextContentItem[];
-
-                                        let beginIndex = -1;
-                                        if (dest[1].name === 'XYZ') {
-                                            const left: number = dest[2];
-                                            const top: number = dest[3];
-                                            beginIndex = items.findIndex((item: TextContentItem) => {
-                                                const itemLeft = item.transform[4];
-                                                const itemTop = item.transform[5] + item.height;
-                                                return left <= itemLeft && itemTop <= top;
-                                            });
-                                        } else if (dest[1].name === 'FitBH') {
-                                            const top: number = dest[2];
-                                            beginIndex = items.findIndex((item: TextContentItem) => {
-                                                const itemTop = item.transform[5] + item.height;
-                                                return itemTop <= top;
-                                            });
-                                        }
-
-                                        if (beginIndex === -1) {
-                                            new Notice(`${plugin.manifest.name}: Failed to find bibliographic information.`);
-                                            return;
-                                        }
-
-                                        const beginItemLeft = items[beginIndex].transform[4];
-                                        let text = items[beginIndex].str;
-                                        let idx = beginIndex + 1;
-                                        while (true) {
-                                            const item = items[idx];
-                                            if (!item) break;
-
-                                            const itemLeft = item.transform[4];
-
-                                            if (itemLeft <= beginItemLeft + Math.max(item.height, 8) * 0.1) {
-                                                break;
-                                            }
-                                            text += item.str;
-                                            idx++;
-                                        }
-
-                                        window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(text)}`, '_blank');
-                                    }
-                                });
                         });
+
+                        if (destId.startsWith('cite.')) {
+                            this.addGoogleScholarSearch(destId, doc);
+                        }
                     }
                 }
 
@@ -693,6 +646,73 @@ export class PDFPlusContextMenu extends Menu {
             pageNumber,
             selection: selectedText,
             annot
+        });
+    }
+
+    addGoogleScholarSearch(destId: string, doc: PDFDocumentProxy) {
+        const { plugin } = this;
+
+        return this.addItem((item) => {
+            item.setSection('link')
+                .setTitle('Search on Google Scholar')
+                .setIcon('lucide-search')
+                .onClick(async () => {
+                    const dest = await doc.getDestination(destId);
+                    if (dest) {
+                        const pageNumber = await doc.getPageIndex(dest[0]) + 1;
+                        const page = await doc.getPage(pageNumber);
+                        const items = (await page.getTextContent()).items as TextContentItem[];
+
+                        // Whole lotta hand-crafted rules LOL
+
+                        let beginIndex = -1;
+                        if (dest[1].name === 'XYZ') {
+                            const left: number = dest[2];
+                            const top: number = dest[3];
+                            beginIndex = items.findIndex((item: TextContentItem) => {
+                                if (!item.str) return false;
+                                const itemLeft = item.transform[4];
+                                const itemTop = item.transform[5] + (item.height || item.transform[0]) * 0.8;
+                                return left <= itemLeft && itemTop <= top;
+                            });
+                        } else if (dest[1].name === 'FitBH') {
+                            const top: number = dest[2];
+                            beginIndex = items.findIndex((item: TextContentItem) => {
+                                if (!item.str) return false;
+                                const itemTop = item.transform[5] + (item.height || item.transform[0]) * 0.8;
+                                return itemTop <= top;
+                            });
+                        }
+
+                        if (beginIndex === -1) {
+                            new Notice(`${plugin.manifest.name}: Failed to find bibliographic information.`);
+                            return;
+                        }
+
+                        const beginItemLeft = items[beginIndex].transform[4];
+                        let text = items[beginIndex].str;
+                        let idx = beginIndex + 1;
+                        while (true) {
+                            const item = items[idx];
+                            if (!item) break;
+
+                            const itemLeft = item.transform[4];
+
+                            if (itemLeft <= beginItemLeft + Math.max(item.height, 8) * 0.1) {
+                                break;
+                            }
+                            text += item.str;
+                            idx++;
+                        }
+
+                        if (!text) {
+                            new Notice(`${plugin.manifest.name}: Failed to find bibliographic information.`);
+                            return;
+                        }
+
+                        window.open(`https://scholar.google.com/scholar?q=${encodeURIComponent(text)}`, '_blank');
+                    }
+                });
         });
     }
 }
