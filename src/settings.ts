@@ -1860,7 +1860,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Target markdown file to paste links to');
 		this.addToggleSetting('focusEditorAfterAutoPaste')
 			.setName('Focus editor after pasting')
-			.setDesc('If enabled, running the "Copy & auto-paste link to selection or annotation" command will also focus the editor after pasting if the note is already opened.');
+			.setDesc('If enabled, auto-paste will focus on the editor after pasting.');
 		this.addToggleSetting('respectCursorPositionWhenAutoPaste')
 			.setName('Respect current cursor position')
 			.setDesc('When enabled, the auto-paste command will paste the copied text at the current cursor position if the target note is already opened. If disabled, the text will be always appended to the end of the note.');
@@ -1939,19 +1939,25 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Creates a new note and opens it in a new pane specified in the "How to open target markdown file when not opened" option.');
 		this.addTextSetting('newFileNameFormat', 'Leave blank not to specify')
 			.setName(`New note title format`)
-			.then((setting) => {
-				this.renderMarkdown([
-					'If this option is left blank or the active file is not a PDF, "Untitled \\*" will be used (if the language is set to English). You can use the following variables: `file`, `folder`, `app`, and other global variables such as `moment`. See below for the details about the variables.',
-				], setting.descEl)
+			.then(async (setting) => {
+				await this.renderMarkdown([
+					'If this option is left blank or the active file is not a PDF, "Untitled \\*" will be used (if the language is set to English). You can use the following variables: `file`, `folder`, `app`, and other global variables such as `moment`.',
+				], setting.descEl);
+				setting.descEl.createSpan({text: 'See '});
+				setting.descEl.appendChild(this.createLinkToHeading('template', 'above'));
+				setting.descEl.createSpan({text: ' for the details about these variables.'});
 			});
 		this.addTextSetting('newFileTemplatePath', 'Leave blank not to use a template')
 			.setName('Template file path')
-			.then((setting) => {
-				this.renderMarkdown([
+			.then(async (setting) => {
+				await this.renderMarkdown([
 					'You can leave this blank if you don\'t want to use a template.',
 					'You can use `file`, `folder`, `app`, and other global variables such as `moment`.',
-					'See below for the details about these variables.',
-					'',
+				], setting.descEl);
+				setting.descEl.createSpan({text: 'See '});
+				setting.descEl.appendChild(this.createLinkToHeading('template', 'above'));
+				setting.descEl.createSpan({text: ' for the details about these variables.'});
+				await this.renderMarkdown([
 					'You can also include [Templater](obsidian://show-plugin?id=templater-obsidian) syntaxes in the template.',
 					'In that case, make sure the "Trigger templater on new file creation" option is enabled in the Templater settings.',
 					'',
