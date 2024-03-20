@@ -1,4 +1,4 @@
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
 import { ObsidianViewer } from 'typings';
@@ -17,6 +17,19 @@ export function getDirectPDFObj(dict: PDFDict, key: string) {
         return dict.context.lookup(obj);
     }
     return obj;
+}
+
+export function showMenuUnderParentEl(menu: Menu, parentEl: HTMLElement) {
+    const { x, bottom, width } = parentEl.getBoundingClientRect();
+    menu.setParentElement(parentEl)
+        .showAtPosition({
+            x,
+            y: bottom,
+            width,
+            overlap: true,
+            left: false
+        });
+    return menu;
 }
 
 // Thanks https://stackoverflow.com/a/54246501

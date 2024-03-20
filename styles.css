@@ -152,6 +152,14 @@ settings:
     }
 }
 
+.pdf-toolbar .clickable-icon.is-disabled {
+    background-color: inherit;
+
+    &> svg {
+        color: var(--text-faint);
+    }
+}
+
 /* .pdf-page-input, */
 .pdf-zoom-level-input {
     width: 6ch;
@@ -164,7 +172,7 @@ settings:
     margin-right: var(--size-4-1);
     font-size: var(--font-ui-small);
     font-variant-numeric: tabular-nums;
-}   
+}
 
 .pdf-plus-settings {
     --pdf-plus-settings-header-height: var(--size-4-12);

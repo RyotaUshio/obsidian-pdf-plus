@@ -4,7 +4,7 @@ import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { ColorPalette } from 'color-palette';
 import { PDFToolbar, PDFViewerChild } from 'typings';
-import { isMouseEventExternal } from 'utils';
+import { isMouseEventExternal, showMenuUnderParentEl } from 'utils';
 import { ScrollMode, SpreadMode } from 'pdfjs-enums';
 
 
@@ -227,14 +227,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                     menu.onHide(() => {
                         shown = false;
                     });
-                    const { x, bottom, width } = dropdownEl.getBoundingClientRect();
-                    menu.setParentElement(dropdownEl).showAtPosition({
-                        x,
-                        y: bottom,
-                        width,
-                        overlap: true,
-                        left: false
-                    });
+                    showMenuUnderParentEl(menu, dropdownEl);
                     shown = true;
                 }
             });
@@ -250,7 +243,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
         if (!this.settings.zoomLevelInputBoxInToolbar) return;
 
         const { toolbar } = this;
-        
+
         const eventBus = toolbar.pdfViewer.eventBus;
         const pdfViewer = toolbar.pdfViewer.pdfViewer;
         if (!eventBus || !pdfViewer) return;

@@ -1,7 +1,7 @@
 import { Menu, Notice, Platform, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { KeysOfType, getEventCoords, isHexString } from 'utils';
+import { KeysOfType, getEventCoords, isHexString, showMenuUnderParentEl } from 'utils';
 import { PDFViewerChild, Rect } from 'typings';
 import { PDFPlusComponent } from 'lib/component';
 
@@ -80,10 +80,10 @@ export class ColorPalette extends PDFPlusComponent {
 
         this.addCropButton(this.paletteEl);
 
-        if (this.lib.isEditable(this.child)) {
-            this.addWriteFileToggle(this.paletteEl);
-        } else if (this.child.isFileExternal) {
+        if (this.child.isFileExternal) {
             this.addImportButton(this.paletteEl);
+        } else {
+            this.addWriteFileToggle(this.paletteEl);
         }
 
         this.statusContainerEl = this.paletteEl.createDiv('pdf-plus-color-palette-status-container');
@@ -137,6 +137,27 @@ export class ColorPalette extends PDFPlusComponent {
 
             evt.preventDefault();
         });
+
+        let shown = false;
+        itemEl.addEventListener('contextmenu', () => {
+            if (shown) return;
+
+            const menu = new Menu()
+                .addItem((item) => {
+                    item.setIcon('lucide-settings')
+                        .setTitle('Customize...')
+                        .onClick(() => {
+                            this.plugin.openSettingTab()
+                                .scrollTo('colors');
+                        });
+                });
+            menu.onHide(() => {
+                shown = false;
+            });
+
+            showMenuUnderParentEl(menu, itemEl);
+            shown = true;
+        });
     }
 
     setActiveItem(name: string | null) {
@@ -152,7 +173,10 @@ export class ColorPalette extends PDFPlusComponent {
             setTooltip(buttonEl, tooltip);
             buttonEl.dataset.checkedIndex = '' + this[checkedIndexKey];
 
+            let shown = false;
             buttonEl.addEventListener('click', () => {
+                if (shown) return;
+
                 const menu = new Menu();
 
                 for (let i = 0; i < itemNames.length; i++) {
@@ -176,14 +200,12 @@ export class ColorPalette extends PDFPlusComponent {
 
                 beforeShowMenu?.(menu);
 
-                const { x, bottom, width } = buttonEl.getBoundingClientRect();
-                menu.setParentElement(buttonEl).showAtPosition({
-                    x,
-                    y: bottom,
-                    width,
-                    overlap: true,
-                    left: false
+                menu.onHide(() => {
+                    shown = false;
                 });
+
+                showMenuUnderParentEl(menu, buttonEl);
+                shown = true;
             });
         });
     }
@@ -266,9 +288,33 @@ export class ColorPalette extends PDFPlusComponent {
         this.removeWriteFileToggle();
 
         this.writeFileButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
-            setIcon(el, 'lucide-save');
+            setIcon(el, 'lucide-edit');
             setTooltip(el, `${this.plugin.manifest.name}: Add ${this.plugin.settings.selectionBacklinkVisualizeStyle}s to file directly`);
+            el.toggleClass('is-disabled', !this.lib.isEditable(this.child));
+
+            let shown = false;
             el.addEventListener('click', () => {
+                if (!this.lib.isEditable(this.child)) {
+                    if (shown) return;
+
+                    const menu = new Menu()
+                        .addItem((item) => {
+                            item.setIcon('lucide-settings')
+                                .setTitle('Enable PDF editing...')
+                                .onClick(() => {
+                                    this.plugin.openSettingTab()
+                                        .scrollToHeading('edit');
+                                });
+                        });
+                    menu.onHide(() => {
+                        shown = false;
+                    });
+
+                    showMenuUnderParentEl(menu, el);
+                    shown = true;
+                    return;
+                }
+
                 this.setWriteFile(!this.writeFile);
 
                 if (this.plugin.settings.syncWriteFileToggle && this.plugin.settings.syncDefaultWriteFileToggle) {
@@ -276,6 +322,36 @@ export class ColorPalette extends PDFPlusComponent {
                 }
 
                 this.plugin.trigger('color-palette-state-change', { source: this });
+            });
+
+            el.addEventListener('contextmenu', () => {
+                if (shown) return;
+
+                const menu = new Menu()
+                    .addItem((item) => {
+                        item.setIcon('lucide-settings')
+                            .setTitle(this.lib.isEditable(this.child) ? 'Disable PDF editing...' : 'Enable PDF editing...')
+                            .onClick(() => {
+                                this.plugin.openSettingTab()
+                                    .scrollToHeading('edit');
+                            });
+                    });
+                if (this.lib.isEditable(this.child)) {
+                    menu.addItem((item) => {
+                        item.setIcon('lucide-settings')
+                            .setTitle('Customize...')
+                            .onClick(() => {
+                                this.plugin.openSettingTab()
+                                    .scrollToHeading('annot');
+                            });
+                    });
+                }
+                menu.onHide(() => {
+                    shown = false;
+                });
+
+                showMenuUnderParentEl(menu, el);
+                shown = true;
             });
         });
 
@@ -344,7 +420,7 @@ export class ColorPalette extends PDFPlusComponent {
             await this.app.vault.modifyBinary(file, buffer);
 
             this.removeImportButton();
-            if (this.lib.isEditable(this.child) && this.paletteEl) {
+            if (this.paletteEl) {
                 this.addWriteFileToggle(this.paletteEl);
             }
             new Notice(`${this.plugin.manifest.name}: Successfully imported the PDF file into the vault.`);
@@ -366,6 +442,27 @@ export class ColorPalette extends PDFPlusComponent {
 
             el.addEventListener('click', () => {
                 this.startRectangularSelection(false);
+            });
+
+            let shown = false;
+            el.addEventListener('contextmenu', () => {
+                if (shown) return;
+
+                const menu = new Menu()
+                    .addItem((item) => {
+                        item.setIcon('lucide-settings')
+                            .setTitle('Customize...')
+                            .onClick(() => {
+                                this.plugin.openSettingTab()
+                                    .scrollToHeading('rect');
+                            });
+                    });
+                menu.onHide(() => {
+                    shown = false;
+                });
+
+                showMenuUnderParentEl(menu, el);
+                shown = true;
             });
         });
     }
@@ -436,16 +533,22 @@ export class ColorPalette extends PDFPlusComponent {
                 pageEl.removeEventListener('touchend', onMouseUp);
                 pageEl.removeChild(boxEl);
 
+                // Discard empty selections
+                if (selectBox.height <= 0 || selectBox.width <= 0) return;
+
+                // Get the screen coordinates of the selection box relative to the page
                 const left = selectBox.left - (pageRect.left + borderLeft + paddingLeft);
                 const top = selectBox.top - (pageRect.top + borderTop + paddingTop);
                 const right = left + selectBox.width;
                 const bottom = top + selectBox.height;
 
+                // Convert screen coordinates to PDF coordinates
                 const rect = window.pdfjsLib.Util.normalizeRect([
                     ...pageView.getPagePoint(left, bottom),
                     ...pageView.getPagePoint(right, top)
                 ]) as Rect;
 
+                // Copy an embed link to the selection
                 this.lib.copyLink.copyEmbedLinkToRect(
                     false, child, pageView.id, rect,
                     this.plugin.settings.includeColorWhenCopyingRectLink
@@ -456,21 +559,28 @@ export class ColorPalette extends PDFPlusComponent {
                 toggle();
             };
 
-            pageEl.addEventListener('mousemove', onMouseMove);
-            pageEl.addEventListener('touchmove', onMouseMove);
-            pageEl.addEventListener('mouseup', onMouseUp);
-            pageEl.addEventListener('touchend', onMouseUp);
+            // `pageEl` is not a part of this component, so just `pageEl.addEventListener` & `pageEl.removeEventListener`is not enough.
+            // We have to explicitly remove the event listeners not just when the selection is done, but also
+            // when this component gets unloaded.
+            this.registerDomEvent(pageEl, 'mousemove', onMouseMove);
+            this.registerDomEvent(pageEl, 'touchmove', onMouseMove);
+            this.registerDomEvent(pageEl, 'mouseup', onMouseUp);
+            this.registerDomEvent(pageEl, 'touchend', onMouseUp);
         };
 
         const toggle = () => {
             cropButtonEl.toggleClass('is-active', !cropButtonEl.hasClass('is-active'));
             viewerEl.toggleClass('pdf-plus-selecting', cropButtonEl.hasClass('is-active'));
+            this.register(() => viewerEl.removeClass('pdf-plus-selecting'));
 
             activeWindow.getSelection()?.empty();
 
             if (cropButtonEl.hasClass('is-active')) {
-                viewerEl.addEventListener('mousedown', onMouseDown);
-                viewerEl.addEventListener('touchstart', onMouseDown);
+                // `viewerEl` is not a part of this component, so just `viewerEl.addEventListener` & `viewerEl.removeEventListener`is not enough.
+                // We have to explicitly remove the event listeners not just when the selection is done, but also
+                // when this component gets unloaded.
+                this.registerDomEvent(viewerEl, 'mousedown', onMouseDown);
+                this.registerDomEvent(viewerEl, 'touchstart', onMouseDown);
             } else {
                 viewerEl.removeEventListener('mousedown', onMouseDown);
                 viewerEl.removeEventListener('touchstart', onMouseDown);

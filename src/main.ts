@@ -108,7 +108,7 @@ export default class PDFPlus extends Plugin {
 
 		this.startTrackingActiveMarkdownFile();
 
-		this.registerObsidianProtocolHandler('pdf-plus', this.obsidianProtocolHandler.bind(this));		
+		this.registerObsidianProtocolHandler('pdf-plus', this.obsidianProtocolHandler.bind(this));
 	}
 
 	private checkVersion() {
@@ -201,17 +201,52 @@ export default class PDFPlus extends Plugin {
 		this.register(() => this.autoCopyMode.unload());
 
 		if (this.settings.autoFocusToggleRibbonIcon) {
+			let menuShown = false;
+
 			this.autoFocusToggleIconEl = this.addRibbonIcon(this.settings.autoFocusIconName, `${this.manifest.name}: Toggle auto-focus`, () => {
-				this.toggleAutoFocus();
+				if (!menuShown) this.toggleAutoFocus();
 			});
 			this.autoFocusToggleIconEl.toggleClass('is-active', this.settings.autoFocus);
+			
+			this.registerDomEvent(this.autoFocusToggleIconEl, 'contextmenu', (evt) => {
+				if (menuShown) return;
+
+				const menu = new Menu();
+				menu.addItem((item) => {
+					item.setIcon('lucide-settings')
+						.setTitle('Customize...')
+						.onClick(() => {
+							this.openSettingTab().scrollToHeading('auto-focus');
+						});
+				});
+				menu.onHide(() => { menuShown = false });
+				menu.showAtMouseEvent(evt);
+				menuShown = true;
+			});
 		}
 
 		if (this.settings.autoPasteToggleRibbonIcon) {
+			let menuShown = false;
+
 			this.autoPasteToggleIconEl = this.addRibbonIcon(this.settings.autoPasteIconName, `${this.manifest.name}: Toggle auto-paste`, () => {
-				this.toggleAutoPaste();
+				if (!menuShown) this.toggleAutoPaste();
 			});
 			this.autoPasteToggleIconEl.toggleClass('is-active', this.settings.autoPaste);
+			this.registerDomEvent(this.autoPasteToggleIconEl, 'contextmenu', (evt) => {
+				if (menuShown) return;
+
+				const menu = new Menu();
+				menu.addItem((item) => {
+					item.setIcon('lucide-settings')
+						.setTitle('Customize...')
+						.onClick(() => {
+							this.openSettingTab().scrollToHeading('auto-paste');
+						});
+				});
+				menu.onHide(() => { menuShown = false });
+				menu.showAtMouseEvent(evt);
+				menuShown = true;
+			});
 		}
 	}
 
