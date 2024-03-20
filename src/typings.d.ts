@@ -979,6 +979,7 @@ declare module 'obsidian' {
     }
 
     interface Workspace {
+        floatingSplit: WorkspaceFloating;
         recentFileTracker: RecentFileTracker;
         getActiveFileView(): FileView | null;
         trigger(name: string, ...data: any[]): void;

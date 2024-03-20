@@ -26,9 +26,19 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
             this.update(sourceFile.path, cache);
             this.trigger('update');
         }));
-        this.registerEvent(this.app.vault.on('modify', (file) => {
-            if (file === this.file) {
-                this.init();
+        // the 'changed' event is not fired when a file is deleted!
+        this.registerEvent(this.app.metadataCache.on('deleted', (sourceFile) => {
+            this.deleteCachesForSourcePath(sourceFile.path);
+            this.trigger('update');
+        }));
+        // the 'changed' event is not fired when a file is renamed!
+        this.registerEvent(this.app.vault.on('rename', (sourceFile, oldSourcePath) => {
+            if (sourceFile instanceof TFile) {
+                this.deleteCachesForSourcePath(oldSourcePath);
+                const cache = this.app.metadataCache.getFileCache(sourceFile);
+                if (cache) {
+                    this.update(sourceFile.path, cache);
+                }
                 this.trigger('update');
             }
         }));
@@ -50,9 +60,7 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
     }
 
     update(sourcePath: string, cache: CachedMetadata) {
-        for (const cache of this.sourcePaths.get(sourcePath)) {
-            this.delete(cache);
-        }
+        this.deleteCachesForSourcePath(sourcePath);
 
         const refs = [...cache.links ?? [], ...cache.embeds ?? [], ...cache.frontmatterLinks ?? []];
         for (const ref of refs) {
@@ -69,6 +77,13 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
         this.sourcePaths.deleteValue(cache.sourcePath, cache);
         if (cache.page) {
             this.getPageIndex(cache.page).delete(cache);
+        }
+    }
+
+    deleteCachesForSourcePath(sourcePath: string) {
+        const caches = this.sourcePaths.get(sourcePath);
+        for (const cache of caches) {
+            this.delete(cache);
         }
     }
 

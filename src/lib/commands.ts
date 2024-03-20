@@ -395,6 +395,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     closeSidebar(checking: boolean) {
         const sidebar = this.lib.getObsidianViewer(true)?.pdfSidebar;
         if (!sidebar) return false;
+        if (!sidebar.isOpen) return false;
         if (!checking) {
             sidebar.close();
         }

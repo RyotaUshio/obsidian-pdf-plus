@@ -114,6 +114,7 @@ export interface PDFPlusSettings {
 	paneTypeForFirstMDLeaf: ExtendedPaneType;
 	singleMDLeafInSidebar: boolean;
 	alwaysUseSidebar: boolean;
+	ignoreExistingMarkdownTabIn: ('leftSplit' | 'rightSplit' | 'floatingSplit')[];
 	defaultColorPaletteActionIndex: number,
 	syncColorPaletteAction: boolean;
 	syncDefaultColorPaletteAction: boolean;
@@ -333,6 +334,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	paneTypeForFirstMDLeaf: 'right',
 	singleMDLeafInSidebar: true,
 	alwaysUseSidebar: true,
+	ignoreExistingMarkdownTabIn: [],
 	defaultColorPaletteActionIndex: 4,
 	syncColorPaletteAction: true,
 	syncDefaultColorPaletteAction: false,
@@ -1278,6 +1280,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('highlightBacklinks')
 			.setName('Highlight backlinks in PDF viewer')
 			.setDesc('In the PDF viewer, any referenced text will be highlighted for easy identification.');
+		this.addDesc('Try turning off the following options if you experience performance issues.');
+		this.addToggleSetting('highlightBacklinksInEmbed')
+			.setName('Highlight backlinks in PDF embeds')
+		this.addToggleSetting('highlightBacklinksInCanvas')
+			.setName('Highlight backlinks in Canvas')
+		this.addToggleSetting('highlightBacklinksInHoverPopover')
+			.setName('Highlight backlinks in hover popover previews')
 		this.addDropdownSetting('selectionBacklinkVisualizeStyle', SELECTION_BACKLINK_VISUALIZE_STYLE)
 			.setName('Highlight style')
 			.setDesc('How backlinks to a text selection should be visualized.')
@@ -1295,8 +1304,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
 			.setName('Double click highlighted text to open the corresponding backlink');
+
+		this.addHeading('How backlinks are opened', 'open-backlink')
+			.setDesc(
+				'Customize how backlinks are opened when '
+				+ (this.plugin.settings.hoverHighlightAction === 'open' ? `${getModifierNameInPlatform('Mod').toLowerCase()}+hovering over or ` : '')
+				+ 'double-clicking highlighted text.'
+			);
 		this.addDropdownSetting('paneTypeForFirstMDLeaf', PANE_TYPE, () => this.redisplay())
-			.setName(`How to open a markdown file by ${getModifierNameInPlatform('Mod').toLowerCase()}+hovering over or double-clicking highlighted text when there is no open markdown file`);
+			.setName(`How to open the markdown file when no markdown file is opened`);
 		if (this.plugin.settings.paneTypeForFirstMDLeaf === 'left-sidebar' || this.plugin.settings.paneTypeForFirstMDLeaf === 'right-sidebar') {
 			this.addToggleSetting('alwaysUseSidebar')
 				.setName('Always use sidebar to open markdown files from highlighted text')
@@ -1305,19 +1321,37 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Don\'t open multiple panes in sidebar')
 				.setDesc('Turn this on if you want to open markdown files in a single pane in the sidebar.');
 		}
+		this.addSetting('ignoreExistingMarkdownTabIn')
+			.setName('Ignore existing markdown tabs in...')
+			.setDesc('If some notes are opened in the ignored splits, PDF++ will still open the backlink in the way specified in the previous setting. For example, you might want to ignore the left sidebar if you are pinning a certain note (e.g. daily note) in it.')
+		const splits = {
+			'leftSplit': 'Left sidebar',
+			'rightSplit': 'Right sidebar',
+			'floatingSplit': 'Secondary window',
+		};
+		const ignoredSplits = this.plugin.settings.ignoreExistingMarkdownTabIn;
+		for (const [_split, displayName] of Object.entries(splits)) {
+			const split = _split as keyof typeof splits;
+			this.addSetting()
+				.addToggle((toggle) => {
+					toggle
+						.setValue(ignoredSplits.includes(split))
+						.onChange((value) => {
+							value ? ignoredSplits.push(split) : ignoredSplits.remove(split);
+							this.plugin.saveSettings();
+						});
+				})
+				.then((setting) => {
+					setting.controlEl.prepend(createEl('span', { text: displayName }));
+					setting.settingEl.addClasses(['no-border', 'ignore-split-setting'])
+				});
+		}
 
 		this.addToggleSetting('dontActivateAfterOpenMD')
 			.setName('Don\'t move focus to markdown view after opening a backlink')
 			.setDesc('This option will be ignored when you open a link in a tab in the same split as the current tab.')
-		this.addDesc('Try turning off the following options if you experience performance issues.');
-		this.addToggleSetting('highlightBacklinksInEmbed')
-			.setName('Highlight backlinks in PDF embeds')
-		this.addToggleSetting('highlightBacklinksInCanvas')
-			.setName('Highlight backlinks in Canvas')
-		this.addToggleSetting('highlightBacklinksInHoverPopover')
-			.setName('Highlight backlinks in hover popover previews')
 
-
+		this.addHeading('Colors', 'color');
 		this.addSetting('colors')
 			.setName('Highlight colors')
 			.then((setting) => this.renderMarkdown([
@@ -1534,12 +1568,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}, () => toggleSpreadModeOnLoadSettingVisibility())
 			.setName('Default scroll mode');
 		const toggleSpreadModeOnLoadSettingVisibility = this.getVisibilityToggler(
-		this.addEnumDropdownSetting('spreadModeOnLoad', {
-			[SpreadMode.NONE]: 'Single page',
-			[SpreadMode.ODD]: 'Two page (odd)',
-			[SpreadMode.EVEN]: 'Two page (even)',
-		})
-			.setName('Default spread mode'),
+			this.addEnumDropdownSetting('spreadModeOnLoad', {
+				[SpreadMode.NONE]: 'Single page',
+				[SpreadMode.ODD]: 'Two page (odd)',
+				[SpreadMode.EVEN]: 'Two page (even)',
+			})
+				.setName('Default spread mode'),
 			() => this.plugin.settings.scrollModeOnLoad !== ScrollMode.WRAPPED
 		);
 

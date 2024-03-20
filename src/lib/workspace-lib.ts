@@ -185,6 +185,11 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             let createInSameParent = true;
 
             if (leaf.view instanceof MarkdownView) {
+                const root = leaf.getRoot();
+                for (const split of this.settings.ignoreExistingMarkdownTabIn) {
+                    if (root === this.app.workspace[split]) return;
+                }
+
                 if (leaf.parentSplit instanceof WorkspaceTabs) {
                     const sharesSameTabParentWithThePDF = leaf.parentSplit.children.some((item) => {
                         if (item instanceof WorkspaceLeaf && item.view.getViewType() === 'pdf') {

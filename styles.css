@@ -155,7 +155,7 @@ settings:
 .pdf-toolbar .clickable-icon.is-disabled {
     background-color: inherit;
 
-    &> svg {
+    &>svg {
         color: var(--text-faint);
     }
 }
@@ -236,6 +236,10 @@ settings:
     &>p:last-child {
         margin-bottom: 0;
     }
+}
+
+.pdf-plus-settings .ignore-split-setting.setting-item {
+    padding-top: 0;
 }
 
 .annotationLayer .popupContent {

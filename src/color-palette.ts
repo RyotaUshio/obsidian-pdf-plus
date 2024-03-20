@@ -248,6 +248,7 @@ export class ColorPalette extends PDFPlusComponent {
             (menu) => {
                 menu.addItem((item) => {
                     item.setTitle('Customize...')
+                        .setIcon('lucide-settings')
                         .onClick(() => {
                             this.plugin.openSettingTab()
                                 .scrollTo('copyCommands');
@@ -273,6 +274,7 @@ export class ColorPalette extends PDFPlusComponent {
             (menu) => {
                 menu.addItem((item) => {
                     item.setTitle('Customize...')
+                        .setIcon('lucide-settings')
                         .onClick(() => {
                             this.plugin.openSettingTab()
                                 .scrollTo('displayTextFormats');
@@ -327,15 +329,7 @@ export class ColorPalette extends PDFPlusComponent {
             el.addEventListener('contextmenu', () => {
                 if (shown) return;
 
-                const menu = new Menu()
-                    .addItem((item) => {
-                        item.setIcon('lucide-settings')
-                            .setTitle(this.lib.isEditable(this.child) ? 'Disable PDF editing...' : 'Enable PDF editing...')
-                            .onClick(() => {
-                                this.plugin.openSettingTab()
-                                    .scrollToHeading('edit');
-                            });
-                    });
+                const menu = new Menu();
                 if (this.lib.isEditable(this.child)) {
                     menu.addItem((item) => {
                         item.setIcon('lucide-settings')
@@ -346,6 +340,14 @@ export class ColorPalette extends PDFPlusComponent {
                             });
                     });
                 }
+                menu.addItem((item) => {
+                        item.setIcon('lucide-settings')
+                            .setTitle(this.lib.isEditable(this.child) ? 'Disable PDF editing...' : 'Enable PDF editing...')
+                            .onClick(() => {
+                                this.plugin.openSettingTab()
+                                    .scrollToHeading('edit');
+                            });
+                    });
                 menu.onHide(() => {
                     shown = false;
                 });
