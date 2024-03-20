@@ -174,7 +174,7 @@ settings:
     font-variant-numeric: tabular-nums;
 }
 
-.pdf-plus-settings {
+.pdf-plus-settings.vertical-tab-content {
     --pdf-plus-settings-header-height: var(--size-4-12);
 
     padding-top: 0;
@@ -182,7 +182,7 @@ settings:
     padding-right: 0;
 }
 
-.pdf-plus-settings .header-container {
+.pdf-plus-settings.vertical-tab-content .header-container {
     position: sticky;
     top: 0;
     z-index: 10;
@@ -210,18 +210,18 @@ settings:
     }
 }
 
-.pdf-plus-settings .content {
+.pdf-plus-settings.vertical-tab-content .content {
     padding-top: var(--size-4-8);
     padding-bottom: var(--size-4-16);
     padding-left: var(--size-4-12);
     padding-right: var(--size-4-12);
 }
 
-.pdf-plus-settings .spacer {
+.pdf-plus-settings.vertical-tab-content .spacer {
     height: var(--pdf-plus-settings-header-height);
 }
 
-.pdf-plus-settings .top-note {
+.pdf-plus-settings.vertical-tab-content .top-note {
     min-height: var(--pdf-plus-settings-header-height);
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
