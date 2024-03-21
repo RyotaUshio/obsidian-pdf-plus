@@ -95,10 +95,16 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
         }, { capture: true }); // capture to ensure it's called before the default click handler
     }
 
+    async customHover(evt: MouseEvent): Promise<boolean> {
+        return false;
+    }
+
     private registerHover() {
         const { app, plugin, targetEl } = this;
 
         plugin.registerDomEvent(targetEl, 'mouseover', async (event) => {
+            if (await this.customHover(event)) return;
+
             let linktext: string | null = null;
             try {
                 linktext = await this.getLinkText(event);
@@ -195,7 +201,23 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
         return null;
     }
 
-    getDest() {
+    async getLinkText(evt: MouseEvent) {
+        if (this.plugin.settings.actionOnCitationHover === 'google-scholar-popover'
+            && this.lib.requirePluginNewerThan('surfing', '0.9.4')) {
+            const destId = this.getDest();
+            if (typeof destId === 'string' && destId.startsWith('cite.')) {
+                const doc = this.child.pdfViewer.pdfViewer?.pdfDocument;
+                if (doc) {
+                    const url = this.child.bib?.getGoogleScholarSearchUrlFromDest(destId);
+                    if (url) return url;
+                }
+            }
+        }
+
+        return super.getLinkText(evt);
+    }
+
+    getDest(): string | PDFjsDestArray {
         return this.linkAnnotationElement.data.dest;
     }
 
@@ -210,6 +232,18 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
     shouldRecordHistory() {
         return this.plugin.settings.recordPDFInternalLinkHistory
             && !this.child.opts.isEmbed;
+    }
+
+    async customHover(evt: MouseEvent) {
+        if (this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover') {
+            const destId = this.getDest();
+            if (this.child.bib && typeof destId === 'string' && destId.startsWith('cite.')) {
+                this.child.bib.spawnBibPopoverOnModKeyDown(destId, this, evt, this.targetEl);
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

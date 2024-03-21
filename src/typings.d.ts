@@ -10,6 +10,7 @@ import { BacklinkPanePDFManager } from 'pdf-backlink';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { ColorPalette } from 'color-palette';
 import { ScrollMode, SidebarView, SpreadMode } from 'pdfjs-enums';
+import { BibliographyManager } from 'bib';
 
 
 declare global {
@@ -128,6 +129,7 @@ interface PDFViewerChild {
     externalFileUrl: string | null;
     /** `annotationHighlight`'s counterpart for rectangle selections. */
     rectHighlight: HTMLElement | null;
+    bib: BibliographyManager | null;
 }
 
 interface PDFHighlight {
@@ -1067,7 +1069,15 @@ declare module 'obsidian' {
     }
 
     interface HoverPopover {
+        parent: HoverParent;
+        onTarget: boolean;
+        onHover: boolean;
+        targetEl: HTMLElement | null;
+        shownPos: { x: number, y: number } | null;
+        show(): void;
         hide(): void;
+        position(pos: { x: number, y: number } | null): void;
+        transition(): void;
     }
 
     interface SearchComponent {

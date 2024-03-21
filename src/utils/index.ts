@@ -41,6 +41,16 @@ export function kebabCaseToCamelCase(kebabCaseStr: string) {
     return kebabCaseStr.replace(/(-\w)/g, m => m[1].toUpperCase());
 }
 
+export function capitalize(text: string) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// Thanks https://stackoverflow.com/a/6860916/13613783
+export function genId() {
+    const S4 = () => (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+    return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
+}
+
 /** Return an array of numbers from `from` (inclusive) to `to` (exclusive). */
 export function range(from: number, to: number): number[] {
     return Array.from({ length: to - from }, (_, i) => from + i);
@@ -97,6 +107,11 @@ export function getModifierNameInPlatform(mod: Modifier): string {
 /** Returns the platform-specific path separator. */
 export function getPathSeparator() {
     return Platform.isWin ? '\\' : '/';
+}
+
+/** Check if the version `a` is newer than the version `b`. */
+export function isVersionNewerThan(a: string, b: string) {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }) === 1;
 }
 
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {

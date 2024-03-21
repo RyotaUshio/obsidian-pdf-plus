@@ -1,4 +1,4 @@
-import { Constructor, EditableFileView, EventRef, Events, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
@@ -111,6 +111,17 @@ export default class PDFPlus extends Plugin {
 		this.registerObsidianProtocolHandler('pdf-plus', this.obsidianProtocolHandler.bind(this));
 	}
 
+	async onunload() {
+		// Clean up the AnyStyle input files and their directory (.obsidian/plugin/pdf-plus/anystyle)
+		const adapter = this.app.vault.adapter;
+		if (Platform.isDesktopApp && adapter instanceof FileSystemAdapter) {
+			const anyStyleInputDir = this.getAnyStyleInputDir();
+			if (anyStyleInputDir) {
+				await adapter.rmdir(anyStyleInputDir, true);
+			}
+		}
+	}
+
 	private checkVersion() {
 		if (requireApiVersion('1.5.9')) {
 			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian v1.5.9 or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).`);
@@ -207,7 +218,7 @@ export default class PDFPlus extends Plugin {
 				if (!menuShown) this.toggleAutoFocus();
 			});
 			this.autoFocusToggleIconEl.toggleClass('is-active', this.settings.autoFocus);
-			
+
 			this.registerDomEvent(this.autoFocusToggleIconEl, 'contextmenu', (evt) => {
 				if (menuShown) return;
 
@@ -564,5 +575,13 @@ export default class PDFPlus extends Plugin {
 	openSettingTab(): PDFPlusSettingTab {
 		this.app.setting.open();
 		return this.app.setting.openTabById(this.manifest.id);
+	}
+
+	getAnyStyleInputDir() {
+		const pdfPlusDirPath = this.manifest.dir;
+		if (pdfPlusDirPath) {
+			return pdfPlusDirPath + '/anystyle';
+		}
+		return null;
 	}
 }

@@ -8,10 +8,11 @@ import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices } from 'typings';
-import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'pdf-link-like';
+import { PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor, PDFExternalLinkPostProcessor } from 'post-process';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { PDFPlusToolbar } from 'toolbar';
+import { BibliographyManager } from 'bib';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -96,9 +97,10 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 self.externalFileUrl = null;
                 self.palette = null;
                 self.rectHighlight = null;
+                self.bib = null;
 
                 if (!self.component) {
-                    self.component = new Component();
+                    self.component = plugin.addChild(new Component());
                 }
                 self.component.load();
 
@@ -130,8 +132,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                         const viewerContainerEl = self.pdfViewer?.dom?.viewerContainerEl;
                         if (plugin.settings.autoHidePDFSidebar && viewerContainerEl) {
-                            if (!self.component) self.component = new Component();
-                            self.component.load();
+                            if (!self.component) self.component = plugin.addChild(new Component());
 
                             self.component.registerDomEvent(viewerContainerEl, 'click', () => {
                                 self.pdfViewer.pdfSidebar.switchView(SidebarView.NONE);
@@ -172,9 +173,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         loadFile(old) {
             return async function (this: PDFViewerChild, file: TFile, subpath?: string) {
                 if (!this.component) {
-                    this.component = new Component();
+                    this.component = plugin.addChild(new Component());
                 }
-                this.component.load();
 
                 // If the file is small enough, first check the text content.
                 // If it's a URL to a PDF located outside the vault, tell ObsidianViewer to use the URL instead of `app.vault.getResourcePath(file)` (which is called inside the original `loadFile` method)
@@ -215,6 +215,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     plugin.pdfViewerChildren.set(viewerEl, this);
                 }
 
+                this.bib?.unload();
+                this.bib = this.component.addChild(new BibliographyManager(plugin, this));
+
                 // Register post-processors
 
                 lib.registerPDFEvent('annotationlayerrendered', this.pdfViewer.eventBus, this.component!, (data) => {
@@ -231,6 +234,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                             if (annot.data.subtype === 'Link' && typeof annot.container.dataset.internalLink === 'string') {
                                 PDFInternalLinkPostProcessor.registerEvents(plugin, this, annot);
+                            } else if (annot.data.subtype === 'Link' && annot.data.url) {
+                                PDFExternalLinkPostProcessor.registerEvents(plugin, this, annot);
                             }
 
                             // Avoid rendering annotations that are replies to other annotations
@@ -626,9 +631,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 if (!markdown) return;
                                 contentEl.addClass('markdown-rendered');
                                 if (!self.component) {
-                                    self.component = new Component();
+                                    self.component = plugin.addChild(new Component());
                                 }
-                                self.component.load();
                                 await MarkdownRenderer.render(app, markdown, contentEl, '', self.component);
                                 hookInternalLinkMouseEventHandlers(app, contentEl, self.file?.path ?? '');
                             });

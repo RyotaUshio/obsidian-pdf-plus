@@ -41,3 +41,45 @@ export function getEventCoords(evt: MouseEvent | TouchEvent) {
         ? { x: evt.clientX, y: evt.clientY }
         : { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
 }
+
+/** Generalizes Obsidian's onHoverLink to arbitrary callback functions. */
+export function onModKeyPress(evt: MouseEvent | TouchEvent | KeyboardEvent, targetEl: HTMLElement, callback: () => any) {
+    if (Keymap.isModifier(evt, 'Mod')) {
+        callback();
+        return;
+    }
+
+    const doc = evt.doc;
+    let removed = false;
+    const removeHandlers = () => {
+        removed = true;
+        doc.removeEventListener('keydown', onKeyDown);
+        doc.removeEventListener('mouseover', onMouseOver);
+        doc.removeEventListener('mouseleave', onMouseLeave);
+    }
+
+    // Watch for the mod key press
+    const onKeyDown = (e: KeyboardEvent) => {
+        if (removed) return;
+        if (doc.body.contains(targetEl)) {
+            if (Keymap.isModifier(e, 'Mod')) {
+                removeHandlers();
+                callback();
+            }
+        } else removeHandlers();
+    };
+    // Stop watching for the mod key press when the mouse escapes away from the target element
+    const onMouseOver = (e: MouseEvent) => {
+        if (removed) return;
+        if (e.target instanceof Node && !targetEl.contains(e.target)) removeHandlers();
+    };
+    // Stop watching for the mod key press when the mouse leaves the document
+    const onMouseLeave = (e: MouseEvent) => {
+        if (removed) return;
+        if (e.target === doc) removeHandlers()
+    };
+
+    doc.addEventListener('keydown', onKeyDown);
+    doc.addEventListener('mouseover', onMouseOver);
+    doc.addEventListener('mouseleave', onMouseLeave);
+}

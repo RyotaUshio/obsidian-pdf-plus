@@ -1,9 +1,9 @@
-import { Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, ObsidianProtocolData, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
-import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, getModifierNameInPlatform, isHexString } from 'utils';
+import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
 import { ScrollMode, SpreadMode } from 'pdfjs-enums';
 
@@ -61,6 +61,12 @@ export interface namedTemplate {
 }
 
 export const DEFAULT_BACKLINK_HOVER_COLOR = 'green';
+
+const ACTION_ON_CITATION_HOVER = {
+	'none': 'Same as other internal links',
+	'pdf-plus-bib-popover': 'PDF++\'s custom bibliography popover',
+	'google-scholar-popover': 'Google Scholar popover',
+} as const;
 
 export interface PDFPlusSettings {
 	displayTextFormats: namedTemplate[];
@@ -238,6 +244,9 @@ export interface PDFPlusSettings {
 	spreadModeOnLoad: SpreadMode;
 	hoverableDropdownMenuInToolbar: boolean;
 	zoomLevelInputBoxInToolbar: boolean;
+	popoverPreviewOnExternalLinkHover: boolean;
+	actionOnCitationHover: keyof typeof ACTION_ON_CITATION_HOVER;
+	anystylePath: string;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -458,6 +467,9 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	spreadModeOnLoad: SpreadMode.NONE,
 	hoverableDropdownMenuInToolbar: true,
 	zoomLevelInputBoxInToolbar: true,
+	popoverPreviewOnExternalLinkHover: true,
+	actionOnCitationHover: 'pdf-plus-bib-popover',
+	anystylePath: '',
 };
 
 
@@ -1943,9 +1955,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				await this.renderMarkdown([
 					'If this option is left blank or the active file is not a PDF, "Untitled \\*" will be used (if the language is set to English). You can use the following variables: `file`, `folder`, `app`, and other global variables such as `moment`.',
 				], setting.descEl);
-				setting.descEl.createSpan({text: 'See '});
+				setting.descEl.createSpan({ text: 'See ' });
 				setting.descEl.appendChild(this.createLinkToHeading('template', 'above'));
-				setting.descEl.createSpan({text: ' for the details about these variables.'});
+				setting.descEl.createSpan({ text: ' for the details about these variables.' });
 			});
 		this.addTextSetting('newFileTemplatePath', 'Leave blank not to use a template')
 			.setName('Template file path')
@@ -1954,9 +1966,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'You can leave this blank if you don\'t want to use a template.',
 					'You can use `file`, `folder`, `app`, and other global variables such as `moment`.',
 				], setting.descEl);
-				setting.descEl.createSpan({text: 'See '});
+				setting.descEl.createSpan({ text: 'See ' });
 				setting.descEl.appendChild(this.createLinkToHeading('template', 'above'));
-				setting.descEl.createSpan({text: ' for the details about these variables.'});
+				setting.descEl.createSpan({ text: ' for the details about these variables.' });
 				await this.renderMarkdown([
 					'You can also include [Templater](obsidian://show-plugin?id=templater-obsidian) syntaxes in the template.',
 					'In that case, make sure the "Trigger templater on new file creation" option is enabled in the Templater settings.',
@@ -2030,7 +2042,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
 			});
 		this.addToggleSetting('enableHoverPDFInternalLink', () => this.redisplay())
-			.setName(`Show a popover preview of PDF internal links by ${hoverCmd} `);
+			.setName(`Show a popover preview of PDF internal links by ${hoverCmd}`);
 		this.addToggleSetting('recordPDFInternalLinkHistory')
 			.setName('Enable history navigation for PDF internal links')
 			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.');
@@ -2053,6 +2065,49 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setDesc('Specify the border color of PDF internal links that you create by "Paste copied link to selection".');
 			}
 		}
+
+
+		this.addHeading('Citations in PDF (experimental)', 'citation', 'lucide-graduation-cap')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Enjoy supercharged experiences of working with citations in PDF files, just like in [Google Scholar\'s PDF viewer](https://scholar.googleblog.com/2024/03/supercharge-your-pdf-reading-follow.html).'
+				], setting.descEl);
+			});
+		{
+			this.addDropdownSetting('actionOnCitationHover', ACTION_ON_CITATION_HOVER, () => toggler())
+				.setName(`${capitalize(hoverCmd)} on a citation link to show...`)
+				.then((setting) => {
+					this.renderMarkdown([
+						`- **${ACTION_ON_CITATION_HOVER['pdf-plus-bib-popover']}**: ` + ' Recommended. It works without any additional stuff, but you can further boost the visibility by installing [AnyStyle](https://github.com/inukshuk/anystyle) (desktop only).',
+						`- **${ACTION_ON_CITATION_HOVER['google-scholar-popover']}**: ` + ' Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.6 or higher enabled. Be careful not to exceed the rate limit of Google Scholar.',
+					], setting.descEl);
+				});
+			const toggler = this.getVisibilityToggler(
+				this.addTextSetting('anystylePath')
+					.setName('AnyStyle path')
+					.then((setting) => {
+						(setting.components[0] as TextComponent).inputEl.size = 35;
+						this.renderMarkdown([
+							'The path to the [AnyStyle](https://github.com/inukshuk/anystyle) executable. ',
+							'PDF++ extracts the bibliography text from the PDF file for each citation link, and use AnyStyle to convert the extracted text into a structured metadata.',
+							'It works just fine without AnyStyle, but you can further boost the visibility by installing it.',
+						], setting.descEl);
+					}),
+				() => Platform.isDesktopApp && this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover'
+			);
+		}
+
+
+
+		this.addHeading('External links in PDF', 'pdf-external-link', 'external-link')
+			.setDesc('Make it easier to work with external links embedded in PDF files.');
+		this.addToggleSetting('popoverPreviewOnExternalLinkHover')
+			.setName(`Show a popover preview of external links by ${hoverCmd}`)
+			.then((setting) => {
+				this.renderMarkdown([
+					'Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.6 or higher enabled.',
+				], setting.descEl);
+			});
 
 
 		this.addHeading('PDF sidebar', 'sidebar', 'sidebar-left')
@@ -2479,7 +2534,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
-		this.addHeading('Style settings', 'style-settings', 'lucide-external-link')
+		this.addHeading('Style settings', 'style-settings', 'lucide-settings-2')
 			.setDesc('You can find more options in Style Settings > PDF++.')
 			.addButton((button) => {
 				button.setButtonText('Open style settings')

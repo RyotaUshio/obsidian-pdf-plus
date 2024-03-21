@@ -7,7 +7,7 @@ import { ColorPalette, ColorPaletteState } from 'color-palette';
 import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
-import { cropCanvas, encodeLinktext, getDirectPDFObj, parsePDFSubpath, removeExtension, rotateCanvas, toSingleLine } from 'utils';
+import { cropCanvas, encodeLinktext, getDirectPDFObj, isVersionNewerThan, parsePDFSubpath, removeExtension, rotateCanvas, toSingleLine } from 'utils';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
@@ -906,5 +906,19 @@ export class PDFPlusLib {
 
     isEditable(child: PDFViewerChild) {
         return this.plugin.settings.enablePDFEdit && !child.isFileExternal;
+    }
+
+    requirePluginVersion(id: string, version: string): boolean {
+        const plugin = this.app.plugins.plugins[id];
+        if (!plugin) return false;
+        const currentVersion = plugin.manifest.version;
+        return currentVersion === version || isVersionNewerThan(currentVersion, version);
+    }
+
+    requirePluginNewerThan(id: string, version: string): boolean {
+        const plugin = this.app.plugins.plugins[id];
+        if (!plugin) return false;
+        const currentVersion = plugin.manifest.version;
+        return isVersionNewerThan(currentVersion, version);
     }
 }

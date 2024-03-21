@@ -487,3 +487,39 @@ body {
     position: absolute;
     pointer-events: none;
 }
+
+.popover.hover-popover.pdf-plus-bib-popover {
+    --popover-width: 400px;
+    --pdf-plus-bib-metadata-font-size: var(--font-ui-small);
+
+    .pdf-plus-bib {
+        padding: var(--size-4-3);
+        font-size: var(--font-ui-medium);
+
+        .bib-title {
+            font-weight: bold;
+            padding-bottom: var(--size-4-2);
+        }
+
+        .bib-author-year {
+            color: var(--text-muted);
+            text-align: left;
+            font-size: var(--pdf-plus-bib-metadata-font-size);
+        }
+
+        .bib-container-title {
+            color: var(--text-muted);
+            font-style: italic;
+            text-align: left;
+            font-size: var(--pdf-plus-bib-metadata-font-size);
+        }
+
+        .button-container {
+            margin-top: 1em;
+            display: flex;
+            justify-content: space-between;
+            gap: var(--size-4-2);
+            flex-wrap: wrap;
+        }
+    }
+}
