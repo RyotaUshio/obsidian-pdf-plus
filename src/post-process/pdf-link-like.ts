@@ -203,7 +203,7 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
 
     async getLinkText(evt: MouseEvent) {
         if (this.plugin.settings.actionOnCitationHover === 'google-scholar-popover'
-            && this.lib.requirePluginNewerThan('surfing', '0.9.4')) {
+            && this.lib.requirePluginNewerThan('surfing', '0.9.5')) {
             const destId = this.getDest();
             if (typeof destId === 'string' && destId.startsWith('cite.')) {
                 const doc = this.child.pdfViewer.pdfViewer?.pdfDocument;
