@@ -117,7 +117,11 @@ export default class PDFPlus extends Plugin {
 		if (Platform.isDesktopApp && adapter instanceof FileSystemAdapter) {
 			const anyStyleInputDir = this.getAnyStyleInputDir();
 			if (anyStyleInputDir) {
-				await adapter.rmdir(anyStyleInputDir, true);
+				try {
+					await adapter.rmdir(anyStyleInputDir, true);
+				} catch (err) {
+					if (err.code !== 'ENOENT') throw err;
+				}
 			}
 		}
 	}

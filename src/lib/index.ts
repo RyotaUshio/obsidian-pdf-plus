@@ -921,4 +921,18 @@ export class PDFPlusLib {
         const currentVersion = plugin.manifest.version;
         return isVersionNewerThan(currentVersion, version);
     }
+
+    onDocumentReady(pdfViewer: ObsidianViewer, callback: (doc: PDFDocumentProxy) => any) {
+        if (pdfViewer.pdfLoadingTask) {
+            pdfViewer.pdfLoadingTask.promise.then((doc) => callback(doc));
+            return;
+        }
+
+        // Callback functions in `pdfPlusCallbacksOnDocumentLoaded` are executed in `pdfViewer.load`.
+        // See `patchObsidianViewer` in src/patchers/pdf-internals.ts.
+        if (!pdfViewer.pdfPlusCallbacksOnDocumentLoaded) {
+            pdfViewer.pdfPlusCallbacksOnDocumentLoaded = [];
+        }
+        pdfViewer.pdfPlusCallbacksOnDocumentLoaded.push(callback);
+    }
 }

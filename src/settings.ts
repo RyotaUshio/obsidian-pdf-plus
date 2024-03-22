@@ -2083,7 +2083,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					], setting.descEl);
 				});
 			const toggler = this.getVisibilityToggler(
-				this.addTextSetting('anystylePath')
+				this.addTextSetting('anystylePath', 'anystyle')
 					.setName('AnyStyle path')
 					.then((setting) => {
 						(setting.components[0] as TextComponent).inputEl.size = 35;

@@ -41,34 +41,27 @@ export class BibliographyManager extends PDFPlusComponent {
     }
 
     private async initBibText() {
-        const task = this.child.pdfViewer.pdfLoadingTask;
-        if (!task) {
-            return new Promise<void>((resolve) => {
-                setTimeout(() => {
-                    this.initBibText().then(() => resolve())
-                }, 100);
-            });
-        }
-
-        await task.promise.then(async (doc) => {
-            const dests = await doc.getDestinations();
-            const promises: Promise<void>[] = [];
-            for (const destId in dests) {
-                if (destId.startsWith('cite.')) {
-                    const destArray = dests[destId] as PDFjsDestArray;
-                    promises.push(
-                        BibliographyManager.getBibliographyTextFromDest(destArray, doc)
-                            .then((bibInfo) => {
-                                if (bibInfo) {
-                                    this.destIdToBibText.set(destId, bibInfo.text);
-                                }
-                            })
-                    );
+        return new Promise<void>((resolve) => {
+            this.lib.onDocumentReady(this.child.pdfViewer, async (doc) => {
+                const dests = await doc.getDestinations();
+                const promises: Promise<void>[] = [];
+                for (const destId in dests) {
+                    if (destId.startsWith('cite.')) {
+                        const destArray = dests[destId] as PDFjsDestArray;
+                        promises.push(
+                            BibliographyManager.getBibliographyTextFromDest(destArray, doc)
+                                .then((bibInfo) => {
+                                    if (bibInfo) {
+                                        this.destIdToBibText.set(destId, bibInfo.text);
+                                    }
+                                })
+                        );
+                    }
                 }
-            }
-            await Promise.all(promises);
+                await Promise.all(promises);
+                resolve();
+            });    
         });
-
     }
 
     private async parseBibText() {
@@ -124,7 +117,8 @@ export class BibliographyManager extends PDFPlusComponent {
     async parseBibliographyText(text: string): Promise<AnystyleJson[] | null> {
         const { app, plugin, settings } = this;
 
-        const anystylePath = settings.anystylePath || 'anystyle';
+        const anystylePath = settings.anystylePath;
+        if (!anystylePath) return null;
 
         const anystyleDirPath = plugin.getAnyStyleInputDir();
         // Node.js is available only in the desktop app
@@ -152,8 +146,18 @@ export class BibliographyManager extends PDFPlusComponent {
                 });
                 anystyleProcess.on('error', (err: Error & { code: string }) => {
                     if ('code' in err && err.code === 'ENOENT') {
-                        const msg = `${plugin.manifest.name}: Anystyle not found at the path "${anystylePath}".`;
-                        if (plugin.settings.anystylePath) console.error(msg);
+                        const msg = `${plugin.manifest.name}: AnyStyle not found at the path "${anystylePath}".`;
+                        if (plugin.settings.anystylePath) {
+                            const notice = new Notice(msg, 8000);
+                            notice.noticeEl.appendText(' Click ');
+                            notice.noticeEl.createEl('a', { text: 'here' }, (anchorEl) => {
+                                anchorEl.addEventListener('click', () => {
+                                    plugin.openSettingTab().scrollTo('anystylePath');
+                                });
+                            });
+                            notice.noticeEl.appendText(' to update the path.');
+                            console.error(msg);
+                        }
                         else console.warn(msg);
                         return resolve(null);
                     }
@@ -237,7 +241,7 @@ export class BibliographyManager extends PDFPlusComponent {
             if (itemLeft <= beginItemLeft + Math.max(item.height, 8) * 0.1) {
                 break;
             }
-            if (item.str.trimStart().startsWith('.')) {
+            if (item.str.trimStart().startsWith('.') || item.str.trimStart().startsWith(',')) {
                 text = text.trimEnd() + item.str.trimStart();
             } else {
                 text += '\n' + item.str;
@@ -330,7 +334,7 @@ export class BibliographyDom extends PDFPlusComponent {
                     if (parsed) {
                         const { author, title, year, 'container-title': containerTitle } = parsed;
                         if (author) searchText += author.map((a) => a.family).join(' ');
-                        if (title) searchText += ` ${title[0]}`;
+                        if (title) searchText += ` "${title[0]}"`;
                         if (containerTitle) searchText += ` ${containerTitle[0]}`;
                         if (year) searchText += ` ${year}`;
                     } else if (bibText) {

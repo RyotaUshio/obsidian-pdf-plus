@@ -182,6 +182,7 @@ interface ObsidianViewer {
     //////////////////////////
     /** Used to open external PDFs. */
     pdfPlusRedirect?: { from: string, to: string };
+    pdfPlusCallbacksOnDocumentLoaded?: ((doc: PDFDocumentProxy) => any)[];
 }
 
 interface ObsidianServices {
@@ -624,6 +625,7 @@ interface SearchResultFileDom {
     parent?: SearchResultDom; // same as parentDom
     renderContentMatches(): void;
     onResultMouseover(event: MouseEvent, el: HTMLElement, matches: SearchMatches): void;
+    setCollapse(collapse: boolean, arg: boolean): void;
 }
 
 interface SearchResultItemDom {

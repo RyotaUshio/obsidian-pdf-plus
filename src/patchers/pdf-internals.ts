@@ -13,6 +13,7 @@ import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
+import { PDFDocumentProxy } from 'pdfjs-dist';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -753,6 +754,19 @@ const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
                 delete this.pdfPlusRedirect;
 
                 return await old.call(this, args);
+            }
+        },
+        load(old) {
+            return function (this: ObsidianViewer, doc: PDFDocumentProxy, ...args: any[]) {
+                const callbacks = this.pdfPlusCallbacksOnDocumentLoaded;
+                if (callbacks) {
+                    for (const callback of callbacks) {
+                        callback(doc);
+                    }
+                }
+                delete this.pdfPlusCallbacksOnDocumentLoaded;
+
+                return old.call(this, doc, ...args);
             }
         }
     }));

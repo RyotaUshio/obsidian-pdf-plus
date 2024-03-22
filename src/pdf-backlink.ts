@@ -194,10 +194,29 @@ export class BacklinkPanePDFPageTracker extends PDFPlusComponent {
         super(plugin);
         this.matchCountObserver = new MutationObservingChild(
             this.renderer.backlinkDom.el,
+            // Remove filtered-out backlink file DOMs
             () => {
                 this.updateBacklinkCountEl((num) => `${num} in this page`);
-                for (const resultEl of this.renderer.backlinkDom.el.querySelectorAll('.tree-item.search-result:not(:has( .search-result-file-match))')) {
-                    resultEl.remove();
+                if (!this.renderer.collapseAll) {
+                    // The following rules work only if `this.renderer.collapseAll` is `false`.
+                    // Otherwise, it causes all the backlink file DOMs to be removed.
+                    // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/121
+                    for (const resultEl of this.renderer.backlinkDom.el.querySelectorAll('.tree-item.search-result:not(:has( .search-result-file-match))')) {
+                        resultEl.remove();
+                    }
+                } else {
+                    // The following rules work even when `this.renderer.collapseAll` is `true`.
+                    // However, I use the above rules when `this.renderer.collapseAll` is `false` because they are less hacky.
+                    for (const resultEl of this.renderer.backlinkDom.el.querySelectorAll('.tree-item.search-result')) {
+                        const collapseIconEl = resultEl.querySelector<HTMLElement>(':scope>.tree-item-self.search-result-file-title>.collapse-icon');
+                        if (collapseIconEl) {
+                            if (collapseIconEl.style.visibility === 'hidden') {
+                                resultEl.remove();
+                            }
+                        } else {
+                            resultEl.remove();
+                        }
+                    }
                 }
             },
             { childList: true, subtree: true }
