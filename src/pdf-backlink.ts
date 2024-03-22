@@ -202,7 +202,9 @@ export class BacklinkPanePDFPageTracker extends PDFPlusComponent {
                     // Otherwise, it causes all the backlink file DOMs to be removed.
                     // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/121
                     for (const resultEl of this.renderer.backlinkDom.el.querySelectorAll('.tree-item.search-result:not(:has( .search-result-file-match))')) {
-                        resultEl.remove();
+                        if (!resultEl.hasClass('is-collapsed')) {
+                            resultEl.remove();
+                        }
                     }
                 } else {
                     // The following rules work even when `this.renderer.collapseAll` is `true`.
