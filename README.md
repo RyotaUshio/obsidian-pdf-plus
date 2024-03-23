@@ -15,7 +15,7 @@ PDF++ stands out among other PDF annotation tools for the following reasons:
 
 🚀 [Install](#installation)<br>
 📖 [Read the docs](https://ryotaushio.github.io/obsidian-pdf-plus/) (Note: it's still a work in progress!)<br>
-💬 [Ask questions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions)<br>
+💬 [Ask & answer questions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions)<br>
 ❗ [Report bugs](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose) (Tip: when something is not working, first restart Obsidian by running the `Reload app without saving` command.)
 
 > [!note]
