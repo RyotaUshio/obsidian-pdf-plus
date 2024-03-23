@@ -1,5 +1,7 @@
 # Obsidian PDF++
 
+![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%238a5cf5&label=downloads&query=%24%5B%22pdf-plus%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)
+
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
 - It transforms backlinks to PDF files into highlight annotations, i.e. you can **annotate PDF files with highlights just by linking to text selection**.
