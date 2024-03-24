@@ -1,9 +1,10 @@
-import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip, Keymap } from 'obsidian';
 import { around } from 'monkey-around';
+import { PDFDocumentProxy } from 'pdfjs-dist';
 
 import PDFPlus from 'main';
 import { PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals';
-import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu } from 'context-menu';
+import { onContextMenu, onOutlineContextMenu, onThumbnailContextMenu, showContextMenu } from 'context-menu';
 import { registerAnnotationPopupDrag, registerOutlineDrag, registerThumbnailDrag } from 'drag';
 import { patchPDFOutlineViewer } from './pdf-outline-viewer';
 import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
@@ -13,7 +14,6 @@ import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { PDFDocumentProxy } from 'pdfjs-dist';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -109,9 +109,35 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                 const viewerContainerEl = self.pdfViewer?.dom?.viewerContainerEl;
                 if (viewerContainerEl) {
-                    viewerContainerEl.addEventListener('pointerdown', () => {
+                    let isModEvent = false;
+
+                    self.component.registerDomEvent(viewerContainerEl, 'pointerdown', (evt) => {
                         lib.highlight.viewer.clearRectHighlight(self);
+
+                        isModEvent = Keymap.isModifier(evt, 'Mod');
+                        self.component?.registerDomEvent(viewerContainerEl, 'mouseup', onMouseUp);
                     });
+
+                    const onMouseUp = (evt: MouseEvent) => {
+                        isModEvent ||= Keymap.isModifier(evt, 'Mod');
+
+                        if (plugin.settings.autoCopy) {
+                            lib.commands.copyLink(false, false);
+                            return;
+                        }
+
+                        if (plugin.settings.replaceContextMenu) {
+                            if (plugin.settings.showContextMenuOnMouseUpIf === 'always'
+                                || (plugin.settings.showContextMenuOnMouseUpIf === 'mod' && isModEvent)) {
+                                if (evt.win.getSelection()?.toString()) {
+                                    evt.win.setTimeout(() => showContextMenu(plugin, self, evt), 80);
+                                }
+                            }
+                        }
+
+                        viewerContainerEl.removeEventListener('mouseup', onMouseUp);
+                        isModEvent = false;
+                    };
                 }
 
                 const addColorPaletteToToolbar = () => {
@@ -658,7 +684,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                     if (!palette) return;
                                     const template = plugin.settings.copyCommands[palette.actionIndex].template;
 
-                                    lib.copyLink.copyLinkToAnnotation(self, false, template, page, id);
+                                    lib.copyLink.copyLinkToAnnotation(self, false, { copyFormat: template }, page, id);
 
                                     setIcon(iconEl, 'lucide-check');
                                 });

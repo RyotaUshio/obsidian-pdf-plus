@@ -223,7 +223,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return { child, copyButtonEl, template, page, id };
     }
 
-    copyLinkToSelection(checking: boolean, template: string, colorName?: string, autoPaste?: boolean): boolean {
+    copyLinkToSelection(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, colorName?: string, autoPaste?: boolean): boolean {
         const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
 
         if (variables) {
@@ -231,7 +231,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
             if (!text) {
                 if (this.settings.useAnotherCopyTemplateWhenNoSelection) {
-                    template = this.settings.copyTemplateWhenNoSelection;
+                    templates.copyFormat = this.settings.copyTemplateWhenNoSelection;
                 } else {
                     return false;
                 }
@@ -239,7 +239,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
             if (!checking) {
                 (async () => {
-                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text, colorName?.toLowerCase() ?? '');
+                    const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, subpath, text, colorName?.toLowerCase() ?? '');
                     // Without await, the focus can move to a different document before `writeText` is completed
                     // if auto-focus is on and the PDF is opened in a secondary window, which causes the copy to fail.
                     // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/93
@@ -271,7 +271,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return false;
     }
 
-    copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
+    copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
         const file = child.file;
         if (!file) return false;
 
@@ -286,7 +286,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         const rect = annotData.rect;
                         subpath += `&rect=${rect[0]},${rect[1]},${rect[2]},${rect[3]}`;
                     }
-                    const evaluated = this.getTextToCopy(child, template, undefined, file, page, subpath, text ?? '', color);
+                    const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, subpath, text ?? '', color);
                     await navigator.clipboard.writeText(evaluated);
                     this.onCopyFinish(evaluated);
 
@@ -308,10 +308,10 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return true;
     }
 
-    copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, template: string, page: number, id: string, colorName: string, autoPaste?: boolean) {
+    copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, colorName: string, autoPaste?: boolean) {
         if (!checking) {
             (async () => {
-                const evaluated = this.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text, colorName)
+                const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, `#page=${page}&annotation=${id}`, text, colorName)
                 await navigator.clipboard.writeText(evaluated);
                 this.onCopyFinish(evaluated);
 
@@ -325,7 +325,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     }
 
     // TODO: A better, more concise function name 😅
-    writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking: boolean, template: string, colorName?: string, autoPaste?: boolean): boolean {
+    writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string}, colorName?: string, autoPaste?: boolean): boolean {
         // Get and store the selected text before writing file because
         // the file modification will cause the PDF viewer to be reloaded,
         // which will clear the selection.
@@ -353,7 +353,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         const newPalette = this.lib.getColorPaletteFromChild(child);
                         newPalette?.setStatus('Link copied', this.statusDurationMs);
                         const { r, g, b } = this.plugin.domManager.getRgb(colorName);
-                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, template, page, annotationID, `${r}, ${g}, ${b}`, autoPaste);
+                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, templates, page, annotationID, `${r}, ${g}, ${b}`, autoPaste);
 
                         // TODO: Needs refactor
                         if (rects) {

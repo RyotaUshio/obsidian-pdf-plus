@@ -1,16 +1,21 @@
-import { App, Menu, Notice, Platform, TFile } from 'obsidian';
+import { Menu, MenuItem, Notice, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { PDFPlusLib } from 'lib';
 import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import { PDFOutlineMoveModal, PDFOutlineTitleModal, PDFComposerModal, PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals';
 import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
+import { addProductMenuItems, getSelectedItemsRecursive, fixOpenSubmenu } from 'utils/menu';
+import { DEFAULT_SETTINGS, namedTemplate } from 'settings';
+import { ColorPalette } from 'color-palette';
+import { PDFPlusComponent } from 'lib/component';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
+    if (!child.palette) return;
+
     // take from app.js
     if (Platform.isDesktopApp) {
         const electron = evt.win.electron;
@@ -29,6 +34,10 @@ export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt:
         }
     }
 
+    await showContextMenu(plugin, child, evt);
+}
+
+export async function showContextMenu(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {
     const menu = await PDFPlusContextMenu.fromMouseEvent(plugin, child, evt);
 
     child.clearEphemeralUI();
@@ -63,19 +72,18 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
             });
 
         if (lib.isEditable(child)) {
-            menu
-                .addItem((item) => {
-                    item.setTitle('Insert page before this page')
-                        .setIcon('lucide-plus')
-                        .onClick(() => {
-                            const file = child.file;
-                            if (!file) {
-                                new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
-                                return;
-                            }
-                            lib.commands._insertPage(file, pageNumber, pageNumber);
-                        })
-                })
+            menu.addItem((item) => {
+                item.setTitle('Insert page before this page')
+                    .setIcon('lucide-plus')
+                    .onClick(() => {
+                        const file = child.file;
+                        if (!file) {
+                            new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
+                            return;
+                        }
+                        lib.commands._insertPage(file, pageNumber, pageNumber);
+                    })
+            })
                 .addItem((item) => {
                     item.setTitle('Insert page after this page')
                         .setIcon('lucide-plus')
@@ -362,23 +370,39 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
     }
 }
 
-export class PDFPlusContextMenu extends Menu {
-    app: App
-    plugin: PDFPlus
-    lib: PDFPlusLib;
+
+export class PDFPlusMenu extends Menu {
+    plugin: PDFPlus;
+
+    constructor(plugin: PDFPlus) {
+        super();
+        this.plugin = plugin;
+    }
+
+    get app() {
+        return this.plugin.app;
+    }
+
+    get settings() {
+        return this.plugin.settings;
+    }
+
+    get lib() {
+        return this.plugin.lib;
+    }
+}
+
+export class PDFPlusContextMenu extends PDFPlusMenu {
     child: PDFViewerChild
 
     constructor(plugin: PDFPlus, child: PDFViewerChild) {
-        super();
-        this.app = plugin.app;
-        this.plugin = plugin;
-        this.lib = plugin.lib;
+        super(plugin);
         this.child = child;
     }
 
     static async fromMouseEvent(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {
         const menu = new PDFPlusContextMenu(plugin, child);
-        menu.addSections(['action', 'selection', 'selection-canvas', 'write-file', 'annotation', 'annotation-canvas', 'modify-annotation', 'link', 'search']);
+        menu.addSections(Object.keys(DEFAULT_SETTINGS.contextMenuConfig));
         await menu.addItems(evt);
         return menu;
     }
@@ -397,8 +421,12 @@ export class PDFPlusContextMenu extends Menu {
         const { page: pageNumber, selection } = pageAndSelection;
         const selectedText = toSingleLine(selectionObj?.toString() ?? '');
 
+        const isVisible = (id: string) => {
+            return this.settings.contextMenuConfig.find((section) => section.id === id)?.visible;
+        }
+
         // If macOS, add "look up selection" action
-        if (Platform.isMacOS && Platform.isDesktopApp && evt.win.electron && selectedText) {
+        if (Platform.isMacOS && Platform.isDesktopApp && evt.win.electron && selectedText && isVisible('action')) {
             this.addItem((item) => {
                 return item
                     .setSection('action')
@@ -413,41 +441,18 @@ export class PDFPlusContextMenu extends Menu {
 
         //// Add items ////
 
-        const formats = plugin.settings.copyCommands;
-
-        // copy selected text only //
         if (selectedText) {
-            this.addItem((item) => {
-                return item
-                    .setSection('selection')
-                    .setTitle('Copy text')
-                    .setIcon('lucide-copy')
-                    .onClick(() => {
-                        // How does the electron version differ?
-                        navigator.clipboard.writeText(selectedText);
-                    });
-            });
-
             // copy with custom formats //
 
-            // get the currently selected color name
-            const palette = lib.getColorPaletteFromChild(child);
-            const colorName = palette?.selectedColorName ?? undefined;
-            // check whether to write highlight to file or not
-            // const writeFile = palette?.writeFile;
-
-
-            if (selectedText && selection) {
-                for (const { name, template } of formats) {
-                    this.addItem((item) => {
-                        return item
-                            .setSection('selection')
-                            .setTitle(`Copy link to selection with format "${name}"`)
-                            .setIcon('lucide-copy')
-                            .onClick(() => {
-                                lib.copyLink.copyLinkToSelection(false, template, colorName);
-                            });
-                    });
+            if (selectedText && selection && child.palette) {
+                if (isVisible('selection')) {
+                    PDFPlusProductMenuComponent
+                        .create(this, child.palette)
+                        .setSection('selection', 'Copy link to selection', 'lucide-copy')
+                        .addItems(plugin.settings.selectionProductMenuConfig)
+                        .onItemClick(({ copyFormat, displayTextFormat, colorName }) => {
+                            lib.copyLink.copyLinkToSelection(false, { copyFormat, displayTextFormat }, colorName ?? undefined);
+                        });
                 }
 
                 // // Create a Canvas card
@@ -465,18 +470,14 @@ export class PDFPlusContextMenu extends Menu {
                 //     }
                 // }                    
 
-                if (lib.isEditable(child)) {
-                    for (const { name, template } of formats) {
-                        this.addItem((item) => {
-                            return item
-                                .setSection('write-file')
-                                .setTitle(`Write ${plugin.settings.selectionBacklinkVisualizeStyle} & copy link with format "${name}"`)
-                                .setIcon('lucide-save')
-                                .onClick(() => {
-                                    lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, colorName);
-                                });
+                if (lib.isEditable(child) && isVisible('write-file')) {
+                    PDFPlusProductMenuComponent
+                        .create(this, child.palette)
+                        .setSection('write-file', `Add ${plugin.settings.selectionBacklinkVisualizeStyle} to file`, 'lucide-edit')
+                        .addItems(plugin.settings.writeFileProductMenuConfig)
+                        .onItemClick(({ copyFormat, displayTextFormat, colorName }) => {
+                            lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, { copyFormat, displayTextFormat }, colorName ?? undefined);
                         });
-                    }
                 }
             }
         }
@@ -484,13 +485,76 @@ export class PDFPlusContextMenu extends Menu {
         // Get annotation & annotated text
         const pageView = child.getPage(pageNumber);
         const annot = child.getAnnotationFromEvt(pageView, evt);
+        let annotatedText: string | null = null;
 
         await (async () => {
             if (annot) {
                 const { id } = lib.getAnnotationInfoFromAnnotationElement(annot);
-                const annotatedText = await child.getAnnotatedText(pageView, id);
+                annotatedText = await child.getAnnotatedText(pageView, id);
 
-                if (annot.data.subtype === 'Link') {
+                // copy link to annotation with custom formats //
+
+                if (child.palette && isVisible('annotation')) {
+                    PDFPlusProductMenuComponent
+                        .create(this, child.palette)
+                        .setSection('annotation', 'Copy link to annotation', 'lucide-copy')
+                        .addItems(plugin.settings.annotationProductMenuConfig)
+                        .onItemClick(({ copyFormat, displayTextFormat }) => {
+                            lib.copyLink.copyLinkToAnnotation(child, false, { copyFormat, displayTextFormat }, pageNumber, id, false, true);
+                        });
+                }
+
+                // // Createa a Canvas card
+                // if (canvas && plugin.settings.canvasContextMenu) {
+                //     for (const { name, template } of formats) {
+                //         this.addItem((item) => {
+                //             return item
+                //                 .setSection('annotation-canvas')
+                //                 .setTitle(`Create Canvas card from annotation with format "${name}"`)
+                //                 .setIcon('lucide-sticky-note')
+                //                 .onClick(() => {
+                //                     lib.copyLink.makeCanvasTextNodeFromAnnotation(false, canvas, child, template, pageNumber, id);
+                //                 });
+                //         });
+                //     }
+                // }
+
+                // edit & delete annotation //
+                if (lib.isEditable(child) && isVisible('modify-annotation')) {
+                    if (plugin.settings.enableAnnotationContentEdit && PDFAnnotationEditModal.isSubtypeSupported(annot.data.subtype)) {
+                        const subtype = annot.data.subtype;
+                        this.addItem((item) => {
+                            return item
+                                .setSection('modify-annotation')
+                                .setTitle('Edit annotation')
+                                .setIcon('lucide-pencil')
+                                .onClick(() => {
+                                    if (child.file) {
+                                        PDFAnnotationEditModal
+                                            .forSubtype(subtype, plugin, child.file, pageNumber, id)
+                                            .open();
+                                    }
+                                });
+                        });
+                    }
+
+                    if (plugin.settings.enableAnnotationDeletion) {
+                        this.addItem((item) => {
+                            return item
+                                .setSection('modify-annotation')
+                                .setTitle('Delete annotation')
+                                .setIcon('lucide-trash')
+                                .onClick(() => {
+                                    if (child.file) {
+                                        new PDFAnnotationDeleteModal(plugin, child.file, pageNumber, id)
+                                            .openIfNeccessary();
+                                    }
+                                });
+                        });
+                    }
+                }
+
+                if (annot.data.subtype === 'Link' && isVisible('link')) {
                     const doc = child.pdfViewer.pdfViewer?.pdfDocument;
                     if ('dest' in annot.data && typeof annot.data.dest === 'string' && doc && child.file) {
                         const destId = annot.data.dest;
@@ -534,83 +598,6 @@ export class PDFPlusContextMenu extends Menu {
                         }
                     }
                 }
-
-                // copy annotated text only //
-                if (annotatedText) {
-                    this.addItem((item) => {
-                        return item
-                            .setSection('annotation')
-                            .setTitle('Copy annotated text')
-                            .setIcon('lucide-copy')
-                            .onClick(() => {
-                                // How does the electron version differ?
-                                navigator.clipboard.writeText(annotatedText);
-                            });
-                    })
-                }
-
-                // copy link to annotation with custom formats //
-                for (const { name, template } of formats) {
-                    this.addItem((item) => {
-                        return item
-                            .setSection('annotation')
-                            .setTitle(`Copy link to annotation with format "${name}"`)
-                            .setIcon('lucide-copy')
-                            .onClick(() => {
-                                lib.copyLink.copyLinkToAnnotation(child, false, template, pageNumber, id, false, true);
-                            });
-                    });
-                }
-
-                // // Createa a Canvas card
-                // if (canvas && plugin.settings.canvasContextMenu) {
-                //     for (const { name, template } of formats) {
-                //         this.addItem((item) => {
-                //             return item
-                //                 .setSection('annotation-canvas')
-                //                 .setTitle(`Create Canvas card from annotation with format "${name}"`)
-                //                 .setIcon('lucide-sticky-note')
-                //                 .onClick(() => {
-                //                     lib.copyLink.makeCanvasTextNodeFromAnnotation(false, canvas, child, template, pageNumber, id);
-                //                 });
-                //         });
-                //     }
-                // }
-
-                // edit & delete annotation //
-                if (lib.isEditable(child)) {
-                    if (plugin.settings.enableAnnotationContentEdit && PDFAnnotationEditModal.isSubtypeSupported(annot.data.subtype)) {
-                        const subtype = annot.data.subtype;
-                        this.addItem((item) => {
-                            return item
-                                .setSection('modify-annotation')
-                                .setTitle('Edit annotation')
-                                .setIcon('lucide-pencil')
-                                .onClick(() => {
-                                    if (child.file) {
-                                        PDFAnnotationEditModal
-                                            .forSubtype(subtype, plugin, child.file, pageNumber, id)
-                                            .open();
-                                    }
-                                });
-                        });
-                    }
-
-                    if (plugin.settings.enableAnnotationDeletion) {
-                        this.addItem((item) => {
-                            return item
-                                .setSection('modify-annotation')
-                                .setTitle('Delete annotation')
-                                .setIcon('lucide-trash')
-                                .onClick(() => {
-                                    if (child.file) {
-                                        new PDFAnnotationDeleteModal(plugin, child.file, pageNumber, id)
-                                            .openIfNeccessary();
-                                    }
-                                });
-                        });
-                    }
-                }
             }
         })();
 
@@ -618,13 +605,14 @@ export class PDFPlusContextMenu extends Menu {
         if (selectedText && selection
             && lib.isEditable(child)
             && plugin.lastCopiedDestInfo
-            && plugin.lastCopiedDestInfo.file === child.file) {
+            && plugin.lastCopiedDestInfo.file === child.file
+            && isVisible('link')) {
             if ('destArray' in plugin.lastCopiedDestInfo) {
                 const destArray = plugin.lastCopiedDestInfo.destArray;
                 this.addItem((item) => {
                     return item
                         .setSection('link')
-                        .setTitle('Paste copied link to selection')
+                        .setTitle('Paste copied PDF link to selection')
                         .setIcon('lucide-clipboard-paste')
                         .onClick(() => {
                             lib.highlight.writeFile.addLinkAnnotationToSelection(destArray);
@@ -644,13 +632,53 @@ export class PDFPlusContextMenu extends Menu {
             }
         }
 
-        if (selectedText && selection && plugin.settings.showCopyLinkToSearchInContextMenu) {
+        // copy selected text only //
+        if (selectedText && isVisible('text')) {
+            this.addItem((item) => {
+                return item
+                    .setSection('text')
+                    .setTitle('Copy selected text')
+                    .setIcon('lucide-copy')
+                    .onClick(() => {
+                        // How does the electron version differ?
+                        navigator.clipboard.writeText(selectedText);
+                    });
+            });
+        }
+
+        // copy annotated text only //
+        if (annotatedText && isVisible('text')) {
+            this.addItem((item) => {
+                return item
+                    .setSection('text')
+                    .setTitle('Copy annotated text')
+                    .setIcon('lucide-copy')
+                    .onClick(() => {
+                        // How does the electron version differ?
+                        navigator.clipboard.writeText(annotatedText!);
+                    });
+            })
+        }
+
+        if (selectedText && selection && plugin.settings.showCopyLinkToSearchInContextMenu && isVisible('search')) {
             this.addItem((item) => {
                 item.setSection('search')
                     .setTitle('Copy link to search')
                     .setIcon('lucide-search')
                     .onClick(() => {
                         lib.copyLink.copyLinkToSearch(false, child, pageNumber, selectedText.trim());
+                    });
+            });
+        }
+
+        if (this.items.length && isVisible('settings')) {
+            this.addItem((item) => {
+                item.setSection('settings')
+                    .setIcon('lucide-settings')
+                    .setTitle('Customize menu...')
+                    .onClick(() => {
+                        this.plugin.openSettingTab()
+                            .scrollToHeading('context-menu');
                     });
             });
         }
@@ -662,6 +690,173 @@ export class PDFPlusContextMenu extends Menu {
         });
     }
 }
+
+
+export class PDFPlusProductMenuComponent extends PDFPlusComponent {
+    rootMenu: Menu;
+    palette: ColorPalette;
+    clickItemCallback: ((options: { colorName: string | null, copyFormat: string, displayTextFormat: string }) => any) | null = null;
+
+    itemToColorName = new Map<MenuItem, string | null>;
+    itemToCopyFormat = new Map<MenuItem, string>;
+    itemToDisplayTextFormat = new Map<MenuItem, string>;
+
+    section?: string;
+    sectionTitle?: string;
+    sectionIcon?: string;
+
+    protected constructor(rootMenu: Menu, palette: ColorPalette) {
+        super(palette.plugin);
+        this.rootMenu = rootMenu;
+        this.palette = palette;
+    }
+
+    static create(rootMenu: Menu, palette: ColorPalette) {
+        return rootMenu.addChild(new PDFPlusProductMenuComponent(rootMenu, palette));
+    }
+
+    then(callback: (menuComponent: this) => any) {
+        callback(this);
+        return this;
+    }
+
+    setSection(section: string, sectionTitle?: string, sectionIcon?: string) {
+        this.section = section;
+        this.sectionTitle = sectionTitle;
+        this.sectionIcon = sectionIcon;
+        return this;
+    }
+
+    private addSectionTitle() {
+        if (this.section && this.sectionTitle) {
+            this.rootMenu.addItem((titleItem) => {
+                titleItem
+                    .setSection(this.section!)
+                    .setTitle(this.sectionTitle!)
+                    .setDisabled(true);
+                if (this.sectionIcon) {
+                    titleItem.setIcon(this.sectionIcon);
+                }
+            });
+        }
+    }
+
+    addItems(order: ('color' | 'display' | 'copy-format')[]) {
+        this.addSectionTitle();
+
+        addProductMenuItems(this.rootMenu, order.map((type) => {
+            switch (type) {
+                case 'color':
+                    return this.addColorItems.bind(this);
+                case 'copy-format':
+                    return this.addCopyFormatItems.bind(this);
+                case 'display':
+                    return this.addDisplayTextItems.bind(this);
+            }
+        }), {
+            clickableParentItem: true
+        });
+
+        return this;
+    }
+
+    private addColorItems(menu: Menu) {
+        const colorNames = Object.keys(this.settings.colors);
+        const selectedColorName = this.palette.getState().selectedColorName;
+        const selectedColorIndex = selectedColorName
+            ? colorNames
+                .map((name) => name.toLowerCase())
+                .indexOf(selectedColorName.toLowerCase())
+            : -1;
+
+        for (let i = this.settings.noColorButtonInColorPalette ? -1 : 0; i < colorNames.length; i++) {
+            menu.addItem((item) => {
+                item.setTitle(i >= 0 ? colorNames[i] : 'Don\'t specify color')
+                    .onClick(() => {
+                        this.finish();
+                    });
+
+                if (menu !== this.rootMenu) item.setChecked(i === selectedColorIndex);
+
+                if (this.section && menu === this.rootMenu) item.setSection(this.section);
+
+                this.itemToColorName.set(item, i >= 0 ? colorNames[i] : null)
+
+                const hex = this.settings.colors[i >= 0 ? colorNames[i] : 'transparent'];
+                item.dom.addClass('pdf-plus-color-menu-item');
+                item.titleEl.before(createDiv('pdf-plus-color-indicator', (el) => {
+                    el.setCssStyles({ backgroundColor: hex });
+                }))
+            });
+        }
+
+        fixOpenSubmenu(menu, 100);
+    }
+
+    private addNamedTemplateItems(menu: Menu, templates: namedTemplate[], checkedIndex: number, map: Map<MenuItem, string>) {
+        for (let i = 0; i < templates.length; i++) {
+            menu.addItem((item) => {
+                item.setTitle(templates[i].name)
+                    .onClick(() => {
+                        this.finish();
+                    });
+
+                if (menu !== this.rootMenu) item.setChecked(i === checkedIndex);
+
+                map.set(item, templates[i].template);
+
+                if (this.section && menu === this.rootMenu) item.setSection(this.section);
+            });
+        }
+
+        fixOpenSubmenu(menu, 100);
+    }
+
+    private addDisplayTextItems(menu: Menu) {
+        this.addNamedTemplateItems(
+            menu,
+            this.settings.displayTextFormats,
+            this.palette.getState().displayTextFormatIndex,
+            this.itemToDisplayTextFormat
+        );
+    }
+
+    private addCopyFormatItems(menu: Menu) {
+        this.addNamedTemplateItems(
+            menu,
+            this.settings.copyCommands,
+            this.palette.getState().actionIndex,
+            this.itemToCopyFormat
+        );
+    }
+
+    private finish() {
+        const options = {
+            colorName: this.palette.getColorName(),
+            copyFormat: this.palette.getCopyFormat(),
+            displayTextFormat: this.palette.getDisplayTextFormat()
+        };
+
+        const { items } = getSelectedItemsRecursive(this.rootMenu);
+        for (const item of items) {
+            if (this.itemToColorName.has(item)) {
+                options.colorName = this.itemToColorName.get(item)!;
+            } else if (this.itemToCopyFormat.has(item)) {
+                options.copyFormat = this.itemToCopyFormat.get(item)!;
+            } else if (this.itemToDisplayTextFormat.has(item)) {
+                options.displayTextFormat = this.itemToDisplayTextFormat.get(item)!;
+            }
+        }
+
+        this.clickItemCallback?.(options);
+        this.rootMenu.hide();
+    }
+
+    onItemClick(callback: (options: { colorName: string | null, copyFormat: string, displayTextFormat: string }) => any) {
+        this.clickItemCallback = callback;
+    }
+}
+
 
 export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDFViewerBacklinkVisualizer, cache: PDFBacklinkCache) => {
     if (evt.defaultPrevented) return;

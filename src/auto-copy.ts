@@ -59,21 +59,6 @@ export class AutoCopyMode extends PDFPlusComponent {
     }
 
     onload() {
-        this.lib.registerGlobalDomEvent(this, 'pointerup', () => {
-            if (activeWindow.getSelection()?.toString()) {
-                // const range = activeWindow.getSelection()?.getRangeAt(0);
-                // if (range) {
-                //     const node = range.endContainer;
-                //     const child = this.lib.getPDFViewerChildAssociatedWithNode(node);
-                //     if (child) {
-                //         const { right, bottom } = range.getBoundingClientRect();
-                //         onContextMenu(this.plugin, child, new MouseEvent('contextmenu', { clientX: right, clientY: bottom }));
-                //     }
-                // }
-                this.lib.commands.copyLink(false, false);
-            }
-        });
-
         this.iconEl?.addClass('is-active');
     }
 

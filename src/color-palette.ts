@@ -130,9 +130,9 @@ export class ColorPalette extends PDFPlusComponent {
             const template = this.plugin.settings.copyCommands[this.actionIndex].template;
 
             if (this.writeFile) {
-                this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, template, name ?? undefined);
+                this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, { copyFormat: template }, name ?? undefined);
             } else {
-                this.lib.copyLink.copyLinkToSelection(false, template, name ?? undefined);
+                this.lib.copyLink.copyLinkToSelection(false, { copyFormat: template }, name ?? undefined);
             }
 
             evt.preventDefault();
@@ -229,7 +229,7 @@ export class ColorPalette extends PDFPlusComponent {
     }
 
     addCopyActionDropdown(paletteEl: HTMLElement) {
-        let tooltip = 'Color palette action options';
+        let tooltip = 'Link copy format';
         if (!this.plugin.settings.colorPaletteInToolbar) {
             tooltip = `${this.plugin.manifest.name}: link copy options (trigger via hotkeys)`
         }
@@ -265,7 +265,7 @@ export class ColorPalette extends PDFPlusComponent {
             paletteEl,
             this.plugin.settings.displayTextFormats.map((format) => format.name),
             'displayTextFormatIndex',
-            `${this.plugin.manifest.name}: Link display text format`,
+            `Display text format`,
             () => {
                 if (this.plugin.settings.syncDisplayTextFormat && this.plugin.settings.syncDefaultDisplayTextFormat) {
                     this.plugin.settings.defaultDisplayTextFormatIndex = this.displayTextFormatIndex;
@@ -291,7 +291,7 @@ export class ColorPalette extends PDFPlusComponent {
 
         this.writeFileButtonEl = paletteEl.createDiv('clickable-icon', (el) => {
             setIcon(el, 'lucide-edit');
-            setTooltip(el, `${this.plugin.manifest.name}: Add ${this.plugin.settings.selectionBacklinkVisualizeStyle}s to file directly`);
+            setTooltip(el, `Add ${this.plugin.settings.selectionBacklinkVisualizeStyle}s to file directly`);
             el.toggleClass('is-disabled', !this.lib.isEditable(this.child));
 
             let shown = false;
@@ -632,6 +632,21 @@ export class ColorPalette extends PDFPlusComponent {
         if (typeof state.actionIndex === 'number') this.setActionIndex(state.actionIndex);
         if (typeof state.displayTextFormatIndex === 'number') this.setDisplayTextFormatIndex(state.displayTextFormatIndex);
         if (typeof state.writeFile === 'boolean') this.setWriteFile(state.writeFile);
+    }
+
+    getColorName(): string | null {
+        const state = this.getState();
+        return state.selectedColorName;
+    }
+
+    getCopyFormat(): string {
+        const state = this.getState();
+        return this.plugin.settings.copyCommands[state.actionIndex].template;
+    }
+
+    getDisplayTextFormat(): string {
+        const state = this.getState();
+        return this.plugin.settings.displayTextFormats[state.displayTextFormatIndex].template;
     }
 
     syncTo(palette: ColorPalette) {

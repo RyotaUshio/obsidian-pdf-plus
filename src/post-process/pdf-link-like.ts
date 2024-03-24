@@ -235,9 +235,10 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
     }
 
     async customHover(evt: MouseEvent) {
-        if (this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover') {
+        if (this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover'
+            && this.child.bib && this.child.bib.isEnabled()) {
             const destId = this.getDest();
-            if (this.child.bib && typeof destId === 'string' && destId.startsWith('cite.')) {
+            if (typeof destId === 'string' && destId.startsWith('cite.')) {
                 this.child.bib.spawnBibPopoverOnModKeyDown(destId, this, evt, this.targetEl);
                 return true;
             }

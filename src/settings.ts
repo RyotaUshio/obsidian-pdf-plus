@@ -1,4 +1,4 @@
-import { Component, DropdownComponent, HexString, IconName, MarkdownRenderer, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRenderer, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
@@ -147,6 +147,11 @@ export interface PDFPlusSettings {
 	pdfLinkColor: HexString;
 	pdfLinkBorder: boolean;
 	replaceContextMenu: boolean;
+	showContextMenuOnMouseUpIf: 'always' | 'mod' | 'never';
+	contextMenuConfig: { id: string, visible: boolean }[];
+	selectionProductMenuConfig: ('color' | 'copy-format' | 'display')[];
+	writeFileProductMenuConfig: ('color' | 'copy-format' | 'display')[];
+	annotationProductMenuConfig: ('copy-format' | 'display')[];
 	executeBuiltinCommandForOutline: boolean;
 	executeBuiltinCommandForZoom: boolean;
 	executeFontSizeAdjusterCommand: boolean;
@@ -247,6 +252,9 @@ export interface PDFPlusSettings {
 	popoverPreviewOnExternalLinkHover: boolean;
 	actionOnCitationHover: keyof typeof ACTION_ON_CITATION_HOVER;
 	anystylePath: string;
+	enableBibInEmbed: boolean;
+	enableBibInHoverPopover: boolean;
+	enableBibInCanvas: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -370,6 +378,21 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	pdfLinkColor: '#04a802',
 	pdfLinkBorder: false,
 	replaceContextMenu: true,
+	showContextMenuOnMouseUpIf: 'mod',
+	contextMenuConfig: [
+		{ id: 'action', visible: true },
+		{ id: 'selection', visible: true },
+		{ id: 'write-file', visible: true },
+		{ id: 'annotation', visible: true },
+		{ id: 'modify-annotation', visible: true },
+		{ id: 'link', visible: true },
+		{ id: 'text', visible: true },
+		{ id: 'search', visible: true },
+		{ id: 'settings', visible: true },
+	],
+	selectionProductMenuConfig: ['color', 'copy-format', 'display'],
+	writeFileProductMenuConfig: ['color', 'copy-format', 'display'],
+	annotationProductMenuConfig: ['copy-format', 'display'],
 	executeBuiltinCommandForOutline: true,
 	executeBuiltinCommandForZoom: true,
 	executeFontSizeAdjusterCommand: true,
@@ -470,6 +493,9 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	popoverPreviewOnExternalLinkHover: true,
 	actionOnCitationHover: 'pdf-plus-bib-popover',
 	anystylePath: '',
+	enableBibInEmbed: false,
+	enableBibInHoverPopover: false,
+	enableBibInCanvas: true,
 };
 
 
@@ -488,6 +514,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	contentEl: HTMLElement;
 	headerContainerEl: HTMLElement;
+
+	events = new Events();
 
 	constructor(public plugin: PDFPlus) {
 		super(plugin.app, plugin);
@@ -608,6 +636,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 		toggleVisibility();
 		return toggleVisibility;
+	}
+
+	showConditionally(setting: Setting, condition: () => boolean) {
+		this.events.on('update', this.getVisibilityToggler(setting, condition));
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlurOrEnter?: (setting: Setting) => any) {
@@ -1167,6 +1199,78 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.then(renderAndValidateIcon);
 	}
 
+	addProductMenuSetting(key: KeysOfType<PDFPlusSettings, ('color' | 'copy-format' | 'display')[]>, heading: string) {
+		const categories = DEFAULT_SETTINGS[key];
+		const displayNames: Record<string, string> = {
+			'color': 'Colors',
+			'copy-format': 'Link copy format',
+			'display': 'Display text format',
+		};
+		const values = this.plugin.settings[key];
+
+		const setting = this.addHeading(heading, key);
+
+		setting.addExtraButton((button) => {
+			button
+				.setTooltip('Reset')
+				.setIcon('rotate-ccw')
+				.onClick(() => {
+					values.length = 0;
+					// @ts-ignore
+					values.push(...categories);
+					this.redisplay();
+				});
+		});
+
+		const dropdowns: DropdownComponent[] = [];
+		const remainingCategories: string[] = categories.slice();
+
+		for (let i = 0; i < categories.length; i++) {
+			if (i > 0) {
+				const upperLevelCategory = dropdowns[i - 1].getValue();
+				if (!upperLevelCategory) return;
+
+				remainingCategories.remove(upperLevelCategory);
+			}
+
+			this.addSetting()
+				.setName(i === 0 ? 'Top-level menu' : i === 1 ? 'Submenu' : 'Subsubmenu')
+				.addDropdown((dropdown) => {
+					for (const category of remainingCategories) {
+						dropdown.addOption(category, displayNames[category]);
+					}
+					if (i > 0) dropdown.addOption('', 'None');
+
+					let currentValue: string = values[i] ?? '';
+					if (currentValue && !remainingCategories.includes(currentValue)) {
+						if (remainingCategories[0]) {
+							// @ts-ignore
+							values[i] = remainingCategories[0];
+							currentValue = values[i];
+						}
+					}
+					dropdown.setValue(currentValue)
+						.onChange((value) => {
+							if (value) {
+								// @ts-ignore
+								values[i] = value;
+							} else {
+								while (values.length > i) values.pop();
+							}
+
+							this.plugin.saveSettings();
+							this.redisplay();
+						});
+					dropdowns.push(dropdown);
+				})
+				.then((setting) => {
+					setting.settingEl.addClasses(['no-border', 'small-padding']);
+				});
+		}
+
+		return setting;
+	}
+
 	createLinkTo(id: keyof PDFPlusSettings, name?: string) {
 		return createEl('a', '', (el) => {
 			el.onclick = (evt) => {
@@ -1204,6 +1308,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const scrollTop = this.contentEl.scrollTop;
 		this.display();
 		this.contentEl.scroll({ top: scrollTop });
+
+		this.events.trigger('update');
 	}
 
 	async display(): Promise<void> {
@@ -1590,14 +1696,112 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		);
 
 
-		this.addHeading('Right-click menu in PDF viewer', 'context-menu', 'lucide-mouse-pointer-click')
-			.setDesc('Customize the behavior of Obsidian\'s built-in right-click menu in PDF view.')
+		this.addHeading('Context menu in PDF viewer', 'context-menu', 'lucide-mouse-pointer-click')
+			.setDesc('Customize the behavior of the context menu that pops up when you right-click in the PDF viewer.')
 		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
-			.setName('Replace the built-in right-click menu with PDF++\'s custom menu');
+			.setName('Replace the built-in context menu with PDF++\'s custom menu');
 		if (!this.plugin.settings.replaceContextMenu) {
 			this.addSetting()
 				.setName('Display text format')
 				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
+		} else {
+			this.addDropdownSetting('showContextMenuOnMouseUpIf', {
+				'always': 'Always',
+				'mod': `${getModifierNameInPlatform('Mod')} key is pressed`,
+				'never': 'Never',
+			})
+				.setName('Show the context menu right after selecting text when...')
+				.setDesc(createFragment((el) => {
+					el.appendText('If ');
+					el.appendChild(this.createLinkToHeading('auto-copy', 'auto-copy'))
+					el.appendText(' is enabled, it will be prioritized and the context menu will not be shown.')
+				}));
+
+			{
+				this.addHeading('Menu items', 'context-menu-items')
+					.setDesc('Customize which menu items to show.');
+				// .setDesc('Customize which menu items to show in what order.');
+
+				const itemOrSectionName: Record<string, string> = {
+					'action': 'Look up "(selection)"',
+					'selection': 'Copy link to selection',
+					'write-file': `Add ${this.plugin.settings.selectionBacklinkVisualizeStyle} to file`,
+					'annotation': 'Copy link to annotation',
+					'modify-annotation': 'Edit/delete annotation',
+					'link': 'Copy PDF link / Search on Google Scholar / Paste copied PDF link to selection',
+					'text': 'Copy selected text / Copy annotated text',
+					'search': 'Copy link to search',
+					'settings': 'Customize menu...',
+				};
+
+				const sections = this.plugin.settings.contextMenuConfig;
+				const sectionSettings: Setting[] = [];
+				for (let i = 0; i < sections.length; i++) {
+					const section = sections[i];
+					const name = itemOrSectionName[section.id];
+					if (!name) continue; // just in case
+
+					sectionSettings.push(
+						this.addSetting()
+							.setName(name)
+							.addToggle((toggle) => {
+								toggle
+									.setValue(section.visible)
+									.onChange((value) => {
+										section.visible = value;
+										this.plugin.saveSettings();
+									});
+							})
+							.then((setting) => {
+								if (section.id === 'action') {
+									setting.setDesc('Available only on macOS.');
+								}
+
+								if (section.id === 'link') {
+									setting.setDesc('"Search on Google Scholar": Available when right-clicking citation links in PDFs.')
+								}
+							})
+						// .then((setting) => {
+						// 	setting
+						// 		.addExtraButton((button) => {
+						// 			button
+						// 				.setIcon('lucide-chevron-up')
+						// 				.setTooltip('Move up')
+						// 				.onClick(() => {
+						// 					const index = sections.indexOf(section);
+						// 					if (index <= 0) return;
+
+						// 					const prev = sections[index - 1];
+						// 					sections[index - 1] = section;
+						// 					sections[index] = prev;
+
+						// 					setting.settingEl.parentNode?.insertBefore(setting.settingEl, setting.settingEl.previousElementSibling);
+						// 				});
+						// 		})
+						// 		.addExtraButton((button) => {
+						// 			button
+						// 				.setIcon('lucide-chevron-down')
+						// 				.setTooltip('Move down')
+						// 				.onClick(() => {
+						// 					const index = sections.indexOf(section);
+						// 					if (index >= sections.length - 1) return;
+
+						// 					const next = sections[index + 1];
+						// 					sections[index + 1] = section;
+						// 					sections[index] = next;
+
+						// 					setting.settingEl.parentNode?.insertAfter(setting.settingEl, setting.settingEl.nextElementSibling);
+						// 				});
+						// 		})
+						// })
+					);
+				}
+			}
+
+			this.addDesc('Customize nested menus.')
+			this.addProductMenuSetting('selectionProductMenuConfig', 'Copy link to selection')
+			this.addProductMenuSetting('writeFileProductMenuConfig', `Add ${this.plugin.settings.selectionBacklinkVisualizeStyle} to file`)
+			this.addProductMenuSetting('annotationProductMenuConfig', 'Copy link to annotation')
 		}
 
 
@@ -1720,7 +1924,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Display text format')
 			.then((setting) => this.renderMarkdown([
 				// 'For example, the default format is `{{ file.basename }}, page { { page } } `. Another example of a useful format is `{ { file.basename } }, p.{ { pageLabel } } `. ',
-				'This format will be also used when copying a link to a selection or an annotation from the right-click context menu.'
+				'This format will be also used when copying a link to a selection or an annotation from the context menu.'
 			], setting.descEl))
 			.addButton((button) => {
 				button
@@ -2048,13 +2252,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.');
 		this.addSetting()
 			.setName('Copy PDF link as Obsidian link')
-			.setDesc('(Requires custom right-click menu enabled) In the PDF viewer, right-click a PDF-embedded link and then click "Copy PDF link as Obsidian link". It will copy the PDF link as an Obsidian link that you can paste into markdown files. Clicking the pasted link will take you to the same destination as the original PDF link.');
+			.setDesc('(Requires custom context menu enabled) In the PDF viewer, right-click a PDF-embedded link and then click "Copy PDF link as Obsidian link". It will copy the PDF link as an Obsidian link that you can paste into markdown files. Clicking the pasted link will take you to the same destination as the original PDF link.');
 		this.addSetting()
 			.setName('"Copy link to current page view" command')
 			.setDesc('Running this command while viewing a PDF file will copy a link, clicking which will open the PDF file at the current scroll position and zoom level.');
 		this.addSetting()
 			.setName('Paste copied link to a text selection in a PDF file')
-			.setDesc('(Requires custom right-click menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".');
+			.setDesc('(Requires custom context menu & PDF editing enabled) After copying a link by the above actions, you can "paste" it to a selection in PDF to create a PDF internal link. To do this, right-click the selection and click "Paste copied link to selection".');
 		if (this.plugin.settings.replaceContextMenu && this.plugin.settings.enablePDFEdit) {
 			this.addToggleSetting('pdfLinkBorder', () => this.redisplay())
 				.setName('Draw borders around internal links')
@@ -2089,12 +2293,22 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						(setting.components[0] as TextComponent).inputEl.size = 35;
 						this.renderMarkdown([
 							'The path to the [AnyStyle](https://github.com/inukshuk/anystyle) executable. ',
-							'PDF++ extracts the bibliography text from the PDF file for each citation link, and use AnyStyle to convert the extracted text into a structured metadata.',
-							'It works just fine without AnyStyle, but you can further boost the visibility by installing it.',
+							'',
+							'PDF++ extracts the bibliography text from the PDF file for each citation link and uses AnyStyle to convert the extracted text into a structured metadata.',
+							'It works just fine without AnyStyle, but you can further boost the visibility by installing it and providing its path here.',
 						], setting.descEl);
 					}),
 				() => Platform.isDesktopApp && this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover'
 			);
+
+			this.addDesc('Try turning off the following options if you experience performance issues.');
+			this.addToggleSetting('enableBibInEmbed')
+				.setName('Enable bibliography extraction in PDF embeds')
+			this.addToggleSetting('enableBibInCanvas')
+				.setName('Enable bibliography extraction in Canvas')
+			this.addToggleSetting('enableBibInHoverPopover')
+				.setName('Enable bibliography extraction in hover popover previews')
+
 		}
 
 
@@ -2137,7 +2351,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Record to history when clicking an outline item')
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('outlineContextMenu')
-			.setName('Replace the built-in right-click menu in the outline with a custom one')
+			.setName('Replace the built-in context menu in the outline with a custom one')
 			.setDesc('This enables you to insert a section link with a custom format by right-clicking an item in the outline. Moreover, you will be able to add, rename, or delete outline items if PDF modification is enabled.')
 		this.addToggleSetting('outlineDrag')
 			.setName('Drag & drop outline item to insert link to section')
@@ -2211,7 +2425,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Record to history when clicking a thumbnail')
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
 		this.addToggleSetting('thumbnailContextMenu')
-			.setName('Replace the built-in right-click menu in thumbnails with a custom one')
+			.setName('Replace the built-in context menu in thumbnails with a custom one')
 			.setDesc('This enables you to copy a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail. Moreover, you will be able to insert, delete, extract pages if PDF modification is enabled.');
 		this.addToggleSetting('thumbnailDrag')
 			.setName('Drag & drop PDF thumbnail to insert link to section')

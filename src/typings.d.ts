@@ -1025,10 +1025,39 @@ declare module 'obsidian' {
     interface Menu {
         /** div.menu */
         dom: HTMLElement;
+        /** div.suggestion-bg */
+        bgEl: HTMLElement;
         /** .has-active-menu */
         parentEl?: HTMLElement;
+        items: (MenuItem | MenuSeparator)[];
+        /** The index of the currently selected item (-1 if no item is selected). */
+        selected: number;
+        select(index: number): void;
+        unselect(): void;
         setParentElement(el: HTMLElement): Menu;
         addSections(sections: string[]): Menu;
+        /** The parent menu that is opening this menu as a submenu, if any. */
+        parentMenu?: Menu | null;
+        openSubmenu(item: MenuItem): void;
+        openSubmenuSoon: Debouncer<[MenuItem], void>;
+        closeSubmenu(): void;
+    }
+
+    interface MenuItem {
+        /** The menu instance that this item belongs to. */
+        menu: Menu;
+        /** div.menu-item */
+        dom: HTMLElement;
+        /** div.menu-item-icon */
+        iconEl: HTMLElement;
+        /** div.menu-item-title */
+        titleEl: HTMLElement;
+        section: string;
+        /** The callback registered via `onClick`. */
+        callback: (evt: MouseEvent | KeyboardEvent) => any;
+        submenu: Menu | null;
+        /** If `this.submenu` is not set yet, create a new menu and set it to `this.submenu`. It also clears the callback function registered via `onClick`. */
+        setSubmenu(): Menu;
     }
 
     interface Editor {

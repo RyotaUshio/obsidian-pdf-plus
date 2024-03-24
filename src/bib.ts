@@ -4,7 +4,7 @@ import { spawn } from 'child_process';
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
-import { genId, onModKeyPress, toSingleLine } from 'utils';
+import { genId, isCanvas, isEmbed, isHoverPopover, isNonEmbedLike, onModKeyPress, toSingleLine } from 'utils';
 import { PDFViewerChild, PDFjsDestArray, TextContentItem } from 'typings';
 
 
@@ -35,8 +35,19 @@ export class BibliographyManager extends PDFPlusComponent {
         this.init();
     }
 
+    isEnabled() {
+        const viewer = this.child.pdfViewer;
+        return  isNonEmbedLike(viewer)
+            || (this.settings.enableBibInCanvas && isCanvas(viewer))
+            || (this.settings.enableBibInHoverPopover && isHoverPopover(viewer))
+            || (this.settings.enableBibInEmbed && isEmbed(viewer));
+    }
+
     private async init() {
-        await this.initBibText().then(() => this.parseBibText());
+        if (this.isEnabled()) {
+            await this.initBibText();
+            await this.parseBibText();
+        }
         this.initialized = true;
     }
 

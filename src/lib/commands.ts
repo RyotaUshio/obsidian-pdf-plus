@@ -248,7 +248,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
         const { template, colorName } = info;
 
-        return this.lib.copyLink.copyLinkToSelection(checking, template, colorName, autoPaste);
+        return this.lib.copyLink.copyLinkToSelection(checking, { copyFormat: template }, colorName, autoPaste);
     }
 
     copyLinkToAnnotation(checking: boolean, autoPaste: boolean = false) {
@@ -257,7 +257,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
         const { child, copyButtonEl, template, page, id } = info;
 
-        const result = this.lib.copyLink.copyLinkToAnnotation(child, checking, template, page, id, autoPaste);
+        const result = this.lib.copyLink.copyLinkToAnnotation(child, checking, { copyFormat: template }, page, id, autoPaste);
 
         if (!checking && result) setIcon(copyButtonEl, 'lucide-check');
 
@@ -276,7 +276,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         // get the currently selected color
         const colorName = palette.selectedColorName ?? undefined;
 
-        return this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, template, colorName, autoPaste);
+        return this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking, { copyFormat: template }, colorName, autoPaste);
     }
 
     copyEmbedLinkToRectangularSelection(checking: boolean, autoPaste: boolean) {
