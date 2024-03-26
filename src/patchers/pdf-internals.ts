@@ -11,7 +11,7 @@ import { patchPDFOutlineViewer } from 'patchers';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isNonEmbedLike, toSingleLine } from 'utils';
+import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, toSingleLine } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 
@@ -110,16 +110,19 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 const viewerContainerEl = self.pdfViewer?.dom?.viewerContainerEl;
                 if (viewerContainerEl) {
                     let isModEvent = false;
+                    const updateIsModEvent = (evt: MouseEvent) => {
+                        isModEvent ||= isModifierName(plugin.settings.showContextMenuOnMouseUpIf) && Keymap.isModifier(evt, plugin.settings.showContextMenuOnMouseUpIf);
+                    }
 
                     self.component.registerDomEvent(viewerContainerEl, 'pointerdown', (evt) => {
                         lib.highlight.viewer.clearRectHighlight(self);
 
-                        isModEvent = Keymap.isModifier(evt, 'Mod');
+                        updateIsModEvent(evt);
                         self.component?.registerDomEvent(viewerContainerEl, 'mouseup', onMouseUp);
                     });
 
                     const onMouseUp = (evt: MouseEvent) => {
-                        isModEvent ||= Keymap.isModifier(evt, 'Mod');
+                        updateIsModEvent(evt);
 
                         if (plugin.settings.autoCopy) {
                             lib.commands.copyLink(false, false);
@@ -127,8 +130,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         }
 
                         if (plugin.settings.replaceContextMenu) {
-                            if (plugin.settings.showContextMenuOnMouseUpIf === 'always'
-                                || (plugin.settings.showContextMenuOnMouseUpIf === 'mod' && isModEvent)) {
+                            if (plugin.settings.showContextMenuOnMouseUpIf === 'always' || isModEvent) {
                                 if (evt.win.getSelection()?.toString()) {
                                     evt.win.setTimeout(() => showContextMenu(plugin, self, evt), 80);
                                 }

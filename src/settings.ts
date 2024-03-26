@@ -1,9 +1,9 @@
-import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRenderer, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRenderer, Modifier, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
-import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierNameInPlatform, isHexString } from 'utils';
+import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
 import { ScrollMode, SpreadMode } from 'pdfjs-enums';
 
@@ -147,7 +147,7 @@ export interface PDFPlusSettings {
 	pdfLinkColor: HexString;
 	pdfLinkBorder: boolean;
 	replaceContextMenu: boolean;
-	showContextMenuOnMouseUpIf: 'always' | 'mod' | 'never';
+	showContextMenuOnMouseUpIf: 'always' | 'never' | Modifier;
 	contextMenuConfig: { id: string, visible: boolean }[];
 	selectionProductMenuConfig: ('color' | 'copy-format' | 'display')[];
 	writeFileProductMenuConfig: ('color' | 'copy-format' | 'display')[];
@@ -377,7 +377,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	pdfLinkColor: '#04a802',
 	pdfLinkBorder: false,
 	replaceContextMenu: true,
-	showContextMenuOnMouseUpIf: 'mod',
+	showContextMenuOnMouseUpIf: 'Mod',
 	contextMenuConfig: [
 		{ id: 'action', visible: true },
 		{ id: 'selection', visible: true },
@@ -1703,9 +1703,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Display text format')
 				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
 		} else {
+			const modDict = getModifierDictInPlatform();
 			this.addDropdownSetting('showContextMenuOnMouseUpIf', {
 				'always': 'Always',
-				'mod': `${getModifierNameInPlatform('Mod')} key is pressed`,
+				...Object.fromEntries(Object.entries(modDict).map(([modifier, name]) => {
+					return [modifier, `${name} key is pressed`];
+				})),
 				'never': 'Never',
 			})
 				.setName('Show the context menu right after selecting text when...')

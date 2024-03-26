@@ -193,6 +193,11 @@ export default class PDFPlus extends Plugin {
 			delete this.settings.showCopyLinkToSearchInContextMenu;
 		}
 
+		// @ts-ignore
+		if (this.settings.showContextMenuOnMouseUpIf === 'mod') {
+			this.settings.showContextMenuOnMouseUpIf = 'Mod';
+		}
+
 		this.renameSetting('enalbeWriteHighlightToFile', 'enablePDFEdit');
 
 		this.renameSetting('selectToCopyToggleRibbonIcon', 'autoCopyToggleRibbonIcon');
