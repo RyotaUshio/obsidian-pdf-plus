@@ -1,4 +1,4 @@
-import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
@@ -616,6 +616,13 @@ export default class PDFPlus extends Plugin {
 	openSettingTab(): PDFPlusSettingTab {
 		this.app.setting.open();
 		return this.app.setting.openTabById(this.manifest.id);
+	}
+
+	openHotkeySettingTab(query?: string): SettingTab {
+		this.app.setting.open();
+		const tab = this.app.setting.openTabById('hotkeys');
+		tab.setQuery(query ?? this.manifest.id);
+		return tab;
 	}
 
 	getAnyStyleInputDir() {

@@ -1146,8 +1146,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		setting.addButton((button) => {
 			button.setButtonText('Open hotkeys settings')
 				.onClick(() => {
-					const tab = this.app.setting.openTabById('hotkeys');
-					tab.setQuery(query ?? this.plugin.manifest.id);
+					this.plugin.openHotkeySettingTab(query);
 				});
 		});
 	}
