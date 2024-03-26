@@ -12,16 +12,9 @@ import { SidebarView } from 'pdfjs-enums';
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
     commands: Record<string, Command>;
-    copyCommandIds: string[];
 
     constructor(...args: ConstructorParameters<typeof PDFPlusLibSubmodule>) {
         super(...args);
-
-        this.copyCommandIds = [
-            'copy-link-to-selection',
-            'copy-auto-paste-link-to-selection',
-            'copy-link-to-page-view',
-        ]
 
         const commandArray: Command[] = [
             {
@@ -218,12 +211,6 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             return name.slice(this.plugin.manifest.name.length + 2);
         }
         return name;
-    }
-
-    listNonCopyCommandNames() {
-        return Object.keys(this.commands)
-            .filter((id) => !this.copyCommandIds.includes(id))
-            .map((id) => this.stripCommandNamePrefix(this.commands[id].name));
     }
 
     copyLink(checking: boolean, autoPaste: boolean = false) {
