@@ -1,6 +1,7 @@
+import { HoverParent, HoverPopover } from 'obsidian';
+
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
-import { HoverParent, HoverPopover } from 'obsidian';
 import { AnnotationElement, PDFViewerChild } from 'typings';
 
 

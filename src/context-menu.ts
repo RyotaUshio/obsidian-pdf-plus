@@ -133,6 +133,14 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                             lib.commands._dividePDF(file, pageNumber);
                         });
                 })
+                .addSeparator()
+                .addItem((item) => {
+                    item.setTitle('Customize...')
+                        .setIcon('lucide-settings')
+                        .onClick(() => {
+                            plugin.openSettingTab().scrollToHeading('thumbnail');
+                        });
+                })
         }
 
         menu.showAtMouseEvent(evt);
@@ -328,6 +336,14 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                         }
                                     });
                             });
+                    });
+            })
+            .addSeparator()
+            .addItem((item) => {
+                item.setTitle('Customize...')
+                    .setIcon('lucide-settings')
+                    .onClick(() => {
+                        plugin.openSettingTab().scrollToHeading('outline');
                     });
             });
     }
@@ -597,6 +613,19 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                             });
                         }
                     }
+
+                    if ('url' in annot.data && typeof annot.data.url === 'string') {
+                        const url = annot.data.url;
+
+                        this.addItem((item) => {
+                            item.setSection('link')
+                                .setTitle('Copy URL')
+                                .setIcon('lucide-copy')
+                                .onClick(() => {
+                                    navigator.clipboard.writeText(url);
+                                });
+                        })
+                    }
                 }
             }
         })();
@@ -660,7 +689,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
             })
         }
 
-        if (selectedText && selection && plugin.settings.showCopyLinkToSearchInContextMenu && isVisible('search')) {
+        if (selectedText && selection && isVisible('search')) {
             this.addItem((item) => {
                 item.setSection('search')
                     .setTitle('Copy link to search')

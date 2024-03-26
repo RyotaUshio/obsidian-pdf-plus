@@ -237,7 +237,6 @@ export interface PDFPlusSettings {
 	showBacklinkIconForRect: boolean;
 	showBoundingRectForBacklinkedAnnot: boolean;
 	hideReplyAnnotation: boolean;
-	showCopyLinkToSearchInContextMenu: boolean;
 	searchLinkHighlightAll: 'true' | 'false' | 'default';
 	searchLinkCaseSensitive: 'true' | 'false' | 'default';
 	searchLinkMatchDiacritics: 'true' | 'false' | 'default';
@@ -478,7 +477,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	showBacklinkIconForRect: false,
 	showBoundingRectForBacklinkedAnnot: false,
 	hideReplyAnnotation: false,
-	showCopyLinkToSearchInContextMenu: true,
 	searchLinkHighlightAll: 'true',
 	searchLinkCaseSensitive: 'true',
 	searchLinkMatchDiacritics: 'default',
@@ -1728,7 +1726,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'write-file': `Add ${this.plugin.settings.selectionBacklinkVisualizeStyle} to file`,
 					'annotation': 'Copy link to annotation',
 					'modify-annotation': 'Edit/delete annotation',
-					'link': 'Copy PDF link / Search on Google Scholar / Paste copied PDF link to selection',
+					'link': 'Copy PDF link / Search on Google Scholar / Paste copied PDF link to selection / Copy URL',
 					'text': 'Copy selected text / Copy annotated text',
 					'search': 'Copy link to search',
 					'settings': 'Customize menu...',
@@ -1755,6 +1753,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 							.then((setting) => {
 								if (section.id === 'action') {
 									setting.setDesc('Available only on macOS.');
+								}
+
+								if (section.id === 'write-file' || section.id === 'modify-annotation') {
+									setting.setDesc(createFragment((el) => {
+										el.appendText('Requires ');
+										el.appendChild(this.createLinkTo('enablePDFEdit', 'PDF editing'));
+										el.appendText(' to be enabled.');
+									}));
 								}
 
 								if (section.id === 'link') {
@@ -2287,8 +2293,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					], setting.descEl);
 				});
 			const toggler = this.getVisibilityToggler(
-				this.addTextSetting('anystylePath', 'anystyle')
+				this.addSetting('anystylePath')
 					.setName('AnyStyle path')
+					.addText((text) => {
+						text.setPlaceholder('anystyle')
+							.setValue(this.plugin.settings.anystylePath)
+							.onChange((value) => {
+								this.plugin.settings.anystylePath = value;
+								this.plugin.saveLocalStorage('anystylePath', value);
+							});
+					})
 					.then((setting) => {
 						(setting.components[0] as TextComponent).inputEl.size = 35;
 						this.renderMarkdown([
@@ -2296,6 +2310,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 							'',
 							'PDF++ extracts the bibliography text from the PDF file for each citation link and uses AnyStyle to convert the extracted text into a structured metadata.',
 							'It works just fine without AnyStyle, but you can further boost the visibility by installing it and providing its path here.',
+							'',
+							'Note: This setting is saved in the [local storage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) instead of `data.json` in the plugin folder.'
 						], setting.descEl);
 					}),
 				() => Platform.isDesktopApp && this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover'
@@ -2428,7 +2444,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Replace the built-in context menu in thumbnails with a custom one')
 			.setDesc('This enables you to copy a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail. Moreover, you will be able to insert, delete, extract pages if PDF modification is enabled.');
 		this.addToggleSetting('thumbnailDrag')
-			.setName('Drag & drop PDF thumbnail to insert link to section')
+			.setName('Drag & drop PDF thumbnail to insert link to page')
 			.then((setting) => {
 				this.renderMarkdown([
 					'Grab a thumbnail image and drop it to a markdown file to insert a page link. Changing this option requires reopening the tabs or reloading the app.',
@@ -2660,13 +2676,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'You can trigger full-text search by opening a link to a PDF file with a search query appended, e.g. `[[file.pdf#search=keyword]]`.',
 				], setting.descEl);
 			});
-		this.addToggleSetting('showCopyLinkToSearchInContextMenu')
-			.setName('Show "Copy link to search" in the right-click menu')
-			.setDesc(createFragment((el) => {
-				el.appendText('Requires the ');
-				el.appendChild(this.createLinkTo('replaceContextMenu'));
-				el.appendText(' option to be enabled.');
-			}));
 		this.addHeading('Search options', 'search-option')
 			.then((setting) => {
 				this.renderMarkdown([

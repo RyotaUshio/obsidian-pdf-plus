@@ -37,7 +37,7 @@ export class BibliographyManager extends PDFPlusComponent {
 
     isEnabled() {
         const viewer = this.child.pdfViewer;
-        return  isNonEmbedLike(viewer)
+        return isNonEmbedLike(viewer)
             || (this.settings.enableBibInCanvas && isCanvas(viewer))
             || (this.settings.enableBibInHoverPopover && isHoverPopover(viewer))
             || (this.settings.enableBibInEmbed && isEmbed(viewer));
@@ -71,7 +71,7 @@ export class BibliographyManager extends PDFPlusComponent {
                 }
                 await Promise.all(promises);
                 resolve();
-            });    
+            });
         });
     }
 
@@ -338,26 +338,12 @@ export class BibliographyDom extends PDFPlusComponent {
             new ButtonComponent(el)
                 .setButtonText('Google Scholar')
                 .onClick(() => {
-                    // Generated the search text by extracting important information from the bibliography text
-                    // Heuristically, this gives better search results than just searching the entire bibliography text.
-                    const parsed = this.bib.destIdToParsedBib.get(this.destId);
-                    let searchText = '';
-                    if (parsed) {
-                        const { author, title, year, 'container-title': containerTitle } = parsed;
-                        if (author) searchText += author.map((a) => a.family).join(' ');
-                        if (title) searchText += ` "${title[0]}"`;
-                        if (containerTitle) searchText += ` ${containerTitle[0]}`;
-                        if (year) searchText += ` ${year}`;
-                    } else if (bibText) {
-                        searchText = bibText;
-                    }
-
-                    if (!searchText) {
+                    const url = this.bib.getGoogleScholarSearchUrlFromDest(this.destId);
+                    if (!url) {
                         new Notice(`${this.plugin.manifest.name}: ${this.bib.initialized ? 'No bibliography found' : 'Still loading the bibliography information. Please try again later.'}`);
                         return;
                     }
-
-                    window.open(`https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=${encodeURIComponent(searchText)}`);
+                    window.open(url);
                 });
             new ExtraButtonComponent(el)
                 .setIcon('lucide-settings')

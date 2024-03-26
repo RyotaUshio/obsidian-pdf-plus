@@ -959,7 +959,7 @@ declare module 'obsidian' {
         embedRegistry: EmbedRegistry;
         openWithDefaultApp(path: string): Promise<void>;
         getObsidianUrl(file: TFile): string;
-        loadLocalStorage(key: string): string | null;
+        loadLocalStorage(key: string): NonNullable<any> | null;
 		// - If the second argument is not provided, it will remove the key from the local storage.
 		// - `value` can be anything that can be serialized to JSON, but be careful that values
 		//   that become false when casted to boolean will cause the key being removed from the local storage.

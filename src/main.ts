@@ -135,6 +135,14 @@ export default class PDFPlus extends Plugin {
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
+		// The AnyStyle path had been saved in data.json until v0.39.3, but now it's saved in the local storage
+		if (!this.settings.anystylePath) {
+			const anystylePathFromLocalStorage = this.loadLocalStorage('anystylePath');
+			if (typeof anystylePathFromLocalStorage === 'string') {
+				this.settings.anystylePath = anystylePathFromLocalStorage;
+			}
+		}
+
 		/** Correct invalid settings */
 		if (this.settings.defaultDisplayTextFormatIndex < 0 || this.settings.defaultDisplayTextFormatIndex >= this.settings.displayTextFormats.length) {
 			this.settings.defaultDisplayTextFormatIndex = 0;
@@ -175,6 +183,16 @@ export default class PDFPlus extends Plugin {
 			delete this.settings.aliasFormat;
 		}
 
+		if (this.settings.hasOwnProperty('showCopyLinkToSearchInContextMenu')) {
+			const searchSectionConfig = this.settings.contextMenuConfig.find(({ id }) => id === 'search');
+			if (searchSectionConfig) {
+				// @ts-ignore
+				searchSectionConfig.visible &&= this.settings.showCopyLinkToSearchInContextMenu;
+			}
+			// @ts-ignore
+			delete this.settings.showCopyLinkToSearchInContextMenu;
+		}
+
 		this.renameSetting('enalbeWriteHighlightToFile', 'enablePDFEdit');
 
 		this.renameSetting('selectToCopyToggleRibbonIcon', 'autoCopyToggleRibbonIcon');
@@ -207,7 +225,21 @@ export default class PDFPlus extends Plugin {
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
+		const settings: any = Object.assign({}, this.settings);
+
+		// AnyStyle path: save to local storage, not to data.json
+		this.saveLocalStorage('anystylePath', settings.anystylePath);
+		delete settings.anystylePath;
+
+		await this.saveData(settings);
+	}
+
+	loadLocalStorage(key: string) {
+		return this.app.loadLocalStorage(this.manifest.id + '-' + key);
+	}
+
+	saveLocalStorage(key: string, value?: any) {
+		this.app.saveLocalStorage(this.manifest.id + '-' + key, value);
 	}
 
 	private registerRibbonIcons() {
