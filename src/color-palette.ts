@@ -399,22 +399,6 @@ export class ColorPalette extends PDFPlusComponent {
             new Notice(`${this.plugin.manifest.name}: Importing local PDFs outside the vault is supported only on the desktop app.`);
             return;
         }
-        // if (url.startsWith('https://') || url.startsWith('http://')) {
-        //     const res = await requestUrl(url);
-        //     if (res.status === 200 && res.headers['content-type'] === 'application/pdf') {
-        //         await this.app.vault.modifyBinary(file, res.arrayBuffer);
-        //         success = true;
-        //     } else {
-        //         new Notice(`${this.plugin.manifest.name}: Import failed because the URL is invalid or the file is not a PDF.`);
-        //     }
-        // } else if (url.startsWith(Platform.resourcePathPrefix)) {
-        //     if (Platform.isDesktopApp) { // `fs` is only availabel in the desktop app
-        //         const buffer = readFileSync(url.slice(Platform.resourcePathPrefix.length));
-        //         await this.app.vault.modifyBinary(file, buffer);
-        //         success = true;
-        //     } else {
-        //         new Notice(`${this.plugin.manifest.name}: Importing local PDFs outside the vault is supported only on the desktop app.`);
-        //     }
 
         const res = await fetch(url);
         if (res.ok) {

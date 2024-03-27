@@ -152,6 +152,7 @@ export interface PDFPlusSettings {
 	selectionProductMenuConfig: ('color' | 'copy-format' | 'display')[];
 	writeFileProductMenuConfig: ('color' | 'copy-format' | 'display')[];
 	annotationProductMenuConfig: ('copy-format' | 'display')[];
+	updateColorPaletteStateFromContextMenu: boolean;
 	executeBuiltinCommandForOutline: boolean;
 	executeBuiltinCommandForZoom: boolean;
 	executeFontSizeAdjusterCommand: boolean;
@@ -392,6 +393,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	selectionProductMenuConfig: ['color', 'copy-format', 'display'],
 	writeFileProductMenuConfig: ['color', 'copy-format', 'display'],
 	annotationProductMenuConfig: ['copy-format', 'display'],
+	updateColorPaletteStateFromContextMenu: true,
 	executeBuiltinCommandForOutline: true,
 	executeBuiltinCommandForZoom: true,
 	executeFontSizeAdjusterCommand: true,
@@ -1810,6 +1812,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addProductMenuSetting('selectionProductMenuConfig', 'Copy link to selection')
 			this.addProductMenuSetting('writeFileProductMenuConfig', `Add ${this.plugin.settings.selectionBacklinkVisualizeStyle} to file`)
 			this.addProductMenuSetting('annotationProductMenuConfig', 'Copy link to annotation')
+			this.addToggleSetting('updateColorPaletteStateFromContextMenu')
+				.setName('Update color palette from context menu')
+				.setDesc('In the context menu, the items (color, link copy format and display text format) set in the color palette are selected by default. If this option is enabled, clicking a menu item will also update the color palette state and hence the default-selected items in the context menu as well.')
 		}
 
 

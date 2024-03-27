@@ -877,6 +877,31 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
             }
         }
 
+        if (this.settings.updateColorPaletteStateFromContextMenu) {
+            const selectedColorName = options.colorName;
+            const actionIndex = this.settings.copyCommands.findIndex(({ template }) => template === options.copyFormat);
+            const displayTextFormatIndex = this.settings.displayTextFormats.findIndex(({ template }) => template === options.displayTextFormat);
+
+            this.palette.setState({
+                selectedColorName,
+                actionIndex,
+                displayTextFormatIndex,
+            });
+
+            // TODO: Refactor color palette
+            if (this.settings.syncColorPaletteItem && this.settings.syncDefaultColorPaletteItem) {
+                this.settings.defaultColorPaletteItemIndex = selectedColorName ? (Object.keys(this.settings.colors).indexOf(selectedColorName) + 1) : 0;
+            }
+            if (this.settings.syncColorPaletteAction && this.settings.syncDefaultColorPaletteAction) {
+                this.settings.defaultColorPaletteActionIndex = actionIndex;
+            }
+            if (this.plugin.settings.syncDisplayTextFormat && this.plugin.settings.syncDefaultDisplayTextFormat) {
+                this.plugin.settings.defaultDisplayTextFormatIndex = displayTextFormatIndex;
+            }
+
+            this.plugin.trigger('color-palette-state-change', { source: this.palette });
+        }
+
         this.clickItemCallback?.(options);
         this.rootMenu.hide();
     }
