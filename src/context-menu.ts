@@ -490,6 +490,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                     PDFPlusProductMenuComponent
                         .create(this, child.palette)
                         .setSection('write-file', `Add ${plugin.settings.selectionBacklinkVisualizeStyle} to file`, 'lucide-edit')
+                        .setShowNoColorButton(false)
                         .addItems(plugin.settings.writeFileProductMenuConfig)
                         .onItemClick(({ copyFormat, displayTextFormat, colorName }) => {
                             lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, { copyFormat, displayTextFormat }, colorName ?? undefined);
@@ -734,10 +735,13 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
     sectionTitle?: string;
     sectionIcon?: string;
 
+    showNoColorButton: boolean;
+
     protected constructor(rootMenu: Menu, palette: ColorPalette) {
         super(palette.plugin);
         this.rootMenu = rootMenu;
         this.palette = palette;
+        this.showNoColorButton = this.settings.noColorButtonInColorPalette;
     }
 
     static create(rootMenu: Menu, palette: ColorPalette) {
@@ -746,6 +750,11 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
 
     then(callback: (menuComponent: this) => any) {
         callback(this);
+        return this;
+    }
+
+    setShowNoColorButton(showNoColorButton: boolean) {
+        this.showNoColorButton = showNoColorButton;
         return this;
     }
 
@@ -798,7 +807,7 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
                 .indexOf(selectedColorName.toLowerCase())
             : -1;
 
-        for (let i = this.settings.noColorButtonInColorPalette ? -1 : 0; i < colorNames.length; i++) {
+        for (let i = this.showNoColorButton ? -1 : 0; i < colorNames.length; i++) {
             menu.addItem((item) => {
                 item.setTitle(i >= 0 ? colorNames[i] : 'Don\'t specify color')
                     .onClick(() => {
