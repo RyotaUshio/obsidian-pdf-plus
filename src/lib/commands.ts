@@ -1,4 +1,5 @@
-import { Command, MarkdownView, Notice, TFile, normalizePath, setIcon } from 'obsidian';
+import { Command, FileSystemAdapter, MarkdownView, Notice, Platform, TFile, normalizePath, setIcon } from 'obsidian';
+import { exec } from 'child_process';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, ExternalPDFModal } from 'modals';
@@ -12,16 +13,9 @@ import { SidebarView } from 'pdfjs-enums';
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
     commands: Record<string, Command>;
-    copyCommandIds: string[];
 
     constructor(...args: ConstructorParameters<typeof PDFPlusLibSubmodule>) {
         super(...args);
-
-        this.copyCommandIds = [
-            'copy-link-to-selection',
-            'copy-auto-paste-link-to-selection',
-            'copy-link-to-page-view',
-        ]
 
         const commandArray: Command[] = [
             {
@@ -218,12 +212,6 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             return name.slice(this.plugin.manifest.name.length + 2);
         }
         return name;
-    }
-
-    listNonCopyCommandNames() {
-        return Object.keys(this.commands)
-            .filter((id) => !this.copyCommandIds.includes(id))
-            .map((id) => this.stripCommandNamePrefix(this.commands[id].name));
     }
 
     copyLink(checking: boolean, autoPaste: boolean = false) {
@@ -945,5 +933,46 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
     createDummyForExternalPDF() {
         new ExternalPDFModal(this.plugin).open();
+    }
+
+    ocr(checking: boolean) {
+        if (!Platform.isDesktopApp) return;
+
+        const adapter = this.app.vault.adapter;
+        if (!(adapter instanceof FileSystemAdapter)) return;
+
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== 'pdf') return;
+
+        if (!checking) {
+            const absPath = adapter.getFullPath(file.path);
+            const options = [
+                '--output-type', 'pdf',
+                '-l', 'jpn+eng',
+                '--skip-text'
+            ];
+
+            const ocrmypdfPath = '/usr/local/bin/ocrmypdf';
+            const tesseractPath = '/usr/local/bin/tesseract';
+            const env = Object.assign({}, process.env);
+            env.PATH += ':' + tesseractPath.split('/').slice(0, -1).join('/');
+            const cmd = `${ocrmypdfPath} ${options.join(' ')} "${absPath}" "${absPath}"`;
+
+            const notice = new Notice(`${this.plugin.manifest.name}: Processing...`, 0);
+
+            exec(cmd, { env }, (err) => {
+                notice.hide();
+
+                if (!err) {
+                    new Notice(`${this.plugin.manifest.name}: OCR successfully completed.`)
+                    return;
+                }
+
+                new Notice(`${this.plugin.manifest.name}: OCR failed. See the developer console for the details.`);
+                console.error(err);
+            });
+        }
+
+        return true;
     }
 }

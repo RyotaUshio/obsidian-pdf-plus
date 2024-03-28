@@ -1,9 +1,9 @@
-import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRenderer, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
+import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRenderer, Modifier, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
-import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierNameInPlatform, isHexString } from 'utils';
+import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
 import { ScrollMode, SpreadMode } from 'pdfjs-enums';
 
@@ -147,11 +147,12 @@ export interface PDFPlusSettings {
 	pdfLinkColor: HexString;
 	pdfLinkBorder: boolean;
 	replaceContextMenu: boolean;
-	showContextMenuOnMouseUpIf: 'always' | 'mod' | 'never';
+	showContextMenuOnMouseUpIf: 'always' | 'never' | Modifier;
 	contextMenuConfig: { id: string, visible: boolean }[];
 	selectionProductMenuConfig: ('color' | 'copy-format' | 'display')[];
 	writeFileProductMenuConfig: ('color' | 'copy-format' | 'display')[];
 	annotationProductMenuConfig: ('copy-format' | 'display')[];
+	updateColorPaletteStateFromContextMenu: boolean;
 	executeBuiltinCommandForOutline: boolean;
 	executeBuiltinCommandForZoom: boolean;
 	executeFontSizeAdjusterCommand: boolean;
@@ -377,7 +378,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	pdfLinkColor: '#04a802',
 	pdfLinkBorder: false,
 	replaceContextMenu: true,
-	showContextMenuOnMouseUpIf: 'mod',
+	showContextMenuOnMouseUpIf: 'Mod',
 	contextMenuConfig: [
 		{ id: 'action', visible: true },
 		{ id: 'selection', visible: true },
@@ -387,11 +388,13 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		{ id: 'link', visible: true },
 		{ id: 'text', visible: true },
 		{ id: 'search', visible: true },
+		{ id: 'page', visible: true },
 		{ id: 'settings', visible: true },
 	],
 	selectionProductMenuConfig: ['color', 'copy-format', 'display'],
 	writeFileProductMenuConfig: ['color', 'copy-format', 'display'],
 	annotationProductMenuConfig: ['copy-format', 'display'],
+	updateColorPaletteStateFromContextMenu: true,
 	executeBuiltinCommandForOutline: true,
 	executeBuiltinCommandForZoom: true,
 	executeFontSizeAdjusterCommand: true,
@@ -1146,8 +1149,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		setting.addButton((button) => {
 			button.setButtonText('Open hotkeys settings')
 				.onClick(() => {
-					const tab = this.app.setting.openTabById('hotkeys');
-					tab.setQuery(query ?? this.plugin.manifest.id);
+					this.plugin.openHotkeySettingTab(query);
 				});
 		});
 	}
@@ -1703,9 +1705,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Display text format')
 				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
 		} else {
+			const modDict = getModifierDictInPlatform();
 			this.addDropdownSetting('showContextMenuOnMouseUpIf', {
 				'always': 'Always',
-				'mod': `${getModifierNameInPlatform('Mod')} key is pressed`,
+				...Object.fromEntries(Object.entries(modDict).map(([modifier, name]) => {
+					return [modifier, `${name} key is pressed`];
+				})),
 				'never': 'Never',
 			})
 				.setName('Show the context menu right after selecting text when...')
@@ -1729,6 +1734,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'link': 'Copy PDF link / Search on Google Scholar / Paste copied PDF link to selection / Copy URL',
 					'text': 'Copy selected text / Copy annotated text',
 					'search': 'Copy link to search',
+					'page': 'Copy link to page',
 					'settings': 'Customize menu...',
 				};
 
@@ -1754,17 +1760,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 								if (section.id === 'action') {
 									setting.setDesc('Available only on macOS.');
 								}
-
-								if (section.id === 'write-file' || section.id === 'modify-annotation') {
+								else if (section.id === 'write-file' || section.id === 'modify-annotation') {
 									setting.setDesc(createFragment((el) => {
 										el.appendText('Requires ');
 										el.appendChild(this.createLinkTo('enablePDFEdit', 'PDF editing'));
 										el.appendText(' to be enabled.');
 									}));
 								}
-
-								if (section.id === 'link') {
+								else if (section.id === 'link') {
 									setting.setDesc('"Search on Google Scholar": Available when right-clicking citation links in PDFs.')
+								}
+								else if (section.id === 'page') {
+									setting.setDesc('Available when right-clicking with no text selected.');
 								}
 							})
 						// .then((setting) => {
@@ -1808,6 +1815,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addProductMenuSetting('selectionProductMenuConfig', 'Copy link to selection')
 			this.addProductMenuSetting('writeFileProductMenuConfig', `Add ${this.plugin.settings.selectionBacklinkVisualizeStyle} to file`)
 			this.addProductMenuSetting('annotationProductMenuConfig', 'Copy link to annotation')
+			this.addToggleSetting('updateColorPaletteStateFromContextMenu')
+				.setName('Update color palette from context menu')
+				.setDesc('In the context menu, the items (color, link copy format and display text format) set in the color palette are selected by default. If this option is enabled, clicking a menu item will also update the color palette state and hence the default-selected items in the context menu as well.')
 		}
 
 

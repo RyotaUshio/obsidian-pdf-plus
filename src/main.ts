@@ -1,4 +1,4 @@
-import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
@@ -127,8 +127,9 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private checkVersion() {
-		if (requireApiVersion('1.5.12')) {
-			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian v1.5.12 or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new).`);
+		const untestedVersion = '1.5.12';
+		if (requireApiVersion(untestedVersion)) {
+			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian ${untestedVersion} or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose).`);
 		}
 	}
 
@@ -193,10 +194,17 @@ export default class PDFPlus extends Plugin {
 			delete this.settings.showCopyLinkToSearchInContextMenu;
 		}
 
+		// @ts-ignore
+		if (this.settings.showContextMenuOnMouseUpIf === 'mod') {
+			this.settings.showContextMenuOnMouseUpIf = 'Mod';
+		}
+
 		this.renameSetting('enalbeWriteHighlightToFile', 'enablePDFEdit');
 
 		this.renameSetting('selectToCopyToggleRibbonIcon', 'autoCopyToggleRibbonIcon');
 		this.renameCommand('pdf-plus:toggle-select-to-copy', `${this.manifest.id}:toggle-auto-copy`);
+
+		this.loadContextMenuConfig();
 	}
 
 	private renameSetting(oldId: string, newId: keyof PDFPlusSettings) {
@@ -215,6 +223,17 @@ export default class PDFPlus extends Plugin {
 			hotkeyManager.removeHotkeys(oldId);
 			hotkeyManager.setHotkeys(newId, oldHotkeys);
 		}
+	}
+
+	private loadContextMenuConfig() {
+		const defaultConfig = DEFAULT_SETTINGS.contextMenuConfig;
+		const config: typeof defaultConfig = [];
+		for (const defaultSectionConfig of defaultConfig) {
+			const existingSectionConfig = this.settings.contextMenuConfig.find(({ id }) => id === defaultSectionConfig.id);
+			config.push(existingSectionConfig ?? defaultSectionConfig);
+		}
+		this.settings.contextMenuConfig.length = 0;
+		this.settings.contextMenuConfig.push(...config);
 	}
 
 	validateAutoFocusAndAutoPasteSettings() {
@@ -611,6 +630,13 @@ export default class PDFPlus extends Plugin {
 	openSettingTab(): PDFPlusSettingTab {
 		this.app.setting.open();
 		return this.app.setting.openTabById(this.manifest.id);
+	}
+
+	openHotkeySettingTab(query?: string): SettingTab {
+		this.app.setting.open();
+		const tab = this.app.setting.openTabById('hotkeys');
+		tab.setQuery(query ?? this.manifest.id);
+		return tab;
 	}
 
 	getAnyStyleInputDir() {

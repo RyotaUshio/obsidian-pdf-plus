@@ -88,6 +88,8 @@ export function getOffsetInTextLayerNode(textLayerNode: HTMLElement, node: Node,
     return offset;
 }
 
+export const MODIFIERS: Modifier[] = ['Mod', 'Ctrl', 'Meta', 'Shift', 'Alt'];
+
 export function getModifierNameInPlatform(mod: Modifier): string {
     if (mod === 'Mod') {
         return Platform.isMacOS || Platform.isIosApp ? 'Command' : 'Ctrl';
@@ -102,6 +104,23 @@ export function getModifierNameInPlatform(mod: Modifier): string {
         return Platform.isMacOS || Platform.isIosApp ? 'Command' : Platform.isWin ? 'Win' : 'Meta';
     }
     return 'Ctrl';
+}
+
+export function getModifierDictInPlatform(): Partial<Record<Modifier, string>> {
+    const dict: Partial<Record<Modifier, string>> = {};
+    const names = new Set<string>;
+    for (const modifier of MODIFIERS) {
+        const name = getModifierNameInPlatform(modifier);
+        if (!names.has(name)) {
+            names.add(name);
+            dict[modifier] = name;
+        }
+    }
+    return dict
+}
+
+export function isModifierName(name: string): name is Modifier {
+    return (MODIFIERS as string[]).includes(name);
 }
 
 /** Returns the platform-specific path separator. */

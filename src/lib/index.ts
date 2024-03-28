@@ -650,6 +650,10 @@ export class PDFPlusLib {
         return this.getPage(true)?.annotationLayer?.annotationLayer.getAnnotation(id);
     }
 
+    getTextContentItems() {
+        return this.getPage(true)?.textLayer?.textContentItems;
+    }
+
     getPDFDocument(activeOnly: boolean = false) {
         return this.getPDFViewer(activeOnly)?.pdfDocument;
     }

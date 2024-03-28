@@ -490,6 +490,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                     PDFPlusProductMenuComponent
                         .create(this, child.palette)
                         .setSection('write-file', `Add ${plugin.settings.selectionBacklinkVisualizeStyle} to file`, 'lucide-edit')
+                        .setShowNoColorButton(false)
                         .addItems(plugin.settings.writeFileProductMenuConfig)
                         .onItemClick(({ copyFormat, displayTextFormat, colorName }) => {
                             lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, { copyFormat, displayTextFormat }, colorName ?? undefined);
@@ -700,6 +701,20 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
             });
         }
 
+        if (!this.items.length && isVisible('page')) {
+            this.addItem((item) => {
+                item.setSection('page')
+                    .setTitle('Copy link to page')
+                    .setIcon('lucide-copy')
+                    .onClick((evt) => {
+                        const link = child.getMarkdownLink(`#page=${pageNumber}`, child.getPageLinkAlias(pageNumber));
+                        evt.win.navigator.clipboard.writeText(link);
+                        const file = child.file;
+                        if (file) plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'XYZ', null, null, null] };
+                    });
+            });
+        }
+
         if (this.items.length && isVisible('settings')) {
             this.addItem((item) => {
                 item.setSection('settings')
@@ -734,10 +749,13 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
     sectionTitle?: string;
     sectionIcon?: string;
 
+    showNoColorButton: boolean;
+
     protected constructor(rootMenu: Menu, palette: ColorPalette) {
         super(palette.plugin);
         this.rootMenu = rootMenu;
         this.palette = palette;
+        this.showNoColorButton = this.settings.noColorButtonInColorPalette;
     }
 
     static create(rootMenu: Menu, palette: ColorPalette) {
@@ -746,6 +764,11 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
 
     then(callback: (menuComponent: this) => any) {
         callback(this);
+        return this;
+    }
+
+    setShowNoColorButton(showNoColorButton: boolean) {
+        this.showNoColorButton = showNoColorButton;
         return this;
     }
 
@@ -798,7 +821,7 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
                 .indexOf(selectedColorName.toLowerCase())
             : -1;
 
-        for (let i = this.settings.noColorButtonInColorPalette ? -1 : 0; i < colorNames.length; i++) {
+        for (let i = this.showNoColorButton ? -1 : 0; i < colorNames.length; i++) {
             menu.addItem((item) => {
                 item.setTitle(i >= 0 ? colorNames[i] : 'Don\'t specify color')
                     .onClick(() => {
@@ -875,6 +898,31 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
             } else if (this.itemToDisplayTextFormat.has(item)) {
                 options.displayTextFormat = this.itemToDisplayTextFormat.get(item)!;
             }
+        }
+
+        if (this.settings.updateColorPaletteStateFromContextMenu) {
+            const selectedColorName = options.colorName;
+            const actionIndex = this.settings.copyCommands.findIndex(({ template }) => template === options.copyFormat);
+            const displayTextFormatIndex = this.settings.displayTextFormats.findIndex(({ template }) => template === options.displayTextFormat);
+
+            this.palette.setState({
+                selectedColorName,
+                actionIndex,
+                displayTextFormatIndex,
+            });
+
+            // TODO: Refactor color palette
+            if (this.settings.syncColorPaletteItem && this.settings.syncDefaultColorPaletteItem) {
+                this.settings.defaultColorPaletteItemIndex = selectedColorName ? (Object.keys(this.settings.colors).indexOf(selectedColorName) + 1) : 0;
+            }
+            if (this.settings.syncColorPaletteAction && this.settings.syncDefaultColorPaletteAction) {
+                this.settings.defaultColorPaletteActionIndex = actionIndex;
+            }
+            if (this.plugin.settings.syncDisplayTextFormat && this.plugin.settings.syncDefaultDisplayTextFormat) {
+                this.plugin.settings.defaultDisplayTextFormatIndex = displayTextFormatIndex;
+            }
+
+            this.plugin.trigger('color-palette-state-change', { source: this.palette });
         }
 
         this.clickItemCallback?.(options);
