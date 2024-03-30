@@ -501,7 +501,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInHoverPopover: false,
 	enableBibInCanvas: true,
 	removeWhitespaceBetweenCJKChars: true,
-	textFilter: '';
 };
 
 
