@@ -7,7 +7,7 @@
 import { Notice, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { isAncestorOf, toSingleLine } from 'utils';
+import { isAncestorOf } from 'utils';
 import { PDFOutlineTreeNode, PDFOutlineViewer, PDFViewerChild } from 'typings';
 import { PDFOutlines } from 'lib/outlines';
 
@@ -20,7 +20,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
         promises.push((async () => {
             const textGenerator = await lib.copyLink.getTextToCopyForOutlineItemDynamic(child, file, item);
 
-            const itemTitle = toSingleLine(item.item.title);
+            const itemTitle = lib.toSingleLine(item.item.title);
             const title = itemTitle
                 ? `${itemTitle.length <= 40 ? itemTitle : itemTitle.slice(0, 39).trim() + '…'}`
                 : 'PDF section';

@@ -2,7 +2,6 @@ import { RGB } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 import { PDFPlusLibSubmodule } from 'lib/submodule';
-import { toSingleLine } from 'utils';
 import { Rect, TextContentItem } from 'typings';
 
 
@@ -53,7 +52,7 @@ export class HighlightExtractor extends PDFPlusLibSubmodule {
                 lines.push(this.getTextByRect(items as TextContentItem[], rect as Rect));
             }
 
-            const text = toSingleLine(lines.join('\n'));
+            const text = this.lib.toSingleLine(lines.join('\n'));
 
             const rgb = annot.color ? { r: annot.color[0], g: annot.color[1], b: annot.color[2] } as RGB : null;
 

@@ -897,7 +897,7 @@ export class PDFPlusLib {
 
     getSelectedText(textContentItems: TextContentItem[], beginIndex: number, beginOffset: number, endIndex: number, endOffset: number) {
         if (beginIndex === endIndex) {
-            return toSingleLine(textContentItems[beginIndex].str.slice(beginOffset, endOffset));
+            return this.toSingleLine(textContentItems[beginIndex].str.slice(beginOffset, endOffset));
         }
         const texts = [];
         texts.push(textContentItems[beginIndex].str.slice(beginOffset));
@@ -905,7 +905,7 @@ export class PDFPlusLib {
             texts.push(textContentItems[i].str);
         }
         texts.push(textContentItems[endIndex].str.slice(0, endOffset));
-        return toSingleLine(texts.join('\n'));
+        return this.toSingleLine(texts.join('\n'));
     }
 
     isEditable(child: PDFViewerChild) {
@@ -938,5 +938,10 @@ export class PDFPlusLib {
             pdfViewer.pdfPlusCallbacksOnDocumentLoaded = [];
         }
         pdfViewer.pdfPlusCallbacksOnDocumentLoaded.push(callback);
+    }
+
+    /** Process (possibly) multiline strings cleverly to convert it into a single line string. */
+    toSingleLine(str: string): string {
+        return toSingleLine(str, this.plugin.settings.removeWhitespaceBetweenCJKChars);
     }
 }

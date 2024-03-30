@@ -2,7 +2,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian'
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
-import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerNode, paramsToSubpath, parsePDFSubpath, toSingleLine } from 'utils';
+import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerNode, paramsToSubpath, parsePDFSubpath } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
 
@@ -89,7 +89,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             page,
             pageCount: child.pdfViewer.pagesCount,
             pageLabel: child.getPage(page).pageLabel ?? ('' + page),
-            text: toSingleLine(selection.toString()),
+            text: this.lib.toSingleLine(selection.toString()),
         };
     }
 
@@ -331,7 +331,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         // which will clear the selection.
         const selection = activeWindow.getSelection();
         if (!selection) return false;
-        const text = toSingleLine(selection.toString());
+        const text = this.lib.toSingleLine(selection.toString());
         if (!text) return false;
 
         if (!checking) {

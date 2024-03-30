@@ -244,7 +244,7 @@ export function isAncestorOf<TreeNode extends { children: TreeNode[], parent: Tr
     return false;
 }
 
-function getCJKRegexp() {
+export function getCJKRegexp() {
     let pattern = ''
 
     // CJK Unified Ideographs
@@ -279,13 +279,16 @@ function getCJKRegexp() {
 }
 
 /** Process (possibly) multiline strings cleverly to convert it into a single line string. */
-export function toSingleLine(str: string): string {
+export function toSingleLine(str: string, removeWhitespaceBetweenCJKChars = false): string {
+    const cjkRegexp = getCJKRegexp();
     str = str.replace(/(.?)([\r\n]+)(.?)/g, (match, prev, br, next) => {
-        const regexp = getCJKRegexp();
-        if (regexp.test(prev) && regexp.test(next)) return prev + next;
+        if (cjkRegexp.test(prev) && cjkRegexp.test(next)) return prev + next;
         if (prev === '-' && next.match(/[a-zA-Z]/)) return next;
         return prev + ' ' + next;
     });
+    if (removeWhitespaceBetweenCJKChars) {
+        str = str.replace(new RegExp(`${cjkRegexp.source}( )${cjkRegexp.source}`, 'g'), '');
+    }
     return window.pdfjsViewer.removeNullCharacters(window.pdfjsLib.normalizeUnicode(str));
 }
 

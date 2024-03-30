@@ -3,7 +3,6 @@ import { Menu, MenuItem, Notice, Platform, TFile } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import { PDFOutlineMoveModal, PDFOutlineTitleModal, PDFComposerModal, PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals';
-import { toSingleLine } from 'utils';
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
@@ -153,7 +152,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
 
     if (child.pdfViewer.isEmbed) evt.preventDefault();
 
-    const itemTitle = toSingleLine(item.item.title);
+    const itemTitle = lib.toSingleLine(item.item.title);
     const title = itemTitle
         ? `Copy link to "${itemTitle.length <= 40 ? itemTitle : itemTitle.slice(0, 39).trim() + '…'}"`
         : 'Copy link to section';
@@ -436,7 +435,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
         if (!pageAndSelection) return;
         // selection is undefined when the selection spans multiple pages
         const { page: pageNumber, selection } = pageAndSelection;
-        const selectedText = toSingleLine(selectionObj?.toString() ?? '');
+        const selectedText = lib.toSingleLine(selectionObj?.toString() ?? '');
 
         const isVisible = (id: string) => {
             return this.settings.contextMenuConfig.find((section) => section.id === id)?.visible;
