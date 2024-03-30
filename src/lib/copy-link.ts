@@ -325,7 +325,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     }
 
     // TODO: A better, more concise function name 😅
-    writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string}, colorName?: string, autoPaste?: boolean): boolean {
+    writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, colorName?: string, autoPaste?: boolean): boolean {
         // Get and store the selected text before writing file because
         // the file modification will cause the PDF viewer to be reloaded,
         // which will clear the selection.
@@ -753,7 +753,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             const scrollInfo = editor.getScrollInfo();
             if (coords.top < scrollInfo.top || coords.top > scrollInfo.top + scrollInfo.clientHeight) {
                 view.currentMode.applyScroll(line);
-            }    
+            }
         }
     }
 
@@ -801,8 +801,15 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     async autoFocusOrAutoPaste(evaluated: string, autoPaste?: boolean, palette?: ColorPalette) {
         if (autoPaste || this.settings.autoPaste) {
             const success = await this.autoPaste(evaluated);
-            if (success) palette?.setStatus('Link copied & pasted', this.statusDurationMs);
-            else palette?.setStatus('Link copied but paste target not identified', this.statusDurationMs);
+            if (success) {
+                palette?.setStatus('Link copied & pasted', this.statusDurationMs);
+                if (!this.settings.focusEditorAfterAutoPaste && this.settings.clearSelectionAfterAutoPaste) {
+                    const selection = activeWindow.getSelection();
+                    if (selection && this.lib.copyLink.getPageAndTextRangeFromSelection(selection)) {
+                        selection.empty();
+                    }
+                }
+            } else palette?.setStatus('Link copied but paste target not identified', this.statusDurationMs);
         } else {
             if (this.settings.autoFocus) {
                 const success = await this.autoFocus();
