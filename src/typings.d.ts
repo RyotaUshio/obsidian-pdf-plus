@@ -960,10 +960,13 @@ declare module 'obsidian' {
         openWithDefaultApp(path: string): Promise<void>;
         getObsidianUrl(file: TFile): string;
         loadLocalStorage(key: string): NonNullable<any> | null;
-		// - If the second argument is not provided, it will remove the key from the local storage.
-		// - `value` can be anything that can be serialized to JSON, but be careful that values
-		//   that become false when casted to boolean will cause the key being removed from the local storage.
-		saveLocalStorage(key: string, value?: any): void;
+        /**
+         * @param key 
+         * @param value It can be anything that can be serialized to JSON, 
+         * but be careful that values that become false when casted to boolean
+         * will cause the key being removed from the local storage.
+         */
+        saveLocalStorage(key: string, value?: any): void;
     }
 
     interface FileManager {

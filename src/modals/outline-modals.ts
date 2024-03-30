@@ -4,18 +4,28 @@ import { PDFPlusModal } from 'modals';
 import { Setting, FuzzySuggestModal } from 'obsidian';
 
 
+interface OutlineInfo {
+    title: string;
+}
+
+
 export class PDFOutlineTitleModal extends PDFPlusModal {
-    next: ((title: string) => any)[] = [];
-    title: string | null = null; // the title of an outline item
+    next: ((answer: OutlineInfo) => any)[] = [];
     modalTitle: string;
     submitted: boolean = false;
+
+    title: string | null = null; // the title of an outline item
 
     constructor(plugin: PDFPlus, modalTitle: string) {
         super(plugin);
         this.modalTitle = modalTitle;
 
-        this.scope.register([], 'Enter', () => {
-            this.submitAndClose();
+        // Don't use `Scope` or `keydown` because they will cause the modal to be closed
+        // when hitting Enter with IME on
+        this.component.registerDomEvent(this.modalEl.doc, 'keypress', (evt) => {
+            if (evt.key === 'Enter') {
+                this.submitAndClose();
+            }
         });
     }
 
@@ -58,13 +68,13 @@ export class PDFOutlineTitleModal extends PDFPlusModal {
             });
     }
 
-    askTitle() {
+    ask() {
         this.open();
         return this;
     }
 
-    then(callback: (title: string) => any) {
-        this.submitted && this.title !== null ? callback(this.title) : this.next.push(callback);
+    then(callback: (answer: OutlineInfo) => any) {
+        this.submitted && this.title !== null ? callback({ title: this.title }) : this.next.push(callback);
         return this;
     }
 
@@ -79,7 +89,7 @@ export class PDFOutlineTitleModal extends PDFPlusModal {
 
     onClose() {
         if (this.submitted && this.title !== null) {
-            this.next.forEach((callback) => callback(this.title!));
+            this.next.forEach((callback) => callback({ title: this.title! }));
         }
     }
 }

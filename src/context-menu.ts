@@ -185,8 +185,8 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                 .setIcon('lucide-plus')
                 .onClick(() => {
                     new PDFOutlineTitleModal(plugin, 'Add subitem to outline')
-                        .askTitle()
-                        .then(async (title) => {
+                        .ask()
+                        .then(async ({ title }) => {
                             const view = lib.getPDFViewFromChild(child);
                             if (view) {
                                 const state = view.getState();
@@ -213,8 +213,8 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                     .onClick(() => {
                         new PDFOutlineTitleModal(plugin, 'Rename outline item')
                             .presetTitle(item.item.title)
-                            .askTitle()
-                            .then(async (title) => {
+                            .ask()
+                            .then(async ({ title }) => {
                                 await PDFOutlines.findAndProcessOutlineItem(item, (outlineItem) => {
                                     outlineItem.title = title;
                                 }, file, plugin);
@@ -363,8 +363,8 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
                     .setIcon('lucide-plus')
                     .onClick(() => {
                         new PDFOutlineTitleModal(plugin, 'Add item to outline')
-                            .askTitle()
-                            .then(async (title) => {
+                            .ask()
+                            .then(async ({ title }) => {
                                 const view = lib.getPDFViewFromChild(child);
                                 if (view) {
                                     const state = view.getState();
@@ -414,6 +414,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
     constructor(plugin: PDFPlus, child: PDFViewerChild) {
         super(plugin);
         this.child = child;
+        this.setUseNativeMenu(false);
     }
 
     static async fromMouseEvent(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {
