@@ -2779,7 +2779,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 		this.addToggleSetting('removeWhitespaceBetweenCJKChars')
 			.setName('Remove half-width whitespace between two CJK characters when copying text')
-			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optimal character recognition). Enable this option to remove it when copying links to text selections.');
+			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optical character recognition). Enable this option to remove it when copying links to text selections.');
 		this.addToggleSetting('vim')
 			.setName('Enable Vim key bindings (experimental)')
 			.then((setting) => {
