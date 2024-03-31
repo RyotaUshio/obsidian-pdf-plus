@@ -257,6 +257,7 @@ export interface PDFPlusSettings {
 	enableBibInHoverPopover: boolean;
 	enableBibInCanvas: boolean;
 	removeWhitespaceBetweenCJKChars: boolean;
+	vim: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -501,6 +502,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInHoverPopover: false,
 	enableBibInCanvas: true,
 	removeWhitespaceBetweenCJKChars: true,
+	vim: false,
 };
 
 
@@ -2776,8 +2778,23 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				], setting.descEl);
 			});
 		this.addToggleSetting('removeWhitespaceBetweenCJKChars')
-			.setName('Remove a half-width whitespace between two CJK characters when copying text')
+			.setName('Remove half-width whitespace between two CJK characters when copying text')
 			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optimal character recognition). Enable this option to remove it when copying links to text selections.');
+		this.addToggleSetting('vim')
+			.setName('Enable Vim key bindings (experimental)')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Reopen the PDF viewers after changing this option. Tracked at [this GitHub issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/119).',
+
+					'- `j`: Go to next page',
+					'- `k`: Go to previous page',
+					'- `gg`: Go to first page',
+					'- `Shift`+`G`: Go to last page',
+					'- `+` (`Shift`+`=`): Zoom in',
+					'- `-`: Zoom out',
+					'- `=`: Reset zoom',
+				], setting.descEl);
+			});
 
 
 		this.addHeading('Style settings', 'style-settings', 'lucide-settings-2')

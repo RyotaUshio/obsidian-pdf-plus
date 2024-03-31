@@ -28,8 +28,15 @@ export function hookInternalLinkMouseEventHandlers(app: App, containerEl: HTMLEl
     });
 }
 
+// Taken from app.js
 export function isMouseEventExternal(evt: MouseEvent, el: HTMLElement) {
     return !evt.relatedTarget || (evt.relatedTarget instanceof Element && !el.contains(evt.relatedTarget));
+}
+
+// Taken from app.js
+export function isTypable(el: Node) {
+    return el.nodeName === 'INPUT'
+        || (el.instanceOf(HTMLElement) && el.contentEditable === 'true');
 }
 
 export function getEventCoords(evt: MouseEvent | TouchEvent) {

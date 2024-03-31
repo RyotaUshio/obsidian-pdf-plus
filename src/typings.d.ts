@@ -11,6 +11,7 @@ import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { ColorPalette } from 'color-palette';
 import { ScrollMode, SidebarView, SpreadMode } from 'pdfjs-enums';
 import { BibliographyManager } from 'bib';
+import { VimBindings } from 'vim';
 
 
 declare global {
@@ -57,6 +58,7 @@ interface PDFViewerComponent extends Component {
     // Added by this plugin //
     //////////////////////////
     visualizer?: PDFViewerBacklinkVisualizer;
+    vim?: VimBindings;
 }
 
 /**
@@ -176,6 +178,7 @@ interface ObsidianViewer {
     applySubpath(subpath: string): void;
     zoomIn(): void;
     zoomOut(): void;
+    zoomReset(): void;
     open(options: any): Promise<void>;
     //////////////////////////
     // Added by this plugin //
@@ -381,6 +384,8 @@ interface PDFViewer {
     eventBus: EventBus;
     getPageView(page: number): PDFPageView;
     scrollPageIntoView(params: { pageNumber: number, destArray?: [number, { name: string }, ...number[]] | null, allowNegativeOffset?: boolean, ignoreDestinationZoom?: boolean }): void;
+    previousPage(): boolean;
+    nextPage(): boolean;
 }
 
 interface PDFPageView {
