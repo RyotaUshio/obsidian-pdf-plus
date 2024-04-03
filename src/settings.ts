@@ -2131,14 +2131,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						}
 					}
 				});
-			if (this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor') {
+			this.showConditionally(
 				this.addToggleSetting('closeHoverEditorWhenLostFocus')
 					.setName('Close Hover Editor when it loses focus')
-					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.')
-			} else if (isSidebarType(this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened)) {
-				this.addToggleSetting('closeSidebarWhenLostFocus')
-					.setName('Auto-hide sidebar when it loses focus');
-			}
+					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.'),
+					() => this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor'
+			);
+			this.addToggleSetting('closeSidebarWhenLostFocus')
+				.setName('Auto-hide sidebar when it loses focus after auto-pasting')
+				.setDesc('After auto-pasting into a markdown file opened in the left or right sidebar, the sidebar will be automatically collapsed once it loses focus.')
+
 			this.addToggleSetting('openAutoFocusTargetInEditingView')
 				.setName('Always open in editing view')
 				.setDesc('This option can be useful especially when you set the previous option to "Hover Editor".');
