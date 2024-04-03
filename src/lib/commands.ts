@@ -78,6 +78,18 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 name: 'Zoom out',
                 checkCallback: (checking) => this.zoom(checking, false)
             }, {
+                id: 'adapt-to-theme',
+                name: 'Adapt to theme',
+                checkCallback: (checking) => this.toggleAdaptToTheme(checking, true)
+            }, {
+                id: 'not-adapt-to-theme',
+                name: 'Don\'t adapt to theme',
+                checkCallback: (checking) => this.toggleAdaptToTheme(checking, false)
+            }, {
+                id: 'toggle-adapt-to-theme',
+                name: 'Toggle "adapt to theme"',
+                checkCallback: (checking) => this.toggleAdaptToTheme(checking)
+            }, {
                 id: 'go-to-page',
                 name: 'Go to page',
                 checkCallback: (checking) => this.focusAndSelectPageNumberEl(checking)
@@ -422,6 +434,26 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         }
 
         return false;
+    }
+
+    toggleAdaptToTheme(checking: boolean, enable?: boolean) {
+        const child = this.lib.getPDFViewerChild(true);
+        if (!child) return false;
+
+        const enabledNow = !!this.app.loadLocalStorage('pdfjs-is-themed');
+        if (typeof enable === 'boolean') {
+            if ((enable && enabledNow) || (!enable && !enabledNow)) {
+                return false;
+            }
+        }
+        enable = enable ?? !enabledNow;
+
+        if (!checking) {
+            this.app.saveLocalStorage('pdfjs-is-themed', enable ? 'true' : null);
+            child.onCSSChange();
+        }
+
+        return true;
     }
 
     focusAndSelectPageNumberEl(checking: boolean) {

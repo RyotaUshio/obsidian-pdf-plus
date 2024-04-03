@@ -365,9 +365,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
          * - and it can handle `search` parameter.
          */
         applySubpath(old) {
-            return function (subpath?: string) {
-                const self = this as PDFViewerChild;
-
+            return function (this: PDFViewerChild, subpath?: string) {
                 const _parseInt = (num: string) => {
                     if (!num) return null;
                     const parsed = parseInt(num);
@@ -381,10 +379,10 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 };
 
                 if (subpath) {
-                    const pdfViewer = self.pdfViewer;
+                    const pdfViewer = this.pdfViewer;
                     const params = new URLSearchParams(subpath.startsWith('#') ? subpath.substring(1) : subpath);
 
-                    if (params.has('search') && self.findBar) {
+                    if (params.has('search') && this.findBar) {
                         const query = params.get('search')!
 
                         const settings: Partial<PDFSearchSettings> = {};
@@ -416,7 +414,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         parseSearchSettings('matchDiacritics');
                         parseSearchSettings('entireWord');
 
-                        setTimeout(() => lib.search(self.findBar, query, settings));
+                        setTimeout(() => lib.search(this.findBar, query, settings));
                         return;
                     }
 
@@ -452,10 +450,14 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                     : [page - 1, { name: 'XYZ' }, left, top, zoom];
                             } else if (plugin.settings.dontFitWidthWhenOpenPDFLink) {
                                 if (plugin.settings.preserveCurrentLeftOffsetWhenOpenPDFLink) {
-                                    const currentLocation = self.pdfViewer?.pdfViewer?._location;
+                                    const pdfViewer = this.pdfViewer?.pdfViewer;
+                                    const currentLocation = pdfViewer?._location;
+                                    const currentScale = pdfViewer?.currentScale;
                                     // As per the PDF spec, a null value for left/top/zoom means "leave unchanged"
                                     // however, PDF.js doesn't seem to handle this correctly, so we need to pass in the current values explicitly
-                                    dest = [page - 1, { name: 'XYZ' }, currentLocation?.left ?? null, currentLocation?.top ?? null, null];
+                                    // Especially, if we pass `null` instead of `currentScale`, it will lead to the following bug for some PDFs:
+                                    // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/137
+                                    dest = [page - 1, { name: 'XYZ' }, currentLocation?.left ?? null, currentLocation?.top ?? null, currentScale ?? null];
                                 } else {
                                     dest = [page - 1, { name: 'XYZ' }, null, null, null];
                                 }
@@ -509,7 +511,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         pdfViewer.subpath = dest;
                     }
 
-                    self.subpathHighlight = highlight;
+                    this.subpathHighlight = highlight;
                 }
             }
         },

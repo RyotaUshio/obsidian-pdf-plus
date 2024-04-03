@@ -211,8 +211,8 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                                 .setTitle('Adapt to theme')
                                 .setChecked(isThemed)
                                 .onClick(() => {
-                                    app.saveLocalStorage('pdfjs-is-themed', isThemed ? null : 'true'),
-                                        child.onCSSChange()
+                                    app.saveLocalStorage('pdfjs-is-themed', isThemed ? null : 'true');
+                                    child.onCSSChange();
                                 });
                         })
                         .addItem((item) => {

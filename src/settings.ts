@@ -437,7 +437,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	openAutoFocusTargetIfNotOpened: true,
 	howToOpenAutoFocusTargetIfNotOpened: 'right',
 	closeHoverEditorWhenLostFocus: true,
-	closeSidebarWhenLostFocus: true,
+	closeSidebarWhenLostFocus: false,
 	openAutoFocusTargetInEditingView: true,
 	executeCommandWhenTargetNotIdentified: true,
 	commandToExecuteWhenTargetNotIdentified: 'switcher:open',
