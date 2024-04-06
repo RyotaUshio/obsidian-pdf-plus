@@ -1,4 +1,4 @@
-import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
+import { Editor, EditorRange, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
@@ -671,7 +671,9 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     async pasteTextToFile(text: string, file: TFile, forceUseVault = false) {
         const { leaf, isExistingLeaf } = await this.prepareMarkdownLeafForPaste(file);
 
-        if (!forceUseVault && leaf && isExistingLeaf && leaf.view instanceof MarkdownView) {
+        if (!forceUseVault && leaf && isExistingLeaf && leaf.view instanceof MarkdownView
+            && leaf.view.getMode() === 'source' // In the preview mode, the file content cannot be modified via the editor interface
+        ) {
             // If the file is already opened in some tab, use the editor interface to respect the current cursor position
             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/71
             const view = leaf.view;
@@ -745,14 +747,21 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         }
 
         // Scroll to the cursor position if it is not visible
-        const line = goEnd
-            ? editor.lineCount() - 1
-            : editor.getCursor().line;
+        // Known issue: this doesn't work in the preview mode.
+        // TODO: Fix it
         const coords = editor.coordsAtPos(editor.getCursor(), true);
         if (coords) {
             const scrollInfo = editor.getScrollInfo();
             if (coords.top < scrollInfo.top || coords.top > scrollInfo.top + scrollInfo.clientHeight) {
-                view.currentMode.applyScroll(line);
+                // It was `view.currentMode.applyScroll(line);` before, where
+                // `const line = goEnd ? editor.lineCount() - 1 : editor.getCursor().line;`,
+                // but it resulted in the following unnatural behavior:
+                // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/142
+                const range: EditorRange = {
+                    from: editor.getCursor('from'),
+                    to: editor.getCursor('to')
+                };
+                editor.scrollIntoView(range, true);
             }
         }
     }

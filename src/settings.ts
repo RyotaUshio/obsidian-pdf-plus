@@ -2832,7 +2832,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 		this.plugin.settings.copyCommands = this.plugin.settings.copyCommands.filter((command) => command.name && command.template);
-		this.plugin.settings.displayTextFormats = this.plugin.settings.displayTextFormats.filter((format) => format.name && format.template);
+		this.plugin.settings.displayTextFormats = this.plugin.settings.displayTextFormats.filter((format) => format.name); // allow empty display text formats
 
 		// avoid annotations to be not referneceable
 		if (this.plugin.settings.enablePDFEdit && !this.plugin.settings.author) {

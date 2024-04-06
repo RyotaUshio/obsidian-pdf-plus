@@ -658,6 +658,14 @@ export class PDFPlusLib {
         return this.getPDFViewer(activeOnly)?.pdfDocument;
     }
 
+    getBacklinkVisualizer(activeOnly: boolean = false) {
+        return this.getPDFViewerComponent(activeOnly)?.visualizer;
+    }
+
+    getBibliographyManager(activeOnly: boolean = false) {
+        return this.getPDFViewerChild(activeOnly)?.bib;
+    }
+
     search(findBar: PDFFindBar, query: string, settings?: Partial<PDFSearchSettings>) {
         findBar.showSearch();
         findBar.searchComponent.setValue(query);
