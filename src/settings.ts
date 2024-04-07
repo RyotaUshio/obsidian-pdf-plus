@@ -271,12 +271,20 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 			template: '{{file.basename}}, p.{{pageLabel}}',
 		},
 		{
-			name: 'Page only',
+			name: 'Page',
 			template: 'p.{{pageLabel}}',
 		},
 		{
 			name: 'Text',
 			template: '{{text}}',
+		},
+		{
+			name: '"link"',
+			template: 'link'
+		},
+		{
+			name: 'None',
+			template: ''
 		}
 	],
 	defaultDisplayTextFormatIndex: 0,
@@ -288,7 +296,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 			template: '> ({{linkWithDisplay}})\n> {{selection}}\n',
 		},
 		{
-			name: 'Link only',
+			name: 'Link',
 			template: '{{linkWithDisplay}}'
 		},
 		{
@@ -411,7 +419,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	popoverPreviewOnOutlineHover: true,
 	thumbnailDrag: true,
 	thumbnailContextMenu: true,
-	thumbnailLinkDisplayTextFormat: '{{file.basename}}, page {{pageLabel}}',
+	thumbnailLinkDisplayTextFormat: '{{file.basename}}, p.{{pageLabel}}',
 	thumbnailLinkCopyFormat: '{{linkWithDisplay}}',
 	recordHistoryOnThumbnailClick: true,
 	popoverPreviewOnThumbnailHover: true,
