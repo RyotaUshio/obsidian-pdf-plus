@@ -107,17 +107,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
                 this.hookBacklinkViewEventHandlers(el, cache);
                 this.hookContextMenuHandler(el, cache);
                 this.hookClassAdderOnMouseOver(el, cache);
-
-                if (color?.type === 'name') {
-                    el.dataset.highlightColor = color.name.toLowerCase();
-                } else if (color?.type === 'rgb') {
-                    const { r, g, b } = color.rgb;
-                    el.setCssProps({
-                        '--pdf-plus-color': `rgb(${r}, ${g}, ${b})`,
-                        '--pdf-plus-backlink-icon-color': `rgb(${r}, ${g}, ${b})`,
-                        '--pdf-plus-rect-color': `rgb(${r}, ${g}, ${b})`,
-                    });
-                }
+                this.setHighlightColor(el, color);
             }
         }
     }
@@ -201,6 +191,19 @@ export class BacklinkDomManager extends PDFPlusComponent {
                     el.removeEventListener('mouseout', onMouseOut);
                 };
                 el.addEventListener('mouseout', onMouseOut);
+            });
+        }
+    }
+
+    setHighlightColor(el: HTMLElement, color: ReturnType<PDFBacklinkCache['getColor']>) {
+        if (color?.type === 'name') {
+            el.dataset.highlightColor = color.name.toLowerCase();
+        } else if (color?.type === 'rgb') {
+            const { r, g, b } = color.rgb;
+            el.setCssProps({
+                '--pdf-plus-color': `rgb(${r}, ${g}, ${b})`,
+                '--pdf-plus-backlink-icon-color': `rgb(${r}, ${g}, ${b})`,
+                '--pdf-plus-rect-color': `rgb(${r}, ${g}, ${b})`,
             });
         }
     }
