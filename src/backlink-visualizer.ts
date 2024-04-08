@@ -3,10 +3,11 @@ import { HoverParent, HoverPopover, Keymap, TFile, setIcon } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { PDFBacklinkCache, PDFBacklinkIndex, PDFPageBacklinkIndex } from 'lib/pdf-backlink-index';
-import { PDFPageView, PDFViewerChild } from 'typings';
+import { PDFPageView, PDFViewerChild, Rect } from 'typings';
 import { isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { onBacklinkVisualizerContextMenu } from 'context-menu';
 import { BidirectionalMultiValuedMap } from 'utils';
+import { MergedRect } from 'lib/highlights/geometry';
 
 
 export class PDFBacklinkVisualizer extends PDFPlusComponent {
@@ -210,14 +211,90 @@ export class BacklinkDomManager extends PDFPlusComponent {
 }
 
 
+/**
+ * Cache the merged rectangles for each selection id so that they can be reused.
+ * This is crucial for performance since this.lib.highlight.geometry.computeMergedHighlightRects is a heavy operation.
+ * 
+ * See also: https://github.com/RyotaUshio/obsidian-pdf-plus/issues/148
+ */
+export class RectangleCache extends PDFPlusComponent {
+    visualizer: PDFViewerBacklinkVisualizer;
+    private pagewiseIdToRectsMap: Map<number, Map<string, MergedRect[]>>;
+
+    constructor(visualizer: PDFViewerBacklinkVisualizer) {
+        super(visualizer.plugin);
+        this.visualizer = visualizer;
+        this.pagewiseIdToRectsMap = new Map();
+    }
+
+    get file() {
+        return this.visualizer.file;
+    }
+
+    get child() {
+        return this.visualizer.child;
+    }
+
+    onload() {
+        this.registerEvent(this.app.vault.on('modify', (file) => {
+            if (file === this.file) {
+                this.pagewiseIdToRectsMap.clear();
+            }
+        }));
+    }
+
+    getIdToRectsMap(pageNumber: number) {
+        let idToRects = this.pagewiseIdToRectsMap.get(pageNumber);
+        if (!idToRects) {
+            idToRects = new Map();
+            this.pagewiseIdToRectsMap.set(pageNumber, idToRects);
+        }
+
+        return idToRects;
+    }
+
+    /** 
+     * Get the rectangles for the given selection id.
+     * If the rectangles have already been computed, return the cached value.
+     * Otherwise, newly compute and cache them.
+     */
+    getRectsForSelection(pageNumber: number, id: string) {
+        const idToRects = this.getIdToRectsMap(pageNumber);
+        let rects = idToRects.get(id) ?? null;
+        if (rects) return rects;
+        rects = this.computeRectsForSelection(pageNumber, id);
+        if (rects) {
+            idToRects.set(id, rects);
+            return rects;
+        }
+        return null;
+    }
+
+    /** 
+     * Newly compute the rectangles for the given selection id.
+     */
+    computeRectsForSelection(pageNumber: number, id: string) {
+        const pageView = this.child.getPage(pageNumber);
+        const { beginIndex, beginOffset, endIndex, endOffset } = PDFPageBacklinkIndex.selectionIdToParams(id);
+
+        const textLayer = pageView.textLayer;
+        if (!textLayer) return null;
+        if (!textLayer.textDivs.length) return null;
+
+        const rects = this.lib.highlight.geometry.computeMergedHighlightRects(textLayer, beginIndex, beginOffset, endIndex, endOffset);
+        return rects;
+    }
+}
+
+
 export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implements HoverParent {
     child: PDFViewerChild;
     domManager: BacklinkDomManager;
+    rectangleCache: RectangleCache;    
 
     constructor(plugin: PDFPlus, file: TFile, child: PDFViewerChild) {
         super(plugin, file);
         this.child = child;
-        this.domManager = new BacklinkDomManager(this);
     }
 
     static create(plugin: PDFPlus, file: TFile, child: PDFViewerChild) {
@@ -236,9 +313,12 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     onload() {
         if (!this.shouldVisualizeBacklinks()) return;
 
+        this.domManager = this.addChild(new BacklinkDomManager(this));
+        this.rectangleCache = this.addChild(new RectangleCache(this));
+
         this.visualize();
         this.registerEvent(this.index.on('update', () => {
-            this.visualize()
+            this.visualize();
         }));
     }
 
@@ -309,13 +389,13 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
         const pageView = this.child.getPage(pageNumber);
         const cacheToDoms = this.domManager.getCacheToDomsMap(pageNumber);
-        const { beginIndex, beginOffset, endIndex, endOffset } = PDFPageBacklinkIndex.selectionIdToParams(id);
 
         const textLayer = pageView.textLayer;
         if (!textLayer) return;
         if (!textLayer.textDivs.length) return;
 
-        const rects = this.lib.highlight.geometry.computeMergedHighlightRects(textLayer, beginIndex, beginOffset, endIndex, endOffset);
+        const rects = this.rectangleCache.getRectsForSelection(pageNumber, id);
+        if (!rects) return;
 
         for (const { rect, indices } of rects) {
             const rectEl = this.lib.highlight.viewer.placeRectInPage(rect, pageView);
@@ -433,9 +513,11 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     showIcon(x: number, y: number, pageView: PDFPageView, side: 'left' | 'right' = 'right') {
         // @ts-ignore
         const iconSize = Math.min(pageView.viewport.rawDims.pageWidth, pageView.viewport.rawDims.pageWidth) * this.settings.backlinkIconSize / 2000;
-        const iconEl = side === 'right'
-            ? this.lib.highlight.viewer.placeRectInPage([x, y - iconSize, x + iconSize, y], pageView)
-            : this.lib.highlight.viewer.placeRectInPage([x - iconSize, y - iconSize, x, y], pageView);
+        const rectRight: Rect = [x, y - iconSize, x + iconSize, y];
+        const rectLeft: Rect = [x - iconSize, y - iconSize, x, y];
+        // @ts-ignore
+        const rect = side === 'left' && rectLeft[0] >= (pageView.viewport.rawDims.pageX ?? 0) ? rectLeft : rectRight;
+        const iconEl = this.lib.highlight.viewer.placeRectInPage(rect, pageView);
         iconEl.addClass('pdf-plus-backlink-icon');
         setIcon(iconEl, 'links-coming-in');
         const svg = iconEl.querySelector<SVGElement>('svg');

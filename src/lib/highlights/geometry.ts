@@ -3,6 +3,8 @@ import { PropRequired } from 'utils';
 import { TextLayerBuilder, Rect, TextContentItem } from 'typings';
 
 
+export type MergedRect = { rect: Rect, indices: number[] };
+
 export class HighlightGeometryLib extends PDFPlusLibSubmodule {
 
     /**
@@ -10,10 +12,10 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
      * Each rectangle is obtained by merging the rectangles of the text content items contained in the selection, when possible (typically when the text selection is within a single line).
      * Each rectangle is associated with an array of indices of the text content items contained in the rectangle.
      */
-    computeMergedHighlightRects(textLayer: TextLayerBuilder, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): { rect: Rect, indices: number[] }[] {
+    computeMergedHighlightRects(textLayer: TextLayerBuilder, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): MergedRect[] {
         const { textContentItems, textDivs, div } = textLayer;
 
-        const results: { rect: Rect, indices: number[] }[] = [];
+        const results: MergedRect[] = [];
 
         let mergedRect: Rect | null = null;
         let mergedIndices: number[] = [];
