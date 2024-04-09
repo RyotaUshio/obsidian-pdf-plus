@@ -1,7 +1,7 @@
 import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRenderer, Modifier, Notice, ObsidianProtocolData, Platform, PluginSettingTab, Setting, TextAreaComponent, TextComponent, debounce, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { ExtendedPaneType, isSidebarType } from 'lib/workspace-lib';
+import { ExtendedPaneType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
 import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
@@ -271,12 +271,20 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 			template: '{{file.basename}}, p.{{pageLabel}}',
 		},
 		{
-			name: 'Page only',
+			name: 'Page',
 			template: 'p.{{pageLabel}}',
 		},
 		{
 			name: 'Text',
 			template: '{{text}}',
+		},
+		{
+			name: '"link"',
+			template: 'link'
+		},
+		{
+			name: 'None',
+			template: ''
 		}
 	],
 	defaultDisplayTextFormatIndex: 0,
@@ -288,7 +296,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 			template: '> ({{linkWithDisplay}})\n> {{selection}}\n',
 		},
 		{
-			name: 'Link only',
+			name: 'Link',
 			template: '{{linkWithDisplay}}'
 		},
 		{
@@ -411,7 +419,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	popoverPreviewOnOutlineHover: true,
 	thumbnailDrag: true,
 	thumbnailContextMenu: true,
-	thumbnailLinkDisplayTextFormat: '{{file.basename}}, page {{pageLabel}}',
+	thumbnailLinkDisplayTextFormat: '{{file.basename}}, p.{{pageLabel}}',
 	thumbnailLinkCopyFormat: '{{linkWithDisplay}}',
 	recordHistoryOnThumbnailClick: true,
 	popoverPreviewOnThumbnailHover: true,
@@ -2135,7 +2143,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addToggleSetting('closeHoverEditorWhenLostFocus')
 					.setName('Close Hover Editor when it loses focus')
 					.setDesc('This option will not affect the behavior of Hover Editor outside of PDF++.'),
-					() => this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor'
+				() => this.plugin.settings.howToOpenAutoFocusTargetIfNotOpened === 'hover-editor'
 			);
 			this.addToggleSetting('closeSidebarWhenLostFocus')
 				.setName('Auto-hide sidebar when it loses focus after auto-pasting')
@@ -2574,14 +2582,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addSliderSetting('existingTabHighlightDuration', 0.1, 10, 0.05)
 					.setName('Highlight duration of an existing tab (sec)')
 			}
-			this.addToggleSetting('dontFitWidthWhenOpenPDFLink', () => this.redisplay())
+			this.addToggleSetting('dontFitWidthWhenOpenPDFLink', () => this.events.trigger('update'))
 				.setName('Preserve the current zoom level when opening a link to an already opened PDF file')
-				.setDesc('When you open a link to a PDF file that\'s already opened, Obsidian\'s default behavior causes the zoom level to be reset to fit the width of the PDF file to the viewer. If enabled, the current zoom level will be preserved.');
-			if (this.plugin.settings.dontFitWidthWhenOpenPDFLink) {
+				.setDesc('When you open a link to a PDF file that\'s already opened, Obsidian\'s default behavior causes the zoom level to be reset to fit the width of the PDF file to the viewer. If enabled, the current zoom level will be preserved. This option will be ignored in PDF embeds.');
+			this.showConditionally(
 				this.addToggleSetting('preserveCurrentLeftOffsetWhenOpenPDFLink')
-					.setName('Preserve the current horizontal scroll position');
-			}
-
+					.setName('Preserve the current horizontal scroll position')
+					.setDesc('This option will be ignored in PDF embeds.'),
+				() => this.plugin.settings.dontFitWidthWhenOpenPDFLink
+			);
 		}
 		this.addDropdownSetting('paneTypeForFirstPDFLeaf', PANE_TYPE)
 			.setName(`How to open PDF links when there is no open PDF file`)
