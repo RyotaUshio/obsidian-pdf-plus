@@ -701,6 +701,17 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
             });
         }
 
+        if (lib.speech.isEnabled() && selectedText && isVisible('speech')) {
+            this.addItem((item) => {
+                item.setSection('speech')
+                    .setTitle('Read aloud selected text')
+                    .setIcon('lucide-speech')
+                    .onClick(() => {
+                        lib.speech.speak(selectedText);
+                    });
+            });
+        }
+
         if (!this.items.length && isVisible('page')) {
             this.addItem((item) => {
                 item.setSection('page')

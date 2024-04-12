@@ -341,13 +341,13 @@ export class ColorPalette extends PDFPlusComponent {
                     });
                 }
                 menu.addItem((item) => {
-                        item.setIcon('lucide-settings')
-                            .setTitle(this.lib.isEditable(this.child) ? 'Disable PDF editing...' : 'Enable PDF editing...')
-                            .onClick(() => {
-                                this.plugin.openSettingTab()
-                                    .scrollToHeading('edit');
-                            });
-                    });
+                    item.setIcon('lucide-settings')
+                        .setTitle(this.lib.isEditable(this.child) ? 'Disable PDF editing...' : 'Enable PDF editing...')
+                        .onClick(() => {
+                            this.plugin.openSettingTab()
+                                .scrollToHeading('edit');
+                        });
+                });
                 menu.onHide(() => {
                     shown = false;
                 });
@@ -592,7 +592,10 @@ export class ColorPalette extends PDFPlusComponent {
     setTooltipToActionItem(itemEl: HTMLElement, name: string | null) {
         const pickerEl = itemEl.querySelector<HTMLInputElement>(':scope > .' + ColorPalette.CLS + '-item-inner')!;
         const commandName = this.plugin.settings.copyCommands[this.actionIndex].name;
-        const tooltip = name !== null ? `Copy link with format "${commandName}" & add ${name.toLowerCase()} ${this.plugin.settings.selectionBacklinkVisualizeStyle}` : `Copy link with "${commandName}" format without specifying color`;
+        const quiet = this.plugin.settings.quietColorPaletteTooltip;
+        const tooltip = name !== null
+            ? (quiet ? name : `Copy link with format "${commandName}" & add ${name.toLowerCase()} ${this.plugin.settings.selectionBacklinkVisualizeStyle}`)
+            : (quiet ? 'No color specified' : `Copy link with "${commandName}" format without specifying color`);
         setTooltip(pickerEl, tooltip);
     }
 

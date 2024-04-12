@@ -16,6 +16,7 @@ import { PDFNamedDestinations } from './destinations';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
+import { Speech } from './speech';
 
 
 export class PDFPlusLib {
@@ -33,6 +34,7 @@ export class PDFPlusLib {
     highlight: HighlightLib;
     workspace: WorkspaceLib;
     composer: PDFComposer;
+    speech: Speech;
 
     constructor(plugin: PDFPlus) {
         this.app = plugin.app;
@@ -43,6 +45,7 @@ export class PDFPlusLib {
         this.highlight = new HighlightLib(plugin);
         this.workspace = new WorkspaceLib(plugin);
         this.composer = new PDFComposer(plugin);
+        this.speech = new Speech(plugin);
     }
 
     /** 

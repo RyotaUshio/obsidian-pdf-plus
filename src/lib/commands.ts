@@ -966,45 +966,4 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     createDummyForExternalPDF() {
         new ExternalPDFModal(this.plugin).open();
     }
-
-    ocr(checking: boolean) {
-        if (!Platform.isDesktopApp) return;
-
-        const adapter = this.app.vault.adapter;
-        if (!(adapter instanceof FileSystemAdapter)) return;
-
-        const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== 'pdf') return;
-
-        if (!checking) {
-            const absPath = adapter.getFullPath(file.path);
-            const options = [
-                '--output-type', 'pdf',
-                '-l', 'jpn+eng',
-                '--skip-text'
-            ];
-
-            const ocrmypdfPath = '/usr/local/bin/ocrmypdf';
-            const tesseractPath = '/usr/local/bin/tesseract';
-            const env = Object.assign({}, process.env);
-            env.PATH += ':' + tesseractPath.split('/').slice(0, -1).join('/');
-            const cmd = `${ocrmypdfPath} ${options.join(' ')} "${absPath}" "${absPath}"`;
-
-            const notice = new Notice(`${this.plugin.manifest.name}: Processing...`, 0);
-
-            exec(cmd, { env }, (err) => {
-                notice.hide();
-
-                if (!err) {
-                    new Notice(`${this.plugin.manifest.name}: OCR successfully completed.`)
-                    return;
-                }
-
-                new Notice(`${this.plugin.manifest.name}: OCR failed. See the developer console for the details.`);
-                console.error(err);
-            });
-        }
-
-        return true;
-    }
 }

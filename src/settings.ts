@@ -6,6 +6,7 @@ import { AutoFocusTarget } from 'lib/copy-link';
 import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
 import { ScrollMode, SpreadMode } from 'pdfjs-enums';
+import { Menu } from 'obsidian';
 
 
 const SELECTION_BACKLINK_VISUALIZE_STYLE = {
@@ -112,6 +113,7 @@ export interface PDFPlusSettings {
 	colorPaletteInToolbar: boolean;
 	noColorButtonInColorPalette: boolean;
 	colorPaletteInEmbedToolbar: boolean;
+	quietColorPaletteTooltip: boolean;
 	showStatusInToolbar: boolean;
 	/** Currently not working due to the major refactor in 0.37.0. */
 	highlightColorSpecifiedOnly: boolean;
@@ -355,6 +357,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	colorPaletteInToolbar: true,
 	noColorButtonInColorPalette: true,
 	colorPaletteInEmbedToolbar: false,
+	quietColorPaletteTooltip: false,
 	showStatusInToolbar: true,
 	highlightColorSpecifiedOnly: false,
 	doubleClickHighlightToOpenBacklink: true,
@@ -399,6 +402,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 		{ id: 'link', visible: true },
 		{ id: 'text', visible: true },
 		{ id: 'search', visible: true },
+		{ id: 'speech', visible: true },
 		{ id: 'page', visible: true },
 		{ id: 'settings', visible: true },
 	],
@@ -548,7 +552,21 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 	addSetting(settingName?: keyof PDFPlusSettings) {
 		const item = new Setting(this.contentEl);
-		if (settingName) this.items[settingName] = item;
+		if (settingName) {
+			this.items[settingName] = item;
+			this.component.registerDomEvent(item.settingEl, 'contextmenu', (evt) => {
+				evt.preventDefault();
+				new Menu()
+					.addItem((item) => {
+						item.setTitle('Copy link to this setting')
+							.setIcon('lucide-link')
+							.onClick(() => {
+								navigator.clipboard.writeText(`obsidian://pdf-plus?setting=${settingName}`);
+							});
+					})
+					.showAtMouseEvent(evt);
+			});
+		}
 		return item;
 	}
 
@@ -572,6 +590,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 		this.headings.set(id, setting);
+		this.component.registerDomEvent(setting.settingEl, 'contextmenu', (evt) => {
+			evt.preventDefault();
+			new Menu()
+				.addItem((item) => {
+					item.setTitle('Copy link to this heading')
+						.setIcon('lucide-link')
+						.onClick(() => {
+							navigator.clipboard.writeText(`obsidian://pdf-plus?setting=heading:${id}`);
+						});
+				})
+				.showAtMouseEvent(evt);
+		});
 
 		if (icon) {
 			this.headerContainerEl.createDiv('clickable-icon header', (headerEl) => {
@@ -1657,6 +1687,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				this.addToggleSetting('syncDefaultColorPaletteItem')
 					.setName('Share the color with newly opened color palettes as well');
 			}
+			this.addToggleSetting('quietColorPaletteTooltip')
+				.setName('Quiet tooltips in color palette')
+				.setDesc(`When disabled${!DEFAULT_SETTINGS.quietColorPaletteTooltip ? ' (default)' : ''}, the tooltip will show the color name as well as the selected link copy format and display text format. If enabled, only the color name will be shown.`);
 		}
 
 
@@ -1748,6 +1781,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'link': 'Copy PDF link / Search on Google Scholar / Paste copied PDF link to selection / Copy URL',
 					'text': 'Copy selected text / Copy annotated text',
 					'search': 'Copy link to search',
+					'speech': 'Read aloud selected text',
 					'page': 'Copy link to page',
 					'settings': 'Customize menu...',
 				};
@@ -1783,6 +1817,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 								}
 								else if (section.id === 'link') {
 									setting.setDesc('"Search on Google Scholar": Available when right-clicking citation links in PDFs.')
+								}
+								else if (section.id === 'speech') {
+									setting.setDesc(createFragment((el) => {
+										el.appendText('Requires the ');
+										el.createEl('a', { text: 'Text to Speech', href: 'obsidian://show-plugin?id=obsidian-tts' });
+										el.appendText(' plugin to be enabled.');
+									}))
 								}
 								else if (section.id === 'page') {
 									setting.setDesc('Available when right-clicking with no text selected.');
