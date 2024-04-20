@@ -27,7 +27,6 @@ PDF++ stands out among other PDF annotation tools for the following reasons:
 
 > [!warning]
 > - This plugin relies on many private APIs of Obsidian, so **there is a relatively high risk that this plugin may break when Obsidian is updated** ([learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/48)). For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
-> - Although this plugin is almost mobile-compatible, some features, including copying links with color palette, might not work well on mobile.
 
 ## Getting started
 
