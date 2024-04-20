@@ -142,11 +142,17 @@ settings:
     justify-content: center;
     align-items: center;
 
-    .pdf-plus-color-palette-item-inner {
-        width: var(--swatch-width);
-        height: var(--swatch-width);
-        border-radius: 50%;
-        border: var(--input-border-width) solid var(--background-modifier-border);
+    .pdf-plus-color-palette-item {
+        /* Avoid text selections to be cleared when tapping on a color palette item on the mobile app */
+        /* https://github.com/RyotaUshio/obsidian-pdf-plus/issues/169 */
+        user-select: none;
+
+        .pdf-plus-color-palette-item-inner {
+            width: var(--swatch-width);
+            height: var(--swatch-width);
+            border-radius: 50%;
+            border: var(--input-border-width) solid var(--background-modifier-border);
+        }
     }
 
     .pdf-plus-color-palette-status-container {
