@@ -56,7 +56,7 @@ const IMAGE_EXTENSIONS = [
 ] as const;
 export type ImageExtension = typeof IMAGE_EXTENSIONS[number];
 
-export interface namedTemplate {
+export interface NamedTemplate {
 	name: string;
 	template: string;
 }
@@ -70,11 +70,11 @@ const ACTION_ON_CITATION_HOVER = {
 } as const;
 
 export interface PDFPlusSettings {
-	displayTextFormats: namedTemplate[];
+	displayTextFormats: NamedTemplate[];
 	defaultDisplayTextFormatIndex: number,
 	syncDisplayTextFormat: boolean;
 	syncDefaultDisplayTextFormat: boolean;
-	copyCommands: namedTemplate[];
+	copyCommands: NamedTemplate[];
 	useAnotherCopyTemplateWhenNoSelection: boolean;
 	copyTemplateWhenNoSelection: string;
 	trimSelectionEmbed: boolean;
@@ -281,8 +281,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 			template: '{{text}}',
 		},
 		{
-			name: '"link"',
-			template: 'link'
+			name: 'Emoji',
+			template: '📖'
 		},
 		{
 			name: 'None',
@@ -1136,7 +1136,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setClass('no-border');
 	}
 
-	addNamedTemplatesSetting(items: namedTemplate[], index: number, defaultIndexKey: KeysOfType<PDFPlusSettings, number>, configs: Parameters<PDFPlusSettingTab['addNameValuePairListSetting']>[4]) {
+	addNamedTemplatesSetting(items: NamedTemplate[], index: number, defaultIndexKey: KeysOfType<PDFPlusSettings, number>, configs: Parameters<PDFPlusSettingTab['addNameValuePairListSetting']>[4]) {
 		return this.addNameValuePairListSetting(
 			items,
 			index,
@@ -1271,6 +1271,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		for (let i = 0; i < categories.length; i++) {
 			if (i > 0) {
+				if (!Platform.isDesktopApp) {
+					// On the mobile app, nested menus don't work, so we only show the top-level items.
+					return;
+				}
+
 				const upperLevelCategory = dropdowns[i - 1].getValue();
 				if (!upperLevelCategory) return;
 
@@ -1278,7 +1283,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			}
 
 			this.addSetting()
-				.setName(i === 0 ? 'Top-level menu' : i === 1 ? 'Submenu' : 'Subsubmenu')
+				.then((setting) => {
+					if (Platform.isDesktopApp) {
+						setting.setName(i === 0 ? 'Top-level menu' : i === 1 ? 'Submenu' : 'Subsubmenu');
+					}
+				})
 				.addDropdown((dropdown) => {
 					for (const category of remainingCategories) {
 						dropdown.addOption(category, displayNames[category]);
@@ -1609,7 +1618,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('zoomToFitRect')
 			.setName('Zoom to fit rectangular selection when opening link')
 			.setDesc(createFragment((el) => {
-				el.appendText('When enabled, the PDF viewer will zoom to fit the rectangular selection when you open a link to it. Otherwise, the viewer will keep the current zoom level.');
+				el.appendText('When enabled, the PDF viewer will zoom to fit the rectangular selection when you open a link to it. Otherwise, the viewer will keep the current zoom level. ');
 				el.appendText('Note: check out the ');
 				el.appendChild(this.createLinkTo('dblclickEmbedToOpenLink'));
 				el.appendText(' option as well.');

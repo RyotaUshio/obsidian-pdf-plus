@@ -7,7 +7,7 @@ import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
 import { addProductMenuItems, getSelectedItemsRecursive, fixOpenSubmenu } from 'utils/menu';
-import { DEFAULT_SETTINGS, namedTemplate } from 'settings';
+import { DEFAULT_SETTINGS, NamedTemplate } from 'settings';
 import { ColorPalette } from 'color-palette';
 import { PDFPlusComponent } from 'lib/component';
 
@@ -17,7 +17,10 @@ export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt:
 
     // take from app.js
     if (Platform.isDesktopApp) {
-        const electron = evt.win.electron;
+        // Use window.electron, not evt.win.electron to avoid issues in secondary windows
+        // See https://github.com/RyotaUshio/obsidian-pdf-plus/issues/168
+        const electron = window.electron;
+
         if (electron && evt.isTrusted) {
             evt.stopPropagation();
             evt.stopImmediatePropagation();
@@ -747,6 +750,8 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
 }
 
 
+type PDFPlusProductMenuOptions = ReturnType<PDFPlusProductMenuComponent['getOptionsFromColorPalette']>;
+
 export class PDFPlusProductMenuComponent extends PDFPlusComponent {
     rootMenu: Menu;
     palette: ColorPalette;
@@ -807,6 +812,12 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
     addItems(order: ('color' | 'display' | 'copy-format')[]) {
         this.addSectionTitle();
 
+        // Nested menus don't work on the mobile app, so we limit the depth to 1.
+        // See also: https://github.com/RyotaUshio/obsidian-pdf-plus/issues/162
+        if (!Platform.isDesktopApp) {
+            order = order.slice(0, 1);
+        }
+
         addProductMenuItems(this.rootMenu, order.map((type) => {
             switch (type) {
                 case 'color':
@@ -836,7 +847,7 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
             menu.addItem((item) => {
                 item.setTitle(i >= 0 ? colorNames[i] : 'Don\'t specify color')
                     .onClick(() => {
-                        this.finish();
+                        this.finish({ colorName: i >= 0 ? colorNames[i] : null });
                     });
 
                 if (menu !== this.rootMenu) item.setChecked(i === selectedColorIndex);
@@ -856,12 +867,12 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
         fixOpenSubmenu(menu, 100);
     }
 
-    private addNamedTemplateItems(menu: Menu, templates: namedTemplate[], checkedIndex: number, map: Map<MenuItem, string>) {
+    private addNamedTemplateItems(menu: Menu, templates: NamedTemplate[], checkedIndex: number, map: Map<MenuItem, string>, onClick: (template: NamedTemplate) => any) {
         for (let i = 0; i < templates.length; i++) {
             menu.addItem((item) => {
                 item.setTitle(templates[i].name)
                     .onClick(() => {
-                        this.finish();
+                        onClick(templates[i]);
                     });
 
                 if (menu !== this.rootMenu) item.setChecked(i === checkedIndex);
@@ -880,7 +891,8 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
             menu,
             this.settings.displayTextFormats,
             this.palette.getState().displayTextFormatIndex,
-            this.itemToDisplayTextFormat
+            this.itemToDisplayTextFormat,
+            ({ template }) => this.finish({ displayTextFormat: template })
         );
     }
 
@@ -889,51 +901,72 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
             menu,
             this.settings.copyCommands,
             this.palette.getState().actionIndex,
-            this.itemToCopyFormat
+            this.itemToCopyFormat,
+            ({ template }) => this.finish({ copyFormat: template })
         );
     }
 
-    private finish() {
-        const options = {
+    private getOptionsFromColorPalette() {
+        return {
             colorName: this.palette.getColorName(),
             copyFormat: this.palette.getCopyFormat(),
             displayTextFormat: this.palette.getDisplayTextFormat()
         };
+    }
 
-        const { items } = getSelectedItemsRecursive(this.rootMenu);
-        for (const item of items) {
-            if (this.itemToColorName.has(item)) {
-                options.colorName = this.itemToColorName.get(item)!;
-            } else if (this.itemToCopyFormat.has(item)) {
-                options.copyFormat = this.itemToCopyFormat.get(item)!;
-            } else if (this.itemToDisplayTextFormat.has(item)) {
-                options.displayTextFormat = this.itemToDisplayTextFormat.get(item)!;
+    private getOptions(overrides: Partial<PDFPlusProductMenuOptions>) {
+        const options = this.getOptionsFromColorPalette();
+
+        // On the mobile app, nested menus don't work.
+        // See https://github.com/RyotaUshio/obsidian-pdf-plus/issues/168
+        if (Platform.isDesktopApp) {
+            const { items } = getSelectedItemsRecursive(this.rootMenu);
+            for (const item of items) {
+                if (this.itemToColorName.has(item)) {
+                    options.colorName = this.itemToColorName.get(item)!;
+                } else if (this.itemToCopyFormat.has(item)) {
+                    options.copyFormat = this.itemToCopyFormat.get(item)!;
+                } else if (this.itemToDisplayTextFormat.has(item)) {
+                    options.displayTextFormat = this.itemToDisplayTextFormat.get(item)!;
+                }
             }
         }
 
+        Object.assign(options, overrides);
+
+        return options;
+    }
+
+    private updateColorPaletteState(options: PDFPlusProductMenuOptions) {
+        const selectedColorName = options.colorName;
+        const actionIndex = this.settings.copyCommands.findIndex(({ template }) => template === options.copyFormat);
+        const displayTextFormatIndex = this.settings.displayTextFormats.findIndex(({ template }) => template === options.displayTextFormat);
+
+        this.palette.setState({
+            selectedColorName,
+            actionIndex,
+            displayTextFormatIndex,
+        });
+
+        // TODO: Refactor color palette
+        if (this.settings.syncColorPaletteItem && this.settings.syncDefaultColorPaletteItem) {
+            this.settings.defaultColorPaletteItemIndex = selectedColorName ? (Object.keys(this.settings.colors).indexOf(selectedColorName) + 1) : 0;
+        }
+        if (this.settings.syncColorPaletteAction && this.settings.syncDefaultColorPaletteAction) {
+            this.settings.defaultColorPaletteActionIndex = actionIndex;
+        }
+        if (this.plugin.settings.syncDisplayTextFormat && this.plugin.settings.syncDefaultDisplayTextFormat) {
+            this.plugin.settings.defaultDisplayTextFormatIndex = displayTextFormatIndex;
+        }
+
+        this.plugin.trigger('color-palette-state-change', { source: this.palette });
+    }
+
+    private finish(optionOverrides: Partial<PDFPlusProductMenuOptions>) {
+        const options = this.getOptions(optionOverrides);
+
         if (this.settings.updateColorPaletteStateFromContextMenu) {
-            const selectedColorName = options.colorName;
-            const actionIndex = this.settings.copyCommands.findIndex(({ template }) => template === options.copyFormat);
-            const displayTextFormatIndex = this.settings.displayTextFormats.findIndex(({ template }) => template === options.displayTextFormat);
-
-            this.palette.setState({
-                selectedColorName,
-                actionIndex,
-                displayTextFormatIndex,
-            });
-
-            // TODO: Refactor color palette
-            if (this.settings.syncColorPaletteItem && this.settings.syncDefaultColorPaletteItem) {
-                this.settings.defaultColorPaletteItemIndex = selectedColorName ? (Object.keys(this.settings.colors).indexOf(selectedColorName) + 1) : 0;
-            }
-            if (this.settings.syncColorPaletteAction && this.settings.syncDefaultColorPaletteAction) {
-                this.settings.defaultColorPaletteActionIndex = actionIndex;
-            }
-            if (this.plugin.settings.syncDisplayTextFormat && this.plugin.settings.syncDefaultDisplayTextFormat) {
-                this.plugin.settings.defaultDisplayTextFormatIndex = displayTextFormatIndex;
-            }
-
-            this.plugin.trigger('color-palette-state-change', { source: this.palette });
+            this.updateColorPaletteState(options);
         }
 
         this.clickItemCallback?.(options);

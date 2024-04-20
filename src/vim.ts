@@ -91,5 +91,12 @@ export class VimBindings extends PDFPlusComponent {
         this.scope.register([], '=', callForObsidianViewerIfNotTypable((obsidianViewer) => {
             obsidianViewer.zoomReset();
         }));
+
+        this.scope.register([], 'y', (evt) => {
+            const selection = evt.win.getSelection()?.toString();
+            if (selection) {
+                navigator.clipboard.writeText(selection);
+            }
+        });
     }
 }
