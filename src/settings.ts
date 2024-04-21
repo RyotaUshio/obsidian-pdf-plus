@@ -2371,7 +2371,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.then((setting) => {
 					this.renderMarkdown([
 						`- **${ACTION_ON_CITATION_HOVER['pdf-plus-bib-popover']}**: ` + ' Recommended. It works without any additional stuff, but you can further boost the visibility by installing [AnyStyle](https://github.com/inukshuk/anystyle) (desktop only).',
-						`- **${ACTION_ON_CITATION_HOVER['google-scholar-popover']}**: ` + ' Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.6 or higher enabled. Be careful not to exceed the rate limit of Google Scholar.',
+						`- **${ACTION_ON_CITATION_HOVER['google-scholar-popover']}**: ` + ' Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.9 or higher enabled. Be careful not to exceed the rate limit of Google Scholar.',
 					], setting.descEl);
 				});
 			const toggler = this.getVisibilityToggler(
@@ -2417,7 +2417,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName(`Show a popover preview of external links by ${hoverCmd}`)
 			.then((setting) => {
 				this.renderMarkdown([
-					'Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.6 or higher enabled.',
+					'Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.9 or higher enabled.',
 				], setting.descEl);
 			});
 
