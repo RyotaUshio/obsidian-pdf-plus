@@ -3,6 +3,7 @@
 import json
 import argparse
 import subprocess
+import sys
 
 def run(cmd):
     comp = subprocess.run(cmd)
@@ -11,6 +12,11 @@ def run(cmd):
 
 if __name__ == '__main__':
     run(['git', 'switch', 'main'])
+    
+    diff = subprocess.run(['git', 'diff'], capture_output=True, text=True).stdout
+    if not diff:
+        print('No changes to commit. Perhaps you forgot to merge the dev branch?', file=sys.stderr)
+        exit(1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('version')
