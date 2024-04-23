@@ -13,11 +13,6 @@ def run(cmd):
 if __name__ == '__main__':
     run(['git', 'switch', 'main'])
     
-    diff = subprocess.run(['git', 'diff'], capture_output=True, text=True).stdout
-    if not diff:
-        print('No changes to commit. Perhaps you forgot to merge the dev branch?', file=sys.stderr)
-        exit(1)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('version')
     args = parser.parse_args()
@@ -34,6 +29,12 @@ if __name__ == '__main__':
         package = json.load(f)
 
     assert manifest['version'] == package['version']
+
+    old_version = manifest['version']
+    diff = subprocess.run(['git', 'diff', f'{old_version}..', 'src', 'styles.css'], capture_output=True, text=True).stdout
+    if not diff:
+        print('No changes to release. Perhaps you forgot to merge the dev branch?', file=sys.stderr)
+        exit(1)
 
     if 'beta' in args.version:
         ans = input(f'[Beta-release] Update beta version from {manifest_beta["version"]} to {args.version}? (y/[n]): ').strip()
