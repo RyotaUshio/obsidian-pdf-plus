@@ -11,16 +11,16 @@
     "author": "Ryota Ushio",
     "license": "MIT",
     "devDependencies": {
-        "@cantoo/pdf-lib": "^1.20.3",
-        "@types/node": "^16.18.83",
+        "@cantoo/pdf-lib": "^1.21.0",
+        "@types/node": "^16.18.96",
         "@typescript-eslint/eslint-plugin": "5.29.0",
         "@typescript-eslint/parser": "5.29.0",
         "builtin-modules": "3.3.0",
-        "electron": "^28.2.4",
+        "electron": "^28.3.1",
         "esbuild": "0.17.3",
         "monkey-around": "^3.0.0",
         "obsidian": "^1.5.7",
-        "pdfjs-dist": "^4.0.379",
+        "pdfjs-dist": "^4.1.392",
         "tslib": "2.4.0",
         "typescript": "4.7.4"
     }
