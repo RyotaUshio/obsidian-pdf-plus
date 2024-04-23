@@ -3,7 +3,7 @@
  * 12.4.2, "Page Labels".
  */
 
-import { PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFString } from '@cantoo/pdf-lib';
+import { PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFRef, PDFString } from '@cantoo/pdf-lib';
 import { NumberTree } from './name-or-number-trees';
 import { getDirectPDFObj } from 'utils';
 
@@ -107,7 +107,8 @@ export class PDFPageLabels {
 
         const ranges: { pageFrom: number, dict: PDFPageLabelDict }[] = [];
 
-        for (const [pageFrom, dict] of numberTree) {
+        for (const [pageFrom, dictOrRef] of numberTree) {
+            const dict = dictOrRef instanceof PDFRef ? doc.context.lookup(dictOrRef) : dictOrRef; 
             if (!(dict instanceof PDFDict)) return null;
 
             ranges.push({ pageFrom: pageFrom + 1, dict: PDFPageLabelDict.fromPDFDict(dict) });

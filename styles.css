@@ -445,7 +445,7 @@ body.pdf-plus-backlink-selection-underline {
 }
 
 .pdf-plus-page-label-modal {
-    z-index: var(--layer-popover);
+    z-index: var(--he-popover-layer-inactive, var(--layer-popover));
 
     .page-labels-loading {
         color: var(--text-muted);

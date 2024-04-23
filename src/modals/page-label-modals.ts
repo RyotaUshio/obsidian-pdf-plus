@@ -174,6 +174,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
             const range = pageLabels.ranges[i];
             const prevRange = pageLabels.ranges[i - 1];
             const nextRange = pageLabels.ranges[i + 1];
+            const afterNextRange = pageLabels.ranges[i + 2];
             const pageTo = pageLabels.getEndOfRange(i);
 
             this.addHeading(rangeEl, `Page ${range.pageFrom}–${pageTo}`, 'lucide-arrow-down-01')
@@ -216,7 +217,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                                 text.inputEl.addClass('error');
                             }
                         });
-                    this.component.registerDomEvent(text.inputEl, 'blur', () => this.redisplay());
+                    text.inputEl.addEventListener('blur', () => this.redisplay(), { once: true });
                 })
                 .then((setting) => this.addPreviewButton(setting, range.pageFrom));
 
@@ -230,7 +231,9 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                     text.setValue('' + pageTo)
                         .onChange((value) => {
                             const num = Number(value);
-                            if (Number.isInteger(num) && range.pageFrom <= num && num <= (nextRange?.pageFrom -1 ?? pageCount)) {
+                            if (Number.isInteger(num) && range.pageFrom <= num && num <= (afterNextRange ? afterNextRange.pageFrom - 1 : pageCount - 1)) {
+                                // The next line looks like causing a bug when `i === pageLabels.ranges.length - 1`,
+                                // but it actually doesn't because the form is disable in that case.
                                 nextRange.pageFrom = num + 1;
                                 text.inputEl.removeClass('error');
                             } else {
@@ -243,7 +246,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                                 setTooltip(text.inputEl, 'The last range cannot be extended.');
                             }
                         })
-                    this.component.registerDomEvent(text.inputEl, 'blur', () => this.redisplay());
+                    text.inputEl.addEventListener('blur', () => this.redisplay(), { once: true });
                 })
                 .then((setting) => this.addPreviewButton(setting, pageTo));
 

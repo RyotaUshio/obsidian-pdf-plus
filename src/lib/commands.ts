@@ -1,5 +1,4 @@
-import { Command, FileSystemAdapter, MarkdownView, Notice, Platform, TFile, normalizePath, setIcon } from 'obsidian';
-import { exec } from 'child_process';
+import { Command, MarkdownView, Notice, TFile, normalizePath, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, ExternalPDFModal } from 'modals';

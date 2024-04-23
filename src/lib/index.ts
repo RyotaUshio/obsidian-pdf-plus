@@ -13,6 +13,7 @@ import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
+import { PDFPageLabels } from './page-labels';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
@@ -27,6 +28,7 @@ export class PDFPlusLib {
     NameTree = NameTree;
     NumberTree = NumberTree;
     PDFNamedDestinations = PDFNamedDestinations;
+    PDFPageLabels = PDFPageLabels;
 
     /** Sub-modules */
     commands: PDFPlusCommands;
