@@ -287,7 +287,7 @@ export function toSingleLine(str: string, removeWhitespaceBetweenCJKChars = fals
         return prev + ' ' + next;
     });
     if (removeWhitespaceBetweenCJKChars) {
-        str = str.replace(new RegExp(`${cjkRegexp.source}( )${cjkRegexp.source}`, 'g'), '');
+        str = str.replace(new RegExp(`(${cjkRegexp.source}) (?=${cjkRegexp.source})`, 'g'), '$1');
     }
     return window.pdfjsViewer.removeNullCharacters(window.pdfjsLib.normalizeUnicode(str));
 }

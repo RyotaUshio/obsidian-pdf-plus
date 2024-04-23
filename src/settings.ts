@@ -1386,11 +1386,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 		this.contentEl.createDiv('top-note', async (el) => {
 			await this.renderMarkdown([
-				'> [!IMPORTANT]',
-				'> The **Copy & auto-paste link to selection or annotation** command is planned to be removed in the near future. Instead, use the **Copy link to selection or annotation** command after enabling auto-paste using the **Toggle auto-paste** icon in the left ribbon menu or the **Toggle auto-paste** command.',
-				'> ',
-				'> If you don\'t like this change, feel free to let me know via [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/112).',
-				'',
 				'> [!TIP]',
 				'> - You can easily navigate through the settings by clicking the icons in the header above.',
 				'> - Some settings below require reopening tabs or reloading the plugin to take effect.',
@@ -1890,19 +1885,12 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Set up hotkeys for copying links')
 			.then((setting) => {
 				this.renderMarkdown([
-					'PDF++ offers three commands for quickly copying links via hotkeys.',
+					'PDF++ offers two commands for quickly copying links via hotkeys.',
 					'',
 					'1. **Copy link to selection or annotation:**',
 					'   Copies a link to the text selection or focused annotation in the PDF viewer, which is formatted according to the options specified in the PDF toolbar.',
 					'   <br>If the "Add highlights to file directly" toggle switch in the PDF toolbar is on, it first adds a highlight annotation directly to the PDF file, and then copies the link to the created annotation.',
-					'2. **Copy & auto-paste link to selection or annotation:**',
-					'  In addition to copying the link, it automatically pastes the copied link at the end of the last active note or the note where you last pasted a link. Note that Canvas is not supported.',
-					'  > [!IMPORTANT]',
-					'  > This command is planned to be removed in the near future. Instead, use the "Copy link to selection or annotation" command after enabling auto-paste using the "Toggle auto-paste" icon in the left ribbon menu or the "Toggle auto-paste" command. If you don\'t like this change, feel free to let me know via [GitHub Discussions](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/112).',
-					'',
-					'The third command is very different from the first two:',
-					'',
-					'3. **Copy link to current page view:** Copies a link, clicking which will open the PDF file at the current scroll position and zoom level.',
+					'2. **Copy link to current page view:** Copies a link, clicking which will open the PDF file at the current scroll position and zoom level.',
 					'',
 					'After running this command, you can add the copied link to the PDF file itself: select a range of text, right-click, and then click "Paste copied link to selection".'
 				], setting.descEl);
@@ -2113,7 +2101,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.autoFocus)
 					.onChange((value) => {
 						this.plugin.toggleAutoFocus(value);
-						this.redisplay(); // Reflect the change to the auto-paste toggle (you canot activate both of them at the same time)
+						this.redisplay(); // Reflect the change to the auto-paste toggle (we cannot activate both of them at the same time)
 					});
 			});
 		this.addToggleSetting('autoFocusToggleRibbonIcon', () => this.redisplay())
@@ -2165,7 +2153,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		);
 		this.addToggleSetting('respectCursorPositionWhenAutoPaste')
 			.setName('Respect current cursor position')
-			.setDesc('When enabled, the auto-paste command will paste the copied text at the current cursor position if the target note is already opened. If disabled, the text will be always appended to the end of the note.');
+			.setDesc('When enabled, triggering auto-pasting will paste the copied text at the current cursor position if the target note is already opened. If disabled, the text will be always appended to the end of the note.');
 
 		this.addHeading('General', 'auto-general')
 			.setDesc('General settings that apply to both auto-focus and auto-paste.');
