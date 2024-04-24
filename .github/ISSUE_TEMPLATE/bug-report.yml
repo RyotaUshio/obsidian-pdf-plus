@@ -9,13 +9,12 @@ body:
         Thank you for taking the time to fill out this bug report!
         
         Please note:
-        - Be nice. Describe only the objective facts and please do not include extra words like "this is annoying".
-        - Please make sure you are on the latest version of PDF++.
-        - If you have multiple problems to report, please create separate bug reports for each of them instead of including all in a single issue. It makes it easier to track issues.
         - A problem will be considered as PDF++'s bug only if it can be reproducible in the sandbox vault where only this plugin (and other relevant plugins if any) are enabled. You can open the sandbox vault by running "Open sandbox vault" command from the command palette (the command name may vary depending on the language setting).
         - If it cannot be reproduced in the sandbox vault, please follow the instructions on [this page](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Trouble-shooting-guide).
         - As noted in the plugin settings tab, changing some options requires reopening PDF files or reloading the plugin to take effect. If it seems something is not working, first try reopening the vault. If it does not help, please file a bug report.
         - **Please fill in all the required fields**. Identifying where the problem comes from is extremely difficult if any of them are missing. A bug report that does not follow the template and the instructions may be closed.
+        - If you have multiple problems to report, please create separate bug reports for each of them instead of including all in a single issue. It makes it easier to track issues.
+        - Be nice. Describe only the objective facts and please do not include extra words like "this is annoying".
   - type: textarea
     id: steps
     attributes:
