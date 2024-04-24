@@ -32,6 +32,7 @@ if __name__ == '__main__':
 
     old_version = manifest['version']
     diff = subprocess.run(['git', 'diff', f'{old_version}..', 'src', 'styles.css'], capture_output=True, text=True).stdout
+    diff = diff or subprocess.run(['git', 'diff', '--cached', 'src', 'styles.css'], capture_output=True, text=True).stdout
     if not diff:
         print('No changes to release. Perhaps you forgot to merge the dev branch?', file=sys.stderr)
         exit(1)

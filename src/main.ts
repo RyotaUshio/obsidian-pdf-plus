@@ -204,6 +204,8 @@ export default class PDFPlus extends Plugin {
 		this.renameSetting('selectToCopyToggleRibbonIcon', 'autoCopyToggleRibbonIcon');
 		this.renameCommand('pdf-plus:toggle-select-to-copy', `${this.manifest.id}:toggle-auto-copy`);
 
+		this.renameSetting('removeWhitespaceBetweenCJKChars', 'removeWhitespaceBetweenCJChars');
+
 		this.loadContextMenuConfig();
 	}
 

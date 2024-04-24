@@ -258,7 +258,7 @@ export interface PDFPlusSettings {
 	enableBibInEmbed: boolean;
 	enableBibInHoverPopover: boolean;
 	enableBibInCanvas: boolean;
-	removeWhitespaceBetweenCJKChars: boolean;
+	removeWhitespaceBetweenCJChars: boolean;
 	vim: boolean;
 }
 
@@ -513,7 +513,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInEmbed: false,
 	enableBibInHoverPopover: false,
 	enableBibInCanvas: true,
-	removeWhitespaceBetweenCJKChars: true,
+	removeWhitespaceBetweenCJChars: true,
 	vim: false,
 };
 
@@ -2826,8 +2826,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'This is a temporary fix for the issue that PDF.js (the library Obsidian\'s PDF viewer is based on) does not fulfill the PDF specification in that it renders reply annotations as if a standalone annotation.',
 				], setting.descEl);
 			});
-		this.addToggleSetting('removeWhitespaceBetweenCJKChars')
-			.setName('Remove half-width whitespace between two CJK characters when copying text')
+		this.addToggleSetting('removeWhitespaceBetweenCJChars')
+			.setName('Remove half-width whitespace between two Chinese/Japanese characters when copying text')
 			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optical character recognition). Enable this option to remove it when copying links to text selections.');
 		this.addToggleSetting('vim')
 			.setName('Enable Vim key bindings (experimental)')

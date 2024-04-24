@@ -955,6 +955,6 @@ export class PDFPlusLib {
 
     /** Process (possibly) multiline strings cleverly to convert it into a single line string. */
     toSingleLine(str: string): string {
-        return toSingleLine(str, this.plugin.settings.removeWhitespaceBetweenCJKChars);
+        return toSingleLine(str, this.plugin.settings.removeWhitespaceBetweenCJChars);
     }
 }

@@ -244,7 +244,8 @@ export function isAncestorOf<TreeNode extends { children: TreeNode[], parent: Tr
     return false;
 }
 
-export function getCJKRegexp() {
+export function getCJKRegexp(options?: Partial<{ japanese: boolean, korean: boolean }>) {
+    options = { japanese: true, korean: true, ...options };
     let pattern = ''
 
     // CJK Unified Ideographs
@@ -252,42 +253,48 @@ export function getCJKRegexp() {
     // CJK Unified Ideographs Extension A
     pattern += '\\u3400-\\u4dbf';
 
-    // Hiragana
-    pattern += '\\u3040-\\u309F';
-    // Katakana
-    pattern += '\\u30A0-\\u30FF';
-    // Half-width Katakana
-    pattern += '\\uFF65-\\uFF9F';
-    // Katakana Phonetic Extensions
-    pattern += '\\u31F0-\\u31FF';
-    // Japanese Punctuation
-    pattern += '\\u3000-\\u303F';
+    if (options.japanese) {
+        // Hiragana
+        pattern += '\\u3040-\\u309F';
+        // Katakana
+        pattern += '\\u30A0-\\u30FF';
+        // Half-width Katakana
+        pattern += '\\uFF65-\\uFF9F';
+        // Katakana Phonetic Extensions
+        pattern += '\\u31F0-\\u31FF';
+        // Japanese Punctuation
+        pattern += '\\u3000-\\u303F';
+    }
 
-    // Hangul Jamo
-    pattern += '\\u1100-\\u11FF';
-    // Hangul Jamo Extended-A
-    pattern += '\\uA960-\\uA97F';
-    // Hangul Jamo Extended-B
-    pattern += '\\uD7B0-\\uD7FF';
-    // Hangul Compatibility Jamo
-    pattern += '\\u3130-\\u318F';
-    // Hangul Syllables
-    pattern += '\\uAC00-\\uD7AF';
+    if (options.korean) {
+        // Hangul Jamo
+        pattern += '\\u1100-\\u11FF';
+        // Hangul Jamo Extended-A
+        pattern += '\\uA960-\\uA97F';
+        // Hangul Jamo Extended-B
+        pattern += '\\uD7B0-\\uD7FF';
+        // Hangul Compatibility Jamo
+        pattern += '\\u3130-\\u318F';
+        // Hangul Syllables
+        pattern += '\\uAC00-\\uD7AF';
+    }
 
     const regexp = new RegExp(`[${pattern}]`);
     return regexp;
 }
 
 /** Process (possibly) multiline strings cleverly to convert it into a single line string. */
-export function toSingleLine(str: string, removeWhitespaceBetweenCJKChars = false): string {
-    const cjkRegexp = getCJKRegexp();
+export function toSingleLine(str: string, removeWhitespaceBetweenCJChars = false): string {
+    // Korean characters should be excluded because whitespace has a meaning in Korean.
+    // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/173
+    const cjRegexp = getCJKRegexp({ korean: false });
     str = str.replace(/(.?)([\r\n]+)(.?)/g, (match, prev, br, next) => {
-        if (cjkRegexp.test(prev) && cjkRegexp.test(next)) return prev + next;
+        if (cjRegexp.test(prev) && cjRegexp.test(next)) return prev + next;
         if (prev === '-' && next.match(/[a-zA-Z]/)) return next;
         return prev + ' ' + next;
     });
-    if (removeWhitespaceBetweenCJKChars) {
-        str = str.replace(new RegExp(`(${cjkRegexp.source}) (?=${cjkRegexp.source})`, 'g'), '$1');
+    if (removeWhitespaceBetweenCJChars) {
+        str = str.replace(new RegExp(`(${cjRegexp.source}) (?=${cjRegexp.source})`, 'g'), '$1');
     }
     return window.pdfjsViewer.removeNullCharacters(window.pdfjsLib.normalizeUnicode(str));
 }
