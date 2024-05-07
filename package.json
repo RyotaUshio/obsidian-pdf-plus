@@ -20,7 +20,7 @@
         "esbuild": "0.17.3",
         "monkey-around": "^3.0.0",
         "obsidian": "^1.5.7",
-        "pdfjs-dist": "^4.1.392",
+        "pdfjs-dist": "^4.2.67",
         "tslib": "2.4.0",
         "typescript": "4.7.4"
     }
