@@ -173,6 +173,7 @@ export interface PDFPlusSettings {
 	recordHistoryOnThumbnailClick: boolean;
 	popoverPreviewOnThumbnailHover: boolean;
 	annotationPopupDrag: boolean;
+	showAnnotationPopupOnHover: boolean;
 	useCallout: boolean;
 	calloutType: string;
 	calloutIcon: string;
@@ -428,6 +429,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	recordHistoryOnThumbnailClick: true,
 	popoverPreviewOnThumbnailHover: true,
 	annotationPopupDrag: true,
+	showAnnotationPopupOnHover: true,
 	useCallout: true,
 	calloutType: 'PDF',
 	calloutIcon: 'highlighter',
@@ -2276,6 +2278,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('annotationPopupDrag')
 			.setName('Drag & drop annotation popup to insert a link to the annotation')
 			.setDesc('Note that turning on this option disables text selection in the annotation popup (e.g. modified date, author, etc).');
+		this.addToggleSetting('showAnnotationPopupOnHover')
+			.setName('If an annotation has a comment, show the annotation popup on hover')
+			.setDesc('This is the same behavior as the PDF viewers of some web browsers (e.g. Chrome/Firefox). You may have to reopen the PDF file after changing this option.');
 		this.addToggleSetting('renderMarkdownInStickyNote')
 			.setName('Render markdown in annotation popups when the annotation has text contents');
 		if (this.plugin.settings.enablePDFEdit) {

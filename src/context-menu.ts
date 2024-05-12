@@ -36,7 +36,9 @@ export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt:
         }
     }
 
-    await showContextMenu(plugin, child, evt);
+    if (!evt.defaultPrevented) {
+        await showContextMenu(plugin, child, evt);
+    }
 }
 
 export async function showContextMenu(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {

@@ -11,7 +11,7 @@ import { patchPDFOutlineViewer } from 'patchers';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike } from 'utils';
+import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim';
@@ -274,6 +274,57 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/68
                             if (plugin.settings.hideReplyAnnotation && annot.data.inReplyTo && annot.data.replyType === 'R') {
                                 annot.container.hide();
+                            }
+
+                            if (plugin.settings.showAnnotationPopupOnHover && annot.data.contentsObj?.str
+                                && annot.container.dataset.pdfPlusMouseOverRegistered !== 'true' // Needed to avoid registering onAnnotationMouseOver multiple times
+                            ) {
+                                const onAnnotationMouseOver = (evt: MouseEvent) => {
+                                    if (isMouseEventExternal(evt, annot.container)) {
+                                        let isOverAnnotation = true;
+                                        let isOverPopup = false;
+
+                                        this.destroyAnnotationPopup();
+                                        this.renderAnnotationPopup(annot);
+
+                                        const component = this.component!.addChild(new Component());
+                                        component.register(() => this.destroyAnnotationPopup());
+                                        component.load();
+
+                                        const requestCheck = () => setTimeout(() => {
+                                            if (!isOverAnnotation && !isOverPopup) {
+                                                component.unload();
+                                            }
+                                        }, 200);
+
+                                        const onAnnotationMouseOut = (evt: MouseEvent) => {
+                                            if (isMouseEventExternal(evt, annot.container)) {
+                                                isOverAnnotation = false;
+                                                requestCheck();
+                                            }
+                                        };
+                                        component.registerDomEvent(annot.container, 'mouseout', onAnnotationMouseOut);
+
+                                        const popupEl = this.activeAnnotationPopupEl
+                                        if (popupEl) {
+                                            component.registerDomEvent(popupEl, 'mouseover', (evt) => {
+                                                if (isMouseEventExternal(evt, popupEl)) {
+                                                    isOverPopup = true;
+
+                                                    const onPopupMouseOut = (evt: MouseEvent) => {
+                                                        if (isMouseEventExternal(evt, popupEl)) {
+                                                            isOverPopup = false;
+                                                            requestCheck();
+                                                        }
+                                                    };
+                                                    component.registerDomEvent(popupEl, 'mouseout', onPopupMouseOut);
+                                                }
+                                            });
+                                        }
+                                    }
+                                };
+                                annot.container.addEventListener('mouseover', onAnnotationMouseOver);
+                                annot.container.dataset.pdfPlusMouseOverRegistered = 'true';
                             }
                         });
                 });
