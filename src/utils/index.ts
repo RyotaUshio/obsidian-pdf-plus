@@ -1,7 +1,7 @@
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
-import { ObsidianViewer } from 'typings';
+import { ObsidianViewer, PDFjsDestArray } from 'typings';
 
 export * from './color';
 export * from './suggest';
@@ -43,6 +43,18 @@ export function kebabCaseToCamelCase(kebabCaseStr: string) {
 
 export function capitalize(text: string) {
     return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** Get the word at the given position in a Vim-like fashion. Currently incomplete, needs refinement! */
+export function getWordAt(str: string, pos: number) {
+    if (pos < 0 || pos >= str.length) return '';
+
+    let from = Math.max(0, str.slice(0, pos + 1).search(/(?<=[^\s.,][\s.,]+)[^\s.,]*$/));
+    str = str.slice(from);
+    from = Math.max(0, str.search(/[^\s.,]/));
+    str = str.slice(from);
+    const to = str.search(/[\s.,]/);
+    return to === -1 ? str : str.slice(0, to);
 }
 
 // Thanks https://stackoverflow.com/a/6860916/13613783
@@ -306,4 +318,19 @@ export function toSingleLine(str: string, removeWhitespaceBetweenCJChars = false
 export function encodeLinktext(linktext: string) {
     // eslint-disable-next-line no-control-regex
     return linktext.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (component) => encodeURIComponent(component));
+}
+
+export function isCitationId(dest: string | PDFjsDestArray): dest is string {
+    return typeof dest === 'string' && dest.startsWith('cite.');
+}
+
+/** Register a keymap that detects a certain character, e.g. "+", "=", "*". Works regardless of the user's keyboard layout. */
+export function registerCharacterKeymap(scope: Scope, char: string, listener: KeymapEventListener) {
+    // If we pass `[]` as the first argument (`modifiers`), this won't work for some non-US keyboards (e.g. JIS).
+    // Setting `modifiers` to `null` is undocumented but makes this keymap work regardless of modifiers, thereby fixing the issue.
+    return scope.register(null, char, (evt, ctx) => {
+        if (ctx.key === char && ctx.modifiers !== null && ['', 'Shift'].includes(ctx.modifiers)) {
+            return listener(evt, ctx);
+        }
+    });
 }

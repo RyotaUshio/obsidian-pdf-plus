@@ -1,7 +1,7 @@
 import { Menu, Notice, Platform, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
-import { KeysOfType, getEventCoords, isHexString, showMenuUnderParentEl } from 'utils';
+import { KeysOfType, getEventCoords, isHexString, showMenuUnderParentEl, isTargetHTMLElement } from 'utils';
 import { PDFViewerChild, Rect } from 'typings';
 import { PDFPlusComponent } from 'lib/component';
 
@@ -465,7 +465,7 @@ export class ColorPalette extends PDFPlusComponent {
         const selectBox = { left: 0, top: 0, width: 0, height: 0 };
         const onMouseDown = (evt: MouseEvent | TouchEvent) => {
             // Determine the target page based on the event target
-            if (!(evt.target instanceof HTMLElement)) return;
+            if (!(isTargetHTMLElement(evt, evt.target))) return;
 
             const pageEl = evt.target.closest<HTMLElement>('.pdf-viewer div.page[data-page-number]')
             if (!pageEl) return;

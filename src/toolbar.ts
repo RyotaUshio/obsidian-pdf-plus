@@ -4,7 +4,7 @@ import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { ColorPalette } from 'color-palette';
 import { PDFToolbar, PDFViewerChild } from 'typings';
-import { isMouseEventExternal, showMenuUnderParentEl } from 'utils';
+import { showChildElOnParentElHover, showMenuUnderParentEl } from 'utils';
 import { ScrollMode, SpreadMode } from 'pdfjs-enums';
 
 
@@ -22,9 +22,9 @@ export class PDFPlusToolbar extends PDFPlusComponent {
 
     onload() {
         this.addColorPalette();
-        this.makeDropdownInToolbarHoverable();
         this.replaceDisplayOptionsDropdown();
         this.addZoomLevelInputEl();
+        this.makeDropdownInToolbarHoverable();
     }
 
     onunload() {
@@ -40,37 +40,37 @@ export class PDFPlusToolbar extends PDFPlusComponent {
     makeDropdownInToolbarHoverable() {
         const { toolbar, plugin } = this;
 
-        const interactWithDropdownButtonOnEvent = (eventName: 'mouseover' | 'mouseout', callback: (evt: MouseEvent, buttonEl: HTMLElement) => any) => {
-            toolbar.toolbarLeftEl.addEventListener(eventName, (evt) => {
-                if (plugin.settings.hoverableDropdownMenuInToolbar) {
-                    if (evt.target instanceof HTMLElement) {
-                        const buttonEl = evt.target.closest<HTMLElement>('.clickable-icon');
-                        if (buttonEl && isMouseEventExternal(evt, buttonEl)) {
-                            const iconEl = buttonEl.firstElementChild;
-                            if (iconEl && iconEl.matches('svg.lucide-chevron-down')) {
-                                callback(evt, buttonEl);
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        toolbar.toolbarLeftEl.querySelectorAll<HTMLElement>('div.clickable-icon')
+            .forEach((buttonEl) => {
+                const iconEl = buttonEl.firstElementChild;
+                if (iconEl && iconEl.matches('svg.lucide-chevron-down')) {
+                    let childMenu: Menu | null = null;
 
-        interactWithDropdownButtonOnEvent('mouseover', (evt, buttonEl) => {
-            if (!buttonEl.hasClass('has-active-menu')) {
-                buttonEl.click();
-            }
-        });
-        interactWithDropdownButtonOnEvent('mouseout', (evt, buttonEl) => {
-            plugin.shownMenus.forEach((menu) => {
-                if (menu.parentEl === buttonEl && evt.relatedTarget instanceof Node && !menu.dom.contains(evt.relatedTarget)) {
-                    const menuRect = menu.dom.getBoundingClientRect();
-                    const buttonRect = buttonEl.getBoundingClientRect();
-                    if (buttonRect.left <= evt.clientX && evt.clientX <= buttonRect.right && buttonRect.bottom <= evt.clientY && evt.clientY <= menuRect.top) return;
-                    menu.hide();
+                    showChildElOnParentElHover({
+                        parentEl: buttonEl,
+                        createChildEl: () => {
+                            if (!buttonEl.hasClass('has-active-menu')) {
+                                buttonEl.click();
+                                for (const menu of plugin.shownMenus) {
+                                    if (menu.parentEl === buttonEl) {
+                                        childMenu = menu;
+                                        return menu.dom;
+                                    }
+                                }
+                            }
+                            return childMenu = null;
+                        },
+                        removeChildEl: () => {
+                            if (childMenu) {
+                                childMenu.hide();
+                                childMenu = null;
+                            }
+                        },
+                        component: this.child.component,
+                        timeout: 200,
+                    });
                 }
             });
-        });
     }
 
     replaceDisplayOptionsDropdown() {

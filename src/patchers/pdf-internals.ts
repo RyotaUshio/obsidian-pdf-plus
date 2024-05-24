@@ -11,7 +11,7 @@ import { patchPDFOutlineViewer } from 'patchers';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isMouseEventExternal, isNonEmbedLike } from 'utils';
+import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim';
@@ -57,10 +57,17 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
 
 function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
     const { lib } = plugin;
-    lib.workspace.iteratePDFViewerComponents(async (viewer, file) => {
+    lib.workspace.iteratePDFViewerComponents((viewer, file) => {
         // reflect the patch to existing PDF views
         // especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
         viewer.unload();
+        
+        // Clean up the old keymaps already registered by PDFViewerChild,
+        // which causes an error because the listener references the old instance of PDFFindBar.
+        // This keymap hanldler will be re-registered in `PDFViewerChild.load` by the following `viewer.load()`.
+        const oldEscapeHandler = viewer.scope.keys.find((handler) => handler.modifiers === '' && handler.key === 'Escape')
+        if (oldEscapeHandler) viewer.scope.unregister(oldEscapeHandler);
+
         viewer.load();
         if (file) viewer.loadFile(file, plugin.subpathWhenPatched);
     });
@@ -264,6 +271,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(annotationId);
                             if (!annot) return;
 
+                            // Needed to avoid registering the event listeners on the same annotation container element multiple times
+                            if (annot.container.dataset.pdfPlusIsAnnotationPostProcessed=== 'true') return;
+
                             if (annot.data.subtype === 'Link' && typeof annot.container.dataset.internalLink === 'string') {
                                 PDFInternalLinkPostProcessor.registerEvents(plugin, this, annot);
                             } else if (annot.data.subtype === 'Link' && annot.data.url) {
@@ -276,56 +286,24 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 annot.container.hide();
                             }
 
-                            if (plugin.settings.showAnnotationPopupOnHover && annot.data.contentsObj?.str
-                                && annot.container.dataset.pdfPlusMouseOverRegistered !== 'true' // Needed to avoid registering onAnnotationMouseOver multiple times
-                            ) {
-                                const onAnnotationMouseOver = (evt: MouseEvent) => {
-                                    if (isMouseEventExternal(evt, annot.container)) {
-                                        let isOverAnnotation = true;
-                                        let isOverPopup = false;
-
+                            if (plugin.settings.showAnnotationPopupOnHover && annot.data.contentsObj?.str) {
+                                showChildElOnParentElHover({
+                                    parentEl: annot.container,
+                                    createChildEl: () => {
                                         this.destroyAnnotationPopup();
                                         this.renderAnnotationPopup(annot);
-
-                                        const component = this.component!.addChild(new Component());
-                                        component.register(() => this.destroyAnnotationPopup());
-                                        component.load();
-
-                                        const requestCheck = () => setTimeout(() => {
-                                            if (!isOverAnnotation && !isOverPopup) {
-                                                component.unload();
-                                            }
-                                        }, 200);
-
-                                        const onAnnotationMouseOut = (evt: MouseEvent) => {
-                                            if (isMouseEventExternal(evt, annot.container)) {
-                                                isOverAnnotation = false;
-                                                requestCheck();
-                                            }
-                                        };
-                                        component.registerDomEvent(annot.container, 'mouseout', onAnnotationMouseOut);
-
-                                        const popupEl = this.activeAnnotationPopupEl
-                                        if (popupEl) {
-                                            component.registerDomEvent(popupEl, 'mouseover', (evt) => {
-                                                if (isMouseEventExternal(evt, popupEl)) {
-                                                    isOverPopup = true;
-
-                                                    const onPopupMouseOut = (evt: MouseEvent) => {
-                                                        if (isMouseEventExternal(evt, popupEl)) {
-                                                            isOverPopup = false;
-                                                            requestCheck();
-                                                        }
-                                                    };
-                                                    component.registerDomEvent(popupEl, 'mouseout', onPopupMouseOut);
-                                                }
-                                            });
+                                        return this.activeAnnotationPopupEl;
+                                    },
+                                    removeChildEl: () => {
+                                        if (this.activeAnnotationPopupEl?.dataset.annotationId === annot.data.id) {
+                                            this.destroyAnnotationPopup();
                                         }
-                                    }
-                                };
-                                annot.container.addEventListener('mouseover', onAnnotationMouseOver);
-                                annot.container.dataset.pdfPlusMouseOverRegistered = 'true';
+                                    },
+                                    component: this.component,
+                                });
                             }
+
+                            annot.container.dataset.pdfPlusIsAnnotationPostProcessed= 'true'; 
                         });
                 });
 
@@ -380,6 +358,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     const { source: pdfSidebar } = data;
                     if (plugin.settings.noSidebarInEmbed && !isNonEmbedLike(this.pdfViewer)) {
                         pdfSidebar.close();
+                    }
+                    if (plugin.settings.defaultSidebarView === SidebarView.OUTLINE && pdfSidebar.haveOutline) {
+                        pdfSidebar.switchView(SidebarView.OUTLINE);
                     }
                 });
 

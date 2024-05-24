@@ -3,10 +3,12 @@ import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRend
 import PDFPlus from 'main';
 import { ExtendedPaneType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
-import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, capitalize, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
+import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
-import { ScrollMode, SpreadMode } from 'pdfjs-enums';
+import { ScrollMode, SidebarView, SpreadMode } from 'pdfjs-enums';
 import { Menu } from 'obsidian';
+import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
+import { BibliographyManager } from 'bib';
 
 
 const SELECTION_BACKLINK_VISUALIZE_STYLE = {
@@ -160,6 +162,7 @@ export interface PDFPlusSettings {
 	executeFontSizeAdjusterCommand: boolean;
 	closeSidebarWithShowCommandIfExist: boolean;
 	autoHidePDFSidebar: boolean;
+	defaultSidebarView: SidebarView;
 	outlineDrag: boolean;
 	outlineContextMenu: boolean;
 	outlineLinkDisplayTextFormat: string;
@@ -261,6 +264,11 @@ export interface PDFPlusSettings {
 	enableBibInCanvas: boolean;
 	removeWhitespaceBetweenCJChars: boolean;
 	vim: boolean;
+	vimScrollSize: number;
+	vimContinuousScrollSpeed: number;
+	vimSmoothScroll: boolean;
+	vimHlsearch: boolean;
+	vimIncsearch: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -378,7 +386,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableHoverPDFInternalLink: true,
 	recordPDFInternalLinkHistory: true,
 	alwaysRecordHistory: true,
-	renderMarkdownInStickyNote: true,
+	renderMarkdownInStickyNote: false,
 	enablePDFEdit: false,
 	author: '',
 	writeHighlightToFileOpacity: 0.2,
@@ -416,6 +424,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	executeFontSizeAdjusterCommand: true,
 	closeSidebarWithShowCommandIfExist: true,
 	autoHidePDFSidebar: false,
+	defaultSidebarView: SidebarView.THUMBS,
 	outlineDrag: true,
 	outlineContextMenu: true,
 	outlineLinkDisplayTextFormat: '{{file.basename}}, {{text}}',
@@ -517,12 +526,20 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInCanvas: true,
 	removeWhitespaceBetweenCJChars: true,
 	vim: false,
+	vimScrollSize: 40,
+	vimContinuousScrollSpeed: 1.2,
+	vimSmoothScroll: true,
+	vimHlsearch: true,
+	vimIncsearch: true,
 };
 
 
 export function isPDFPlusSettingsKey(key: string): key is keyof PDFPlusSettings {
 	return DEFAULT_SETTINGS.hasOwnProperty(key);
 }
+
+
+const modKey = getModifierNameInPlatform('Mod').toLowerCase();
 
 
 export class PDFPlusSettingTab extends PluginSettingTab {
@@ -685,8 +702,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		return toggleVisibility;
 	}
 
-	showConditionally(setting: Setting, condition: () => boolean) {
-		this.events.on('update', this.getVisibilityToggler(setting, condition));
+	showConditionally(setting: Setting | Setting[], condition: () => boolean) {
+		const settings = Array.isArray(setting) ? setting : [setting];
+		const togglers = settings.map((setting) => this.getVisibilityToggler(setting, condition))
+		this.events.on('update', () => togglers.forEach((toggler) => toggler()));
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlurOrEnter?: (setting: Setting) => any) {
@@ -1200,6 +1219,25 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		});
 	}
 
+	addPagePreviewSettingButton(setting: Setting) {
+		return setting
+			.addButton((button) => {
+				button.setButtonText('Open page preview settings')
+					.onClick(() => {
+						this.app.setting.openTabById('page-preview')
+					});
+			});
+	}
+
+	addRequireModKeyOnHoverSetting(id: string) {
+		const display = this.app.workspace.hoverLinkSources[id].display;
+		const required = this.plugin.requireModKeyForLinkHover(id);
+		return this.addSetting()
+			.setName(`Require ${modKey} key while hovering`)
+			.setDesc(`Currently ${required ? 'required' : 'not required'}. You can toggle this on and off in the core Page Preview plugin settings > ${display}.`)
+			.then((setting) => this.addPagePreviewSettingButton(setting));
+	}
+
 	addIconSetting(settingName: KeysOfType<PDFPlusSettings, string>, leaveBlankToRemoveIcon: boolean) {
 		const normalizeIconNameNoPrefix = (name: string) => {
 			if (name.startsWith('lucide-')) {
@@ -1381,11 +1419,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		);
 
 
-		// @ts-ignore
-		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
-		const hoverCmd = `hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())}`;
-
-
 		this.contentEl.createDiv('top-note', async (el) => {
 			await this.renderMarkdown([
 				'> [!TIP]',
@@ -1461,15 +1494,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addDropdownSetting('hoverHighlightAction', HOVER_HIGHLIGHT_ACTIONS, () => this.redisplay())
 			.setName('Action when hovering over highlighted text')
 			.setDesc(`Easily open backlinks or display a popover preview of it by pressing ${getModifierNameInPlatform('Mod').toLowerCase()} (by default) while hovering over a highlighted text in PDF viewer.`)
-		this.addSetting()
-			.setName(`Require ${getModifierNameInPlatform('Mod').toLowerCase()} key for the above action`)
-			.setDesc('You can toggle this on and off in the core Page Preview plugin settings > PDF++ hover action.')
-			.addButton((button) => {
-				button.setButtonText('Open page preview settings')
-					.onClick(() => {
-						this.app.setting.openTabById('page-preview')
-					});
-			});
+		this.addRequireModKeyOnHoverSetting('pdf-plus');
 		this.addToggleSetting('doubleClickHighlightToOpenBacklink')
 			.setName('Double click highlighted text to open the corresponding backlink');
 
@@ -2323,11 +2348,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				)
 			})
 			.then((setting) => {
-				if (!noModKey) setting.setDesc(`You may want to turn this off to avoid conflicts with ${hoverCmd}.`);
+				if (this.plugin.requireModKeyForLinkHover(PDFInternalLinkPostProcessor.HOVER_LINK_SOURCE_ID)) setting.setDesc(`You may want to turn this off to avoid conflicts with hover+${modKey}.`);
 				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
 			});
-		this.addToggleSetting('enableHoverPDFInternalLink', () => this.redisplay())
-			.setName(`Show a popover preview of PDF internal links by ${hoverCmd}`);
+		this.addToggleSetting('enableHoverPDFInternalLink', () => this.events.trigger('update'))
+			.setName(`Show a popover preview of PDF internal links by hover(+${modKey})`);
+		this.showConditionally(
+			this.addRequireModKeyOnHoverSetting(PDFInternalLinkPostProcessor.HOVER_LINK_SOURCE_ID),
+			() => this.plugin.settings.enableHoverPDFInternalLink
+		);
 		this.addToggleSetting('recordPDFInternalLinkHistory')
 			.setName('Enable history navigation for PDF internal links')
 			.setDesc('When enabled, clicking the "navigate back" (left arrow) button will take you back to the page you were originally viewing before clicking on an internal link in the PDF file.');
@@ -2355,19 +2384,25 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Citations in PDF (experimental)', 'citation', 'lucide-graduation-cap')
 			.then((setting) => {
 				this.renderMarkdown([
-					'Enjoy supercharged experiences of working with citations in PDF files, just like in [Google Scholar\'s PDF viewer](https://scholar.googleblog.com/2024/03/supercharge-your-pdf-reading-follow.html).'
+					'Enjoy supercharged experiences of working with citations in PDF files, just like in [Google Scholar\'s PDF viewer](https://scholar.googleblog.com/2024/03/supercharge-your-pdf-reading-follow.html).',
+					'',
+					'The current implementation is based on some pretty primitive hand-crafted rules, and there is a lot of room for improvement. Code contribution is much appreciated!'
 				], setting.descEl);
 			});
 		{
-			this.addDropdownSetting('actionOnCitationHover', ACTION_ON_CITATION_HOVER, () => toggler())
-				.setName(`${capitalize(hoverCmd)} on a citation link to show...`)
+			this.addDropdownSetting('actionOnCitationHover', ACTION_ON_CITATION_HOVER, () => this.events.trigger('update'))
+				.setName(`Hover(+${modKey}) on a citation link to show...`)
 				.then((setting) => {
 					this.renderMarkdown([
 						`- **${ACTION_ON_CITATION_HOVER['pdf-plus-bib-popover']}**: ` + ' Recommended. It works without any additional stuff, but you can further boost the visibility by installing [AnyStyle](https://github.com/inukshuk/anystyle) (desktop only).',
 						`- **${ACTION_ON_CITATION_HOVER['google-scholar-popover']}**: ` + ' Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.9 or higher enabled. Be careful not to exceed the rate limit of Google Scholar.',
 					], setting.descEl);
 				});
-			const toggler = this.getVisibilityToggler(
+			this.showConditionally(
+				this.addRequireModKeyOnHoverSetting(BibliographyManager.HOVER_LINK_SOURCE_ID),
+				() => this.plugin.settings.actionOnCitationHover !== 'none'
+			);
+			this.showConditionally(
 				this.addSetting('anystylePath')
 					.setName('AnyStyle path')
 					.addText((text) => {
@@ -2392,35 +2427,46 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				() => Platform.isDesktopApp && this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover'
 			);
 
-			this.addDesc('Try turning off the following options if you experience performance issues.');
-			this.addToggleSetting('enableBibInEmbed')
-				.setName('Enable bibliography extraction in PDF embeds')
-			this.addToggleSetting('enableBibInCanvas')
-				.setName('Enable bibliography extraction in Canvas')
-			this.addToggleSetting('enableBibInHoverPopover')
-				.setName('Enable bibliography extraction in hover popover previews')
-
+			this.showConditionally(
+				[
+					this.addDesc('Try turning off the following options if you experience performance issues.'),
+					this.addToggleSetting('enableBibInEmbed')
+						.setName('Enable bibliography extraction in PDF embeds'),
+					this.addToggleSetting('enableBibInCanvas')
+						.setName('Enable bibliography extraction in Canvas'),
+					this.addToggleSetting('enableBibInHoverPopover')
+						.setName('Enable bibliography extraction in hover popover previews'),
+				],
+				() => this.plugin.settings.actionOnCitationHover !== 'none',
+			);
 		}
-
 
 
 		this.addHeading('External links in PDF', 'pdf-external-link', 'external-link')
 			.setDesc('Make it easier to work with external links embedded in PDF files.');
 		this.addToggleSetting('popoverPreviewOnExternalLinkHover')
-			.setName(`Show a popover preview of external links by ${hoverCmd}`)
+			.setName(`Show a popover preview of external links by hover(+${modKey})`)
 			.then((setting) => {
 				this.renderMarkdown([
 					'Requires [Surfing](obsidian://show-plugin?id=surfing) ver. 0.9.9 or higher enabled.',
 				], setting.descEl);
 			});
-
+		this.showConditionally(
+			this.addRequireModKeyOnHoverSetting(PDFExternalLinkPostProcessor.HOVER_LINK_SOURCE_ID),
+			() => this.plugin.settings.popoverPreviewOnExternalLinkHover
+		);
 
 		this.addHeading('PDF sidebar', 'sidebar', 'sidebar-left')
 			.setDesc('General settings for the PDF sidebar. The options specific to the outline and thumbnails are located in the corresponding sections below.');
 		this.addToggleSetting('autoHidePDFSidebar')
 			.setName('Click on PDF content to hide sidebar')
 			.setDesc('Requires reopening the tabs after changing this option.');
-
+		this.addEnumDropdownSetting('defaultSidebarView', {
+			[SidebarView.THUMBS]: 'Thumbnails',
+			[SidebarView.OUTLINE]: 'Outline',
+		})
+			.setName('Default sidebar view')
+			.setDesc('Reopen PDFs after changing this option.');
 
 		this.addHeading('PDF outline (table of contents)', 'outline', 'lucide-list')
 			.setDesc('Power up the outline view of the built-in PDF viewer: add, rename, or delete items via the right-click menu and the "Add to outline" command, drag & drop items to insert a section link, and more.');
@@ -2432,12 +2478,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				)
 			})
 			.then((setting) => {
-				if (!noModKey) setting.setDesc(`You may want to turn this off to avoid conflicts with ${hoverCmd}.`);
+				if (this.plugin.requireModKeyForLinkHover(PDFOutlineItemPostProcessor.HOVER_LINK_SOURCE_ID)) setting.setDesc(`You may want to turn this off to avoid conflicts with hover+${modKey}.`);
 				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
 			});
-		this.addToggleSetting('popoverPreviewOnOutlineHover')
-			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())} `)
+		this.addToggleSetting('popoverPreviewOnOutlineHover', () => this.events.trigger('update'))
+			.setName(`Show popover preview by hover(+${modKey})`)
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
+		this.showConditionally(
+			this.addRequireModKeyOnHoverSetting(PDFOutlineItemPostProcessor.HOVER_LINK_SOURCE_ID),
+			() => this.plugin.settings.popoverPreviewOnOutlineHover
+		);
 		this.addToggleSetting('recordHistoryOnOutlineClick')
 			.setName('Record to history when clicking an outline item')
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
@@ -2506,12 +2556,16 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				)
 			})
 			.then((setting) => {
-				if (!noModKey) setting.setDesc(`You may want to turn this off to avoid conflicts with ${hoverCmd}.`);
+				if (this.plugin.requireModKeyForLinkHover(PDFThumbnailItemPostProcessor.HOVER_LINK_SOURCE_ID)) setting.setDesc(`You may want to turn this off to avoid conflicts with hover+${modKey}`);
 				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
 			});
-		this.addToggleSetting('popoverPreviewOnThumbnailHover')
-			.setName(`Show popover preview by hover${noModKey ? '' : ('+' + getModifierNameInPlatform('Mod').toLowerCase())} `)
+		this.addToggleSetting('popoverPreviewOnThumbnailHover', () => this.events.trigger('update'))
+			.setName(`Show popover preview by hover(+${modKey})`)
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
+		this.showConditionally(
+			this.addRequireModKeyOnHoverSetting(PDFThumbnailItemPostProcessor.HOVER_LINK_SOURCE_ID),
+			() => this.plugin.settings.popoverPreviewOnThumbnailHover
+		)
 		this.addToggleSetting('recordHistoryOnThumbnailClick')
 			.setName('Record to history when clicking a thumbnail')
 			.setDesc('Reopen the tabs or reload the app after changing this option.');
@@ -2810,6 +2864,51 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
+		this.addHeading('Vim keybindings (experimental)', 'vim', 'lucide-chevron-down')
+			.then((setting) => {
+				this.renderMarkdown([
+					'Tracked at [this GitHub issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/119).',
+					'',
+					'Currently, the following keys are supported (some might change in the future):',
+					'',
+					'- `j`/`k`/`h`/`l`: Scroll down/up/left/right',
+					'- `Shift`+`j`/`Shift`+`l`: Go to next page',
+					'- `Shift`+`k`/`Shift`+`h`: Go to previous page',
+					'- `gg`: Go to first page',
+					'- `Shift`+`g`: Go to last page',
+					'- `+`: Zoom in',
+					'- `-`: Zoom out',
+					'- `=`: Reset zoom',
+					'- `/`/`?`: Search forward/backward',
+					'- `n`/`Shift`+`n`: Go to next/previous match'
+				], setting.descEl);
+			});
+		this.addToggleSetting('vim', () => this.events.trigger('update'))
+			.setName('Enable')
+			.setDesc('Reopen the PDF viewers after changing this option.');
+
+		this.showConditionally([
+			this.addHeading('Scrolling', 'vim-scroll'),
+			this.addSliderSetting('vimScrollSize', 5, 500, 5)
+				.setName('Scroll size (px) of the jkhl keys')
+				.setDesc('The size of scroll when one of the jkhl keys is pressed once.'),
+			this.addSliderSetting('vimContinuousScrollSpeed', 0.1, 5, 0.1)
+				.setName('Speed of continuous scroll (px per ms)')
+				.setDesc('The speed of scroll when pressing and holding down the jkhl keys.'),
+			this.addToggleSetting('vimSmoothScroll')
+				.setName('Smooth scroll'),
+			this.addHeading('Search', 'vim-search'),
+			this.addToggleSetting('vimHlsearch')
+				.setName('hlsearch')
+				.setDesc('If enabled, all matches will be highlighted.'),
+			this.addToggleSetting('vimIncsearch')
+				.setName('incsearch')
+				.setDesc('Incremental search: while typing the search query, update the search results after every keystroke. If disabled, the results will be shown only after pressing Enter.')
+		],
+			() => this.plugin.settings.vim
+		);
+
+
 		this.addHeading('Misc', 'misc', 'lucide-more-horizontal');
 		this.addToggleSetting('showStatusInToolbar')
 			.setName('Show status in PDF toolbar')
@@ -2834,21 +2933,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('removeWhitespaceBetweenCJChars')
 			.setName('Remove half-width whitespace between two Chinese/Japanese characters when copying text')
 			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optical character recognition). Enable this option to remove it when copying links to text selections.');
-		this.addToggleSetting('vim')
-			.setName('Enable Vim key bindings (experimental)')
-			.then((setting) => {
-				this.renderMarkdown([
-					'Reopen the PDF viewers after changing this option. Tracked at [this GitHub issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/119).',
-
-					'- `j`: Go to next page',
-					'- `k`: Go to previous page',
-					'- `gg`: Go to first page',
-					'- `Shift`+`G`: Go to last page',
-					'- `+` (`Shift`+`=`): Zoom in',
-					'- `-`: Zoom out',
-					'- `=`: Reset zoom',
-				], setting.descEl);
-			});
 
 
 		this.addHeading('Style settings', 'style-settings', 'lucide-settings-2')

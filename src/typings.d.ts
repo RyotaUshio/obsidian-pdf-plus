@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler } from 'obsidian';
 import { CanvasData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -46,6 +46,7 @@ type PDFViewExtraState = {
 };
 
 interface PDFViewerComponent extends Component {
+    /** Scope shared with PDFView and PDFViewerChild. */
     scope: Scope;
     child: PDFViewerChild | null;
     next: ((child: PDFViewerChild) => any)[] | null;
@@ -71,9 +72,12 @@ interface PDFViewerChild {
     /** Initially set to `false`, and set to `true` in `unload()`. */
     unloaded: boolean;
     app: App;
+    /** Scope shared with PDFView and PDFViewerComponent. */
     scope: Scope;
     containerEl: HTMLElement;
-    opts: any;
+    opts: {
+        isEmbed: boolean;
+    };
     pdfViewer: ObsidianViewer;
     subpathHighlight: PDFTextHighlight | PDFAnnotationHighlight
     | PDFRectHighlight // Added by this plugin
@@ -301,6 +305,8 @@ interface PDFFindBar {
     settingsEl: HTMLElement; // div.pdf-findbar-settings
     searchComponent: SearchComponent;
     scope: Scope;
+    /** Keymap event handlers that are activated only while the find bar is shown. */
+    keyHandlers: KeymapEventHandler[] | null;
     eventBus: EventBus;
     opened: boolean;
     searchSettings: PDFSearchSettings;
@@ -347,7 +353,7 @@ interface PDFSearchMatchCounts {
 }
 
 interface PDFFindController {
-
+    [name: string]: unknown;
 }
 
 interface PDFViewer {
@@ -996,6 +1002,7 @@ declare module 'obsidian' {
     interface Workspace {
         floatingSplit: WorkspaceFloating;
         recentFileTracker: RecentFileTracker;
+        hoverLinkSources: Record<string, HoverLinkSource>
         getActiveFileView(): FileView | null;
         trigger(name: string, ...data: any[]): void;
         trigger(name: 'hover-link', ctx: {
@@ -1122,7 +1129,19 @@ declare module 'obsidian' {
         transition(): void;
     }
 
+    interface AbstractTextComponent {
+        changeCallback?: (value: string) => any;
+    }
+
     interface SearchComponent {
         containerEl: HTMLElement;
+    }
+
+    interface Scope {
+        // If we pass `[]` as the first argument (`modifiers`), it forbids any modifiers to be pressed,
+        // and as a result, the keymap may not work for some non-US keyboards (e.g. JIS).
+        // Setting `modifiers` to `null` is undocumented but makes this keymap work regardless of modifiers, thereby fixing the issue.
+        register(modifiers: Modifier[] | null, key: string | null, func: KeymapEventListener): KeymapEventHandler;
+        keys: KeymapEventHandler[];
     }
 }

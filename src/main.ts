@@ -8,9 +8,11 @@ import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { subpathToParams, OverloadParameters, focusObsidian } from 'utils';
+import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
 import { ExternalPDFModal } from 'modals';
+import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
+import { BibliographyManager } from 'bib';
 
 
 export default class PDFPlus extends Plugin {
@@ -93,10 +95,7 @@ export default class PDFPlus extends Plugin {
 
 		this.registerPDFEmbedCreator();
 
-		this.registerHoverLinkSource('pdf-plus', {
-			defaultMod: true,
-			display: 'PDF++ hover action'
-		});
+		this.registerHoverLinkSources();
 
 		this.registerCommands();
 
@@ -440,7 +439,7 @@ export default class PDFPlus extends Plugin {
 			// Double-lick PDF embeds to open links
 			this.registerDomEvent(embed.containerEl, 'dblclick', (evt) => {
 				if (this.settings.dblclickEmbedToOpenLink
-					&& evt.target instanceof HTMLElement
+					&& isTargetHTMLElement(evt, evt.target)
 					// .pdf-container is necessary to avoid opening links when double-clicking on the toolbar
 					&& (evt.target.closest('.pdf-embed[src] > .pdf-container') || evt.target.closest('.pdf-cropped-embed'))) {
 					const linktext = file.path + subpath;
@@ -452,7 +451,7 @@ export default class PDFPlus extends Plugin {
 
 			if (embed instanceof PDFCroppedEmbed) {
 				this.registerDomEvent(embed.containerEl, 'click', (evt) => {
-					if (evt.target instanceof HTMLElement && evt.target.closest('.cm-editor')) {
+					if (isTargetHTMLElement(evt, evt.target) && evt.target.closest('.cm-editor')) {
 						// Prevent the click event causing the editor to select the link like an image embed
 						evt.preventDefault();
 					}
@@ -492,7 +491,7 @@ export default class PDFPlus extends Plugin {
 		// Make PDF embeds with a subpath unscrollable
 		this.registerGlobalDomEvent('wheel', (evt) => {
 			if (this.settings.embedUnscrollable
-				&& evt.target instanceof HTMLElement
+				&& isTargetHTMLElement(evt, evt.target)
 				&& evt.target.closest('.pdf-embed[src*="#"] .pdf-viewer-container')) {
 				evt.preventDefault();
 			}
@@ -549,6 +548,38 @@ export default class PDFPlus extends Plugin {
 			events.offref(eventRef);
 		}, ctx);
 		this.registerEvent(eventRef);
+	}
+
+	private registerHoverLinkSources() {
+		this.registerHoverLinkSource('pdf-plus', {
+			defaultMod: true,
+			display: 'PDF++: backlink highlights'
+		});
+
+		this.registerHoverLinkSource(PDFInternalLinkPostProcessor.HOVER_LINK_SOURCE_ID, {
+			defaultMod: true,
+			display: 'PDF++: internal links in PDF (except for citations)'
+		});
+
+		this.registerHoverLinkSource(BibliographyManager.HOVER_LINK_SOURCE_ID, {
+			defaultMod: false,
+			display: 'PDF++: citation links in PDF'
+		});
+
+		this.registerHoverLinkSource(PDFExternalLinkPostProcessor.HOVER_LINK_SOURCE_ID, {
+			defaultMod: true,
+			display: 'PDF++: external links in PDF'
+		});
+
+		this.registerHoverLinkSource(PDFOutlineItemPostProcessor.HOVER_LINK_SOURCE_ID, {
+			defaultMod: true,
+			display: 'PDF++: outlines (bookmarks)'
+		});
+
+		this.registerHoverLinkSource(PDFThumbnailItemPostProcessor.HOVER_LINK_SOURCE_ID, {
+			defaultMod: true,
+			display: 'PDF++: thumbnails'
+		});
 	}
 
 	private registerCommands() {
@@ -623,10 +654,11 @@ export default class PDFPlus extends Plugin {
 		this.events.trigger(evt, ...args);
 	}
 
-	requireModKeyForLinkHover() {
+	requireModKeyForLinkHover(id = 'pdf-plus') {
 		// @ts-ignore
-		const noModKey = this.app.internalPlugins.plugins['page-preview'].instance.overrides['pdf-plus'] === false;
-		return !noModKey;
+		return this.app.internalPlugins.plugins['page-preview'].instance.overrides[id]
+			?? this.app.workspace.hoverLinkSources[id]?.defaultMod
+			?? false;
 	}
 
 	openSettingTab(): PDFPlusSettingTab {

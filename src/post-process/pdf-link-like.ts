@@ -3,7 +3,8 @@ import { App, HoverParent, HoverPopover, Keymap } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
 import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
-import { isMouseEventExternal } from 'utils';
+import { isCitationId, isMouseEventExternal, isTargetHTMLElement } from 'utils';
+import { BibliographyManager } from 'bib';
 
 
 /**
@@ -22,6 +23,8 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
     lib: PDFPlusLib;
     child: PDFViewerChild;
     targetEl: HTMLElement;
+
+    static readonly HOVER_LINK_SOURCE_ID: string;
 
     /**
      * A hover parent (https://docs.obsidian.md/Reference/TypeScript+API/HoverParent) is
@@ -65,6 +68,10 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
     abstract useModifierKey(): boolean;
 
     abstract shouldShowHoverPopover(): boolean;
+
+    get hoverLinkSourceId() {
+        return (this.constructor as typeof PDFLinkLikePostProcessor).HOVER_LINK_SOURCE_ID;
+    }
 
     abstract shouldRecordHistory(): boolean;
 
@@ -119,7 +126,7 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
 
             app.workspace.trigger('hover-link', {
                 event,
-                source: 'pdf-plus',
+                source: this.hoverLinkSourceId,
                 hoverParent: this,
                 targetEl,
                 linktext,
@@ -189,6 +196,8 @@ abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcesso
 export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProcessor {
     linkAnnotationElement: AnnotationElement;
 
+    static readonly HOVER_LINK_SOURCE_ID = 'pdf-plus-internal-link';
+
     protected constructor(plugin: PDFPlus, child: PDFViewerChild, linkAnnotationElement: AnnotationElement) {
         super(plugin, child, linkAnnotationElement.container);
         this.linkAnnotationElement = linkAnnotationElement;
@@ -205,7 +214,7 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
         if (this.plugin.settings.actionOnCitationHover === 'google-scholar-popover'
             && this.lib.requirePluginNewerThan('surfing', '0.9.5')) {
             const destId = this.getDest();
-            if (typeof destId === 'string' && destId.startsWith('cite.')) {
+            if (isCitationId(destId)) {
                 const doc = this.child.pdfViewer.pdfViewer?.pdfDocument;
                 if (doc) {
                     const url = this.child.bib?.getGoogleScholarSearchUrlFromDest(destId);
@@ -227,6 +236,17 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
 
     shouldShowHoverPopover() {
         return this.plugin.settings.enableHoverPDFInternalLink;
+    }
+
+    isCitationLink() {
+        const destId = this.getDest();
+        return isCitationId(destId);
+    }
+
+    get hoverLinkSourceId() {
+        return this.isCitationLink()
+            ? BibliographyManager.HOVER_LINK_SOURCE_ID
+            : PDFInternalLinkPostProcessor.HOVER_LINK_SOURCE_ID;
     }
 
     shouldRecordHistory() {
@@ -251,6 +271,8 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
 
 export class PDFOutlineItemPostProcessor extends PDFDestinationHolderPostProcessor {
     item: PDFOutlineTreeNode;
+
+    static readonly HOVER_LINK_SOURCE_ID = 'pdf-plus-outline';
 
     protected constructor(plugin: PDFPlus, child: PDFViewerChild, item: PDFOutlineTreeNode) {
         super(plugin, child, item.selfEl);
@@ -281,12 +303,14 @@ export class PDFOutlineItemPostProcessor extends PDFDestinationHolderPostProcess
 
 
 export class PDFThumbnailItemPostProcessor extends PDFLinkLikePostProcessor {
+    static readonly HOVER_LINK_SOURCE_ID = 'pdf-plus-thumbnail';
+
     static registerEvents(plugin: PDFPlus, child: PDFViewerChild) {
         return new PDFThumbnailItemPostProcessor(plugin, child, child.pdfViewer.pdfThumbnailViewer.container);
     }
 
     async getLinkText(evt: MouseEvent) {
-        const anchorEl = evt.target instanceof HTMLElement && evt.target.closest('.pdf-thumbnail-view > a[href^="#page="]');
+        const anchorEl = isTargetHTMLElement(evt, evt.target) && evt.target.closest('.pdf-thumbnail-view > a[href^="#page="]');
         if (!anchorEl) return null;
         const subpath = anchorEl.getAttribute('href')!;
         return (this.file?.path ?? '') + subpath;

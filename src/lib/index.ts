@@ -7,7 +7,7 @@ import { ColorPalette, ColorPaletteState } from 'color-palette';
 import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
-import { cropCanvas, encodeLinktext, getDirectPDFObj, isVersionNewerThan, parsePDFSubpath, removeExtension, rotateCanvas, toSingleLine } from 'utils';
+import { cropCanvas, encodeLinktext, getDirectPDFObj, isVersionNewerThan, parsePDFSubpath, removeExtension, rotateCanvas, toSingleLine, isTargetNode } from 'utils';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';
@@ -61,6 +61,8 @@ export class PDFPlusLib {
     registerPDFEvent(name: 'pagesloaded', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFViewer, pagesCount: number }) => any): void;
     registerPDFEvent(name: 'pagerendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number, cssTransform: boolean, timestamp: number, error: any }) => any): void;
     registerPDFEvent(name: 'pagechanging', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFViewer, pageNumber: number, pageLabel: string | null, previous: number }) => any): void;
+    registerPDFEvent(name: 'findbaropen', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFFindBar }) => any): void;
+    registerPDFEvent(name: 'findbarclose', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFFindBar }) => any): void;
 
     registerPDFEvent(name: string, eventBus: EventBus, component: Component | null, callback: (data: any) => any) {
         const listener = async (data: any) => {
@@ -152,7 +154,7 @@ export class PDFPlusLib {
     }
 
     getPageElFromEvent(event: MouseEvent) {
-        return event.target instanceof Node
+        return isTargetNode(event, event.target)
             ? this.getPageElAssociatedWithNode(event.target)
             : null;
     }
@@ -671,14 +673,18 @@ export class PDFPlusLib {
         return this.getPDFViewerChild(activeOnly)?.bib;
     }
 
-    search(findBar: PDFFindBar, query: string, settings?: Partial<PDFSearchSettings>) {
+    search(findBar: PDFFindBar, query: string, settings?: Partial<PDFSearchSettings>, findPrevious?: boolean) {
         findBar.showSearch();
         findBar.searchComponent.setValue(query);
 
         Object.assign(findBar.searchSettings, settings);
-        findBar.dispatchEvent('');
+        findBar.dispatchEvent('', findPrevious);
 
         // Update the search settings UI accordingly
+        this.updateSearchSettingsUI(findBar);
+    }
+
+    updateSearchSettingsUI(findBar: PDFFindBar) {
         const toggleEls = findBar.settingsEl.querySelectorAll<HTMLElement>('div.checkbox-container');
         const highlightAllToggleEl = toggleEls[0];
         const matchDiacriticsToggleEl = toggleEls[1];
@@ -805,7 +811,7 @@ export class PDFPlusLib {
             && 'containerEl' in embed
             && embed.file instanceof TFile
             && embed.file.extension === 'pdf'
-            && embed.containerEl instanceof HTMLElement
+            && embed.containerEl.instanceOf(HTMLElement)
             && embed.containerEl?.matches('.pdf-embed') // additional class: "internal-embed" for embeds in markdown views, "canvas-node-content" for embeds in canvas views
             && embed instanceof Component
             && !(embed instanceof PDFCroppedEmbed);

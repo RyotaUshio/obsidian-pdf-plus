@@ -9,6 +9,8 @@ export class PDFExternalLinkPostProcessor extends PDFPlusComponent implements Ho
     child: PDFViewerChild;
     annot: AnnotationElement;
 
+    static HOVER_LINK_SOURCE_ID = 'pdf-plus-external-link'; 
+
     constructor(plugin: PDFPlus, child: PDFViewerChild, annot: AnnotationElement) {
         super(plugin);
         this.child = child;
@@ -23,6 +25,10 @@ export class PDFExternalLinkPostProcessor extends PDFPlusComponent implements Ho
         this.child.hoverPopover = hoverPopover;
     }
 
+    get hoverLinkSourceId() {
+        return PDFExternalLinkPostProcessor.HOVER_LINK_SOURCE_ID;
+    }
+
     onload() {
         if (this.settings.popoverPreviewOnExternalLinkHover) {
             this.registerDomEvent(this.annot.container, 'mouseover', (event) => {
@@ -30,7 +36,7 @@ export class PDFExternalLinkPostProcessor extends PDFPlusComponent implements Ho
                 if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
                     this.app.workspace.trigger('hover-link', {
                         event,
-                        source: 'pdf-plus',
+                        source: this.hoverLinkSourceId,
                         hoverParent: this,
                         targetEl: this.annot.container,
                         linktext: url

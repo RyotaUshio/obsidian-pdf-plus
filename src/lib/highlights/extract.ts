@@ -7,6 +7,7 @@ import { Rect, TextContentItem } from 'typings';
 
 type AnnotatedTextsInPage = Map<string, { text: string, rgb: RGB | null }>;
 type AnnotatedTextsInDocument = Map<number, AnnotatedTextsInPage>;
+type PDFTextRange = { text: string, from: { index: number, offset: number }, to: { index: number, offset: number } };
 
 export class HighlightExtractor extends PDFPlusLibSubmodule {
 
@@ -29,14 +30,13 @@ export class HighlightExtractor extends PDFPlusLibSubmodule {
             page.getAnnotations()
         ]);
 
-        const results: { id: string, text: string, rgb: RGB | null, left: number, top: number }[] = [];
+        const results: { id: string, textRanges: PDFTextRange[], rgb: RGB | null, left: number, top: number }[] = [];
 
         for (const annot of annots) {
             const isTextMarkupAnnot = ['Highlight', 'Underline', 'Squiggly', 'StrikeOut'].includes(annot.subtype);
             if (!isTextMarkupAnnot) continue;
 
-            // Each text content item does not necessarily correspond to a single line, though.
-            const lines: string[] = [];
+            const textRanges: PDFTextRange[] = [];
 
             for (const rectInQuodPoints of annot.quadPoints) {
                 const topRight = rectInQuodPoints[1];
@@ -49,45 +49,63 @@ export class HighlightExtractor extends PDFPlusLibSubmodule {
 
                 rect = window.pdfjsLib.Util.normalizeRect(rect);
 
-                lines.push(this.getTextByRect(items as TextContentItem[], rect as Rect));
+                textRanges.push(this.getTextByRect(items as TextContentItem[], rect as Rect));
             }
-
-            const text = this.lib.toSingleLine(lines.join('\n'));
 
             const rgb = annot.color ? { r: annot.color[0], g: annot.color[1], b: annot.color[2] } as RGB : null;
 
             const firstRect = annot.quadPoints[0];
 
-            results.push({ id: annot.id, text, rgb, left: firstRect[0].x, top: firstRect[0].y });
+            results.push({ id: annot.id, textRanges, rgb, left: firstRect[0].x, top: firstRect[0].y });
         }
 
         return new Map(
             results
-                .sort((a, b) => b.top - a.top || a.left - b.left)
-                .map((result) => [result.id, { text: result.text, rgb: result.rgb }])
+                .sort((a, b) => {
+                    if (a.textRanges.length && b.textRanges.length) {
+                        const posA = a.textRanges[0].from;
+                        const posB = b.textRanges[0].from;
+                        return posA.index - posB.index || posA.offset - posB.offset;
+                    }
+                    return b.top - a.top || a.left - b.left;
+                })
+                .map((result) => {
+                    let text = result.textRanges
+                        .map((range) => range.text)
+                        .join('\n');
+                    text = this.lib.toSingleLine(text);
+                    return [result.id, { text, rgb: result.rgb }];
+                })
         );
     }
 
     /** Inspired by PDFViewerChild.prototype.getTextByRect in Obsidian's app.js */
-    getTextByRect(items: TextContentItem[], rect: Rect) {
+    getTextByRect(items: TextContentItem[], rect: Rect): PDFTextRange {
         const [left, bottom, right, top] = rect;
 
         let text = '';
+        let from: { index: number, offset: number } = { index: -1, offset: -1 };
+        let to: { index: number, offset: number } = { index: -1, offset: -1 };
 
-        for (const item of items) {
+        for (let index = 0; index < items.length; index++) {
+            const item = items[index];
+
             if (item.chars && item.chars.length) {
-                for (const char of item.chars) {
+                for (let offset = 0; offset < item.chars.length; offset++) {
+                    const char = item.chars[offset];
+
                     const xMiddle = (char.r[0] + char.r[2]) / 2;
                     const yMiddle = (char.r[1] + char.r[3]) / 2;
 
                     if (left <= xMiddle && xMiddle <= right && bottom <= yMiddle && yMiddle <= top) {
                         text += char.u;
+                        if (from.index === -1 && from.offset === -1) from = { index, offset };
+                        to = { index, offset: offset + 1 };
                     }
                 }
             }
         }
 
-        return text;
+        return { text, from, to };
     }
-
 }

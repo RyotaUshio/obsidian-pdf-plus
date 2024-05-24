@@ -1,4 +1,4 @@
-import { ButtonComponent, HoverPopover, HoverParent, Platform, FileSystemAdapter, Notice, ExtraButtonComponent } from 'obsidian';
+import { ButtonComponent, HoverPopover, HoverParent, Platform, FileSystemAdapter, Notice, ExtraButtonComponent, Events } from 'obsidian';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 import { spawn } from 'child_process';
 
@@ -21,9 +21,12 @@ export type AnystyleJson = Partial<{
 
 
 export class BibliographyManager extends PDFPlusComponent {
+    static readonly HOVER_LINK_SOURCE_ID = 'pdf-plus-citation-link';
+
     child: PDFViewerChild;
     destIdToBibText: Map<string, string>;
     destIdToParsedBib: Map<string, AnystyleJson>;
+    events: Events;
     initialized: boolean;
 
     constructor(plugin: PDFPlus, child: PDFViewerChild) {
@@ -31,6 +34,7 @@ export class BibliographyManager extends PDFPlusComponent {
         this.child = child;
         this.destIdToBibText = new Map();
         this.destIdToParsedBib = new Map();
+        this.events = new Events();
         this.initialized = false;
         this.init();
     }
@@ -63,7 +67,9 @@ export class BibliographyManager extends PDFPlusComponent {
                             BibliographyManager.getBibliographyTextFromDest(destArray, doc)
                                 .then((bibInfo) => {
                                     if (bibInfo) {
-                                        this.destIdToBibText.set(destId, bibInfo.text);
+                                        const bibText = bibInfo.text;
+                                        this.destIdToBibText.set(destId, bibText);
+                                        this.events.trigger('extracted', destId, bibText);
                                     }
                                 })
                         );
@@ -82,6 +88,7 @@ export class BibliographyManager extends PDFPlusComponent {
             const destIds = Array.from(this.destIdToBibText.keys());
             for (let i = 0; i < parsed.length; i++) {
                 this.destIdToParsedBib.set(destIds[i], parsed[i]);
+                this.events.trigger('parsed', destIds[i], parsed[i]);
             }
         }
     }
@@ -96,7 +103,7 @@ export class BibliographyManager extends PDFPlusComponent {
             );
         }
 
-        if (this.plugin.requireModKeyForLinkHover()) {
+        if (this.plugin.requireModKeyForLinkHover(BibliographyManager.HOVER_LINK_SOURCE_ID)) {
             onModKeyPress(event, targetEl, spawnBibPopover);
         } else {
             spawnBibPopover();
@@ -271,6 +278,12 @@ export class BibliographyManager extends PDFPlusComponent {
 
         return { text: toSingleLine(text), items: bibTextItems };
     }
+
+    on(name: 'extracted', callback: (destId: string, bibText: string) => any, ctx?: any): ReturnType<Events['on']>;
+    on(name: 'parsed', callback: (destId: string, parsedBib: string) => any, ctx?: any): ReturnType<Events['on']>;
+    on(...args: Parameters<Events['on']>) {
+        return this.events.on(...args);
+    }
 }
 
 
@@ -291,47 +304,69 @@ export class BibliographyDom extends PDFPlusComponent {
         return this.bib.child;
     }
 
-    async onload() {
-        const bibText = this.bib.destIdToBibText.get(this.destId);
-        const parsed = this.bib.destIdToParsedBib.get(this.destId);
+    renderParsedBib(parsed: AnystyleJson) {
+        const { author, title, year, 'container-title': containerTitle } = parsed;
 
-        let done = false;
-
-        if (parsed) {
-            const { author, title, year, 'container-title': containerTitle } = parsed;
-            if (author) {
-                this.containerEl.createDiv('', (el) => {
-                    el.createDiv('bib-title', (el) => {
-                        el.setText(title?.[0] ?? 'No title');
-                    });
-                    el.createDiv('bib-author-year', (el) => {
-                        const authorText = author.map((a) => {
+        if (author) {
+            this.containerEl.createDiv('', (el) => {
+                el.createDiv('bib-title', (el) => {
+                    el.setText(title?.[0] ?? 'No title');
+                });
+                el.createDiv('bib-author-year', (el) => {
+                    const authorText = author
+                        .map((a) => {
                             let name = '';
-                            if (a.family) name += a.family;
-                            if (a.given) name += ', ' + a.given;
+                            if (a.given) name += a.given;
+                            if (a.family) name += ' ' + a.family;
                             return name;
                         })
-                            .filter((name) => name)
-                            .join(', ');
-                        el.appendText(authorText)
-                        if (year) {
-                            el.appendText(` (${year})`);
-                        }
-                    });
-                    if (containerTitle) {
-                        el.createDiv('bib-container-title', (el) => {
-                            el.setText(containerTitle[0]);
-                        });
+                        .filter((name) => name)
+                        .join(', ');
+                    el.appendText(authorText);
+                    if (year) {
+                        el.appendText(` (${year})`);
                     }
                 });
-                done = true;
-            }
+                if (containerTitle) {
+                    el.createDiv('bib-container-title', (el) => {
+                        el.setText(containerTitle[0]);
+                    });
+                }
+            });
+            return true;
+        }
+
+        return false;
+    }
+
+    async onload() {
+        await this.render();
+    }
+
+    async render() {
+        this.containerEl.empty();
+        let done = false;
+
+        const parsed = this.bib.destIdToParsedBib.get(this.destId);
+        if (parsed) {
+            done = this.renderParsedBib(parsed);
         }
         if (!done) {
-            this.containerEl.createDiv({
-                text: bibText
-                    ?? (this.bib.initialized ? 'No bibliography found' : 'Loading...')
-            });
+            const bibText = this.bib.destIdToBibText.get(this.destId);
+
+            if (bibText) {
+                this.containerEl.createDiv({ text: bibText });
+                if (Platform.isDesktopApp && this.settings.anystylePath) {
+                    this.registerRenderOn('parsed');
+                }
+            } else {
+                if (this.bib.initialized) {
+                    this.containerEl.createDiv({ text: 'No bibliography found' });
+                } else {
+                    this.containerEl.createDiv({ text: 'Loading...' });
+                    this.registerRenderOn('extracted');
+                }
+            }
         }
 
         this.containerEl.createDiv('button-container', (el) => {
@@ -352,6 +387,17 @@ export class BibliographyDom extends PDFPlusComponent {
                     this.plugin.openSettingTab().scrollToHeading('citation');
                 });
         });
+    }
+
+    registerRenderOn(eventName: 'parsed' | 'extracted') {
+        // @ts-ignore
+        const eventRef = this.bib.on(eventName, (destId) => {
+            if (destId === this.destId) {
+                this.render();
+                this.bib.events.offref(eventRef);
+            }
+        });
+        this.registerEvent(eventRef);
     }
 
     onunload() {

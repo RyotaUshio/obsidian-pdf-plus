@@ -1,7 +1,7 @@
 import { Component, TFile, SectionCache, Reference } from 'obsidian';
 
 import PDFPlus from 'main';
-import { MutationObservingChild, getSubpathWithoutHash, isMouseEventExternal } from 'utils';
+import { MutationObservingChild, getSubpathWithoutHash, isMouseEventExternal, isTargetHTMLElement } from 'utils';
 import { BacklinkRenderer, PDFViewerComponent } from 'typings';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
 import { PDFPlusComponent } from 'lib/component';
@@ -159,7 +159,7 @@ export class BacklinkPanePDFManager extends PDFPlusComponent {
 
     processBacklinkVisualizerDomForEvent(evt: MouseEvent, callback: (backlinkItemEl: HTMLElement, visualizerEls: Set<HTMLElement>, cache: PDFBacklinkCache, viewer: PDFViewerComponent) => void) {
         const targetEl = evt.target;
-        if (!(targetEl instanceof HTMLElement)) return;
+        if (!(isTargetHTMLElement(evt, targetEl))) return;
 
         const fileDom = this.renderer.backlinkDom.vChildren.children.find((fileDom) => fileDom.el.contains(targetEl));
         if (fileDom) {
