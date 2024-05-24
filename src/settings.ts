@@ -2880,7 +2880,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'- `-`: Zoom out',
 					'- `=`: Reset zoom',
 					'- `/`/`?`: Search forward/backward',
-					'- `n`/`Shift`+`n`: Go to next/previous match'
+					'- `n`/`Shift`+`n`: Go to next/previous match',
+					'- `y`: Yank (copy) selected text'
 				], setting.descEl);
 			});
 		this.addToggleSetting('vim', () => this.events.trigger('update'))
