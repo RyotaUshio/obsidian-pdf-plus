@@ -14,7 +14,7 @@ import { BibliographyManager } from 'bib';
 import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
-import { VimBindings } from 'vim';
+import { VimBindings } from 'vim/vim';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {

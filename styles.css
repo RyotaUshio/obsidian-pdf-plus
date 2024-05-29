@@ -544,3 +544,18 @@ body {
         }
     }
 }
+
+.pdf-plus-vim-command {
+    border-top: 1px solid var(--background-modifier-border);
+    /* height: var(--size-4-8); */
+    font-family: monospace;
+
+    input {
+        background: transparent;
+        border: none;
+        outline: none;
+        font-family: monospace;
+        white-space: pre;
+        width: 90%;
+    }
+}

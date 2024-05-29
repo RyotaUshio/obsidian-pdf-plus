@@ -3,16 +3,16 @@ import { Menu, MenuItem, MenuSeparator, debounce } from 'obsidian';
 
 /**
  * 
- * @param menu 
+ * @param rootMenu 
  * @param itemAdders 
  * @param options 
  * - `clickableParentItem`: If `true`, a menu item with a submenu can be clicked to execute the callback registered via `onClick`. This forces to `useNativeItem` be set to `false`.
  */
-export function addProductMenuItems(menu: Menu, itemAdders: ((menu: Menu) => void)[], options?: { clickableParentItem: boolean }) {
+export function addProductMenuItems(rootMenu: Menu, itemAdders: ((menu: Menu) => void)[], options: { clickableParentItem: boolean, vim: boolean }) {
     const addItemsToMenu = (menu: Menu, depth: number) => {
         if (depth >= itemAdders.length) return;
 
-        if (options?.clickableParentItem) {
+        if (options.clickableParentItem) {
             menu.setUseNativeMenu(false);
         }
 
@@ -26,9 +26,20 @@ export function addProductMenuItems(menu: Menu, itemAdders: ((menu: Menu) => voi
             if (item instanceof MenuItem) {
                 const callback = item.callback;
                 const submenu = item.setSubmenu();
+
+                if (options.vim) {
+                    registerVimKeybindsToMenu(submenu);
+                    // Press Escape to hide the entire menu, not just the submenu
+                    const oldEscapeHandler = submenu.scope.keys.find((key) => key.key === 'Escape' && key.modifiers === '');
+                    if (oldEscapeHandler) {
+                        submenu.scope.unregister(oldEscapeHandler);
+                        submenu.scope.register([], 'Escape', rootMenu.hide.bind(rootMenu));
+                    }
+                }
+
                 addItemsToMenu(submenu, depth + 1);
 
-                if (options?.clickableParentItem) {
+                if (options.clickableParentItem) {
                     // Re-register the callback, which has been cleared by `setSubmenu`
                     item.onClick(callback);
                 }
@@ -36,7 +47,7 @@ export function addProductMenuItems(menu: Menu, itemAdders: ((menu: Menu) => voi
         }
     }
 
-    addItemsToMenu(menu, 0);
+    addItemsToMenu(rootMenu, 0);
 }
 
 export function getSelectedItemsRecursive(rootMenu: Menu) {
@@ -72,4 +83,11 @@ export function fixOpenSubmenu(menu: Menu, timeout?: number) {
     }
 
     menu.openSubmenuSoon = debounce(menu.openSubmenu.bind(menu), timeout ?? 250, true);
+}
+
+export function registerVimKeybindsToMenu(menu: Menu) {
+    menu.scope.register([], 'j', menu.onArrowDown.bind(menu));
+    menu.scope.register([], 'k', menu.onArrowUp.bind(menu));
+    menu.scope.register([], 'h', menu.onArrowLeft.bind(menu));
+    menu.scope.register([], 'l', menu.onArrowRight.bind(menu));
 }

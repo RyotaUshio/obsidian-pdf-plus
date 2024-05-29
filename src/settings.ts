@@ -264,11 +264,14 @@ export interface PDFPlusSettings {
 	enableBibInCanvas: boolean;
 	removeWhitespaceBetweenCJChars: boolean;
 	vim: boolean;
+	vimVisualMotion: boolean;
 	vimScrollSize: number;
 	vimContinuousScrollSpeed: number;
 	vimSmoothScroll: boolean;
 	vimHlsearch: boolean;
 	vimIncsearch: boolean;
+	enableVimInContextMenu: boolean;
+	enableVimOutlineMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -526,11 +529,14 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInCanvas: true,
 	removeWhitespaceBetweenCJChars: true,
 	vim: false,
+	vimVisualMotion: true,
 	vimScrollSize: 40,
 	vimContinuousScrollSpeed: 1.2,
 	vimSmoothScroll: true,
 	vimHlsearch: true,
 	vimIncsearch: true,
+	enableVimInContextMenu: true,
+	enableVimOutlineMode: true,
 };
 
 
@@ -2864,31 +2870,77 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Vim keybindings (experimental)', 'vim', 'lucide-chevron-down')
+		this.addHeading('Vim keybindings (experimental)', 'vim', 'vim')
+			.then((setting) =>
+				this.renderMarkdown(
+					'Tracked at [this GitHub issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/119).',
+					setting.descEl
+				)
+			);
+
+		this.addSetting()
 			.then((setting) => {
 				this.renderMarkdown([
-					'Tracked at [this GitHub issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/119).',
-					'',
 					'Currently, the following keys are supported (some might change in the future):',
 					'',
 					'- `j`/`k`/`h`/`l`: Scroll down/up/left/right',
-					'- `Shift`+`j`/`Shift`+`l`: Go to next page',
-					'- `Shift`+`k`/`Shift`+`h`: Go to previous page',
+					'- `J`: Go to next page',
+					'- `K`: Go to previous page',
 					'- `gg`: Go to first page',
-					'- `Shift`+`g`: Go to last page',
-					'- `+`: Zoom in',
-					'- `-`: Zoom out',
-					'- `=`: Reset zoom',
+					'- `G`: Go to last page',
+					'- `0`/`^`/`H`: Go to top of current page',
+					'- `$`/`L`: Go to bottom of current page',
 					'- `/`/`?`: Search forward/backward',
-					'- `n`/`Shift`+`n`: Go to next/previous match',
-					'- `y`: Yank (copy) selected text'
+					'- `n`/`N`: Go to next/previous match',
+					'- `+`/`zi`: Zoom in',
+					'- `-`/`zo`: Zoom out',
+					'- `=`/`z0`: Reset zoom',
+					'- `r`: Rotate pages',
+					'- `y`: Yank (copy) selected text',
+					`- \`c\`: Run the "${this.plugin.lib.commands.stripCommandNamePrefix(this.plugin.lib.commands.getCommand('copy-link-to-selection').name)}" command`,
+					'- `C`: Show context menu at text selection',
+					'- `:`: Enter command-line mode (experimental)',
+					'- `<Tab>`: Open outline (table of contents)',
+					'- `<Esc>`: Go back to normal mode, abort search, etc',
+					'',
+					'Many of them can be combined with counts. For example:',
+					'- `2j` scrolls down the page twice as much as `j`.',
+					'- `2J` advances two pages.',
+					'- `10G` takes you to page 10.',
+					'- `150=` sets the zoom level to 150%.'
 				], setting.descEl);
 			});
 		this.addToggleSetting('vim', () => this.events.trigger('update'))
 			.setName('Enable')
 			.setDesc('Reopen the PDF viewers after changing this option.');
-
 		this.showConditionally([
+			this.addToggleSetting('vimVisualMotion')
+				.setName('Enter visual mode on text selection')
+				.setDesc('When some text is selected, you can modify the range of selection using the j, k, h, l, w, e, b, 0, ^, $, H, and L keys, similarly to Vim\'s visual mode. H/L are aliases for ^/$, respectively. If disabled, you can use j/k/h/l/0/^/$/H/L keys to scroll the page regardless of text selection. This is highly experimental, and some unexpected behavior might be present especially in line-related motions. Reload the viewer or the app after changing this option.'),
+			this.addToggleSetting('enableVimOutlineMode')
+				.setName('Enter outline mode when opening PDF outline view')
+				.then((setting) => {
+					this.renderMarkdown([
+						'If enabled, you will enter the outline mode by opening the PDF outline view (from the icon in the toolbar or by `<Tab>`), and you can use the following keybindings, similarly to [Zathura](https://pwmt.org/projects/zathura/)\'s index mode.',
+						'',
+						'- `j`: Move down',
+						'- `k`: Move up',
+						'- `h`: Collapse & move to parent entry',
+						'- `l`: Expand entry & move to child entry',
+						'- `H`: Collapse all entries',
+						'- `L`: Expand all entries',
+						'- `<CR>/<Space>`: Open the selected entry',
+						'- `<Esc>`: Close sidebar and go back to normal mode',
+						'',
+						'(`<CR>` means the Enter key.)',
+						'',
+						'If disabled, you can use j/k/h/l/H/L keys to scroll the page whether the outline view is opened or not. ',
+						'This option requires reload to take effect.'
+					], setting.descEl);
+				}),
+			this.addToggleSetting('enableVimInContextMenu')
+				.setName('Enable Vim keys in PDF context menus')
+				.setDesc('If enabled, you can use j/k/h/l keys, instead of the arrow keys, to navigate through context menu items in the PDF viewer.'),
 			this.addHeading('Scrolling', 'vim-scroll'),
 			this.addSliderSetting('vimScrollSize', 5, 500, 5)
 				.setName('Scroll size (px) of the jkhl keys')

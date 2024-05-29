@@ -6,7 +6,7 @@ import { PDFOutlineMoveModal, PDFOutlineTitleModal, PDFComposerModal, PDFAnnotat
 import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
-import { addProductMenuItems, getSelectedItemsRecursive, fixOpenSubmenu } from 'utils/menu';
+import { addProductMenuItems, getSelectedItemsRecursive, fixOpenSubmenu, registerVimKeybindsToMenu } from 'utils/menu';
 import { DEFAULT_SETTINGS, NamedTemplate } from 'settings';
 import { ColorPalette } from 'color-palette';
 import { PDFPlusComponent } from 'lib/component';
@@ -47,6 +47,28 @@ export async function showContextMenu(plugin: PDFPlus, child: PDFViewerChild, ev
     child.clearEphemeralUI();
     menu.showAtMouseEvent(evt);
     if (child.pdfViewer.isEmbed) evt.preventDefault();
+}
+
+export async function showContextMenuAtSelection(plugin: PDFPlus, child: PDFViewerChild, selection: Selection) {
+    if (!selection || !selection.focusNode || selection.isCollapsed) {
+        return;
+    }
+
+    const focusNode = selection.focusNode;
+    const focusOffset = selection.focusOffset;
+
+    // get the position of the head of the selection
+    const doc = focusNode.doc;
+    const range = doc.createRange();
+    range.setStart(focusNode, focusOffset);
+    range.setEnd(focusNode, focusOffset);
+    const { x, y } = range.getBoundingClientRect();
+
+    const menu = new PDFPlusContextMenu(plugin, child);
+    await menu.addItems()
+    child.clearEphemeralUI();
+    plugin.shownMenus.forEach((menu) => menu.hide());
+    menu.showAtPosition({ x, y }, doc);
 }
 
 export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): void => {
@@ -419,22 +441,30 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
         super(plugin);
         this.child = child;
         this.setUseNativeMenu(false);
+        this.addSections(Object.keys(DEFAULT_SETTINGS.contextMenuConfig));
+
+        if (plugin.settings.enableVimInContextMenu) {
+            registerVimKeybindsToMenu(this);
+        }
     }
 
     static async fromMouseEvent(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {
         const menu = new PDFPlusContextMenu(plugin, child);
-        menu.addSections(Object.keys(DEFAULT_SETTINGS.contextMenuConfig));
         await menu.addItems(evt);
         return menu;
     }
 
+    get win() {
+        return this.child.containerEl.win;
+    }
+
     // TODO: divide into smaller methods
-    async addItems(evt: MouseEvent) {
+    async addItems(evt?: MouseEvent) {
         const { child, plugin, lib, app } = this;
         const pdfViewer = child.pdfViewer.pdfViewer;
         // const canvas = lib.workspace.getActiveCanvasView()?.canvas;
 
-        const selectionObj = evt.win.getSelection();
+        const selectionObj = this.win.getSelection();
         const pageAndSelection = lib.copyLink.getPageAndTextRangeFromSelection(selectionObj)
             ?? (pdfViewer ? { page: pdfViewer.currentPageNumber } : null);
         if (!pageAndSelection) return;
@@ -447,7 +477,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
         }
 
         // If macOS, add "look up selection" action
-        if (Platform.isMacOS && Platform.isDesktopApp && evt.win.electron && selectedText && isVisible('action')) {
+        if (Platform.isMacOS && Platform.isDesktopApp && this.win.electron && selectedText && isVisible('action')) {
             this.addItem((item) => {
                 return item
                     .setSection('action')
@@ -455,7 +485,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                     .setIcon('lucide-library')
                     .onClick(() => {
                         // @ts-ignore
-                        evt.win.electron!.remote.getCurrentWebContents().showDefinitionForSelection();
+                        this.win.electron!.remote.getCurrentWebContents().showDefinitionForSelection();
                     });
             });
         }
@@ -506,7 +536,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
 
         // Get annotation & annotated text
         const pageView = child.getPage(pageNumber);
-        const annot = child.getAnnotationFromEvt(pageView, evt);
+        const annot = evt && child.getAnnotationFromEvt(pageView, evt);
         let annotatedText: string | null = null;
 
         await (async () => {
@@ -830,7 +860,8 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
                     return this.addDisplayTextItems.bind(this);
             }
         }), {
-            clickableParentItem: true
+            clickableParentItem: true,
+            vim: this.settings.enableVimInContextMenu,
         });
 
         return this;

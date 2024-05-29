@@ -1,4 +1,4 @@
-import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
@@ -80,6 +80,8 @@ export default class PDFPlus extends Plugin {
 	async onload() {
 		this.checkVersion();
 
+		this.addIcons();
+
 		await loadPdfJs();
 
 		await this.loadSettings();
@@ -111,7 +113,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	async onunload() {
-		// Clean up the AnyStyle input files and their directory (.obsidian/plugin/pdf-plus/anystyle)
+		// Clean up the AnyStyle input files and their directory (.obsidian/plugins/pdf-plus/anystyle)
 		const adapter = this.app.vault.adapter;
 		if (Platform.isDesktopApp && adapter instanceof FileSystemAdapter) {
 			const anyStyleInputDir = this.getAnyStyleInputDir();
@@ -126,10 +128,14 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private checkVersion() {
-		const untestedVersion = '1.6.1';
+		const untestedVersion = '1.6.2';
 		if (requireApiVersion(untestedVersion)) {
 			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian ${untestedVersion} or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose).`);
 		}
+	}
+
+	private addIcons() {
+		addIcon('vim', '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="48" fill="black" style="letter-spacing:2; font-weight:bold;">VIM</text>');
 	}
 
 	async loadSettings() {

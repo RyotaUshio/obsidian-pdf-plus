@@ -334,3 +334,76 @@ export function registerCharacterKeymap(scope: Scope, char: string, listener: Ke
         }
     });
 }
+
+/**
+ * Execute binary search over the given array to find the key.
+ * @param array 
+ * @param key 
+ * @param cmp Returns a positive value if the key comes after the item, negative if before, and zero if the key matches the item.
+ * @returns `found`: if the key is contained in the array. `index`: if `found`, the index of the key. Otherwise, the index that the key is to be inserted to keep the array sorted.
+ */
+export function binarySearch<Item>(array: Item[], cmp: (item: Item, index: number) => number, options?: Partial<{ from: number, to: number, findFirst: boolean, findLast: boolean; }>): { found: boolean, index: number } {
+    // findFirst/findLast: thank you https://stackoverflow.com/a/6676588
+
+    if (options && options.findFirst && options.findLast) {
+        throw Error(`findFirst and findLast cannot be specified at the same time`);
+    }
+
+    const findFirst = options?.findFirst ?? false;
+    const findLast = options?.findLast ?? false;
+
+    let left = options?.from ?? 0;
+    let right = options?.to ?? array.length - 1;
+
+    while (true) {
+        const mid = (left + right + +findLast) >> 1;
+        const item = array[mid];
+
+        const diff = cmp(item, mid);
+        if (diff === 0) {
+            if (findFirst && left < mid) right = mid;
+            else if (findLast && right > mid) left = mid;
+            else return { found: true, index: mid };
+        } else if (diff > 0) left = mid + 1;
+        else right = mid - 1;
+
+        if (left > right) return { found: false, index: mid + +(diff > 0) };
+    }
+}
+
+export function stringCompare(a: string, b: string): number {
+    return a === b ? 0 : a < b ? -1 : 1;
+}
+
+export function binarySearchForRangeStartingWith<T>(array: T[], prefix: string, getItemText: (item: T) => string, options?: Partial<{ from: number, to: number }>) {
+    const cmp = (item: T) => stringCompare(prefix, getItemText(item).slice(0, prefix.length));
+    const { found, index: from } = binarySearch(array, cmp, { findFirst: true, ...options });
+    if (found) {
+        const { index: to } = binarySearch(array, cmp, { findLast: true, ...options, ...{ from } });
+        return { from, to };
+    }
+    return null
+}
+
+export function areOverlapping(range1: {from: number, to: number}, range2: {from: number, to: number}) {
+    return range1.from <= range2.to && range1.to >= range2.from;
+}
+
+export function areOverlappingStrictly(range1: {from: number, to: number}, range2: {from: number, to: number}) {
+    return range1.from < range2.to && range1.to > range2.from;
+}
+
+export function isSelectionForward(selection: Selection) {
+    return selection.anchorNode === selection.focusNode 
+    ? selection.anchorOffset < selection.focusOffset 
+    : selection.anchorNode && selection.focusNode && selection.anchorNode.compareDocumentPosition(selection.focusNode) === Node.DOCUMENT_POSITION_FOLLOWING;
+}
+
+export function repeat(func: () => any, n?: number) {
+    n ??= 1;
+    while (n--) func();
+}
+
+export function repeatable(func: () => any) {
+    return (n?: number) => repeat(func, n);
+}

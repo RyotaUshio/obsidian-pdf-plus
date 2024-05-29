@@ -8,6 +8,7 @@ import { parsePDFSubpath } from 'utils';
 import { DestArray } from 'typings';
 import { PDFPlusSettingTab } from 'settings';
 import { SidebarView } from 'pdfjs-enums';
+import { showContextMenuAtSelection } from 'context-menu';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -31,6 +32,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             //     name: 'Create canvas card from selection or annotation',
             //     checkCallback: (checking) => this.createCanvasCard(checking)
             // },
+            {
+                id: 'context-menu',
+                name: 'Show context menu at selection',
+                checkCallback: (checking) => this.showContextMenu(checking)
+            },
             {
                 id: 'extract-annotation-and-copy-links',
                 name: 'Extract & copy annotations in this PDF',
@@ -956,5 +962,19 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
     createDummyForExternalPDF() {
         new ExternalPDFModal(this.plugin).open();
+    }
+
+    showContextMenu(checking: boolean) {
+        const child = this.lib.getPDFViewerChild(true);
+        if (!child) return false;
+
+        const doc = child.containerEl.doc;
+
+        const selection = doc.getSelection();
+        if (!selection || !selection.focusNode || selection.isCollapsed) return false;
+        
+        if (!checking) showContextMenuAtSelection(this.plugin, child, selection);
+
+        return true;
     }
 }

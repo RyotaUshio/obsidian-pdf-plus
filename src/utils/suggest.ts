@@ -16,7 +16,7 @@ const DEFAULT_FUZZY_INPUT_SUGGEST_OPTIONS: FuzzyInputSuggestOptions = {
 }
 
 
-abstract class FuzzyInputSuggest<T> extends AbstractInputSuggest<FuzzyMatch<T>> {
+export abstract class FuzzyInputSuggest<T> extends AbstractInputSuggest<FuzzyMatch<T>> {
 	inputEl: HTMLInputElement;
     options: FuzzyInputSuggestOptions;
 
@@ -52,8 +52,8 @@ abstract class FuzzyInputSuggest<T> extends AbstractInputSuggest<FuzzyMatch<T>> 
 	selectSuggestion(result: FuzzyMatch<T>, evt: MouseEvent | KeyboardEvent) {
 		// @ts-ignore
 		super.selectSuggestion(result, evt); // this ts-ignore is needed due to a bug in Obsidian's type definition
-        if (this.options.blurOnSelect) this.inputEl.blur();
 		this.inputEl.value = this.getItemText(result.item);
+        if (this.options.blurOnSelect) this.inputEl.blur();
 		if (this.options.closeOnSelect) this.close();
 	}
 }

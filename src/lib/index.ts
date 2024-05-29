@@ -18,6 +18,7 @@ import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, E
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
+import { SidebarView } from 'pdfjs-enums';
 
 
 export class PDFPlusLib {
@@ -55,7 +56,7 @@ export class PDFPlusLib {
      */
     registerPDFEvent(name: 'outlineloaded', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => any): void;
     registerPDFEvent(name: 'thumbnailrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFThumbnailView, pageNumber: number, pdfPage: PDFPageProxy }) => any): void;
-    registerPDFEvent(name: 'sidebarviewchanged', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFSidebar, view: number }) => any): void;
+    registerPDFEvent(name: 'sidebarviewchanged', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFSidebar, view: SidebarView }) => any): void;
     registerPDFEvent(name: 'textlayerrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number }) => any): void;
     registerPDFEvent(name: 'annotationlayerrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number }) => any): void;
     registerPDFEvent(name: 'pagesloaded', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFViewer, pagesCount: number }) => any): void;
@@ -671,6 +672,10 @@ export class PDFPlusLib {
 
     getBibliographyManager(activeOnly: boolean = false) {
         return this.getPDFViewerChild(activeOnly)?.bib;
+    }
+    
+    getVim(activeOnly: boolean = false) {
+        return this.getPDFViewerComponent(activeOnly)?.vim;
     }
 
     search(findBar: PDFFindBar, query: string, settings?: Partial<PDFSearchSettings>, findPrevious?: boolean) {

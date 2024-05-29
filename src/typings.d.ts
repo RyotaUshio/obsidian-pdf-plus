@@ -21,6 +21,10 @@ declare global {
         pdfjsViewer: any;
         electron?: typeof import('electron');
     }
+
+    interface Selection {
+        modify(s: string, t: string, u: string): void;
+    }
 }
 
 /** PDF-related */
@@ -177,12 +181,14 @@ interface ObsidianViewer {
     toolbar: PDFToolbar;
     findBar: PDFFindBar;
     findController: PDFFindController;
+    pdfLinkService: PDFLinkService;
     pdfLoadingTask: { promise: Promise<PDFDocumentProxy> };
     setHeight(height?: number | 'page' | 'auto'): void;
     applySubpath(subpath: string): void;
-    zoomIn(): void;
-    zoomOut(): void;
+    zoomIn(steps?: number, scaleFactor?: number): void;
+    zoomOut(steps?: number, scaleFactor?: number): void;
     zoomReset(): void;
+    rotatePages(angle: number): void;
     open(options: any): Promise<void>;
     //////////////////////////
     // Added by this plugin //
@@ -216,8 +222,7 @@ interface PDFSidebar {
     outlineView?: HTMLElement;
     // div.pdf-thumbnail-view
     thumbnailView: HTMLElement;
-    /** See the explation for switchView() */
-    active: number;
+    active: SidebarView;
     switchView(view: SidebarView, forceOpen?: boolean): void;
     setInitialView(view?: number): void;
     open(): void;
@@ -259,9 +264,14 @@ interface PDFOutlineTreeNode {
         items: PDFOutlineTreeNode[];
     };
     owner: PDFOutlineViewer;
+    collapsed: boolean;
     getPageNumber(): Promise<number>; // return this.pageNumber if set, otherwise newly fetch it
     getExplicitDestination(): Promise<PDFjsDestArray>; // return this.explicitDest if set, otherwise newly fetch it
     getMarkdownLink(): Promise<string>;
+    setActive(active: boolean): void;
+    setCollapsed(collapsed: boolean, animate?: boolean): Promise<void>;
+    toggleCollapsed(animate?: boolean): Promise<void>;
+    reveal(): void;
 }
 
 interface PDFThumbnailViewer {
@@ -388,6 +398,7 @@ interface PDFViewer {
     viewer: HTMLElement; // div.pdf-viewer
     container: HTMLElement; // div.pdf-viewer-container
     eventBus: EventBus;
+    linkService: PDFLinkService;
     getPageView(page: number): PDFPageView;
     scrollPageIntoView(params: { pageNumber: number, destArray?: [number, { name: string }, ...number[]] | null, allowNegativeOffset?: boolean, ignoreDestinationZoom?: boolean }): void;
     previousPage(): boolean;
@@ -439,6 +450,10 @@ type Rect = [number, number, number, number];
 type DestArray = [page: number, destType: string, ...params: (number | null)[]];
 type PDFjsDestArray = [pageRef: { num: number, gen: number }, destType: { name: string }, ...params: (number | null)[]];
 type PdfLibDestArray = [pageRef: PDFRef, destType: PDFName, ...params: (PDFNumber | typeof PDFNull)[]];
+
+interface PDFLinkService {
+    goToDestination(dest: string | PDFjsDestArray): Promise<void>;
+}
 
 interface AnnotationElement {
     annotationStorage: AnnotationStorage;
@@ -1047,6 +1062,7 @@ declare module 'obsidian' {
         bgEl: HTMLElement;
         /** .has-active-menu */
         parentEl?: HTMLElement;
+        scope: Scope;
         items: (MenuItem | MenuSeparator)[];
         /** The index of the currently selected item (-1 if no item is selected). */
         selected: number;
@@ -1059,6 +1075,10 @@ declare module 'obsidian' {
         openSubmenu(item: MenuItem): void;
         openSubmenuSoon: Debouncer<[MenuItem], void>;
         closeSubmenu(): void;
+        onArrowUp(evt: KeyboardEvent): boolean;
+        onArrowDown(evt: KeyboardEvent): boolean;
+        onArrowLeft(evt: KeyboardEvent): boolean;
+        onArrowRight(evt: KeyboardEvent): boolean;
     }
 
     interface MenuItem {
@@ -1138,10 +1158,12 @@ declare module 'obsidian' {
     }
 
     interface Scope {
+        parent?: Scope;
+        keys: KeymapEventHandler[];
         // If we pass `[]` as the first argument (`modifiers`), it forbids any modifiers to be pressed,
         // and as a result, the keymap may not work for some non-US keyboards (e.g. JIS).
         // Setting `modifiers` to `null` is undocumented but makes this keymap work regardless of modifiers, thereby fixing the issue.
         register(modifiers: Modifier[] | null, key: string | null, func: KeymapEventListener): KeymapEventHandler;
-        keys: KeymapEventHandler[];
+        handleKey(evt: KeyboardEvent, info: KeymapInfo): false | any;
     }
 }
