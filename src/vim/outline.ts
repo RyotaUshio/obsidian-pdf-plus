@@ -10,7 +10,10 @@ type OutlineCommand = (outline: PDFOutlineViewer, n?: number) => any;
 export class VimOutlineMode extends VimBindingsMode {
     constructor(vim: VimBindings) {
         super(vim);
+        this.defineKeymaps();
+    }
 
+    onload() {
         this.viewer.then((child) => {
             this.lib.registerPDFEvent('sidebarviewchanged', child.pdfViewer.eventBus, this, ({ view }) => {
                 if (view === SidebarView.OUTLINE) {
@@ -28,8 +31,6 @@ export class VimOutlineMode extends VimBindingsMode {
                 }
             });
         });
-
-        this.defineKeymaps();
     }
 
     defineKeymaps() {

@@ -9,16 +9,18 @@ export class VimVisualMode extends VimBindingsMode {
     selectionChangedByVisualMotion = false;
 
     get structureParser() {
-       return this.vim.structureParser;
+        return this.vim.structureParser;
     }
 
     constructor(vim: VimBindings) {
         super(vim);
+        this.defineKeymaps();
+    }
 
+    onload() {
         // Watch selection change to switch between normal and visual mode
-        const doc = this.vim.doc;
-        this.registerDomEvent(doc, 'selectionchange', () => {
-            const selection = doc.getSelection();
+        this.registerDomEvent(this.doc, 'selectionchange', () => {
+            const selection = this.doc.getSelection();
             switch (this.vim.vimScope.currentMode) {
                 case 'visual':
                     if (!selection || selection.isCollapsed) {
@@ -37,8 +39,6 @@ export class VimVisualMode extends VimBindingsMode {
             }
             this.selectionChangedByVisualMotion = false;
         });
-
-        this.defineKeymaps();
     }
 
     defineKeymaps() {

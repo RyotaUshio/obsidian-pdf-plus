@@ -1,6 +1,6 @@
 {
     "name": "obsidian-pdf-plus",
-    "version": "0.39.26",
+    "version": "0.40.0",
     "description": "The most Obsidian-native PDF annotation tool ever.",
     "scripts": {
         "dev": "node esbuild.config.mjs",

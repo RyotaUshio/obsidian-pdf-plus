@@ -16,7 +16,8 @@ export class VimScope extends Scope {
     currentKeys: string = '';
     searchFrom = 0;
     searchTo = -1
-    onEscapeCallbacks: (() => any)[] = [];
+    onEscapeCallbacks: ((isRealEscape: boolean) => any)[] = [];
+    escapeAliases: string[] = [];
 
     constructor(parent?: Scope) {
         super(parent);
@@ -74,8 +75,12 @@ export class VimScope extends Scope {
         this.searchTo = -1;
     }
 
-    onEscape(callback: () => any) {
+    onEscape(callback: (isRealEscape: boolean) => any) {
         this.onEscapeCallbacks.push(callback);
+    }
+
+    addEscapeAliases(...aliases: string[]) {
+        this.escapeAliases.push(...aliases);
     }
 
     handleKey(evt: KeyboardEvent, info: KeymapInfo) {
@@ -88,12 +93,12 @@ export class VimScope extends Scope {
 
             if ((this.currentMode === 'insert') !== isTargetTypable(evt)) return;
 
-            const key = this.canonicalizeKey(info);
+            const key = VimScope.canonicalizeKey(info);
             if (key === null) {
                 return this.reset();
             }
-            if (key === '<Esc>') {
-                this.onEscapeCallbacks.forEach((callback) => callback());
+            if (key === '<Esc>' || this.escapeAliases.includes(key)) {
+                this.onEscapeCallbacks.forEach((callback) => callback(key === '<Esc>'));
                 return this.reset();
             }
             this.currentKeys += key;
@@ -133,50 +138,55 @@ export class VimScope extends Scope {
         if (shouldCallParent && this.parent) this.parent.handleKey(evt, info);
     }
 
-    canonicalizeKey(info: KeymapInfo): string | null {
+    static canonicalizeKey(info: KeymapInfo): string | null {
         if (info.modifiers === null || info.key === null) return null;
+
+        const result = VimScope.canonicalizeSpecialKey(info.key);
 
         switch (info.modifiers) {
             case '':
-                switch (info.key) {
-                    case '<':
-                        return '<lt>';
-                    case 'Backspace':
-                        return '<BS>';
-                    case 'Tab':
-                        return '<Tab>';
-                    case 'Enter':
-                        return '<CR>';
-                    case 'Escape':
-                        return '<Esc>';
-                    case ' ':
-                        return '<Space>';
-                    case '\\':
-                        return '<Bslash>';
-                    case '|':
-                        return '<Bar>';
-                    case 'ArrowUp':
-                        return '<Up>';
-                    case 'ArrowDown':
-                        return '<Down>';
-                    case 'ArrowLeft':
-                        return '<Left>';
-                    case 'ArrowRight':
-                        return '<Right>';
-                    default:
-                        return info.key;
-                }
+                return result ? `<${result}>` : info.key;
             case 'Shift':
-                if (info.key.length === 1) return info.key;
-                if (info.key.startsWith('Arrow')) return `<S-${info.key.slice(5)}>`;
-                return `<S-${info.key}>`;
+                if (info.key.length === 1 && info.key !== ' ') return info.key;
+                return `<S-${result ?? info.key}>`;
             case 'Ctrl':
-                return `<C-${info.key}>`;
+                return `<C-${result ?? info.key}>`;
             case 'Alt':
                 // @ts-ignore
-                return `<M-${info.vkey.toLowerCase()}>`;
+                return `<M-${VimScope.canonicalizeSpecialKey(info.vkey) ?? info.vkey.toLowerCase()}>`;
             case 'Meta':
-                return `<M-${info.key}>`;
+                return `<M-${result ?? info.key}>`;
+            default:
+                return null;
+        }
+    }
+
+    static canonicalizeSpecialKey(key: string) {
+        switch (key) {
+            case '<':
+                return 'lt';
+            case 'Backspace':
+                return 'BS';
+            case 'Tab':
+                return 'Tab';
+            case 'Enter':
+                return 'CR';
+            case 'Escape':
+                return 'Esc';
+            case ' ':
+                return 'Space';
+            case '\\':
+                return 'Bslash';
+            case '|':
+                return 'Bar';
+            case 'ArrowUp':
+                return 'Up';
+            case 'ArrowDown':
+                return 'Down';
+            case 'ArrowLeft':
+                return 'Left';
+            case 'ArrowRight':
+                return 'Right';
             default:
                 return null;
         }

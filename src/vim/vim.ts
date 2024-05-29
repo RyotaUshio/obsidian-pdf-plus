@@ -43,15 +43,35 @@ export class VimBindings extends PDFPlusComponent {
 
     constructor(plugin: PDFPlus, viewer: PDFViewerComponent) {
         super(plugin);
+        
         this.viewer = viewer;
 
         this.vimScope = new VimScope(this.viewer.scope);
-
         this.vimScope.registerKeymaps(['normal', 'visual', 'outline'], {
             ':': () => this.enterCommandMode(),
+            '<Tab>': () => {
+                if (this.obsidianViewer) {
+                    const sidebar = this.obsidianViewer.pdfSidebar;
+                    if (sidebar.isOpen && sidebar.active === SidebarView.OUTLINE) {
+                        sidebar.close();
+                    } else {
+                        sidebar.switchView(SidebarView.OUTLINE, true);
+                    }
+                }
+            },
+            '<S-Tab>': () => {
+                if (this.obsidianViewer) {
+                    const sidebar = this.obsidianViewer.pdfSidebar;
+                    if (sidebar.isOpen && sidebar.active === SidebarView.THUMBS) {
+                        sidebar.close();
+                    } else {
+                        sidebar.switchView(SidebarView.THUMBS, true);
+                    }
+                }
+            },
         });
 
-        this.vimScope.registerKeymaps(['normal', 'visual'], {
+        this.vimScope.registerKeymaps(['normal', 'visual', 'outline'], {
             'j': (n) => this.scroll.scrollTo('down', n),
             'k': (n) => this.scroll.scrollTo('up', n),
             'h': (n) => this.scroll.scrollTo('left', n),
@@ -77,18 +97,8 @@ export class VimBindings extends PDFPlusComponent {
                 this.obsidianViewer?.zoomReset();
             },
             'r': (n) => this.obsidianViewer?.rotatePages(90 * (n ?? 1)),
-            '<Tab>': () => {
-                if (this.obsidianViewer) {
-                    const sidebar = this.obsidianViewer.pdfSidebar;
-                    if (sidebar.isOpen && sidebar.active === SidebarView.OUTLINE) {
-                        sidebar.close();
-                    } else {
-                        sidebar.switchView(SidebarView.OUTLINE, true);
-                    }
-                }
-            },
         });
-        this.vimScope.map(['normal', 'visual'], {
+        this.vimScope.map(['normal', 'visual', 'outline'], {
             'H': '^',
             'L': '$',
             'zi': '+',
@@ -97,10 +107,22 @@ export class VimBindings extends PDFPlusComponent {
         });
 
         this.vimScope.setMode('normal');
-        this.vimScope.onEscape(() => {
+
+        this.vimScope.onEscape((isRealEscape) => {
             this.enterNormalMode();
-            this.obsidianViewer?.pdfSidebar.close();            
+            this.obsidianViewer?.pdfSidebar.close();
+
+            if (!isRealEscape) {
+                // The following is registered as a keymap event handler of
+                // the original scope of the PDF view in `PDFViewerChild.load`.
+                // Since this is a fake escape, we need to manually do the same thing here.
+                this.viewer.then((child) => {
+                    child.clearEphemeralUI();
+                    child.findBar.close();
+                });
+            }
         });
+        this.vimScope.addEscapeAliases('<C-[>', '<C-c>');
 
         this.scroll = new ScrollController(this);
         this.search = new VimSearch(this);
