@@ -401,6 +401,8 @@ He's also the author of several popular Obsidian plugins including Tag Wrangler.
 PDF++ offers two ways to highlight text in PDF: one that does not involve modifying the PDF file, and the other that writes highlight annotations directly into the PDF file.
 The latter is powered by the pdf-lib, a JavaScript library for creating and modifying PDF documents. The [original project](https://github.com/Hopding/pdf-lib) was created by Andrew Dillon. PDF++ uses a [forked version](https://github.com/cantoo-scribe/pdf-lib) maintained by Cantoo Scribe.
 
+PDF++ also supports Vim-like keybindings. Its design was inspired by [codemirror-vim](https://github.com/replit/codemirror-vim) and [Tridactyl](https://github.com/tridactyl/tridactyl). Especially, [some code for the link mode](https://github.com/RyotaUshio/obsidian-pdf-plus/blob/main/src/vim/hintnames.ts) was borrowed from Tridactyl, which is [distributed under the Apache 2.0 License](https://github.com/tridactyl/tridactyl?tab=License-1-ov-file) by Colin Caine, Oliver Blanthorn and Koushien with some modification.
+
 ## Compatibility
 
 I'm trying to keep PDF++ compatible with the following plugin(s) as much as possible:

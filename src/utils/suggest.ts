@@ -70,6 +70,17 @@ export class FuzzyMarkdownFileSuggest extends FuzzyInputSuggest<TFile> {
 }
 
 
+export class FuzzyFileSuggest extends FuzzyInputSuggest<TFile> {
+	getItems() {
+		return this.app.vault.getFiles();
+	}
+
+	getItemText(file: TFile) {
+		return file.path;
+	}
+}
+
+
 export class FuzzyFolderSuggest extends FuzzyInputSuggest<TFolder> {
 	getItems() {
 		return this.app.vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder)

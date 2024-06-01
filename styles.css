@@ -87,6 +87,21 @@ settings:
         step: 10
         default: 140
         format: px
+    -
+        id: pdf-plus-vim
+        title: Vim keybindings
+        type: heading
+        level: 2
+    -
+        id: pdf-plus-vim-hin
+        title: Hint mode
+        type: heading
+        level: 3
+    - 
+        id: pdf-plus-vim-hint-inverted
+        title: Inverted color scheme
+        type: class-toggle
+        default: false
 */
 
 :root {
@@ -558,4 +573,30 @@ body {
         white-space: pre;
         width: 90%;
     }
+}
+
+.page.pdf-plus-vim-hint-mode [data-pdf-plus-vim-hint]::after {
+    content: attr(data-pdf-plus-vim-hint);
+    color: var(--pdf-plus-vim-hint-color);
+    text-transform: uppercase;
+    font-size: var(--font-ui-medium);
+    font-weight: bold;
+    background-color: var(--pdf-plus-vim-hint-background-color);
+    border: var(--size-2-1) solid hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+    border-radius: 10%;
+    padding: 0 var(--size-2-2);
+    position: relative;
+    left: 0;
+    top: 0;
+    z-index: 9999;
+}
+
+body {
+    --pdf-plus-vim-hint-color: var(--text-normal);
+    --pdf-plus-vim-hint-background-color: var(--background-primary);
+}
+
+body.pdf-plus-vim-hint-inverted {
+    --pdf-plus-vim-hint-color: var(--text-on-accent);
+    --pdf-plus-vim-hint-background-color: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
 }

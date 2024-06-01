@@ -355,6 +355,8 @@ export function binarySearch<Item>(array: Item[], cmp: (item: Item, index: numbe
     let left = options?.from ?? 0;
     let right = options?.to ?? array.length - 1;
 
+    if (left > right) return { found: false, index: left };
+
     while (true) {
         const mid = (left + right + +findLast) >> 1;
         const item = array[mid];
@@ -385,18 +387,18 @@ export function binarySearchForRangeStartingWith<T>(array: T[], prefix: string, 
     return null
 }
 
-export function areOverlapping(range1: {from: number, to: number}, range2: {from: number, to: number}) {
+export function areOverlapping(range1: { from: number, to: number }, range2: { from: number, to: number }) {
     return range1.from <= range2.to && range1.to >= range2.from;
 }
 
-export function areOverlappingStrictly(range1: {from: number, to: number}, range2: {from: number, to: number}) {
+export function areOverlappingStrictly(range1: { from: number, to: number }, range2: { from: number, to: number }) {
     return range1.from < range2.to && range1.to > range2.from;
 }
 
 export function isSelectionForward(selection: Selection) {
-    return selection.anchorNode === selection.focusNode 
-    ? selection.anchorOffset < selection.focusOffset 
-    : selection.anchorNode && selection.focusNode && selection.anchorNode.compareDocumentPosition(selection.focusNode) === Node.DOCUMENT_POSITION_FOLLOWING;
+    return selection.anchorNode === selection.focusNode
+        ? selection.anchorOffset < selection.focusOffset
+        : selection.anchorNode && selection.focusNode && selection.anchorNode.compareDocumentPosition(selection.focusNode) === Node.DOCUMENT_POSITION_FOLLOWING;
 }
 
 export function repeat(func: () => any, n?: number) {
@@ -406,4 +408,10 @@ export function repeat(func: () => any, n?: number) {
 
 export function repeatable(func: () => any) {
     return (n?: number) => repeat(func, n);
+}
+
+// Thank you Dataview
+// https://github.com/blacksmithgu/obsidian-dataview/blob/d05d6d6d5033c5b115420ac15532e1604bda39ef/src/api/inline-api.ts#L422
+export function evalInContext(code: string, ctx?: any) {
+    return (new Function(code.includes('await') ? '(async () => {' + code + '})()' : code)).call(ctx);
 }

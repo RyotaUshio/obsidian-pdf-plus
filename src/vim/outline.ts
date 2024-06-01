@@ -41,13 +41,13 @@ export class VimOutlineMode extends VimBindingsMode {
                 const currentItem = outline.highlighted;
                 if (currentItem && currentItem.parent) {
                     this.changeActiveItemTo(currentItem.parent);
-                    currentItem.parent.setCollapsed(true, true);
+                    this.collapse(currentItem.parent);
                 }
             },
             'l': (outline) => {
                 const currentItem = outline.highlighted;
                 if (currentItem) {
-                    currentItem.setCollapsed(false, true);
+                    this.expand(currentItem);
                     const child = currentItem.children[0];
                     if (child) {
                         this.changeActiveItemTo(child);
@@ -57,7 +57,7 @@ export class VimOutlineMode extends VimBindingsMode {
             'H': (outline) => {
                 const currentItem = outline.highlighted;
                 outline.allItems.forEach((item) => {
-                    item.setCollapsed(true, true);
+                    this.collapse(item);
                 });
                 if (currentItem) {
                     let item = currentItem;
@@ -67,16 +67,21 @@ export class VimOutlineMode extends VimBindingsMode {
             },
             'L': (outline) => {
                 outline.allItems.forEach((item) => {
-                    item.setCollapsed(false, true);
+                    this.expand(item);
                 });
             },
             '<CR>': (outline) => {
                 const item = outline.highlighted;
-                if (item) outline.onItemClick(item);
+                if (item) {
+                    // The original code was `outline.onItemClick(item);`, but this does not actually fire a click event,
+                    // and as a result, it does not update the workspace leaf history (`PDFOutlineItemPostProcessor.recordLeafHistory`).
+                    // This is why we has to use the following code instead. 
+                    item.selfEl.click();
+                }
             },
         });
 
-        this.vimScope.map(['outline'], {
+        this.vimScope.noremap(['outline'], {
             '<Space>': '<CR>',
             '<Down>': 'j',
             '<Up>': 'k',
@@ -109,7 +114,18 @@ export class VimOutlineMode extends VimBindingsMode {
         outline.highlighted?.setActive(false);
         newActiveItem.setActive(true);
         outline.highlighted = newActiveItem;
-        newActiveItem.selfEl.scrollIntoView({ block: 'center' });
+        newActiveItem.selfEl.scrollIntoView({
+            block: 'center',
+            behavior: (this.settings.vimSmoothOutlineMode ? 'smooth' : 'instant') as ScrollBehavior
+        });
+    }
+
+    collapse(item: PDFOutlineTreeNode) {
+        item.setCollapsed(true, this.settings.vimSmoothOutlineMode);
+    }
+
+    expand(item: PDFOutlineTreeNode) {
+        item.setCollapsed(false, this.settings.vimSmoothOutlineMode);
     }
 
     navigateOutline(outline: PDFOutlineViewer, forward: boolean, n?: number) {

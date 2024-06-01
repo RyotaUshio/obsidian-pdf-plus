@@ -4,7 +4,7 @@ import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { PDFBacklinkCache, PDFBacklinkIndex, PDFPageBacklinkIndex } from 'lib/pdf-backlink-index';
 import { PDFPageView, PDFViewerChild, Rect } from 'typings';
-import { isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
+import { MultiValuedMap, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { onBacklinkVisualizerContextMenu } from 'context-menu';
 import { BidirectionalMultiValuedMap } from 'utils';
 import { MergedRect } from 'lib/highlights/geometry';
@@ -37,6 +37,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
 
     private pagewiseCacheToDomsMap = new Map<number, BidirectionalMultiValuedMap<PDFBacklinkCache, HTMLElement>>;
     private pagewiseStatus = new Map<number, { onPageReady: boolean, onTextLayerReady: boolean, onAnnotationLayerReady: boolean }>;
+    private pagewiseOnClearDomCallbacksMap = new MultiValuedMap<number, () => any>(); 
 
     constructor(visualizer: PDFViewerBacklinkVisualizer) {
         super(visualizer.plugin);
@@ -63,6 +64,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
             // Avoid removing elements in the annotation layer
             if (el.closest('.pdf-plus-backlink-highlight-layer')) el.remove();
         }
+        this.pagewiseOnClearDomCallbacksMap.get(pageNumber).forEach(cb => cb());
         this.pagewiseCacheToDomsMap.delete(pageNumber);
         this.updateStatus(pageNumber, { onPageReady: false, onTextLayerReady: false, onAnnotationLayerReady: false });
     }
@@ -121,7 +123,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
         if (typeof lineNumber === 'number') {
             state.scroll = lineNumber;
         }
-        this.registerDomEvent(el, 'mouseover', (event) => {
+        this.registerDomEventForCache(cache, el, 'mouseover', (event) => {
             this.app.workspace.trigger('hover-link', {
                 event,
                 source: 'pdf-plus',
@@ -133,7 +135,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
             });
         });
 
-        this.registerDomEvent(el, 'dblclick', (event) => {
+        this.registerDomEventForCache(cache, el, 'dblclick', (event) => {
             if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
                 const paneType = Keymap.isModEvent(event);
                 this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, paneType, pos ? { pos } : undefined);
@@ -142,7 +144,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
     }
 
     hookBacklinkViewEventHandlers(el: HTMLElement, cache: PDFBacklinkCache) {
-        this.registerDomEvent(el, 'mouseover', (event) => {
+        this.registerDomEventForCache(cache, el, 'mouseover', (event) => {
             // highlight the corresponding item in backlink pane
             if (this.plugin.settings.highlightBacklinksPane) {
                 this.lib.workspace.iterateBacklinkViews((view) => {
@@ -169,7 +171,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
     }
 
     hookContextMenuHandler(el: HTMLElement, cache: PDFBacklinkCache) {
-        this.registerDomEvent(el, 'contextmenu', (evt) => {
+        this.registerDomEventForCache(cache, el, 'contextmenu', (evt) => {
             onBacklinkVisualizerContextMenu(evt, this.visualizer, cache);
         });
     }
@@ -180,7 +182,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
         if (typeof pageNumber === 'number') {
             const className = 'is-hovered';
 
-            el.addEventListener('mouseover', () => {
+            this.registerDomEventForCache(cache, el, 'mouseover', () => {
                 for (const otherEl of this.getCacheToDomsMap(pageNumber).get(cache)) {
                     otherEl.addClass(className);
                 }
@@ -205,6 +207,19 @@ export class BacklinkDomManager extends PDFPlusComponent {
                 '--pdf-plus-color': `rgb(${r}, ${g}, ${b})`,
                 '--pdf-plus-backlink-icon-color': `rgb(${r}, ${g}, ${b})`,
                 '--pdf-plus-rect-color': `rgb(${r}, ${g}, ${b})`,
+            });
+        }
+    }
+
+    onClearDomInPage(pageNumber: number, callback: () => any) {
+        this.pagewiseOnClearDomCallbacksMap.addValue(pageNumber, callback);
+    }
+    
+    registerDomEventForCache<K extends keyof HTMLElementEventMap>(cache: PDFBacklinkCache, el: HTMLElement, type: K, callback: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions) {
+        this.registerDomEvent(el, type, callback, options);
+        if (cache.page && cache.annotation) {
+            this.onClearDomInPage(cache.page, () => {
+                el.removeEventListener(type, callback);
             });
         }
     }

@@ -1,4 +1,4 @@
-import { App, Component, Keymap } from 'obsidian';
+import { App, Component, Keymap, Platform } from 'obsidian';
 
 
 export function hookInternalLinkMouseEventHandlers(app: App, containerEl: HTMLElement, sourcePath: string) {
@@ -184,4 +184,27 @@ export function showChildElOnParentElHover(config: {
     };
 
     parentEl.addEventListener('mouseover', onParentElMouseOver);
+}
+
+export function dispatchMouseEvent(target: HTMLElement, type: keyof HTMLElementEventMap, options?: MouseEventInit) {
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, ...options }));
+}
+
+export function doubleClick(target: HTMLElement, options?: MouseEventInit) {
+    dispatchMouseEvent(target, 'dblclick', options);
+}
+
+export function hover(target: HTMLElement, mod?: boolean, options?: MouseEventInit) {
+    options ??= {};
+    if (mod) {
+        options[Platform.isMacOS ? 'metaKey' : 'ctrlKey'] = true;
+    }
+    const { x, y } = target.getBoundingClientRect();
+    dispatchMouseEvent(target, 'mouseover', {
+        // @ts-ignore
+        doc: target.doc,
+        clientX: x,
+        clientY: y,
+        ...options
+    });
 }

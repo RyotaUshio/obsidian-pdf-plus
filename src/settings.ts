@@ -3,7 +3,7 @@ import { Component, DropdownComponent, Events, HexString, IconName, MarkdownRend
 import PDFPlus from 'main';
 import { ExtendedPaneType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
-import { CommandSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
+import { CommandSuggest, FuzzyFileSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
 import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
 import { ScrollMode, SidebarView, SpreadMode } from 'pdfjs-enums';
 import { Menu } from 'obsidian';
@@ -264,14 +264,20 @@ export interface PDFPlusSettings {
 	enableBibInCanvas: boolean;
 	removeWhitespaceBetweenCJChars: boolean;
 	vim: boolean;
+	vimrcPath: string;
 	vimVisualMotion: boolean;
 	vimScrollSize: number;
+	vimLargerScrollSizeWhenZoomIn: boolean;
 	vimContinuousScrollSpeed: number;
 	vimSmoothScroll: boolean;
 	vimHlsearch: boolean;
 	vimIncsearch: boolean;
 	enableVimInContextMenu: boolean;
 	enableVimOutlineMode: boolean;
+	vimSmoothOutlineMode: boolean;
+	vimHintChars: string;
+	vimHintArgs: string;
+	PATH: string;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -529,14 +535,20 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInCanvas: true,
 	removeWhitespaceBetweenCJChars: true,
 	vim: false,
+	vimrcPath: '',
 	vimVisualMotion: true,
 	vimScrollSize: 40,
+	vimLargerScrollSizeWhenZoomIn: true,
 	vimContinuousScrollSpeed: 1.2,
 	vimSmoothScroll: true,
 	vimHlsearch: true,
 	vimIncsearch: true,
 	enableVimInContextMenu: true,
 	enableVimOutlineMode: true,
+	vimSmoothOutlineMode: true,
+	vimHintChars: 'hjklasdfgyuiopqwertnmzxcvb',
+	vimHintArgs: 'all',
+	PATH: '',
 };
 
 
@@ -712,6 +724,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const settings = Array.isArray(setting) ? setting : [setting];
 		const togglers = settings.map((setting) => this.getVisibilityToggler(setting, condition))
 		this.events.on('update', () => togglers.forEach((toggler) => toggler()));
+		return settings;
 	}
 
 	addTextSetting(settingName: KeysOfType<PDFPlusSettings, string>, placeholder?: string, onBlurOrEnter?: (setting: Setting) => any) {
@@ -2870,7 +2883,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 
-		this.addHeading('Vim keybindings (experimental)', 'vim', 'vim')
+		this.addHeading('Vim keybindings', 'vim', 'vim')
 			.then((setting) =>
 				this.renderMarkdown(
 					'Tracked at [this GitHub issue](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/119).',
@@ -2890,18 +2903,22 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'- `G`: Go to last page',
 					'- `0`/`^`/`H`: Go to top of current page',
 					'- `$`/`L`: Go to bottom of current page',
+					'- `<C-f>`/`<C-b>`: Scroll down/up as much as the viewer height (`C`=`Ctrl`)',
+					'- `<C-d>`/`<C-u>`: Scroll down/up half as much as the viewer height',
 					'- `/`/`?`: Search forward/backward',
 					'- `n`/`N`: Go to next/previous match',
 					'- `+`/`zi`: Zoom in',
 					'- `-`/`zo`: Zoom out',
 					'- `=`/`z0`: Reset zoom',
-					'- `r`: Rotate pages',
+					'- `r`: Rotate pages clockwise',
+					'- `R`: Rotate pages counterclockwise',
 					'- `y`: Yank (copy) selected text',
 					`- \`c\`: Run the "${this.plugin.lib.commands.stripCommandNamePrefix(this.plugin.lib.commands.getCommand('copy-link-to-selection').name)}" command`,
 					'- `C`: Show context menu at text selection',
 					'- `:`: Enter command-line mode (experimental)',
 					'- `<Tab>`: Toggle outline (table of contents)',
 					'- `<S-Tab>`: Toggle thumbnails (`S`=`Shift`)',
+					'- `f`: Enter hint mode by running `:hint` (experimental)',
 					'- `<Esc>`: Go back to normal mode, abort search, etc',
 					'',
 					'Many of them can be combined with counts. For example:',
@@ -2915,9 +2932,44 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Enable')
 			.setDesc('Reopen the PDF viewers after changing this option.');
 		this.showConditionally([
+			this.addTextSetting('vimrcPath', undefined, () => this.plugin.vimrc = null)
+				.setName('Vimrc file path (experimental)')
+				.then(async (setting) => {
+					await this.renderMarkdown([
+						'Only the [Ex commands supported by PDF++](https://github.com/RyotaUshio/obsidian-pdf-plus/blob/main/src/vim/ex-commands.ts) are allowed.',
+						'',
+						'Example (not necessarily recommendations):',
+						'```',
+						'" Use Ctrl-K to scroll to the top of the page',
+						'nmap <C-k> H',
+						'',
+						'" JavaScript commands',
+						'nmap <C-h> :js alert("Hello, world!")',
+						'vmap <C-h> :jsfile filename.js',
+						'',
+						'" Obsidian commands',
+						'" - Open the current PDF in the OS-default app',
+						'map def :obcommand open-with-default-app:open',
+						'" - Go back and forth the history',
+						'map <C-o> :obcommand app:go-back',
+						'map <C-i> :obcommand app:go-forward',
+						'```',
+						'',
+						'After changing the path or the file content, you need to reopen the PDF viewer. If the vimrc file is a hidden file or is under a hidden folder, you need to reload PDF++ or the app.',
+					], setting.descEl);
+
+					const inputEl = (setting.components[0] as TextComponent).inputEl;
+					new FuzzyFileSuggest(this.app, inputEl)
+						.onSelect(({ item: file }) => {
+							this.plugin.settings.vimrcPath = file.path;
+							this.plugin.saveSettings();
+						});
+				}),
+			this.addHeading('Visual mode', 'vim-visual'),
 			this.addToggleSetting('vimVisualMotion')
 				.setName('Enter visual mode on text selection')
 				.setDesc('When some text is selected, you can modify the range of selection using the j, k, h, l, w, e, b, 0, ^, $, H, and L keys, similarly to Vim\'s visual mode. H/L are aliases for ^/$, respectively. If disabled, you can use j/k/h/l/0/^/$/H/L keys to scroll the page regardless of text selection. This is highly experimental, and some unexpected behavior might be present especially in line-related motions. Reload the viewer or the app after changing this option.'),
+			this.addHeading('Outline mode', 'vim-outline'),
 			this.addToggleSetting('enableVimOutlineMode')
 				.setName('Enter outline mode when opening PDF outline view')
 				.then((setting) => {
@@ -2937,6 +2989,42 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						'This option requires reload to take effect.'
 					], setting.descEl);
 				}),
+			this.addToggleSetting('vimSmoothOutlineMode')
+				.setName('Smooth motion in outline mode'),
+			this.addHeading('Command-line mode (experimental)', 'vim-command-line'),
+			this.addSetting()
+				.then((setting) => {
+					this.renderMarkdown([
+						'By pressing `:`, you can enter the command-line mode, where you can execute various commands called "Ex commands"',
+						'',
+						'- You can always go back to normal mode by `<Esc>`.',
+						'- For some commands, you can run `:help :<command>` or `:h :<command>` to see the help message.',
+						'- Use `<Tab>` and `<S-Tab>` to navigate through the suggestions (`S`=`Shift`).',
+						'- Use arrow down/up keys to go back and forth the command history.',
+						'- `<C-u>` clears the command line, and `<C-w>` deletes the last word (`C`=`Ctrl`).',
+						'- `:<page number>` will take you to the <page number>-th page, where the page number always starts from 1. To go to the page with the page label <page label> (e.g. "i, ii, ..., x, 1, 2, ..."), use `:gotopage <page label>` (or `:go <page label>`/`:goto <page label>` in short).',
+						'- `:!<command>` runs the shell command (not supported on mobile). By default, Obsidian does not know the value of the "PATH" environment variable, so you might need to explicitly provide it in the setting below (in the "Misc" section) to run some commands.',
+					], setting.descEl);
+				}),
+			this.addHeading('Hint mode (experimental)', 'vim-hint'),
+			this.addSetting()
+				.then((setting) => {
+					this.renderMarkdown([
+						'Hitting `f` will enter the hint mode, where you can perform certain actions on links, annotations, and backlink highlighting in the PDF page without using the mouse.',
+						'For example, first press `f` to enter the hint mode, and if the link you want to open gets marked with "HK", then hit `h` and then `k` (without `Shift`) to open it.', 
+						'',
+						'This is inspired by [Tridactyl](https://github.com/tridactyl/tridactyl)\'s hint mode.',
+						'',
+						'Also check out Style Settings > PDF++ > Vim keybindings > Hint mode.'
+					], setting.descEl);
+				}),
+			this.addTextSetting('vimHintChars')
+				.setName('Characters to use in hint mode')
+				.setDesc('They are used preferentially from left to right, so you might want to put the easier-to-reach keys first. This is the same as Tridactyl\'s "hintchars" option.'),
+			this.addTextSetting('vimHintArgs')
+				.setName('Default arguments for the ":hint" Ex command')
+				.setDesc('Space-separated list of "link"/"annot"/"backlink" or "all". Run ":help :hint" for the details.'),
+			this.addHeading('Context menu', 'vim-context-menu'),
 			this.addToggleSetting('enableVimInContextMenu')
 				.setName('Enable Vim keys in PDF context menus')
 				.setDesc('If enabled, you can use j/k/h/l keys, instead of the arrow keys, to navigate through context menu items in the PDF viewer.'),
@@ -2944,6 +3032,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addSliderSetting('vimScrollSize', 5, 500, 5)
 				.setName('Scroll size (px) of the jkhl keys')
 				.setDesc('The size of scroll when one of the jkhl keys is pressed once.'),
+			this.addToggleSetting('vimLargerScrollSizeWhenZoomIn')
+				.setName('Increase scroll size when zoomed in'),
 			this.addSliderSetting('vimContinuousScrollSpeed', 0.1, 5, 0.1)
 				.setName('Speed of continuous scroll (px per ms)')
 				.setDesc('The speed of scroll when pressing and holding down the jkhl keys.'),
@@ -2985,6 +3075,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('removeWhitespaceBetweenCJChars')
 			.setName('Remove half-width whitespace between two Chinese/Japanese characters when copying text')
 			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optical character recognition). Enable this option to remove it when copying links to text selections.');
+		if (Platform.isDesktopApp) {
+			this.addTextAreaSetting('PATH')
+				.then((setting) => {
+					const component = setting.components[0];
+					if (component instanceof TextAreaComponent) {
+						component.inputEl.rows = 8;
+						component.inputEl.cols = 30;
+					}
+				})
+				.setName('"PATH" environment variable')
+				.setDesc('Provide the "PATH" environment variable for PDF++ to run shell commands without the full paths specified. In MacOS and Linux, you can run "echo $PATH" in Terminal and then copy & paste the result here. Currently, it will be used only when you run ":!<command>" in Vim mode.');
+		}
 
 
 		this.addHeading('Style settings', 'style-settings', 'lucide-settings-2')

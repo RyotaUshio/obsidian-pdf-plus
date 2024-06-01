@@ -69,6 +69,7 @@ export default class PDFPlus extends Plugin {
 	lastAnnotationPopupChild: PDFViewerChild | null = null;
 	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
 	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
+	vimrc: string | null = null;
 	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object. */
 	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
 	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
@@ -544,6 +545,13 @@ export default class PDFPlus extends Plugin {
 			if (file instanceof TFile && this.settings.newFileTemplatePath === file.path) {
 				this.settings.newFileTemplatePath = '';
 				this.saveSettings();
+			}
+		}));
+
+		// Keep the vimrc content up-to-date
+		this.registerEvent(this.app.vault.on('modify', async (file) => {
+			if (file instanceof TFile && file.path === this.settings.vimrcPath) {
+				this.vimrc = await this.app.vault.read(file);
 			}
 		}));
 	}

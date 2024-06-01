@@ -1,15 +1,16 @@
-import { debounce } from 'obsidian';
-
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
-import { isTargetHTMLElement, repeatable, } from 'utils';
+import { repeatable, } from 'utils';
 import { PDFViewerComponent } from 'typings';
 import { SidebarView } from 'pdfjs-enums';
 import { VimScope } from './scope';
+import { ScrollController } from './scroll';
+import { VimSearch } from './search';
 import { VimVisualMode } from './visual';
 import { VimOutlineMode } from './outline';
 import { VimCommandLineMode } from './command-line';
 import { PDFDocumentTextStructureParser } from './text-structure-parser';
+import { VimHintMode } from './hint';
 
 
 export class VimBindings extends PDFPlusComponent {
@@ -20,7 +21,12 @@ export class VimBindings extends PDFPlusComponent {
     visualMode: VimVisualMode;
     commandLineMode: VimCommandLineMode;
     outlineMode: VimOutlineMode;
+    hintMode: VimHintMode;
     _structureParser: PDFDocumentTextStructureParser | null = null;
+
+    get child() {
+        return this.viewer.child;
+    }
 
     get obsidianViewer() {
         return this.viewer.child?.pdfViewer;
@@ -28,6 +34,14 @@ export class VimBindings extends PDFPlusComponent {
 
     get pdfViewer() {
         return this.viewer.child?.pdfViewer?.pdfViewer;
+    }
+
+    get eventBus() {
+        return this.obsidianViewer?.eventBus;
+    }
+
+    get file() {
+        return this.viewer.child?.file;
     }
 
     get structureParser() {
@@ -43,7 +57,7 @@ export class VimBindings extends PDFPlusComponent {
 
     constructor(plugin: PDFPlus, viewer: PDFViewerComponent) {
         super(plugin);
-        
+
         this.viewer = viewer;
 
         this.vimScope = new VimScope(this.viewer.scope);
@@ -69,8 +83,10 @@ export class VimBindings extends PDFPlusComponent {
                     }
                 }
             },
+            'f': () => this.commandLineMode.executeCommand('hint'),
         });
 
+        // TODO: rewrite some using ex-commands
         this.vimScope.registerKeymaps(['normal', 'visual', 'outline'], {
             'j': (n) => this.scroll.scrollTo('down', n),
             'k': (n) => this.scroll.scrollTo('up', n),
@@ -83,6 +99,10 @@ export class VimBindings extends PDFPlusComponent {
             '0': () => this.scroll.scrollToTop(),
             '^': () => this.scroll.scrollToTop(),
             '$': () => this.scroll.scrollToBottom(),
+            '<C-f>': (n) => this.scroll.scrollVerticallyByVisualPage(n ?? 1),
+            '<C-b>': (n) => this.scroll.scrollVerticallyByVisualPage(-(n ?? 1)),
+            '<C-d>': (n) => this.scroll.scrollVerticallyByVisualPage(0.5 * (n ?? 1)),
+            '<C-u>': (n) => this.scroll.scrollVerticallyByVisualPage(-0.5 * (n ?? 1)),
             '/': () => this.search.start(true),
             '?': () => this.search.start(false),
             'n': repeatable(() => this.search.findNext()),
@@ -97,8 +117,9 @@ export class VimBindings extends PDFPlusComponent {
                 this.obsidianViewer?.zoomReset();
             },
             'r': (n) => this.obsidianViewer?.rotatePages(90 * (n ?? 1)),
+            'R': (n) => this.obsidianViewer?.rotatePages(-90 * (n ?? 1)),
         });
-        this.vimScope.map(['normal', 'visual', 'outline'], {
+        this.vimScope.noremap(['normal', 'visual', 'outline'], {
             'H': '^',
             'L': '$',
             'zi': '+',
@@ -107,10 +128,13 @@ export class VimBindings extends PDFPlusComponent {
         });
 
         this.vimScope.setMode('normal');
+        this.vimScope.setTypable('command');
 
         this.vimScope.onEscape((isRealEscape) => {
             this.enterNormalMode();
             this.obsidianViewer?.pdfSidebar.close();
+
+            this.child?.hoverPopover?.hide();
 
             if (!isRealEscape) {
                 // The following is registered as a keymap event handler of
@@ -130,6 +154,7 @@ export class VimBindings extends PDFPlusComponent {
         this.visualMode = this.addChild(new VimVisualMode(this));
         this.commandLineMode = this.addChild(new VimCommandLineMode(this));
         this.outlineMode = this.addChild(new VimOutlineMode(this));
+        this.hintMode = this.addChild(new VimHintMode(this));
     }
 
     onload() {
@@ -154,6 +179,7 @@ export class VimBindings extends PDFPlusComponent {
         this.vimScope.setMode('normal');
         this.doc.getSelection()?.empty();
         this.commandLineMode.exit();
+        this.hintMode.exit(); 
     }
 
     enterCommandMode() {
@@ -172,190 +198,27 @@ export class VimBindings extends PDFPlusComponent {
             }
         }
     }
-}
 
-
-class ScrollController {
-    vim: VimBindings;
-    lastScroll = 0;
-    lastScrollInterval = 0;
-
-    constructor(vim: VimBindings) {
-        this.vim = vim;
+    enterHintMode() {
+        this.vimScope.setMode('hint');
+        this.hintMode.enter();
     }
 
-    get settings() {
-        return this.vim.settings;
+    private mapOrNoremap(modes: string[], from: string, to: string, noremap: boolean) {
+        if (to.startsWith(':')) {
+            this.vimScope.registerKeymaps(modes, {
+                [from]: () => this.commandLineMode.executeCommand(to.slice(1))
+            });
+        } else if (to === '<Nop>') {
+            this.vimScope.registerKeymaps(modes, { [from]: () => { } });
+        } else this.vimScope[noremap ? 'noremap' : 'map'](modes, { [from]: to });
     }
 
-    get viewerContainerEl() {
-        return this.vim.obsidianViewer?.dom?.viewerContainerEl;
+    map(modes: string[], from: string, to: string) {
+        this.mapOrNoremap(modes, from, to, false);
     }
 
-    getPageDiv(offset = 0) {
-        const pdfViewer = this.vim.pdfViewer;
-        if (pdfViewer) {
-            return pdfViewer._pages[pdfViewer.currentPageNumber - 1 + offset]?.div;
-        }
-    }
-
-    scrollTo(direction: 'left' | 'right' | 'up' | 'down', n?: number) {
-        const el = this.viewerContainerEl;
-        if (!el) return;
-
-        const isFirst = this.isFirstScrollInAWhile();
-        // If this is not the first scroll in a while, i.e. if the user is pressing & holding down the key,
-        // settings `behavior: 'smooth'` causes an unnatural scroll bahavior.
-        // As a workaround for this problem, I'm currently using this condition check. If anyone knows a better solution, please let me know!
-
-        let offset = isFirst ? this.settings.vimScrollSize : this.settings.vimContinuousScrollSpeed * this.lastScrollInterval;
-
-        if (this.vim.pdfViewer) {
-            offset *= Math.max(1, this.vim.pdfViewer.currentScale);
-        }
-
-        n ??= 1;
-        offset *= n;
-
-        // Added ts-ignore to resolve a TypeScript complaint "Type '"smooth" | "instant"' is not assignable to type 'ScrollBehavior'."
-        // @ts-ignore
-        const behavior: ScrollBehavior = this.settings.vimSmoothScroll && isFirst ? 'smooth' : 'instant';
-        const options = { behavior } as ScrollToOptions;
-
-        switch (direction) {
-            case 'left':
-                options.left = -offset;
-                break;
-            case 'right':
-                options.left = offset;
-                break;
-            case 'up':
-                options.top = -offset;
-                break;
-            case 'down':
-                options.top = offset;
-                break;
-        }
-
-        el.scrollBy(options);
-    }
-
-    isFirstScrollInAWhile() {
-        const t = Date.now();
-        this.lastScrollInterval = t - this.lastScroll;
-        this.lastScroll = t;
-        return this.lastScrollInterval > 100;
-    }
-
-    scrollToTop() {
-        if (!this.viewerContainerEl) return;
-        const pageDiv = this.getPageDiv();
-        if (!pageDiv) return;
-        this.viewerContainerEl.scrollTo({ top: pageDiv.offsetTop, behavior: (this.settings.vimSmoothScroll ? 'smooth' : 'instant') as ScrollBehavior })
-    }
-
-    scrollToBottom() {
-        if (!this.viewerContainerEl) return;
-        const pageDiv = this.getPageDiv();
-        if (!pageDiv) return;
-        this.viewerContainerEl.scrollTo({ top: pageDiv.offsetTop + pageDiv.offsetHeight - this.viewerContainerEl.clientHeight, behavior: (this.settings.vimSmoothScroll ? 'smooth' : 'instant') as ScrollBehavior })
-    }
-}
-
-
-class VimSearch {
-    vim: VimBindings;
-    isActive = false;
-    isForward = true;
-
-    constructor(vim: VimBindings) {
-        this.vim = vim;
-    }
-
-    get settings() {
-        return this.vim.settings;
-    }
-
-    get lib() {
-        return this.vim.lib;
-    }
-
-    get incsearch() {
-        return this.settings.vimIncsearch;
-    }
-
-    get hlsearch() {
-        return this.settings.vimHlsearch;
-    }
-
-    get findBar() {
-        return this.vim.obsidianViewer?.findBar;
-    }
-
-    findNext() {
-        if (this.isActive && this.findBar) {
-            this.findBar.dispatchEvent('again', !this.isForward);
-        }
-    }
-
-    findPrevious() {
-        if (this.isActive && this.findBar) {
-            this.findBar.dispatchEvent('again', this.isForward);
-        }
-    }
-
-    start(forward: boolean) {
-        const findBar = this.findBar;
-        if (!findBar) return;
-
-        if (findBar.opened) {
-            findBar.searchComponent.inputEl.select();
-            return;
-        }
-
-        this.isActive = true;
-        this.isForward = forward;
-
-        findBar.searchSettings.highlightAll = this.hlsearch;
-        this.lib.updateSearchSettingsUI(findBar);
-
-        const changeCallback = findBar.searchComponent.changeCallback;
-        if (this.incsearch) {
-            // The original `changeCallback` runs `findBar.dispatchEvent('')`,
-            // which scrolls the very first match in the ENTIRE DOCUMENT into the view.
-            // The following `'again'` is to focus on the nearest match from the current position (might be suboptimal).
-            findBar.searchComponent.onChange(debounce(() => {
-                findBar.dispatchEvent('again');
-            }, 250, true));
-        } else {
-            delete findBar.searchComponent.changeCallback;
-        }
-
-        findBar.showSearch();
-
-        const onSearchKeyPress = (evt: KeyboardEvent) => {
-            if (!this.isActive) return;
-            if (evt.isComposing) return;
-            if (evt.key !== 'Enter') return;
-
-            // Remove the focus from the search box so that we can use `n`/`N` keys
-            if (isTargetHTMLElement(evt, evt.target)) {
-                evt.target.blur();
-            }
-            // Prevent Obsidian's default behavior where the Enter key shows the next match
-            evt.stopPropagation();
-
-            if (!this.incsearch) {
-                findBar.dispatchEvent('again');
-            }
-        };
-
-        findBar.searchComponent.inputEl.addEventListener('keypress', onSearchKeyPress, true);
-
-        this.lib.registerPDFEvent('findbarclose', findBar.eventBus, null, () => {
-            this.isActive = false;
-            findBar.searchComponent.inputEl.removeEventListener('keypress', onSearchKeyPress, true);
-            if (changeCallback) findBar.searchComponent.onChange(changeCallback);
-        });
+    noremap(modes: string[], from: string, to: string) {
+        this.mapOrNoremap(modes, from, to, true);
     }
 }

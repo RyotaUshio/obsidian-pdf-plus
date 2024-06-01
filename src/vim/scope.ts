@@ -18,6 +18,7 @@ export class VimScope extends Scope {
     searchTo = -1
     onEscapeCallbacks: ((isRealEscape: boolean) => any)[] = [];
     escapeAliases: string[] = [];
+    typableModes: string[] = [];
 
     constructor(parent?: Scope) {
         super(parent);
@@ -45,7 +46,34 @@ export class VimScope extends Scope {
         }
     }
 
+    unregisterAllKeymaps(modes: string[]) {
+        for (const mode of modes) {
+            if (this.modeToKeymaps[mode]) {
+                this.modeToKeymaps[mode].length = 0;
+            }
+        }
+    }
+
     map(modes: string[], fromTo: Record<string, string>) {
+        for (const mode of modes) {
+            const keymaps = Object.fromEntries(
+                Object.entries(fromTo)
+                    .map(([from, to]) => [
+                        from,
+                        (n?: number) => {
+                            const { found, index } = binarySearch(this.modeToKeymaps[mode], (map) => stringCompare(to, map.keys))
+                            if (found) {
+                                const func = this.modeToKeymaps[mode][index].func;
+                                return func(n);
+                            }
+                        }
+                    ])
+            );
+            this.registerKeymaps([mode], keymaps);
+        }
+    }
+
+    noremap(modes: string[], fromTo: Record<string, string>) {
         for (const mode of modes) {
             if (this.modeToKeymaps.hasOwnProperty(mode)) {
                 for (const from in fromTo) {
@@ -54,6 +82,19 @@ export class VimScope extends Scope {
                     if (found) {
                         const keymap = this.modeToKeymaps[mode][index];
                         this.registerKeymaps([mode], { [from]: keymap.func });
+                    }
+                }
+            }
+        }
+    }
+
+    unmap(modes: string[], keys: string[]) {
+        for (const mode of modes) {
+            if (this.modeToKeymaps.hasOwnProperty(mode)) {
+                for (const key of keys) {
+                    const { found, index } = binarySearch(this.modeToKeymaps[mode], (map) => stringCompare(key, map.keys))
+                    if (found) {
+                        this.modeToKeymaps[mode].splice(index, 1);
                     }
                 }
             }
@@ -83,6 +124,10 @@ export class VimScope extends Scope {
         this.escapeAliases.push(...aliases);
     }
 
+    setTypable(...modes: string[]) {
+        this.typableModes.push(...modes);
+    }
+
     handleKey(evt: KeyboardEvent, info: KeymapInfo) {
         let shouldCallParent = true;
 
@@ -91,7 +136,7 @@ export class VimScope extends Scope {
                 return this.reset();
             }
 
-            if ((this.currentMode === 'insert') !== isTargetTypable(evt)) return;
+            if ((this.typableModes.includes(this.currentMode)) !== isTargetTypable(evt)) return;
 
             const key = VimScope.canonicalizeKey(info);
             if (key === null) {

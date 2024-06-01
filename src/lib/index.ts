@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, parseLinktext, requestUrl } from 'obsidian';
+import { App, Component, EditableFileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, normalizePath, parseLinktext, requestUrl } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 
@@ -673,7 +673,7 @@ export class PDFPlusLib {
     getBibliographyManager(activeOnly: boolean = false) {
         return this.getPDFViewerChild(activeOnly)?.bib;
     }
-    
+
     getVim(activeOnly: boolean = false) {
         return this.getPDFViewerComponent(activeOnly)?.vim;
     }
@@ -967,5 +967,35 @@ export class PDFPlusLib {
     /** Process (possibly) multiline strings cleverly to convert it into a single line string. */
     toSingleLine(str: string): string {
         return toSingleLine(str, this.plugin.settings.removeWhitespaceBetweenCJChars);
+    }
+
+    /** Write data to the file at path. */
+    async write(path: string, data: string | ArrayBuffer, existOk: boolean): Promise<TFile | null> {
+        const file = this.app.vault.getAbstractFileByPath(path);
+
+        if (file instanceof TFile) {
+            if (!existOk) {
+                new Notice(`${this.plugin.manifest.name}: File already exists: ${path}`);
+            }
+            if (typeof data === 'string') {
+                await this.app.vault.modify(file, data);
+            } else {
+                await this.app.vault.modifyBinary(file, data);
+            }
+            return file;
+        } else if (file === null) {
+            const folderPath = normalizePath(path.split('/').slice(0, -1).join('/'));
+            if (folderPath) {
+                const folderExists = !!(this.app.vault.getAbstractFileByPath(folderPath));
+                if (!folderExists) await this.app.vault.createFolder(folderPath);
+            }
+            if (typeof data === 'string') {
+                return await this.app.vault.create(path, data);
+            } else {
+                return await this.app.vault.createBinary(path, data);
+            }
+        }
+
+        return null;
     }
 }

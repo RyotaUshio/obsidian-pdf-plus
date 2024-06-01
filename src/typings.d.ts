@@ -269,8 +269,8 @@ interface PDFOutlineTreeNode {
     getExplicitDestination(): Promise<PDFjsDestArray>; // return this.explicitDest if set, otherwise newly fetch it
     getMarkdownLink(): Promise<string>;
     setActive(active: boolean): void;
-    setCollapsed(collapsed: boolean, animate?: boolean): Promise<void>;
-    toggleCollapsed(animate?: boolean): Promise<void>;
+    setCollapsed(collapsed: boolean, smooth?: boolean): Promise<void>;
+    toggleCollapsed(smooth?: boolean): Promise<void>;
     reveal(): void;
 }
 
@@ -980,7 +980,7 @@ declare module 'obsidian' {
         };
         commands: {
             commands: Record<string, Command>;
-            executeCommandById(id: string): boolean;
+            executeCommandById(id: string, lastEvent?: UserEvent): boolean;
             findCommand(id: string): Command | undefined;
         }
         hotkeyManager: HotkeyManager;
@@ -1165,5 +1165,9 @@ declare module 'obsidian' {
         // Setting `modifiers` to `null` is undocumented but makes this keymap work regardless of modifiers, thereby fixing the issue.
         register(modifiers: Modifier[] | null, key: string | null, func: KeymapEventListener): KeymapEventHandler;
         handleKey(evt: KeyboardEvent, info: KeymapInfo): false | any;
+    }
+
+    interface KeymapEventHandler {
+        func: KeymapEventListener;
     }
 }
