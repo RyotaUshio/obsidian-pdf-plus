@@ -136,7 +136,8 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private addIcons() {
-		addIcon('vim', '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="48" fill="black" style="letter-spacing:2; font-weight:bold;">VIM</text>');
+		// fill: "currentColor" is necessary for the icon to inherit the color of the parent element!
+		addIcon('vim', '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="48" fill="currentColor" style="letter-spacing:2; font-weight:bold;">VIM</text>');
 	}
 
 	async loadSettings() {
