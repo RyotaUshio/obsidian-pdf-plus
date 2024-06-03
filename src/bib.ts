@@ -1,6 +1,5 @@
 import { ButtonComponent, HoverPopover, HoverParent, Platform, FileSystemAdapter, Notice, ExtraButtonComponent, Events } from 'obsidian';
 import { PDFDocumentProxy } from 'pdfjs-dist';
-import { spawn } from 'child_process';
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
@@ -151,6 +150,8 @@ export class BibliographyManager extends PDFPlusComponent {
             await app.vault.adapter.write(anystyleInputPath, text);
             // Clean up the file when this PDF viewer is unloaded
             this.register(() => app.vault.adapter.remove(anystyleInputPath));
+
+            const { spawn } = await import('child_process');
 
             return new Promise<any>((resolve) => {
                 const anystyleProcess = spawn(anystylePath, ['parse', anystyleInputFullPath]);

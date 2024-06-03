@@ -1,5 +1,4 @@
 import { Notice, Platform, normalizePath } from 'obsidian';
-import { exec } from 'child_process';
 
 import { VimBindings } from './vim';
 import { VimBindingsMode } from './mode';
@@ -106,7 +105,13 @@ export class VimCommandLineMode extends VimBindingsMode {
         }
 
         // shell command
-        if (cmd.startsWith('!') && Platform.isDesktopApp) {
+        if (cmd.startsWith('!')) {
+            if (!Platform.isDesktopApp) {
+                this.reportError(`${this.plugin.manifest.name} (Vim mode): Shell command is not supported on mobile`, options.error!);
+                return;
+            }
+
+            const { exec } = await import('child_process');
             const env = process.env;
             if (this.settings.PATH) env.PATH = this.settings.PATH;
 

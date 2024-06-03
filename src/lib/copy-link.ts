@@ -371,6 +371,8 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     }
 
     copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, colorName?: string, autoPaste?: boolean, sourcePath?: string): boolean {
+        autoPaste ||= this.settings.autoPaste;
+
         if (!child.file) return false;
         const file = child.file;
 

@@ -4,6 +4,8 @@ import { VimBindings } from './vim';
 import { isTargetHTMLElement } from 'utils';
 
 
+const SEARCH_WAIT_TIME = 200;
+
 export class VimSearch {
     vim: VimBindings;
     isActive = false;
@@ -33,21 +35,41 @@ export class VimSearch {
         return this.vim.obsidianViewer?.findBar;
     }
 
-    findNext() {
+    findNext(n = 1, sameDirection = true) {
         if (this.isActive && this.findBar) {
-            this.findBar.dispatchEvent('again', !this.isForward);
+            this.vim.visualMode.rememberSelection();
+
+            while (n-- > 0) this.findBar.dispatchEvent('again', sameDirection ? !this.isForward : this.isForward);
+
+            this.restoreSelectionAndExtendToMatch();
         }
     }
 
-    findPrevious() {
-        if (this.isActive && this.findBar) {
-            this.findBar.dispatchEvent('again', this.isForward);
-        }
+    findPrevious(n?: number) {
+        this.findNext(n, false);
+    }
+
+    restoreSelectionAndExtendToMatch() {
+        setTimeout(() => {
+            let selection = this.vim.doc.getSelection();
+            if (!selection || selection.isCollapsed) {
+                this.vim.visualMode.restorePreviousSelection();
+            }
+            selection = this.vim.doc.getSelection();
+            if (selection && !selection.isCollapsed) {
+                const selectedMatchEl = this.getSelectedMatchEl();
+                if (selectedMatchEl) {
+                    this.vim.visualMode.extendSelectionToNode(selectedMatchEl);
+                }
+            }
+        }, SEARCH_WAIT_TIME);
     }
 
     start(forward: boolean) {
         const findBar = this.findBar;
         if (!findBar) return;
+
+        this.vim.visualMode.rememberSelection();
 
         if (findBar.opened) {
             findBar.searchComponent.inputEl.select();
@@ -69,7 +91,7 @@ export class VimSearch {
                 findBar.dispatchEvent('again');
             }, 250, true));
         } else {
-            delete findBar.searchComponent.changeCallback;
+            findBar.searchComponent.onChange(() => { });
         }
 
         findBar.showSearch();
@@ -87,7 +109,9 @@ export class VimSearch {
             evt.stopPropagation();
 
             if (!this.incsearch) {
-                findBar.dispatchEvent('again');
+                this.findNext();
+            } else {
+                this.restoreSelectionAndExtendToMatch();
             }
         };
 
@@ -98,5 +122,30 @@ export class VimSearch {
             findBar.searchComponent.inputEl.removeEventListener('keypress', onSearchKeyPress, true);
             if (changeCallback) findBar.searchComponent.onChange(changeCallback);
         });
+    }
+
+    findAndSelectNextMatch(n?: number, sameDirection?: boolean) {
+        this.findNext(n, sameDirection);
+        setTimeout(() => {
+            const selection = this.vim.doc.getSelection();
+            if (!selection) return;
+
+            const selectedMatchEl = this.getSelectedMatchEl();
+            if (!selectedMatchEl) return;
+
+            if (selection.isCollapsed) {
+                selection.selectAllChildren(selectedMatchEl);
+            } else {
+                this.vim.visualMode.extendSelectionToNode(selectedMatchEl, 1);
+            }
+        }, SEARCH_WAIT_TIME + 1);
+    }
+
+    getSelectedMatchEl() {
+        const el = this.vim.obsidianViewer?.dom?.viewerEl;
+        if (!el) return null;
+
+        const selectedEl = el.querySelector('.textLayer .textLayerNode > .highlight.selected');
+        return selectedEl;
     }
 }

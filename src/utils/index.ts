@@ -87,6 +87,7 @@ export function getTextLayerNode(pageEl: HTMLElement, node: Node) {
 
 // Taken from app.js.
 // Takes care of the cases where the textLayerNode has multiple text nodes (I haven't experienced it though).
+// => Maybe it takes search matches into account
 export function getOffsetInTextLayerNode(textLayerNode: HTMLElement, node: Node, offsetInNode: number) {
     if (!textLayerNode.contains(node)) return null;
 
@@ -98,6 +99,33 @@ export function getOffsetInTextLayerNode(textLayerNode: HTMLElement, node: Node,
     }
 
     return offset;
+}
+
+/**
+ * Get the position of the offset-th character in the given node.
+ * The result is represented by a pair of the node and the offset within the node.
+ * @param node The parent node
+ * @param offset The offset within the parent node.
+ */
+export function getNodeAndOffsetOfTextPos(node: Node, offset: number) {
+    const iter = node.doc.createNodeIterator(node, NodeFilter.SHOW_TEXT);
+    let textNode;
+    while ((textNode = iter.nextNode()) && offset >= textNode.textContent!.length) {
+        offset -= textNode.textContent!.length;
+    }
+    return textNode ? { node: textNode, offset } : null;
+}
+
+export function getFirstTextNodeIn(node: Node): Text | null {
+    const iter = node.doc.createNodeIterator(node, NodeFilter.SHOW_TEXT);
+    return iter.nextNode() as Text | null;
+}
+
+export function swapSelectionAnchorAndFocus(selection: Selection) {
+    const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
+    if (anchorNode && focusNode) {
+        selection.setBaseAndExtent(focusNode, focusOffset, anchorNode, anchorOffset);
+    }
 }
 
 export const MODIFIERS: Modifier[] = ['Mod', 'Ctrl', 'Meta', 'Shift', 'Alt'];

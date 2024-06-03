@@ -136,12 +136,17 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private addIcons() {
-		// fill: "currentColor" is necessary for the icon to inherit the color of the parent element!
+		// fill="currentColor" is necessary for the icon to inherit the color of the parent element!
 		addIcon('vim', '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="48" fill="currentColor" style="letter-spacing:2; font-weight:bold;">VIM</text>');
 	}
 
+	async restoreDefaultSettings() {
+		this.settings = structuredClone(DEFAULT_SETTINGS);
+		await this.saveSettings();
+	}
+
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), await this.loadData());
 
 		// The AnyStyle path had been saved in data.json until v0.39.3, but now it's saved in the local storage
 		if (!this.settings.anystylePath) {

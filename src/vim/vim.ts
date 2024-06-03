@@ -1,6 +1,6 @@
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
-import { repeatable, } from 'utils';
+import { repeatable } from 'utils';
 import { PDFViewerComponent } from 'typings';
 import { SidebarView } from 'pdfjs-enums';
 import { VimScope } from './scope';
@@ -86,7 +86,7 @@ export class VimBindings extends PDFPlusComponent {
             'f': () => this.commandLineMode.executeCommand('hint'),
         });
 
-        // TODO: rewrite some using ex-commands
+        // TODO: rewrite some using Ex commands
         this.vimScope.registerKeymaps(['normal', 'visual', 'outline'], {
             'j': (n) => this.scroll.scrollTo('down', n),
             'k': (n) => this.scroll.scrollTo('up', n),
@@ -105,8 +105,10 @@ export class VimBindings extends PDFPlusComponent {
             '<C-u>': (n) => this.scroll.scrollVerticallyByVisualPage(-0.5 * (n ?? 1)),
             '/': () => this.search.start(true),
             '?': () => this.search.start(false),
-            'n': repeatable(() => this.search.findNext()),
-            'N': repeatable(() => this.search.findPrevious()),
+            'n': (n) => this.search.findNext(n),
+            'N': (n) => this.search.findPrevious(n),
+            'gn': (n) => this.search.findAndSelectNextMatch((n ?? 1) - 1),
+            'gN': (n) => this.search.findAndSelectNextMatch((n ?? 1) - 1, false),
             '+': (n) => this.obsidianViewer?.zoomIn(n),
             '-': (n) => this.obsidianViewer?.zoomOut(n),
             '=': (n) => {
@@ -180,6 +182,7 @@ export class VimBindings extends PDFPlusComponent {
         this.doc.getSelection()?.empty();
         this.commandLineMode.exit();
         this.hintMode.exit(); 
+        this.visualMode.forgetPreviousSelection();
     }
 
     enterCommandMode() {

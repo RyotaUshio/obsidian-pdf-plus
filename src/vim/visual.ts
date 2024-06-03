@@ -1,12 +1,13 @@
 import { VimBindings } from './vim';
 import { VimBindingsMode } from './mode';
 import { PDFPageTextStructureParser, PDFTextPos } from './text-structure-parser';
-import { isSelectionForward, repeat } from 'utils';
+import { getNodeAndOffsetOfTextPos, isSelectionForward, repeat, swapSelectionAnchorAndFocus } from 'utils';
 import { showContextMenuAtSelection } from 'context-menu';
 
 
 export class VimVisualMode extends VimBindingsMode {
     selectionChangedByVisualMotion = false;
+    previousSelection: { anchor: { page: number, pos: PDFTextPos }, head: { page: number, pos: PDFTextPos } } | null = null;
 
     get structureParser() {
         return this.vim.structureParser;
@@ -126,26 +127,54 @@ export class VimVisualMode extends VimBindingsMode {
         });
     }
 
-    getTextDivAtSelectionHead(selection: Selection) {
-        const { focusNode } = selection;
-        if (!focusNode) return null;
+    getTextDivContainingNode(node: Node) {
+        const element = node.instanceOf(Element) ? node : node.parentElement
+        if (!element) return null;
 
-        const focusElement = focusNode.instanceOf(Element) ? focusNode : focusNode.parentElement
-        if (!focusElement) return null;
-
-        const textDiv = focusElement.closest<HTMLElement>('.textLayerNode');
+        const textDiv = element.closest<HTMLElement>('.textLayerNode');
         if (!textDiv) return null;
 
         return textDiv;
     }
 
-    getSelectionHeadPos(selection: Selection): PDFTextPos | null {
-        const textDiv = this.getTextDivAtSelectionHead(selection);
+    getTextDivAtSelectionHead(selection: Selection) {
+        const { focusNode } = selection;
+        return focusNode ? this.getTextDivContainingNode(focusNode) : null;
+    }
+
+    getSelectionPos(selection: Selection, which: 'anchor' | 'head'): PDFTextPos | null {
+        const isHead = which === 'head';
+        const node = isHead ? selection.focusNode : selection.anchorNode;
+        if (!node) return null;
+
+        const textDiv = this.getTextDivContainingNode(node);
         if (!textDiv || textDiv.dataset.idx === undefined) return null;
 
         let index = +textDiv.dataset.idx;
-        let offset = selection.focusOffset;
-        if (isSelectionForward(selection)) offset--;
+
+        let offset = (() => {
+            const offsetInNode = isHead ? selection.focusOffset : selection.anchorOffset;
+
+            const iter = this.doc.createNodeIterator(textDiv, NodeFilter.SHOW_ALL);
+            let n;
+            let offset = 0;
+            // depth-first
+            while (n = iter.nextNode()) {
+                if (n === node) {
+                    offset += n.nodeType === Node.TEXT_NODE ? offsetInNode : Array.from(node.childNodes).slice(0, offsetInNode).map((node) => node.textContent!.length).reduce((acc, cur) => acc + cur, 0);
+                    return offset;
+                }
+
+                if (n.nodeType === Node.TEXT_NODE) {
+                    offset += n.textContent!.length;
+                }
+            }
+
+            return offset;
+        })();
+
+        if (typeof offset !== 'number') return null;
+        if (isSelectionForward(selection) === isHead) offset--;
 
         const isNodeNonemptyTextDiv = (node: Node): node is HTMLElement => {
             return node.instanceOf(HTMLElement) && node.hasClass('textLayerNode') && !!node.textContent;
@@ -184,23 +213,31 @@ export class VimVisualMode extends VimBindingsMode {
         const pageParser = this.structureParser?.getPageParser(pageNumber);
         if (!pageParser) return;
 
-        const pos = this.getSelectionHeadPos(selection);
+        const pos = this.getSelectionPos(selection, 'head');
         if (!pos) return;
 
         const targetPos = getNewHeadPos({ currentHeadPos: pos, pageNumber, pageParser });
         if (targetPos) {
             const headDiv = pageParser.divs[targetPos.index];
-            const headTextNode = headDiv.childNodes[0];
-            if (headTextNode?.nodeType === Node.TEXT_NODE) {
-                let offset = targetPos.offset;
-                if (offset < 0) {
-                    offset += headTextNode.textContent?.length ?? 0;
-                }
-                selection.extend(headTextNode, offset);
-                if (isSelectionForward(selection)) {
-                    selection.modify('extend', 'forward', 'character');
-                }
+            let offset = targetPos.offset;
+            if (offset < 0) {
+                offset += headDiv.textContent?.length ?? 0;
             }
+            // headDiv might contain multiple text nodes (e.g. when search matches are rendered), so we need to select the correct one
+            // Therefore, `selection.extend(headDiv.childNodes[0], offset)` is not always correct
+            const nodeAndOffset = getNodeAndOffsetOfTextPos(headDiv, offset);
+            if (!nodeAndOffset) return;
+            this.extendSelectionToNode(nodeAndOffset.node, nodeAndOffset.offset);
+        }
+    }
+
+    extendSelectionToNode(node: Node, offset?: number) {
+        const selection = this.doc.getSelection();
+        if (!selection) return;
+
+        selection.extend(node, offset);
+        if (isSelectionForward(selection)) {
+            selection.modify('extend', 'forward', 'character');
         }
     }
 
@@ -226,6 +263,13 @@ export class VimVisualMode extends VimBindingsMode {
         }
     }
 
+    selectMatch() {
+        const selectedEl = this.vim.search.getSelectedMatchEl();
+        if (!selectedEl) return;
+
+        this.vim.doc.getSelection()?.selectAllChildren(selectedEl);
+    }
+
     ensureSelectionHeadAtTextDiv(selection: Selection, forward: boolean) {
         // In some situations, the selection focus moves to the text layer div,
         // which makes following j/k visual motions unfunctional.
@@ -235,5 +279,64 @@ export class VimVisualMode extends VimBindingsMode {
             selection.modify('extend', forward ? 'forward' : 'backward', 'character');
             textDiv = this.getTextDivAtSelectionHead(selection);
         }
+    }
+
+    setSelectionByPos(anchor: { page: number, pos: PDFTextPos }, head: { page: number, pos: PDFTextPos }) {
+        const selection = this.doc.getSelection();
+        if (!selection) return;
+
+        const getNodeAndOffset = (anchorOrHead: typeof anchor) => {
+            const { page, pos } = anchorOrHead;
+            const textDivs = this.vim.child?.getPage(page).textLayer?.textDivs;
+            if (!textDivs || !textDivs.length) return;
+
+            const textDiv = textDivs[pos.index];
+            return getNodeAndOffsetOfTextPos(textDiv, pos.offset);
+        };
+
+        const anchorNodeAndOffset = getNodeAndOffset(anchor);
+        const headNodeAndOffset = getNodeAndOffset(head);
+        if (anchorNodeAndOffset && headNodeAndOffset) {
+            selection.setBaseAndExtent(anchorNodeAndOffset.node, anchorNodeAndOffset.offset, headNodeAndOffset.node, headNodeAndOffset.offset);
+            const isForward = isSelectionForward(selection);
+            if (!isForward) {
+                swapSelectionAnchorAndFocus(selection);
+            }
+            selection.modify('extend', 'forward', 'character');
+            if (!isForward) {
+                swapSelectionAnchorAndFocus(selection);
+            }
+        }
+    }
+
+    rememberSelection() {
+        const selection = this.doc.getSelection();
+        if (selection && !selection.isCollapsed && selection.anchorNode && selection.focusNode) {
+            const anchorPage = this.lib.getPageElAssociatedWithNode(selection.anchorNode)?.dataset.pageNumber;
+            const headPage = this.lib.getPageElAssociatedWithNode(selection.focusNode)?.dataset.pageNumber;
+            if (anchorPage && headPage) {
+                const anchorPos = this.getSelectionPos(selection, 'anchor');
+                const headPos = this.getSelectionPos(selection, 'head');
+                if (anchorPos && headPos) {
+                    this.previousSelection = {
+                        anchor: { page: +anchorPage, pos: anchorPos },
+                        head: { page: +headPage, pos: headPos },
+                    };
+                }
+            }
+        }
+    }
+
+    restorePreviousSelection() {
+        const selection = this.vim.doc.getSelection();
+        if (selection && this.vim.visualMode.previousSelection) {
+            // Restore the previous selection
+            const { anchor, head } = this.vim.visualMode.previousSelection;
+            this.setSelectionByPos(anchor, head);
+        }
+    }
+
+    forgetPreviousSelection() {
+        this.previousSelection = null;
     }
 }
