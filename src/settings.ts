@@ -2916,6 +2916,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'- `y`: Yank (copy) selected text',
 					`- \`c\`: Run the "${this.plugin.lib.commands.stripCommandNamePrefix(this.plugin.lib.commands.getCommand('copy-link-to-selection').name)}" command`,
 					'- `C`: Show context menu at text selection',
+					'- `o`: Swap the start and end of the selection',
 					'- `:`: Enter command-line mode (experimental)',
 					'- `<Tab>`: Toggle outline (table of contents)',
 					'- `<S-Tab>`: Toggle thumbnails (`S`=`Shift`)',
@@ -2946,13 +2947,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						'map k K',
 						'',
 						'" JavaScript commands',
+						'" - Hit Ctrl-h in Normal mode to show a message',
 						'nmap <C-h> :js alert("Hello, world!")',
+						'" - Hit Ctrl-h in Visual mode to run a .js file',
 						'vmap <C-h> :jsfile filename.js',
 						'',
 						'" Obsidian commands',
-						'" - Open the current PDF in the OS-default app',
+						'" - Open the current PDF in the OS-default app by hitting d, e, and then f',
 						'map def :obcommand open-with-default-app:open',
-						'" - Go back and forth the history',
+						'" - Go back and forth the history with Ctrl-o and Ctrl-i',
 						'map <C-o> :obcommand app:go-back',
 						'map <C-i> :obcommand app:go-forward',
 						'```',
@@ -2970,7 +2973,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addHeading('Visual mode', 'vim-visual'),
 			this.addToggleSetting('vimVisualMotion')
 				.setName('Enter visual mode on text selection')
-				.setDesc('When some text is selected, you can modify the range of selection using the j, k, h, l, w, e, b, 0, ^, $, H, and L keys, similarly to Vim\'s visual mode. H/L are aliases for ^/$, respectively. If disabled, you can use j/k/h/l/0/^/$/H/L keys to scroll the page regardless of text selection. This is highly experimental, and some unexpected behavior might be present especially in line-related motions. Reload the viewer or the app after changing this option.'),
+				.then((setting) => {
+					this.renderMarkdown([
+						'When some text is selected, you can modify the range of selection using the `j,` `k`, `h`, `l`, `w`, `e`, `b`, `0`, `^`, `$`, `H`, and `L` keys, similarly to Vim\'s visual mode (`H`/`L` are mapped to `^`/`$` by default). If disabled, you can use `j`/`k`/`h`/`l`/`0`/`^`/`$`/`H`/`L` keys to scroll the page regardless of text selection. Reload the viewer or the app after changing this option.',
+						'',
+						'Tips:',
+						'- You can use `o` to swap the start and end of the selection.',
+						'- As you know, `/` and `?` keys initiate search. Pressing `gn`/`gN` after the search will select the search result. You can also use search to extend the current selection to the search result.',
+					], setting.descEl);
+				}),
 			this.addHeading('Outline mode', 'vim-outline'),
 			this.addToggleSetting('enableVimOutlineMode')
 				.setName('Enter outline mode when opening PDF outline view')
@@ -3013,7 +3024,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.then((setting) => {
 					this.renderMarkdown([
 						'Hitting `f` will enter the hint mode, where you can perform certain actions on links, annotations, and backlink highlighting in the PDF page without using the mouse.',
-						'For example, first press `f` to enter the hint mode, and if the link you want to open gets marked with "HK", then hit `h` and then `k` (without `Shift`) to open it.', 
+						'For example, first press `f` to enter the hint mode, and if the link you want to open gets marked with "HK", then hit `h` and then `k` (without `Shift`) to open it.',
 						'',
 						'This is inspired by [Tridactyl](https://github.com/tridactyl/tridactyl)\'s hint mode.',
 						'',

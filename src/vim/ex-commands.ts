@@ -128,7 +128,7 @@ export const exCommands = (vim: VimBindings): ExCommand[] => {
             `,
             func: (...targets) => {
                 if (targets.length === 0) targets = vim.settings.vimHintArgs.trim().split(/\s+/);
-                if (targets.includes('all')) targets = ['link', 'annotation', 'backlink'];
+                if (targets.includes('all')) targets = ['link', 'annot', 'backlink'];
                 vim.hintMode.setTarget(...targets.map((target) => {
                     switch (target) {
                         case 'link': return VimHintTarget.Link

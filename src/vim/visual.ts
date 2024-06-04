@@ -101,6 +101,12 @@ export class VimVisualMode extends VimBindingsMode {
                 '^': visualMotion(() => this.extendSelctionToLineBoundary(false)),
                 '$': visualMotion(() => this.extendSelctionToLineBoundary(true)),
             } : {},
+            'o': visualMotion(() => {
+                const selection = this.doc.getSelection();
+                if (selection) {
+                    swapSelectionAnchorAndFocus(selection);
+                }
+            }),
             'y': () => {
                 const selection = this.doc.getSelection();
                 if (selection) {
