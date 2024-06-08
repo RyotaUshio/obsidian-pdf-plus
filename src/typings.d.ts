@@ -11,7 +11,7 @@ import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { ColorPalette } from 'color-palette';
 import { ScrollMode, SidebarView, SpreadMode } from 'pdfjs-enums';
 import { BibliographyManager } from 'bib';
-import { VimBindings } from 'vim';
+import { VimBindings } from 'vim/vim';
 
 
 declare global {
@@ -111,6 +111,8 @@ interface PDFViewerChild {
     getTextSelectionRangeStr(el: HTMLElement): string;
     getMarkdownLink(subpath?: string, alias?: string, embed?: boolean): string;
     onContextMenu(evt: MouseEvent): void;
+    /** On mobile, tapping on "Copy" in the the OS-provided menu calls this method, in which, in the original implementation, performs "Copy as quote". */
+    onMobileCopy(evt: ClipboardEvent, pageView: PDFPageView): void;
     onResize(): void;
     applySubpath(subpath?: string): void;
     highlightText(page: number, range: [[number, number], [number, number]]): void;
@@ -406,6 +408,7 @@ interface PDFViewer {
 }
 
 interface PDFPageView {
+    /** 1-based page number */
     id: number;
     pageLabel: string | null;
     pdfPage: PDFPageProxy;

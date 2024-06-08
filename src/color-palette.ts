@@ -116,27 +116,7 @@ export class ColorPalette extends PDFPlusComponent {
         itemEl.createDiv(ColorPalette.CLS + '-item-inner');
         this.setTooltipToActionItem(itemEl, name);
 
-        itemEl.addEventListener('click', (evt) => {
-            const colorChanged = !itemEl.hasClass('is-active');
-            this.setActiveItem(name);
-            if (this.plugin.settings.syncColorPaletteItem && this.plugin.settings.syncDefaultColorPaletteItem) {
-                this.plugin.settings.defaultColorPaletteItemIndex = name ? (Object.keys(this.plugin.settings.colors).indexOf(name) + 1) : 0;
-            }
-
-            if (colorChanged) {
-                this.plugin.trigger('color-palette-state-change', { source: this });
-            }
-
-            const template = this.plugin.settings.copyCommands[this.actionIndex].template;
-
-            if (this.writeFile) {
-                this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, { copyFormat: template }, name ?? undefined);
-            } else {
-                this.lib.copyLink.copyLinkToSelection(false, { copyFormat: template }, name ?? undefined);
-            }
-
-            evt.preventDefault();
-        });
+        itemEl.addEventListener('click', (evt) => this.onItemClick(itemEl, name, evt));
 
         let shown = false;
         itemEl.addEventListener('contextmenu', () => {
@@ -158,6 +138,28 @@ export class ColorPalette extends PDFPlusComponent {
             showMenuUnderParentEl(menu, itemEl);
             shown = true;
         });
+    }
+
+    onItemClick(itemEl: HTMLElement, name: string | null, evt: MouseEvent) {
+        const colorChanged = !itemEl.hasClass('is-active');
+        this.setActiveItem(name);
+        if (this.plugin.settings.syncColorPaletteItem && this.plugin.settings.syncDefaultColorPaletteItem) {
+            this.plugin.settings.defaultColorPaletteItemIndex = name ? (Object.keys(this.plugin.settings.colors).indexOf(name) + 1) : 0;
+        }
+
+        if (colorChanged) {
+            this.plugin.trigger('color-palette-state-change', { source: this });
+        }
+
+        const template = this.plugin.settings.copyCommands[this.actionIndex].template;
+
+        if (this.writeFile) {
+            this.lib.copyLink.writeHighlightAnnotationToSelectionIntoFileAndCopyLink(false, { copyFormat: template }, name ?? undefined);
+        } else {
+            this.lib.copyLink.copyLinkToSelection(false, { copyFormat: template }, name ?? undefined);
+        }
+
+        evt.preventDefault(); 
     }
 
     setActiveItem(name: string | null) {

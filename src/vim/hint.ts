@@ -92,6 +92,7 @@ export class VimHintMode extends VimBindingsMode {
         const hintnames = hintnames_short(numHints, this.settings.vimHintChars);
 
         let prevLinkEl: HTMLAnchorElement | null = null;
+        let prevBacklinkId: string | null = null;
 
         hintableEls.forEach((hintableEl) => {
             // If this & previous hints are two closely located links pointing to the same destination,
@@ -106,6 +107,17 @@ export class VimHintMode extends VimBindingsMode {
                 prevLinkEl = thisLinkEl;
             } else {
                 prevLinkEl = null;
+            }
+
+            // If this & previous hints are parts of a single backlight highlight, we should skip this hint.
+            if (VimHintMode.isBacklinkHighlight(hintableEl)) {
+                const id = hintableEl.dataset.backlinkId ?? null;
+                if (prevBacklinkId && id && prevBacklinkId === id) {
+                    return;
+                }
+                prevBacklinkId = id;
+            } else {
+                prevBacklinkId = null;
             }
 
             // Generate hint text (e.g. A, B, HL, HJ, etc.)

@@ -129,7 +129,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private checkVersion() {
-		const untestedVersion = '1.6.2';
+		const untestedVersion = '1.6.3';
 		if (requireApiVersion(untestedVersion)) {
 			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian ${untestedVersion} or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose).`);
 		}

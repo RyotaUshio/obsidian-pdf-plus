@@ -3,6 +3,7 @@ import { PDFPlusComponent } from 'lib/component';
 import { repeatable } from 'utils';
 import { PDFViewerComponent } from 'typings';
 import { SidebarView } from 'pdfjs-enums';
+import { UserScriptContext } from 'user-script/context';
 import { VimScope } from './scope';
 import { ScrollController } from './scroll';
 import { VimSearch } from './search';
@@ -181,7 +182,7 @@ export class VimBindings extends PDFPlusComponent {
         this.vimScope.setMode('normal');
         this.doc.getSelection()?.empty();
         this.commandLineMode.exit();
-        this.hintMode.exit(); 
+        this.hintMode.exit();
         this.visualMode.forgetPreviousSelection();
     }
 
@@ -223,5 +224,14 @@ export class VimBindings extends PDFPlusComponent {
 
     noremap(modes: string[], from: string, to: string) {
         this.mapOrNoremap(modes, from, to, true);
+    }
+
+    async evalUserScript(script: string) {
+        return new Promise<any>((resolve) => {
+            this.viewer.then(async (child) => {
+                const ctx = this.addChild(new UserScriptContext(this.plugin, child));
+                resolve(await ctx.run(script));
+            });
+        });
     }
 }

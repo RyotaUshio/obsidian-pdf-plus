@@ -9,14 +9,6 @@ import { MarkdownModal } from 'modals/markdown-modal';
 export type ExCommand = { id: string, minNargs?: number, description?: string, pattern?: RegExp, func: (...args: string[]) => any };
 
 export const exCommands = (vim: VimBindings): ExCommand[] => {
-    const evalUserScript = async (script: string) => new Promise<any>((resolve) => {
-        vim.viewer.then(async (child) => {
-            const ctx = vim.addChild(new UserScriptContext(vim.plugin, child));
-            resolve(await ctx.run(script));
-        });
-    });
-    const mapDesc = (signature: string, modes: string[], noremap = false) => `:${signature} <from> <to> - Map <from> to <to> ${noremap ? 'non-recusively ' : ''}in ${modes.length > 1 ? modes.slice(0, -1).join(', ') + ' and ' + modes.at(-1)! + ' modes' : modes[0] + ' mode'}. If <to> is an ex-command, it must be start with ":".`;
-
     /***************************************************************
      * The full list of the default Ex commands supported by PDF++ *
      ***************************************************************/
@@ -96,14 +88,14 @@ export const exCommands = (vim: VimBindings): ExCommand[] => {
         { id: 'nunmap', pattern: /^nun(map)?$/, minNargs: 1, func: (key) => vim.vimScope.unmap(['normal'], [key]), description: ':nun[map] <key> - Unmap <key> in normal mode.' },
         { id: 'vunmap', pattern: /^vu(nmap)?$/, minNargs: 1, func: (key) => vim.vimScope.unmap(['visual'], [key]), description: ':vu[nmap] <key> - Unmap <key> in visual mode.' },
         { id: 'ounmap', pattern: /^ou(nmap)?$/, minNargs: 1, func: (key) => vim.vimScope.unmap(['outline'], [key]), description: ':ou[nmap] <key> - Unmap <key> in outline mode.' },
-        { id: 'js', pattern: /^js(command)?$/, minNargs: 1, func: (...code) => evalUserScript(code.join(' ')), description: `:js[command] <code>: Execute the given javascript <code> in a context where "this" points to a "${UserScriptContext.name}" object.` },
+        { id: 'js', pattern: /^js(command)?$/, minNargs: 1, func: (...code) => vim.evalUserScript(code.join(' ')), description: `:js[command] <code>: Execute the given javascript <code> in a context where "this" points to a "${UserScriptContext.name}" object.` },
         {
             id: 'jsfile',
             minNargs: 1,
             func: async (...splitPath) => {
                 const path = normalizePath(splitPath.join(' '));
                 const jsCode = await vim.app.vault.adapter.read(vim.app.metadataCache.getFirstLinkpathDest(path, '')?.path ?? path);
-                return await evalUserScript(jsCode);
+                return await vim.evalUserScript(jsCode);
             },
             description: `:jsfile <path> - Execute the javascript code in the file at <path> (relative to the vault root; can be just the filename if it's unique). It can be any plain text file with arbitrary file extension. The code will be evaluated in a context where "this" points to a "${UserScriptContext.name}" object.`
         },
@@ -151,3 +143,5 @@ const lint = (str: string, indentSize = 12, escapeAngleBrackets = true) => {
         .replace(/^\s*/, '') // remove leading whitespaces and newlines
     return escapeAngleBrackets ? str.replace(/([<>])/g, '\\$1') : str;
 }
+
+const mapDesc = (signature: string, modes: string[], noremap = false) => `:${signature} <from> <to> - Map <from> to <to> ${noremap ? 'non-recusively ' : ''}in ${modes.length > 1 ? modes.slice(0, -1).join(', ') + ' and ' + modes.at(-1)! + ' modes' : modes[0] + ' mode'}. If <to> is an ex-command, it must be start with ":".`;

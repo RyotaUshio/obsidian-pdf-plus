@@ -1,4 +1,4 @@
-import { Menu, setIcon, setTooltip } from 'obsidian';
+import { Menu, Platform, setIcon, setTooltip } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
@@ -39,6 +39,8 @@ export class PDFPlusToolbar extends PDFPlusComponent {
 
     makeDropdownInToolbarHoverable() {
         const { toolbar, plugin } = this;
+
+        if (!plugin.settings.hoverableDropdownMenuInToolbar || Platform.isPhone) return;
 
         toolbar.toolbarLeftEl.querySelectorAll<HTMLElement>('div.clickable-icon')
             .forEach((buttonEl) => {

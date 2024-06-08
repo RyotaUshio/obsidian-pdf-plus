@@ -317,8 +317,7 @@ settings:
 }
 
 body:not(.pdf-plus-backlink-selection-underline) .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-selection {
-    background-color: var(--pdf-plus-color);
-    opacity: var(--pdf-plus-highlight-opacity, 0.2);
+    background-color: rgb(from var(--pdf-plus-color) r g b / var(--pdf-plus-highlight-opacity, 0.2));
     padding: var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em));
     margin: calc(var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) * -1) calc(var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em)) * -1);
     border-radius: 0.1em;
@@ -350,8 +349,7 @@ body.pdf-plus-backlink-selection-underline {
 }
 
 .pdf-plus-backlink-highlight-layer .pdf-plus-backlink.pdf-plus-backlink-fit-r {
-    border: dashed var(--pdf-plus-rect-color) var(--pdf-plus-rect-highlight-border-width, 2px);
-    opacity: var(--pdf-plus-rect-highlight-opacity, 1);
+    border: dashed rgb(from var(--pdf-plus-rect-color) r g b / var(--pdf-plus-rect-highlight-opacity, 1)) var(--pdf-plus-rect-highlight-border-width, 2px);
 }
 
 .pdf-plus-backlink-icon {

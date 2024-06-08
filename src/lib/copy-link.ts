@@ -201,7 +201,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (!child) return null;
         const popupEl = child.activeAnnotationPopupEl;
         if (!popupEl) return null;
-        const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta > div.clickable-icon.pdf-plus-copy-annotation-link');
+        const copyButtonEl = popupEl.querySelector<HTMLElement>('.popupMeta div.clickable-icon:has(svg.lucide-copy)');
         if (!copyButtonEl) return null;
 
         const palette = this.lib.getColorPaletteAssociatedWithNode(copyButtonEl);

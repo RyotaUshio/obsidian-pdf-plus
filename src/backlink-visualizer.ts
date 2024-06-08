@@ -422,8 +422,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
                 fontSize: textDiv.style.fontSize
             });
 
-            // indices of the text content items contained in this highlight (merged rectangle)
-            rectEl.dataset.textIndices = indices.join(',');
+            rectEl.dataset.backlinkId = id;
 
             for (const cache of caches) {
                 cacheToDoms.addValue(cache, rectEl);

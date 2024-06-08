@@ -71,6 +71,12 @@ const ACTION_ON_CITATION_HOVER = {
 	'google-scholar-popover': 'Google Scholar popover',
 } as const;
 
+const MOBILE_COPY_ACTIONS = {
+	'text': 'Copy text',
+	'obsidian': 'Obsidian default (copy as quote)',
+	'pdf-plus': 'Run PDF++\'s copy command',
+} as const;
+
 export interface PDFPlusSettings {
 	displayTextFormats: NamedTemplate[];
 	defaultDisplayTextFormatIndex: number,
@@ -157,6 +163,8 @@ export interface PDFPlusSettings {
 	writeFileProductMenuConfig: ('color' | 'copy-format' | 'display')[];
 	annotationProductMenuConfig: ('copy-format' | 'display')[];
 	updateColorPaletteStateFromContextMenu: boolean;
+	showContextMenuOnTablet: boolean;
+	mobileCopyAction: keyof typeof MOBILE_COPY_ACTIONS;
 	executeBuiltinCommandForOutline: boolean;
 	executeBuiltinCommandForZoom: boolean;
 	executeFontSizeAdjusterCommand: boolean;
@@ -428,6 +436,8 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	writeFileProductMenuConfig: ['color', 'copy-format', 'display'],
 	annotationProductMenuConfig: ['copy-format', 'display'],
 	updateColorPaletteStateFromContextMenu: true,
+	mobileCopyAction: 'pdf-plus',
+	showContextMenuOnTablet: false,
 	executeBuiltinCommandForOutline: true,
 	executeBuiltinCommandForZoom: true,
 	executeFontSizeAdjusterCommand: true,
@@ -1709,7 +1719,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('PDF toolbar', 'toolbar', 'lucide-palette')
 		this.addToggleSetting('hoverableDropdownMenuInToolbar')
 			.setName('Hoverable dropdown menus')
-			.setDesc('When enabled, the dropdown menus (⌄) in the PDF toolbar will be opened by hovering over the icon, and you don\'t need to click it.');
+			.setDesc('(Not supported on smartphones) When enabled, the dropdown menus (⌄) in the PDF toolbar will be opened by hovering over the icon, and you don\'t need to click it.');
 		this.addToggleSetting('zoomLevelInputBoxInToolbar')
 			.setName('Show zoom level box')
 			.setDesc('A input box will be added to the PDF toolbar, which indicated the current zoom level and allows you to set the zoom level by typing a number.');
@@ -1794,7 +1804,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Context menu in PDF viewer', 'context-menu', 'lucide-mouse-pointer-click')
-			.setDesc('Customize the behavior of the context menu that pops up when you right-click in the PDF viewer.')
+			.setDesc('(Desktop & tablet only) Customize the behavior of the context menu that pops up when you right-click in the PDF viewer. For mobile users, see also the next section.')
 		this.addToggleSetting('replaceContextMenu', () => this.redisplay())
 			.setName('Replace the built-in context menu with PDF++\'s custom menu');
 		if (!this.plugin.settings.replaceContextMenu) {
@@ -1802,6 +1812,10 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Display text format')
 				.setDesc('You can customize the display text format in the setting "Copied text foramt > Display text format" below.');
 		} else {
+			this.addToggleSetting('showContextMenuOnTablet')
+				.setName('Show context menu on tablet devices as well')
+				.setDesc('By default, Obsidian does not show the context menu after text selection on mobile devices, including tablets (iPad, etc.). If you want to show the context menu on tablets, turn this option on. Even if this option is turned off, you copy select the OS-native "Copy" option to run the "' + this.plugin.lib.commands.stripCommandNamePrefix(this.plugin.lib.commands.getCommand('copy-link-to-selection').name) + '" command.');
+
 			const modDict = getModifierDictInPlatform();
 			this.addDropdownSetting('showContextMenuOnMouseUpIf', {
 				'always': 'Always',
@@ -1924,6 +1938,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Update color palette from context menu')
 				.setDesc('In the context menu, the items (color, link copy format and display text format) set in the color palette are selected by default. If this option is enabled, clicking a menu item will also update the color palette state and hence the default-selected items in the context menu as well.')
 		}
+
+
+		this.addHeading('Copying on mobile', 'mobile-copy', 'lucide-smartphone')
+		this.addDropdownSetting('mobileCopyAction', MOBILE_COPY_ACTIONS)
+			.setName(`Action triggered by selecting "Copy" option on mobile devices`);
 
 
 		this.addHeading('Copying links via hotkeys', 'copy-hotkeys', 'lucide-keyboard');

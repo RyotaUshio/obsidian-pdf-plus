@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip, Keymap, Menu } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip, Keymap, Menu, Platform } from 'obsidian';
 import { around } from 'monkey-around';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
@@ -12,7 +12,7 @@ import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
 import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
-import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices } from 'typings';
+import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices, PDFPageView } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim/vim';
 
@@ -61,7 +61,7 @@ function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
         // reflect the patch to existing PDF views
         // especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
         viewer.unload();
-        
+
         // Clean up the old keymaps already registered by PDFViewerChild,
         // which causes an error because the listener references the old instance of PDFFindBar.
         // This keymap hanldler will be re-registered in `PDFViewerChild.load` by the following `viewer.load()`.
@@ -272,7 +272,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             if (!annot) return;
 
                             // Needed to avoid registering the event listeners on the same annotation container element multiple times
-                            if (annot.container.dataset.pdfPlusIsAnnotationPostProcessed=== 'true') return;
+                            if (annot.container.dataset.pdfPlusIsAnnotationPostProcessed === 'true') return;
 
                             if (annot.data.subtype === 'Link' && typeof annot.container.dataset.internalLink === 'string') {
                                 PDFInternalLinkPostProcessor.registerEvents(plugin, this, annot);
@@ -286,7 +286,8 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 annot.container.hide();
                             }
 
-                            if (plugin.settings.showAnnotationPopupOnHover && annot.data.contentsObj?.str) {
+                            if (!Platform.isPhone // Without this, tapping on an annotation on mobile opens two annotation popups (which is a "Modal" instance with ""pdf-annotation-modal" class added to its containerEl)
+                                && plugin.settings.showAnnotationPopupOnHover && annot.data.contentsObj?.str) {
                                 showChildElOnParentElHover({
                                     parentEl: annot.container,
                                     createChildEl: () => {
@@ -303,7 +304,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 });
                             }
 
-                            annot.container.dataset.pdfPlusIsAnnotationPostProcessed= 'true'; 
+                            annot.container.dataset.pdfPlusIsAnnotationPostProcessed = 'true';
                         });
                 });
 
@@ -694,10 +695,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     }
                 }
 
-
-                const popupMetaEl = this.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupMeta');
-
-                if (popupMetaEl) {
+                const modifyAnnotationPopup = (popupMetaEl: HTMLElement) => {
                     popupMetaEl.createDiv('pdf-plus-annotation-icon-container', (iconContainerEl) => {
                         // replace the copy button with a custom one
                         const copyButtonEl = popupMetaEl?.querySelector<HTMLElement>('.clickable-icon:last-child');
@@ -764,6 +762,30 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             .showAtMouseEvent(evt);
                         evt.preventDefault();
                     });
+                };
+
+                if (Platform.isPhone) {
+                    const observer = new MutationObserver((mutations, observer) => {
+                        for (const mutation of mutations) {
+                            for (const node of mutation.addedNodes) {
+                                if (node.instanceOf(HTMLElement) && node.matches('div.modal-container.pdf-annotation-modal')) {
+                                    const popupMetaEl = node.querySelector<HTMLElement>('.popupMeta');
+                                    if (popupMetaEl) {
+                                        modifyAnnotationPopup(popupMetaEl);
+                                        observer.disconnect();
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    activeWindow.setTimeout(() => observer.observe(activeDocument.body, {
+                        childList: true,
+                    }));
+                    activeWindow.setTimeout(() => observer.disconnect(), 1000);
+                } else {
+                    const popupMetaEl = this.activeAnnotationPopupEl?.querySelector<HTMLElement>('.popupMeta');
+                    if (popupMetaEl) modifyAnnotationPopup(popupMetaEl);
                 }
 
                 if (plugin.settings.annotationPopupDrag && this.activeAnnotationPopupEl && this.file) {
@@ -784,11 +806,27 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         },
         onContextMenu(old) {
             return async function (evt: MouseEvent): Promise<void> {
+                if (Platform.isPhone) return;
+                if (Platform.isTablet && !plugin.settings.showContextMenuOnTablet) return;
+
                 if (!plugin.settings.replaceContextMenu) {
                     return await old.call(this, evt);
                 }
 
                 onContextMenu(plugin, this, evt);
+            }
+        },
+        onMobileCopy(old) {
+            return function (this: PDFViewerChild, evt: ClipboardEvent, pageView: PDFPageView) {
+                switch (plugin.settings.mobileCopyAction) {
+                    case 'text':
+                        return;
+                    case 'pdf-plus':
+                        setTimeout(() => lib.commands.copyLink(false));
+                        return;
+                    case 'obsidian':
+                        return old.call(this, evt, pageView);
+                }
             }
         },
         onThumbnailContextMenu(old) {
