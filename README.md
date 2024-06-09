@@ -1,19 +1,30 @@
-# Obsidian PDF++
+<h1 align="center">Obsidian PDF++</h1>
+<p align="center">
+<img src="https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%238a5cf5&label=downloads&query=%24%5B%22pdf-plus%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json" alt="Obsidian Downloads">
+</p>
 
-![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%238a5cf5&label=downloads&query=%24%5B%22pdf-plus%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)
+> [!note]
+> All contribution to this plugin has been made by a single voluntary student (me).
+> 
+> - If you like this plugin, don't forget to star this repository!
+> - If this plugin has become an important piece of your workflow, please consider [donation](#support-development) to show some love for this project.
+> 
+> Both are greatly appreciated. Thank you!
 
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
 - It transforms backlinks to PDF files into highlight annotations, i.e. you can **annotate PDF files with highlights just by linking to text selection**.
-- Alternatively, you can add annotations directly into PDF files so that they are also visible outside Obsidian.
+- Alternatively, you can add annotations directly into PDF files so that they are also visible outside Obsidian[^1].
 - Moreover, it adds many **quality-of-life improvements** to the built-in PDF viewer and PDF embeds. So it's useful even if you don't use it as an annotation tool (you can even turn off the annotation functionality!).
+
+[^1]: However, you will found the viewer reloaded every time you add a highlight to your file. This is a limitation originating from how Obsidian configures the PDF.js library (specifically, they disables `AnnotationEditorLayer`). Therefore, this feature should be considered to be a temporary workaround until Obsidian itself supports PDF annotation, which is on [their roadmap](https://obsidian.md/roadmap/).
 
 PDF++ stands out among other PDF annotation tools for the following reasons:
 
 - PDF++ acts as **a complement to Obsidian's native PDF viewer rather than replacing it**. It allows you to make sidenotes as **pure markdown**, so you will not lose your annotations even if the plugin stops working as long as Obsidian is alive. It will not leave behind a pile of unreadable JSON even if this plugin stops working in the future, unlike [Annotator](https://github.com/elias-sundqvist/obsidian-annotator).
   > I'm not a fan of `.md` files that are actually not markdown at all. The value of the markdown format does not lie in the file extension!
 - PDF++ makes Obsidian work as **a stand-alone PDF annotation tool**. You can seamlessly annotate your PDFs using Obsidian's rich markdown editor without switching between Obsidian and an external app like Zotero or Marginnote.
-- Annotations for a single PDF are no longer confined to a single file and **can be distributed across the whole vault**. It establishes a novel, *Obsidianic* way of PDF annotation.
+- Annotations for a single PDF are no longer confined to a single file and **can be distributed across the whole vault**. It establishes a novel, *Obsidian-native* way of PDF annotation.
 - PDF++ does not introduce plugin-dependent syntaxes except for a few *optional* ones (`&color=...`/`&rect=...` link parameters).
 
 🚀 [Install](#installation)<br>
@@ -22,8 +33,7 @@ PDF++ stands out among other PDF annotation tools for the following reasons:
 ❗ [Report bugs](https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose) (Tip: when something is not working, first restart Obsidian by running the `Reload app without saving` command.)
 
 > [!note]
-> - If you like this plugin, don't forget to star this repository! I'd also appreciate it if you could [support me](#support-development).
-> - Some features require the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enabled.
+> Some features require the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enabled.
 
 > [!warning]
 > This plugin relies on many private APIs of Obsidian, so **there is a relatively high risk that this plugin may break when Obsidian is updated** ([learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/48)). For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
