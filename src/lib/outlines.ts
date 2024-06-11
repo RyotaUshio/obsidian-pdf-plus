@@ -148,7 +148,7 @@ export class PDFOutlines {
                         }
                     } else {
                         const pageNumber = await node.getPageNumber();
-                        if (JSON.stringify(this.lib.normalizePDFjsDestArray(dest, pageNumber)) === JSON.stringify(outlineDest)) {
+                        if (JSON.stringify(this.lib.normalizePDFJsDestArray(dest, pageNumber)) === JSON.stringify(outlineDest)) {
                             found = outlineItem;
                         }
                     }

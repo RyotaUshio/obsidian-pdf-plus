@@ -53,6 +53,10 @@ export class VimVisualMode extends VimBindingsMode {
                 'k': visualMotion((n) => this.extendSelectionByLine(-(n ?? 1))),
                 'h': visualMotion((n) => this.extendSelectionByChar(n ?? 1, false)),
                 'l': visualMotion((n) => this.extendSelectionByChar(n ?? 1, true)),
+                // On mobile, word-wise motions (w/e/b) does not work as expected around punctuations,
+                // and this is because the Selection.modify method (https://developer.mozilla.org/en-US/docs/Web/API/Selection/modify)
+                // behaves differently on mobile.
+                // TODO: fix this!
                 'w': visualMotion((n) => {
                     const selection = this.doc.getSelection();
                     if (selection) {

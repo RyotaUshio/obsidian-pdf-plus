@@ -270,6 +270,7 @@ export interface PDFPlusSettings {
 	enableBibInEmbed: boolean;
 	enableBibInHoverPopover: boolean;
 	enableBibInCanvas: boolean;
+	copyAsSingleLine: boolean;
 	removeWhitespaceBetweenCJChars: boolean;
 	vim: boolean;
 	vimrcPath: string;
@@ -543,6 +544,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInEmbed: false,
 	enableBibInHoverPopover: false,
 	enableBibInCanvas: true,
+	copyAsSingleLine: true,
 	removeWhitespaceBetweenCJChars: true,
 	vim: false,
 	vimrcPath: '',
@@ -2913,7 +2915,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addSetting()
 			.then((setting) => {
 				this.renderMarkdown([
-					'Currently, the following keys are supported (some might change in the future):',
+					'The default keybindings are as follows. You can customize them be creating a "vimrc" file and providing its path in the setting below.',
 					'',
 					'- `j`/`k`/`h`/`l`: Scroll down/up/left/right',
 					'- `J`: Go to next page',
@@ -2942,7 +2944,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'- `f`: Enter hint mode by running `:hint` (experimental)',
 					'- `<Esc>`: Go back to normal mode, abort search, etc',
 					'',
-					'Many of them can be combined with counts. For example:',
+					'Many of the commands above can be combined with counts. For example:',
 					'- `2j` scrolls down the page twice as much as `j`.',
 					'- `2J` advances two pages.',
 					'- `10G` takes you to page 10.',
@@ -2954,7 +2956,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setDesc('Reopen the PDF viewers after changing this option.');
 		this.showConditionally([
 			this.addTextSetting('vimrcPath', undefined, () => this.plugin.vimrc = null)
-				.setName('Vimrc file path (experimental)')
+				.setName('Vimrc file path (optional)')
 				.then(async (setting) => {
 					await this.renderMarkdown([
 						'Only the [Ex commands supported by PDF++](https://github.com/RyotaUshio/obsidian-pdf-plus/blob/main/src/vim/ex-commands.ts) are allowed.',
@@ -2999,6 +3001,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						'Tips:',
 						'- You can use `o` to swap the start and end of the selection.',
 						'- As you know, `/` and `?` keys initiate search. Pressing `gn`/`gN` after the search will select the search result. You can also use search to extend the current selection to the search result.',
+						'',
+						'Note: On mobile, word-wise motions (`w`/`e`/`b`) might not work as expected around punctuations. Contributions to fix this are welcome!',
 					], setting.descEl);
 				}),
 			this.addHeading('Outline mode', 'vim-outline'),
@@ -3107,6 +3111,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('removeWhitespaceBetweenCJChars')
 			.setName('Remove half-width whitespace between two Chinese/Japanese characters when copying text')
 			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optical character recognition). Enable this option to remove it when copying links to text selections.');
+		this.addToggleSetting('copyAsSingleLine')
+			.setName('Override the default copy behavior in the PDF viewer')
+			.then((setting) => {
+				setting.descEl.appendText('If enabled, whenever you copy text from the PDF viewer (using Ctrl/Cmd+C or via context menu), the text will go through the same pre-processing as the "' + this.plugin.lib.commands.stripCommandNamePrefix(this.plugin.lib.commands.getCommand('copy-link-to-selection').name) + '" command before written to the clipboard. The pre-processing includes transforming multi-line text into a single line by removing line breaks (if a word is split across lines, it will be concatenated), which is useful because it prevents the copied text from being split into multiple lines unnaturally. If the previous option is enabled, the whitespace removal will also be applied.');
+				setting.descEl.appendText(' Also note that on mobile devices, the action performed by "Copy" depends on the ');
+				setting.descEl.appendChild(this.createLinkTo('mobileCopyAction'));
+				setting.descEl.appendText(' option.');
+			});
 		if (Platform.isDesktopApp) {
 			this.addTextAreaSetting('PATH')
 				.then((setting) => {

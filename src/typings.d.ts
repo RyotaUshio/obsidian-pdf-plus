@@ -255,20 +255,20 @@ interface PDFOutlineTreeNode {
     coverEl: HTMLElement; // probably the same as selfEl
     innerEl: HTMLElement; // div.tree-item-inner
     pageNumber?: number;
-    explicitDest?: PDFjsDestArray;
+    explicitDest?: PDFJsDestArray;
     item: {
         title: string;
         bold: boolean;
         italic: boolean;
         color: Uint8ClampedArray;
-        dest: string | PDFjsDestArray;
+        dest: string | PDFJsDestArray;
         url: string | null;
         items: PDFOutlineTreeNode[];
     };
     owner: PDFOutlineViewer;
     collapsed: boolean;
     getPageNumber(): Promise<number>; // return this.pageNumber if set, otherwise newly fetch it
-    getExplicitDestination(): Promise<PDFjsDestArray>; // return this.explicitDest if set, otherwise newly fetch it
+    getExplicitDestination(): Promise<PDFJsDestArray>; // return this.explicitDest if set, otherwise newly fetch it
     getMarkdownLink(): Promise<string>;
     setActive(active: boolean): void;
     setCollapsed(collapsed: boolean, smooth?: boolean): Promise<void>;
@@ -451,11 +451,11 @@ type Rect = [number, number, number, number];
  * destType: "XYZ" or "FitBH"
  */
 type DestArray = [page: number, destType: string, ...params: (number | null)[]];
-type PDFjsDestArray = [pageRef: { num: number, gen: number }, destType: { name: string }, ...params: (number | null)[]];
+type PDFJsDestArray = [pageRef: { num: number, gen: number }, destType: { name: string }, ...params: (number | null)[]];
 type PdfLibDestArray = [pageRef: PDFRef, destType: PDFName, ...params: (PDFNumber | typeof PDFNull)[]];
 
 interface PDFLinkService {
-    goToDestination(dest: string | PDFjsDestArray): Promise<void>;
+    goToDestination(dest: string | PDFJsDestArray): Promise<void>;
 }
 
 interface AnnotationElement {
@@ -493,15 +493,27 @@ interface TextContentItem {
 }
 
 interface EventBus {
-    on(name: string, callback: (...args: any[]) => any): void;
-    on(name: 'outlineloaded', callback: (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => any): void;
-    on(name: 'thumbnailrendered', callback: (data: { source: PDFThumbnailView, pageNumber: number, pdfPage: PDFPageProxy }) => any): void;
-    off(name: string, callback: (...args: any[]) => any): void;
-    dispatch(name: string, data: { source?: any }): void;
-    dispatch(name: 'togglesidebar', data: { open: boolean, source?: any }): void;
-    dispatch(name: 'switchspreadmode', data: { mode: SpreadMode, source?: any }): void;
-    dispatch(name: 'switchscrollmode', data: { mode: ScrollMode, source?: any }): void;
-    dispatch(name: 'scalechanged', data: { value: string, source?: any }): void;
+    on<K extends keyof PDFJsEventMap>(name: K, callback: (data: PDFJsEventMap[K]) => any): void;
+    off<K extends keyof PDFJsEventMap>(name: K, callback: (data: PDFJsEventMap[K]) => any): void;
+    dispatch<K extends keyof PDFJsEventMap>(name: K, data: PDFJsEventMap[K]): void;
+}
+
+interface PDFJsEventMap {
+    outlineloaded: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> };
+    thumbnailrendered: { source: PDFThumbnailView, pageNumber: number, pdfPage: PDFPageProxy };
+    sidebarviewchanged: { source: PDFSidebar, view: SidebarView };
+    textlayerrendered: { source: PDFPageView, pageNumber: number };
+    annotationlayerrendered: { source: PDFPageView, pageNumber: number };
+    pagesloaded: { source: PDFViewer, pagesCount: number };
+    pagerendered: { source: PDFPageView, pageNumber: number, cssTransform: boolean, timestamp: number, error: any };
+    pagechanging: { source: PDFViewer, pageNumber: number, pageLabel: string | null, previous: number };
+    findbaropen: { source: PDFFindBar };
+    findbarclose: { source: PDFFindBar };
+    togglesidebar: { open: boolean, source?: any };
+    switchspreadmode: { mode: SpreadMode, source?: any };
+    switchscrollmode: { mode: ScrollMode, source?: any };
+    scalechanged: { value: string, source?: any };
+    scalechanging: { source: PDFViewer, scale: number, presetValue?: number };
 }
 
 interface PDFEmbed extends Embed {

@@ -198,7 +198,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                         plugin.lastCopiedDestInfo = { file, destName: dest };
                     } else {
                         const pageNumber = await item.getPageNumber();
-                        const destArray = lib.normalizePDFjsDestArray(dest, pageNumber);
+                        const destArray = lib.normalizePDFJsDestArray(dest, pageNumber);
                         plugin.lastCopiedDestInfo = { file, destArray };
                     }
                 })
@@ -706,7 +706,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                     .setIcon('lucide-copy')
                     .onClick(() => {
                         // How does the electron version differ?
-                        navigator.clipboard.writeText(selectedText);
+                        navigator.clipboard.writeText(this.plugin.settings.copyAsSingleLine ? selectedText : (selectionObj?.toString() ?? ''));
                     });
             });
         }

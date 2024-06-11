@@ -4,7 +4,7 @@ import { PDFDocumentProxy } from 'pdfjs-dist';
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { genId, isCanvas, isEmbed, isHoverPopover, isNonEmbedLike, onModKeyPress, toSingleLine } from 'utils';
-import { PDFViewerChild, PDFjsDestArray, TextContentItem } from 'typings';
+import { PDFViewerChild, PDFJsDestArray, TextContentItem } from 'typings';
 
 
 export type AnystyleJson = Partial<{
@@ -61,7 +61,7 @@ export class BibliographyManager extends PDFPlusComponent {
                 const promises: Promise<void>[] = [];
                 for (const destId in dests) {
                     if (destId.startsWith('cite.')) {
-                        const destArray = dests[destId] as PDFjsDestArray;
+                        const destArray = dests[destId] as PDFJsDestArray;
                         promises.push(
                             BibliographyManager.getBibliographyTextFromDest(destArray, doc)
                                 .then((bibInfo) => {
@@ -151,7 +151,8 @@ export class BibliographyManager extends PDFPlusComponent {
             // Clean up the file when this PDF viewer is unloaded
             this.register(() => app.vault.adapter.remove(anystyleInputPath));
 
-            const { spawn } = await import('child_process');
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const { spawn } = require('child_process') as typeof import('child_process');
 
             return new Promise<any>((resolve) => {
                 const anystyleProcess = spawn(anystylePath, ['parse', anystyleInputFullPath]);
@@ -208,10 +209,10 @@ export class BibliographyManager extends PDFPlusComponent {
         return null;
     }
 
-    static async getBibliographyTextFromDest(dest: string | PDFjsDestArray, doc: PDFDocumentProxy) {
-        let explicitDest: PDFjsDestArray | null = null;
+    static async getBibliographyTextFromDest(dest: string | PDFJsDestArray, doc: PDFDocumentProxy) {
+        let explicitDest: PDFJsDestArray | null = null;
         if (typeof dest === 'string') {
-            explicitDest = (await doc.getDestination(dest)) as PDFjsDestArray | null;
+            explicitDest = (await doc.getDestination(dest)) as PDFJsDestArray | null;
         } else {
             explicitDest = dest;
         }

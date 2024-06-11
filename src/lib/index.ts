@@ -14,11 +14,10 @@ import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
 import { PDFPageLabels } from './page-labels';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFOutlineViewer, PDFPageView, PDFSidebar, PDFThumbnailView, PDFView, PDFViewExtraState, PDFViewerChild, PDFjsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
-import { SidebarView } from 'pdfjs-enums';
 
 
 export class PDFPlusLib {
@@ -54,18 +53,7 @@ export class PDFPlusLib {
     /** 
      * @param component A component such that the callback is unregistered when the component is unloaded, or `null` if the callback should be called only once.
      */
-    registerPDFEvent(name: 'outlineloaded', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => any): void;
-    registerPDFEvent(name: 'thumbnailrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFThumbnailView, pageNumber: number, pdfPage: PDFPageProxy }) => any): void;
-    registerPDFEvent(name: 'sidebarviewchanged', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFSidebar, view: SidebarView }) => any): void;
-    registerPDFEvent(name: 'textlayerrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number }) => any): void;
-    registerPDFEvent(name: 'annotationlayerrendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number }) => any): void;
-    registerPDFEvent(name: 'pagesloaded', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFViewer, pagesCount: number }) => any): void;
-    registerPDFEvent(name: 'pagerendered', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFPageView, pageNumber: number, cssTransform: boolean, timestamp: number, error: any }) => any): void;
-    registerPDFEvent(name: 'pagechanging', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFViewer, pageNumber: number, pageLabel: string | null, previous: number }) => any): void;
-    registerPDFEvent(name: 'findbaropen', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFFindBar }) => any): void;
-    registerPDFEvent(name: 'findbarclose', eventBus: EventBus, component: Component | null, callback: (data: { source: PDFFindBar }) => any): void;
-
-    registerPDFEvent(name: string, eventBus: EventBus, component: Component | null, callback: (data: any) => any) {
+    registerPDFEvent<K extends keyof PDFJsEventMap>(name: K, eventBus: EventBus, component: Component | null, callback: (data: PDFJsEventMap[K]) => any) {
         const listener = async (data: any) => {
             await callback(data);
             if (!component) eventBus.off(name, listener);
@@ -293,14 +281,14 @@ export class PDFPlusLib {
      *       shall be retained unchanged. A zoom value of 0 has the same meaning as a null value."
      */
     async destIdToSubpath(destId: string, doc: PDFDocumentProxy) {
-        const dest = await doc.getDestination(destId) as PDFjsDestArray;
+        const dest = await doc.getDestination(destId) as PDFJsDestArray;
         if (!dest) return null;
         return this.pdfJsDestArrayToSubpath(dest, doc);
     }
 
-    async pdfJsDestArrayToSubpath(dest: PDFjsDestArray, doc: PDFDocumentProxy) {
+    async pdfJsDestArrayToSubpath(dest: PDFJsDestArray, doc: PDFDocumentProxy) {
         const page = await doc.getPageIndex(dest[0]);
-        return this.destArrayToSubpath(this.normalizePDFjsDestArray(dest, page + 1));
+        return this.destArrayToSubpath(this.normalizePDFJsDestArray(dest, page + 1));
     }
 
     /**
@@ -308,7 +296,7 @@ export class PDFPlusLib {
      * @param dest 
      * @param pageNumber 1-based page number
      */
-    normalizePDFjsDestArray(dest: PDFjsDestArray, pageNumber: number): DestArray {
+    normalizePDFJsDestArray(dest: PDFJsDestArray, pageNumber: number): DestArray {
         return [
             pageNumber - 1,
             dest[1].name,
@@ -340,9 +328,9 @@ export class PDFPlusLib {
 
     async ensureDestArray(dest: string | DestArray, doc: PDFDocumentProxy) {
         if (typeof dest === 'string') {
-            const destArray = await doc.getDestination(dest) as PDFjsDestArray;
+            const destArray = await doc.getDestination(dest) as PDFJsDestArray;
             if (!destArray) return null;
-            dest = this.normalizePDFjsDestArray(destArray, await doc.getPageIndex(destArray[0]) + 1);
+            dest = this.normalizePDFJsDestArray(destArray, await doc.getPageIndex(destArray[0]) + 1);
         }
 
         return dest;

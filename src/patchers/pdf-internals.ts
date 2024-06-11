@@ -189,6 +189,19 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 addColorPaletteToToolbar();
                 plugin.on('update-dom', addColorPaletteToToolbar);
 
+                // Use !isMobile, not isDesktopApp, because in app.js, PDFViewerChild.onMobileCopy is called when isMobile is true.
+                if (!Platform.isMobile) {
+                    const eventBus = this.pdfViewer.eventBus;
+                    if (eventBus) {
+                        eventBus.on('textlayerrendered', ({ source: pageView }) => {
+                            const textLayerDiv = pageView?.textLayer?.div;
+                            if (textLayerDiv) {
+                                textLayerDiv.addEventListener('copy', onCopy);
+                            }
+                        });
+                    }
+                }
+
                 return ret;
             }
 
@@ -820,6 +833,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             return function (this: PDFViewerChild, evt: ClipboardEvent, pageView: PDFPageView) {
                 switch (plugin.settings.mobileCopyAction) {
                     case 'text':
+                        onCopy(evt);
                         return;
                     case 'pdf-plus':
                         setTimeout(() => lib.commands.copyLink(false));
@@ -839,6 +853,19 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             }
         }
     }));
+
+    const onCopy = (evt: ClipboardEvent) => {
+        if (!plugin.settings.copyAsSingleLine) return;
+
+        const dataTransfer = evt.clipboardData;
+        if (!dataTransfer) return;
+
+        let text = (evt.target as HTMLElement).win.getSelection()?.toString(); // dataTransfer.getData('text/plain');
+        if (text) {
+            text = lib.toSingleLine(text);
+            dataTransfer.setData('text/plain', text);
+        }
+    };
 }
 
 /** Monkey-patch ObsidianViewer so that it can open external PDF files. */

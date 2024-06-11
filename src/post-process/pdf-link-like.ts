@@ -2,7 +2,7 @@ import { App, HoverParent, HoverPopover, Keymap } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
-import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFjsDestArray } from 'typings';
+import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFJsDestArray } from 'typings';
 import { isCitationId, isMouseEventExternal, isTargetHTMLElement } from 'utils';
 import { BibliographyManager } from 'bib';
 
@@ -159,7 +159,7 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
  * The destination can be either a string (a named destination) or an array (an explicit destination).
  */
 abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcessor {
-    abstract getDest(): string | PDFjsDestArray;
+    abstract getDest(): string | PDFJsDestArray;
 
     async getLinkText(evt: MouseEvent) {
         const { lib, child, targetEl } = this;
@@ -226,7 +226,7 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
         return super.getLinkText(evt);
     }
 
-    getDest(): string | PDFjsDestArray {
+    getDest(): string | PDFJsDestArray {
         return this.linkAnnotationElement.data.dest;
     }
 

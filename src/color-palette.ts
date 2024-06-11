@@ -116,7 +116,8 @@ export class ColorPalette extends PDFPlusComponent {
         itemEl.createDiv(ColorPalette.CLS + '-item-inner');
         this.setTooltipToActionItem(itemEl, name);
 
-        itemEl.addEventListener('click', (evt) => this.onItemClick(itemEl, name, evt));
+        // Listen to pointerup, not click, to prevent the selection from being cleared before the handler is called on mobile devices.
+        itemEl.addEventListener('pointerup', (evt) => this.onItemPointerUp(itemEl, name, evt));
 
         let shown = false;
         itemEl.addEventListener('contextmenu', () => {
@@ -140,7 +141,7 @@ export class ColorPalette extends PDFPlusComponent {
         });
     }
 
-    onItemClick(itemEl: HTMLElement, name: string | null, evt: MouseEvent) {
+    onItemPointerUp(itemEl: HTMLElement, name: string | null, evt: MouseEvent) {
         const colorChanged = !itemEl.hasClass('is-active');
         this.setActiveItem(name);
         if (this.plugin.settings.syncColorPaletteItem && this.plugin.settings.syncDefaultColorPaletteItem) {
@@ -159,7 +160,7 @@ export class ColorPalette extends PDFPlusComponent {
             this.lib.copyLink.copyLinkToSelection(false, { copyFormat: template }, name ?? undefined);
         }
 
-        evt.preventDefault(); 
+        evt.preventDefault();
     }
 
     setActiveItem(name: string | null) {

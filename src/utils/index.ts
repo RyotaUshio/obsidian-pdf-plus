@@ -1,7 +1,7 @@
 import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
-import { ObsidianViewer, PDFjsDestArray } from 'typings';
+import { ObsidianViewer, PDFJsDestArray } from 'typings';
 
 export * from './color';
 export * from './suggest';
@@ -348,7 +348,7 @@ export function encodeLinktext(linktext: string) {
     return linktext.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (component) => encodeURIComponent(component));
 }
 
-export function isCitationId(dest: string | PDFjsDestArray): dest is string {
+export function isCitationId(dest: string | PDFJsDestArray): dest is string {
     return typeof dest === 'string' && dest.startsWith('cite.');
 }
 
