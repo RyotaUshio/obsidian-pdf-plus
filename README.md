@@ -34,7 +34,7 @@ PDF++ stands out among other PDF annotation tools for the following reasons:
 
 > [!note]
 > - Some features require the [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) plugin enabled.
-> - You need Obsidian v1.5.8 or higher to receive updates from PDF++. Otherwise, you will be stuck at the last version (0.40.4) that supported older versions.
+> - You need Obsidian v1.5.8 or higher to receive updates from PDF++. Otherwise, you will be stuck at the last PDF++ version (0.40.4) that supported older versions of Obsidian.
 
 > [!warning]
 > This plugin relies on many private APIs of Obsidian, so **there is a relatively high risk that this plugin may break when Obsidian is updated** ([learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/48)). For this reason, I hope this plugin's functionalities will be natively supported by Obsidian itself so that we won't need this plugin anymore.
