@@ -1472,8 +1472,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Editing PDF files', 'edit', 'lucide-save')
 			.then((setting) => {
 				this.renderMarkdown([
-					'To make the best of PDF++\'s powerful features, it is recommended to enable PDF editing.',
-					'',
 					'By allowing PDF++ to modify PDF files directly, you can:',
 					'- Add, edit and delete highlights and links in PDF files.',
 					'- Add, insert, delete or extract PDF pages and auto-update links.',
