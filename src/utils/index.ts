@@ -173,6 +173,17 @@ export function isVersionNewerThan(a: string, b: string) {
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }) === 1;
 }
 
+export function isVersionOlderThan(a: string, b: string) {
+    return isVersionNewerThan(b, a);
+}
+
+export function getInstallerVersion(): string | null {
+    return Platform.isDesktopApp ? 
+    // @ts-ignore
+    window.electron.remote.app.getVersion() :
+    null;
+}
+
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
     return cache.links?.find((link) => start <= link.position.start.offset && link.position.end.offset <= end)
         ?? cache.embeds?.find((embed) => start <= embed.position.start.offset && embed.position.end.offset <= end);
