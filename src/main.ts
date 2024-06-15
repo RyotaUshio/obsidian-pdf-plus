@@ -8,12 +8,11 @@ import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement, getInstallerVersion, isVersionOlderThan } from 'utils';
+import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
-import { ExternalPDFModal } from 'modals';
+import { ExternalPDFModal, InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
 import { BibliographyManager } from 'bib';
-import { InstallerVersionModal } from 'modals/installer-version-modal';
 
 
 export default class PDFPlus extends Plugin {
@@ -130,16 +129,13 @@ export default class PDFPlus extends Plugin {
 		}
 	}
 
-	private checkVersion() {
+	checkVersion() {
 		const untestedVersion = '1.7.0';
 		if (requireApiVersion(untestedVersion)) {
 			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian ${untestedVersion} or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose).`);
 		}
 
-		const installerVersion = getInstallerVersion();
-		if (installerVersion && isVersionOlderThan(installerVersion, '1.5.8')) {
-			new InstallerVersionModal(this).open();
-		}
+		InstallerVersionModal.openIfNecessary(this);
 	}
 
 	private addIcons() {

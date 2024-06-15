@@ -2,7 +2,7 @@ import { Editor, EditorRange, MarkdownFileInfo, MarkdownView, Notice, TFile } fr
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
-import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerNode, paramsToSubpath, parsePDFSubpath } from 'utils';
+import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
 
@@ -93,14 +93,14 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         };
     }
 
-    getLinkTemplateVariables(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, subpath: string, page: number, text: string, sourcePath?: string) {
+    getLinkTemplateVariables(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, subpath: string, page: number, text: string, comment: string, sourcePath?: string) {
         sourcePath = sourcePath ?? '';
         const link = this.app.fileManager.generateMarkdownLink(file, sourcePath, subpath).slice(1);
         let linktext = this.app.metadataCache.fileToLinktext(file, sourcePath) + subpath;
         if (this.app.vault.getConfig('useMarkdownLinks')) {
             linktext = encodeLinktext(linktext);
         }
-        const display = this.getDisplayText(child, displayTextFormat, file, page, text);
+        const display = this.getDisplayText(child, displayTextFormat, file, page, text, comment);
         // https://github.com/obsidianmd/obsidian-api/issues/154
         // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
         const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display || undefined).slice(1);
@@ -120,7 +120,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         };
     }
 
-    getDisplayText(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, page: number, text: string) {
+    getDisplayText(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, page: number, text: string, comment?: string) {
         if (!displayTextFormat) {
             // read display text format from color palette
             const palette = this.lib.getColorPaletteFromChild(child);
@@ -137,7 +137,8 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 page,
                 pageCount: child.pdfViewer.pagesCount,
                 pageLabel: child.getPage(page).pageLabel ?? ('' + page),
-                text
+                text,
+                comment: comment ?? '',
             }).evalTemplate(displayTextFormat)
                 .trim();
         } catch (err) {
@@ -149,15 +150,22 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     getTextToCopy(child: PDFViewerChild, template: string, displayTextFormat: string | undefined, file: TFile, page: number, subpath: string, text: string, colorName: string, sourcePath?: string) {
         const pageView = child.getPage(page);
 
+        // need refactor
+        const annotationId = subpathToParams(subpath).get('annotation');
+        // @ts-ignore
+        let comment: string = (typeof annotationId === 'string' && pageView?.annotationLayer?.annotationLayer?.getAnnotation(annotationId)?.data?.contentsObj?.str) || '';
+        comment = this.lib.toSingleLine(comment);
+
         const processor = new PDFPlusTemplateProcessor(this.plugin, {
             file,
             page,
             pageLabel: pageView.pageLabel ?? ('' + page),
             pageCount: child.pdfViewer.pagesCount,
             text,
+            comment,
             colorName,
             calloutType: this.settings.calloutType,
-            ...this.lib.copyLink.getLinkTemplateVariables(child, displayTextFormat, file, subpath, page, text, sourcePath)
+            ...this.lib.copyLink.getLinkTemplateVariables(child, displayTextFormat, file, subpath, page, text, comment, sourcePath)
         });
 
         const evaluated = processor.evalTemplate(template);

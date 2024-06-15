@@ -40,42 +40,33 @@ export class BibliographyManager extends PDFPlusComponent {
 
     isEnabled() {
         const viewer = this.child.pdfViewer;
-        return isNonEmbedLike(viewer)
-            || (this.settings.enableBibInCanvas && isCanvas(viewer))
-            || (this.settings.enableBibInHoverPopover && isHoverPopover(viewer))
-            || (this.settings.enableBibInEmbed && isEmbed(viewer));
+        return this.settings.actionOnCitationHover !== 'none'
+            && (
+                isNonEmbedLike(viewer)
+                || (this.settings.enableBibInCanvas && isCanvas(viewer))
+                || (this.settings.enableBibInHoverPopover && isHoverPopover(viewer))
+                || (this.settings.enableBibInEmbed && isEmbed(viewer))
+            );
     }
 
     private async init() {
         if (this.isEnabled()) {
-            await this.initBibText();
+            await this.extractBibText();
             await this.parseBibText();
         }
         this.initialized = true;
     }
 
-    private async initBibText() {
+    private async extractBibText() {
         return new Promise<void>((resolve) => {
-            this.lib.onDocumentReady(this.child.pdfViewer, async (doc) => {
-                const dests = await doc.getDestinations();
-                const promises: Promise<void>[] = [];
-                for (const destId in dests) {
-                    if (destId.startsWith('cite.')) {
-                        const destArray = dests[destId] as PDFJsDestArray;
-                        promises.push(
-                            BibliographyManager.getBibliographyTextFromDest(destArray, doc)
-                                .then((bibInfo) => {
-                                    if (bibInfo) {
-                                        const bibText = bibInfo.text;
-                                        this.destIdToBibText.set(destId, bibText);
-                                        this.events.trigger('extracted', destId, bibText);
-                                    }
-                                })
-                        );
-                    }
-                }
-                await Promise.all(promises);
-                resolve();
+            this.lib.onDocumentReady(this.child.pdfViewer, (doc) => {
+                new BibliographyTextExtractor(doc)
+                    .onExtracted((destId, bibText) => {
+                        this.destIdToBibText.set(destId, bibText);
+                        this.events.trigger('extracted', destId, bibText);
+                    })
+                    .extract()
+                    .then(resolve);
             });
         });
     }
@@ -209,25 +200,74 @@ export class BibliographyManager extends PDFPlusComponent {
         return null;
     }
 
-    static async getBibliographyTextFromDest(dest: string | PDFJsDestArray, doc: PDFDocumentProxy) {
-        let explicitDest: PDFJsDestArray | null = null;
-        if (typeof dest === 'string') {
-            explicitDest = (await doc.getDestination(dest)) as PDFJsDestArray | null;
-        } else {
-            explicitDest = dest;
-        }
-        if (!explicitDest) return null;
 
-        const pageNumber = await doc.getPageIndex(explicitDest[0]) + 1;
-        const page = await doc.getPage(pageNumber);
-        const items = (await page.getTextContent()).items as TextContentItem[];
+    on(name: 'extracted', callback: (destId: string, bibText: string) => any, ctx?: any): ReturnType<Events['on']>;
+    on(name: 'parsed', callback: (destId: string, parsedBib: string) => any, ctx?: any): ReturnType<Events['on']>;
+    on(...args: Parameters<Events['on']>) {
+        return this.events.on(...args);
+    }
+}
+
+
+class BibliographyTextExtractor {
+    doc: PDFDocumentProxy;
+    pageRefToTextContentItemsPromise: Record<string, Promise<TextContentItem[]> | undefined>;
+    onExtractedCallback: (destId: string, bibText: string) => any;
+
+    constructor(doc: PDFDocumentProxy) {
+        this.doc = doc;
+        this.pageRefToTextContentItemsPromise = {};
+    }
+
+    onExtracted(callback: BibliographyTextExtractor['onExtractedCallback']) {
+        this.onExtractedCallback = callback;
+        return this;
+    }
+
+    async extract() {
+        const dests = await this.doc.getDestinations();
+        const promises: Promise<void>[] = [];
+        for (const destId in dests) {
+            if (destId.startsWith('cite.')) {
+                const destArray = dests[destId] as PDFJsDestArray;
+                promises.push(
+                    this.extractBibTextForDest(destArray)
+                        .then((bibInfo) => {
+                            if (bibInfo) {
+                                const bibText = bibInfo.text;
+                                this.onExtractedCallback(destId, bibText);
+                            }
+                        })
+                );
+            }
+        }
+        await Promise.all(promises);
+    }
+
+    /** Get `TextContentItem`s contained in the specified page. This method avoids fetching the same info multiple times. */
+    async getTextContentItemsFromPageRef(pageRef: PDFJsDestArray[0]) {
+        const refStr = JSON.stringify(pageRef);
+
+        return this.pageRefToTextContentItemsPromise[refStr] ?? (
+            this.pageRefToTextContentItemsPromise[refStr] = (async () => {
+                const pageNumber = await this.doc.getPageIndex(pageRef) + 1;
+                const page = await this.doc.getPage(pageNumber);
+                const items = (await page.getTextContent()).items as TextContentItem[];
+                return items;
+            })()
+        );
+    }
+
+    async extractBibTextForDest(destArray: PDFJsDestArray) {
+        const pageRef = destArray[0];
+        const items = await this.getTextContentItemsFromPageRef(pageRef);
 
         // Whole lotta hand-crafted rules LOL
 
         let beginIndex = -1;
-        if (explicitDest[1].name === 'XYZ') {
-            const left = explicitDest[2];
-            const top = explicitDest[3];
+        if (destArray[1].name === 'XYZ') {
+            const left = destArray[2];
+            const top = destArray[3];
             if (left === null || top === null) return null;
             beginIndex = items.findIndex((item: TextContentItem) => {
                 if (!item.str) return false;
@@ -235,8 +275,8 @@ export class BibliographyManager extends PDFPlusComponent {
                 const itemTop = item.transform[5] + (item.height || item.transform[0]) * 0.8;
                 return left <= itemLeft && itemTop <= top;
             });
-        } else if (explicitDest[1].name === 'FitBH') {
-            const top = explicitDest[2];
+        } else if (destArray[1].name === 'FitBH') {
+            const top = destArray[2];
             if (top === null) return null;
             beginIndex = items.findIndex((item: TextContentItem) => {
                 if (!item.str) return false;
@@ -279,12 +319,6 @@ export class BibliographyManager extends PDFPlusComponent {
         text = text.trimStart().replace(/^\d+\./, '');
 
         return { text: toSingleLine(text), items: bibTextItems };
-    }
-
-    on(name: 'extracted', callback: (destId: string, bibText: string) => any, ctx?: any): ReturnType<Events['on']>;
-    on(name: 'parsed', callback: (destId: string, parsedBib: string) => any, ctx?: any): ReturnType<Events['on']>;
-    on(...args: Parameters<Events['on']>) {
-        return this.events.on(...args);
     }
 }
 

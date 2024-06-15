@@ -4,7 +4,7 @@ import PDFPlus from 'main';
 import { ExtendedPaneType } from 'lib/workspace-lib';
 import { AutoFocusTarget } from 'lib/copy-link';
 import { CommandSuggest, FuzzyFileSuggest, FuzzyFolderSuggest, FuzzyMarkdownFileSuggest, KeysOfType, getModifierDictInPlatform, getModifierNameInPlatform, isHexString } from 'utils';
-import { PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
+import { InstallerVersionModal, PAGE_LABEL_UPDATE_METHODS, PageLabelUpdateMethod } from 'modals';
 import { ScrollMode, SidebarView, SpreadMode } from 'pdfjs-enums';
 import { Menu } from 'obsidian';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
@@ -1318,7 +1318,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const categories = DEFAULT_SETTINGS[key];
 		const displayNames: Record<string, string> = {
 			'color': 'Colors',
-			'copy-format': 'Link copy format',
+			'copy-format': 'Copy format',
 			'display': 'Display text format',
 		};
 		const values = this.plugin.settings[key];
@@ -1437,6 +1437,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	}
 
 	async display(): Promise<void> {
+		// First of all, re-display the installer version modal that was shown in plugin.onload again if necessary,
+		// in case the user has accidentally closed it.
+		InstallerVersionModal.openIfNecessary(this.plugin);
+
+
+		// Setting tab rendering starts here
+
 		this.headerContainerEl.empty();
 		this.contentEl.empty();
 		this.promises = [];
@@ -1749,7 +1756,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			}
 			this.addToggleSetting('quietColorPaletteTooltip')
 				.setName('Quiet tooltips in color palette')
-				.setDesc(`When disabled${!DEFAULT_SETTINGS.quietColorPaletteTooltip ? ' (default)' : ''}, the tooltip will show the color name as well as the selected link copy format and display text format. If enabled, only the color name will be shown.`);
+				.setDesc(`When disabled${!DEFAULT_SETTINGS.quietColorPaletteTooltip ? ' (default)' : ''}, the tooltip will show the color name as well as the selected copy format and display text format. If enabled, only the color name will be shown.`);
 		}
 
 
@@ -1936,7 +1943,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addProductMenuSetting('annotationProductMenuConfig', 'Copy link to annotation')
 			this.addToggleSetting('updateColorPaletteStateFromContextMenu')
 				.setName('Update color palette from context menu')
-				.setDesc('In the context menu, the items (color, link copy format and display text format) set in the color palette are selected by default. If this option is enabled, clicking a menu item will also update the color palette state and hence the default-selected items in the context menu as well.')
+				.setDesc('In the context menu, the items (color, copy format and display text format) set in the color palette are selected by default. If this option is enabled, clicking a menu item will also update the color palette state and hence the default-selected items in the context menu as well.')
 		}
 
 
@@ -1982,7 +1989,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'- **Fit width** / **fit height**',
 					'- **Go to page**: This command brings the cursor to the page number input field in the PDF toolbar. Enter a page number and press Enter to jump to the page.',
 					'- **Show copy format menu** / **show display text format menu**: By running thes commands via hotkeys and then using the arrow keys, you can quickly select a format from the menu without using the mouse.',
-					'- **Enable PDF edit** / **disable PDF edit**'
+					'- **Enable PDF edit** / **disable PDF edit**',
+					'- And more...',
 				], setting.descEl);
 			})
 			.then((setting) => this.addHotkeySettingButton(setting));
@@ -2005,7 +2013,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			});
 
 
-		this.addHeading('Link copy templates', 'template', 'lucide-copy')
+		this.addHeading('Copy templates', 'template', 'lucide-copy')
 			.setDesc('The template format that will be used when copying a link to a selection or an annotation in PDF viewer. ')
 		this.addSetting()
 			.then((setting) => this.renderMarkdown([
@@ -2019,7 +2027,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'- `pageLabel`: The page number displayed in the counter in the toolbar (`String`). This can be different from `page`.',
 				'    - **Tip**: You can modify page labels with PDF++\'s "Edit page labels" command.',
 				'- `pageCount`: The total number of pages (`Number`).',
-				'- `text` or `selection`: The selected text (`String`).',
+				'- `text` or `selection`: The selected text (`String`). In the case of links to annotations written directly in the PDF file, this is the text covered by the annotation.',
+				'- `comment`: In the case of links to annotations written directly in the PDF file, this is the comment associated with the annotation (`String`). Otherwise, it is an empty string `""`.',
 				'- `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.',
 				'- `obsidian`: The Obsidian API. See the [official developer documentation](https://docs.obsidian.md/Home) and the type definition file [`obsidian.d.ts`](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts) for the details.',
 				'- `dv`: Available if the [Dataview](obsidian://show-plugin?id=dataview) plugin is enabled. See Dataview\'s [official documentation](https://blacksmithgu.github.io/obsidian-dataview/api/code-reference/) for the details. You can use it almost the same as the `dv` variable available in `dataviewjs` code blocks, but there are some differences. For example, `dv.current()` is not available.',
@@ -2087,7 +2096,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		}
 
 		this.addSetting('copyCommands')
-			.setName('Custom link copy formats')
+			.setName('Custom copy formats')
 			.then((setting) => this.renderMarkdown([
 				'Customize the format to use when you copy a link by clicking a color palette item or running the commands while selecting a range of text in PDF viewer.',
 				'',
@@ -2543,7 +2552,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					text.inputEl.size = 30;
 				});
 			this.addTextAreaSetting('outlineLinkCopyFormat')
-				.setName('Link copy format')
+				.setName('Copy format')
 				.then((setting) => {
 					const textarea = setting.components[0] as TextAreaComponent;
 					textarea.inputEl.rows = 3;
@@ -2559,7 +2568,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				text.inputEl.size = 30;
 			});
 		this.addTextAreaSetting('copyOutlineAsListFormat')
-			.setName('List: link copy format')
+			.setName('List: copy format')
 			.setDesc('You don\'t need to include leading hyphens in the template.')
 			.then((setting) => {
 				const textarea = setting.components[0] as TextAreaComponent;
@@ -2573,7 +2582,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				text.inputEl.size = 30;
 			});
 		this.addTextAreaSetting('copyOutlineAsHeadingsFormat')
-			.setName('Headings: link copy format')
+			.setName('Headings: copy format')
 			.setDesc('You don\'t need to include leading hashes in the template.')
 			.then((setting) => {
 				const textarea = setting.components[0] as TextAreaComponent;
@@ -2627,7 +2636,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					text.inputEl.size = 30;
 				});
 			this.addTextAreaSetting('thumbnailLinkCopyFormat')
-				.setName('Link copy format')
+				.setName('Copy format')
 				.then((setting) => {
 					const textarea = setting.components[0] as TextAreaComponent;
 					textarea.inputEl.rows = 3;

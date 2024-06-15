@@ -344,20 +344,27 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     showOutline(checking: boolean) {
-        const sidebar = this.lib.getObsidianViewer(true)?.pdfSidebar;
-        if (sidebar) {
-            if (!sidebar.haveOutline) return false;
-            if (sidebar.isOpen && sidebar.active === 2) {
-                if (this.settings.closeSidebarWithShowCommandIfExist) {
-                    if (!checking) sidebar.close();
-                    return true;
+        const pdfViewer = this.lib.getObsidianViewer(true);
+        if (!pdfViewer) return false;
+
+        const el = pdfViewer.dom?.containerEl;
+        
+        if (!pdfViewer.isEmbed || (el && el.contains(el.doc.activeElement))) {
+            const sidebar = pdfViewer?.pdfSidebar;
+            if (sidebar) {
+                if (!sidebar.haveOutline) return false;
+                if (sidebar.isOpen && sidebar.active === 2) {
+                    if (this.settings.closeSidebarWithShowCommandIfExist) {
+                        if (!checking) sidebar.close();
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
+                if (!checking) {
+                    sidebar.switchView(SidebarView.OUTLINE, true);
+                }
+                return true;
             }
-            if (!checking) {
-                sidebar.switchView(SidebarView.OUTLINE, true);
-            }
-            return true;
         }
 
         if (this.settings.executeBuiltinCommandForOutline) {
@@ -408,11 +415,16 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
     zoom(checking: boolean, zoomIn: boolean) {
         const pdfViewer = this.lib.getObsidianViewer(true);
-        if (pdfViewer) {
-            if (!checking) {
-                zoomIn ? pdfViewer.zoomIn() : pdfViewer.zoomOut();
+        if (!pdfViewer) return false;
+
+        const el = pdfViewer.dom?.containerEl;
+        if (!pdfViewer.isEmbed || (el && el.contains(el.doc.activeElement))) {
+            if (pdfViewer) {
+                if (!checking) {
+                    zoomIn ? pdfViewer.zoomIn() : pdfViewer.zoomOut();
+                }
+                return true;
             }
-            return true;
         }
 
         if (this.settings.executeFontSizeAdjusterCommand) {

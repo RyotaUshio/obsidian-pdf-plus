@@ -1,7 +1,7 @@
 import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
-import { ObsidianViewer, PDFJsDestArray } from 'typings';
+import { ObsidianViewer, PDFJsDestArray, PDFPageView, Rect } from 'typings';
 
 export * from './color';
 export * from './suggest';
@@ -113,7 +113,47 @@ export function getNodeAndOffsetOfTextPos(node: Node, offset: number) {
     while ((textNode = iter.nextNode()) && offset >= textNode.textContent!.length) {
         offset -= textNode.textContent!.length;
     }
-    return textNode ? { node: textNode, offset } : null;
+    return textNode ? { node: textNode as Text, offset } : null;
+}
+
+/** Generate the bounding box for each character in the given node. */
+export function* getCharacterBoundingBoxes(node: Node) {
+    const iter = node.doc.createNodeIterator(node, NodeFilter.SHOW_TEXT);
+    let textNode;
+    while (textNode = iter.nextNode()) {
+        if (textNode.instanceOf(Text)) {
+            for (let i = 0; i < textNode.length; i++) {
+                const range = textNode.doc.createRange();
+                range.setStart(textNode, i);
+                range.setEnd(textNode, i + 1);
+                const rect = range.getBoundingClientRect();
+                const char = textNode.textContent![i];
+                yield { char, rect };
+            }
+        }
+    }
+}
+
+export function* toPDFCoords(pageView: PDFPageView, screenCoords: Iterable<{ x: number, y: number }>) {
+    const pageEl = pageView.div;
+    const style = pageEl.win.getComputedStyle(pageEl);
+    const borderTop = parseFloat(style.borderTopWidth);
+    const borderLeft = parseFloat(style.borderLeftWidth);
+    const paddingTop = parseFloat(style.paddingTop);
+    const paddingLeft = parseFloat(style.paddingLeft);
+    const pageRect = pageEl.getBoundingClientRect();
+
+    for (const { x, y } of screenCoords) {
+        const xRelativeToPage = x - (pageRect.left + borderLeft + paddingLeft)
+        const yRelativeToPage = y - (pageRect.top + borderTop + paddingTop);
+        yield pageView.getPagePoint(xRelativeToPage, yRelativeToPage) as [number, number];
+    }
+}
+
+export function* getCharactersWithBoundingBoxesInPDFCoords(pageView: PDFPageView, textLayerNode: HTMLElement) {
+    for (const { char, rect } of getCharacterBoundingBoxes(textLayerNode)) {
+        yield { char, rect: [...toPDFCoords(pageView, [{ x: rect.left, y: rect.bottom }, { x: rect.right, y: rect.top }])].flat() as Rect };
+    }
 }
 
 export function getFirstTextNodeIn(node: Node): Text | null {
@@ -178,10 +218,10 @@ export function isVersionOlderThan(a: string, b: string) {
 }
 
 export function getInstallerVersion(): string | null {
-    return Platform.isDesktopApp ? 
-    // @ts-ignore
-    window.electron.remote.app.getVersion() :
-    null;
+    return Platform.isDesktopApp ?
+        // @ts-ignore
+        window.electron.remote.app.getVersion() :
+        null;
 }
 
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
@@ -262,7 +302,7 @@ export function isNonEmbedLike(pdfViewer: ObsidianViewer): boolean {
 
 /** This is a PDF embed in a markdown file (not a hover popover or a canvas card). */
 export function isEmbed(pdfViewer: ObsidianViewer): boolean {
-    return pdfViewer.isEmbed && !this.isCanvas() && !isHoverPopover(pdfViewer);
+    return pdfViewer.isEmbed && !isCanvas(pdfViewer) && !isHoverPopover(pdfViewer);
 }
 
 export function isCanvas(pdfViewer: ObsidianViewer): boolean {
@@ -342,7 +382,8 @@ export function toSingleLine(str: string, removeWhitespaceBetweenCJChars = false
     str = str.replace(/(.?)([\r\n]+)(.?)/g, (match, prev, br, next) => {
         if (cjRegexp.test(prev) && cjRegexp.test(next)) return prev + next;
         if (prev === '-' && next.match(/[a-zA-Z]/)) return next;
-        return prev + ' ' + next;
+        // Replace the line break with a whitespace if the line break is followed by a non-empty character.
+        return next ? prev + ' ' + next : prev;
     });
     if (removeWhitespaceBetweenCJChars) {
         str = str.replace(new RegExp(`(${cjRegexp.source}) (?=${cjRegexp.source})`, 'g'), '$1');

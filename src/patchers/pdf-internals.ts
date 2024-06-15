@@ -11,7 +11,7 @@ import { patchPDFOutlineViewer } from 'patchers';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { camelCaseToKebabCase, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
+import { camelCaseToKebabCase, getCharactersWithBoundingBoxesInPDFCoords, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices, PDFPageView } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim/vim';
@@ -844,14 +844,58 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             }
         },
         onThumbnailContextMenu(old) {
-            return function (evt: MouseEvent) {
+            return function (this: PDFViewerChild, evt: MouseEvent) {
                 if (!plugin.settings.thumbnailContextMenu) {
                     return old.call(this, evt);
                 }
 
                 onThumbnailContextMenu(plugin, this, evt);
             }
-        }
+        },
+        getTextByRect(old) {
+            return function (this: PDFViewerChild, pageView: PDFPageView, rect: Rect) {
+                let text = '';
+
+                const items = pageView.textLayer?.textContentItems;
+                const divs = pageView.textLayer?.textDivs;
+
+                if (items) {
+                    const [left, bottom, right, top] = rect;
+
+                    for (let index = 0; index < items.length; index++) {
+                        const item = items[index];
+
+                        if (item.chars && item.chars.length) {
+                            // This block is taken from app.js.
+                            for (let offset = 0; offset < item.chars.length; offset++) {
+                                const char = item.chars[offset];
+
+                                const xMiddle = (char.r[0] + char.r[2]) / 2;
+                                const yMiddle = (char.r[1] + char.r[3]) / 2;
+
+                                if (left <= xMiddle && xMiddle <= right && bottom <= yMiddle && yMiddle <= top) {
+                                    text += char.u;
+                                }
+                            }
+                        } else if (divs && divs[index]) {
+                            // This block is introduced by PDF++.
+                            // If the text is not split into chars, we need to manually measure
+                            // the bounding box of each character.
+                            for (const { char, rect } of getCharactersWithBoundingBoxesInPDFCoords(pageView, divs[index])) {
+                                const xMiddle = (rect[0] + rect[2]) / 2;
+                                const yMiddle = (rect[1] + rect[3]) / 2;
+
+                                if (left <= xMiddle && xMiddle <= right && bottom <= yMiddle && yMiddle <= top) {
+                                    text += char;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return text;
+            }
+        },
     }));
 
     const onCopy = (evt: ClipboardEvent) => {

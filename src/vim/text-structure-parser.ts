@@ -2,7 +2,7 @@ import { TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
-import { areOverlapping, areOverlappingStrictly, binarySearch } from 'utils';
+import { areOverlapping, areOverlappingStrictly, binarySearch, getNodeAndOffsetOfTextPos, toPDFCoords } from 'utils';
 import { PDFPageView, PDFViewer, TextContentItem } from 'typings';
 
 
@@ -199,31 +199,15 @@ export class PDFPageTextStructureParser {
         }
 
         const div = this.divs[itemIndex];
-        const textNode = div.childNodes[0];
-        if (textNode?.nodeType === Node.TEXT_NODE) {
-            const range = div.doc.createRange();
-            range.setStart(textNode, charIndex);
-            range.setEnd(textNode, charIndex + 1);
-            const rect = range.getBoundingClientRect();
+        const nodeAndOffset = getNodeAndOffsetOfTextPos(div, charIndex);
+        if (!nodeAndOffset) return null;
+        const { node: textNode, offset } = nodeAndOffset;
+        const range = div.doc.createRange();
+        range.setStart(textNode, offset);
+        range.setEnd(textNode, offset + 1);
+        const rect = range.getBoundingClientRect();
+        const [[from], [to]] = [...toPDFCoords(this.pageView, [{x: rect.left, y: rect.bottom}, {x: rect.right, y: rect.top}])];
 
-            const pageEl = this.pageView.div;
-            const style = getComputedStyle(pageEl);
-            const borderTop = parseFloat(style.borderTopWidth);
-            const borderLeft = parseFloat(style.borderLeftWidth);
-            const paddingTop = parseFloat(style.paddingTop);
-            const paddingLeft = parseFloat(style.paddingLeft);
-            const pageRect = pageEl.getBoundingClientRect();
-
-            const left = rect.left - (pageRect.left + borderLeft + paddingLeft)
-            const top = rect.top - (pageRect.top + borderTop + paddingTop);
-            const right = rect.right - (pageRect.left + borderLeft + paddingLeft);
-            const bottom = rect.bottom - (pageRect.top + borderTop + paddingTop);
-
-            const from = this.pageView.getPagePoint(left, top)[0];
-            const to = this.pageView.getPagePoint(right, bottom)[0];
-            return { from, to };
-        }
-
-        return null;
+        return { from, to };
     }
 }

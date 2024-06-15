@@ -18,6 +18,7 @@ import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, E
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
+import * as utils from 'utils';
 
 
 export class PDFPlusLib {
@@ -37,6 +38,8 @@ export class PDFPlusLib {
     workspace: WorkspaceLib;
     composer: PDFComposer;
     speech: Speech;
+
+    utils = utils;
 
     constructor(plugin: PDFPlus) {
         this.app = plugin.app;
