@@ -115,7 +115,16 @@ export default class PDFPlus extends Plugin {
 	}
 
 	async onunload() {
-		// Clean up the AnyStyle input files and their directory (.obsidian/plugins/pdf-plus/anystyle)
+		await this.cleanUpResources();
+	}
+
+	/** Perform clean-ups not registered explicitly. */
+	async cleanUpResources() {
+		await this.cleanUpAnystyleFiles();
+	}
+
+	/** Clean up the AnyStyle input files and their directory (.obsidian/plugins/pdf-plus/anystyle) */
+	async cleanUpAnystyleFiles() {
 		const adapter = this.app.vault.adapter;
 		if (Platform.isDesktopApp && adapter instanceof FileSystemAdapter) {
 			const anyStyleInputDir = this.getAnyStyleInputDir();
@@ -562,6 +571,11 @@ export default class PDFPlus extends Plugin {
 			if (file instanceof TFile && file.path === this.settings.vimrcPath) {
 				this.vimrc = await this.app.vault.read(file);
 			}
+		}));
+
+		// Clean up other resources when the app quits
+		this.registerEvent(this.app.workspace.on('quit', async () => {
+			await this.cleanUpResources();
 		}));
 	}
 
