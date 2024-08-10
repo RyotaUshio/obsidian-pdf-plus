@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip, Keymap, Menu, Platform } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip, Keymap, Menu, Platform, requireApiVersion } from 'obsidian';
 import { around } from 'monkey-around';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
@@ -200,6 +200,18 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             }
                         });
                     }
+                }
+
+                // Fix for the Obsidian core issue where the "find next" button in the find bar has a wrong icon
+                // https://forum.obsidian.md/t/duplicate-up-arrow-up-displayed-when-searching-a-pdf-inside-obsidian/84403/3
+                const fixedApiVersion = '1.7.0';
+                const findNextButtonEl = this.findBar?.findNextButtonEl;
+                const findNextIconEl = findNextButtonEl.firstElementChild;
+
+                if (!requireApiVersion(fixedApiVersion)
+                    && findNextIconEl
+                    && findNextIconEl.matches('svg.lucide-arrow-up')) {
+                    setIcon(findNextButtonEl, 'lucide-arrow-down');
                 }
 
                 return ret;

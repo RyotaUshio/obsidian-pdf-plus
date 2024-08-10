@@ -212,7 +212,7 @@ export class BibliographyManager extends PDFPlusComponent {
 class BibliographyTextExtractor {
     doc: PDFDocumentProxy;
     pageRefToTextContentItemsPromise: Record<string, Promise<TextContentItem[]> | undefined>;
-    onExtractedCallback: (destId: string, bibText: string) => any;
+    onExtractedCallback?: (destId: string, bibText: string) => any;
 
     constructor(doc: PDFDocumentProxy) {
         this.doc = doc;
@@ -235,7 +235,7 @@ class BibliographyTextExtractor {
                         .then((bibInfo) => {
                             if (bibInfo) {
                                 const bibText = bibInfo.text;
-                                this.onExtractedCallback(destId, bibText);
+                                this.onExtractedCallback?.(destId, bibText);
                             }
                         })
                 );
