@@ -396,6 +396,7 @@ Therefore, this feature should be considered to be a temporary workaround until 
 **Update 2024-08-20**: I've just found a new plugin called [Pdf Annotator](https://github.com/Quorafind/Obsidian-PDF-Annotator).
 For now, it does not save annotations in PDF itself. However, it says it will be able to do so once Obsidian's PDF.js version is updated to 4.x.
 For those who prefer in-file annotations to backlink highlighting, this might be a better solution.
+Fortunately, it seems to be compatible with PDF++, meaning you can use features from both of two plugins at the same time although some of PDF++ features (e.g. hover over a highlight to preview backlinks, double-click on a highlight to open backlinks, etc.) are not available for annotations made by the Pdf Annotator plugin.
 
 ## Installation
 
