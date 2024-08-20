@@ -14,10 +14,8 @@
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
 - It transforms backlinks to PDF files into highlight annotations, i.e. you can **annotate PDF files with highlights just by linking to text selection**.
-- Alternatively, you can add annotations directly into PDF files so that they are also visible outside Obsidian[^1].
+- Alternatively, you can add annotations directly into PDF files so that they are also visible outside Obsidian (but with limitations; see [here](#note-on-saving-annotations-directly-in-pdf).
 - Moreover, it adds many **quality-of-life improvements** to the built-in PDF viewer and PDF embeds. So it's useful even if you don't use it as an annotation tool (you can even turn off the annotation functionality!).
-
-[^1]: However, you will found the viewer reloaded every time you add a highlight to your file. This is a limitation originating from how Obsidian configures the PDF.js library (specifically, they disables `AnnotationEditorLayer`). Therefore, this feature should be considered to be a temporary workaround until Obsidian itself supports PDF annotation, which is on [their roadmap](https://obsidian.md/roadmap/).
 
 PDF++ stands out among other PDF annotation tools for the following reasons:
 
@@ -388,6 +386,16 @@ In general, you can get the ID by the following steps:
 - The `href` attribute of the `<a>` element is the destination ID with a hash sign (`#`) prepended.
 
 You can also find a [great tutorial](https://forum.obsidian.md/t/getting-comfortable-with-obsidian-css/133) on the forum.
+
+## Note on saving annotations directly in PDF
+
+Although PDF++ is primarily designed with backlink highlighting (= annotation by backlink) in mind, it is also possible to add annotations directly inside PDF files.
+However, you will notice some limitations, including the viewer being reloaded every time you add a highlight to your file. 
+Therefore, this feature should be considered to be a temporary workaround until Obsidian itself supports PDF annotation, which is on [their roadmap](https://obsidian.md/roadmap/).
+
+**Update 2024-08-20**: I've just found a new plugin called [Pdf Annotator](https://github.com/Quorafind/Obsidian-PDF-Annotator).
+For now, it does not save annotations in PDF itself. However, it says it will be able to do so once Obsidian's PDF.js version is updated to 4.x.
+For those who prefer in-file annotations to backlink highlighting, this might be a better solution.
 
 ## Installation
 
