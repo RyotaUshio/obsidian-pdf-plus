@@ -14,7 +14,7 @@
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
 - It transforms backlinks to PDF files into highlight annotations, i.e. you can **annotate PDF files with highlights just by linking to text selection**.
-- Alternatively, you can add annotations directly into PDF files so that they are also visible outside Obsidian (but with limitations; see [here](#note-on-saving-annotations-directly-in-pdf).
+- Alternatively, you can add annotations directly into PDF files so that they are also visible outside Obsidian (but with limitations; see [here](#note-on-saving-annotations-directly-in-pdf)).
 - Moreover, it adds many **quality-of-life improvements** to the built-in PDF viewer and PDF embeds. So it's useful even if you don't use it as an annotation tool (you can even turn off the annotation functionality!).
 
 PDF++ stands out among other PDF annotation tools for the following reasons:
