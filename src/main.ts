@@ -1,4 +1,4 @@
-import { Constructor, EditableFileView, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
@@ -534,11 +534,13 @@ export default class PDFPlus extends Plugin {
 		// Sync the external app with Obsidian
 		if (Platform.isDesktopApp) {
 			this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
-				if (this.settings.syncWithDefaultApp && leaf && leaf.view instanceof EditableFileView && leaf.view.file?.extension === 'pdf') {
+				if (this.settings.syncWithDefaultApp && leaf && this.lib.isPDFView(leaf.view)) {
 					const file = leaf.view.file;
-					this.app.openWithDefaultApp(file.path);
-					if (this.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
-						focusObsidian();
+					if (file) {
+						this.app.openWithDefaultApp(file.path);
+						if (this.settings.focusObsidianAfterOpenPDFWithDefaultApp) {
+							focusObsidian();
+						}
 					}
 				}
 			}));

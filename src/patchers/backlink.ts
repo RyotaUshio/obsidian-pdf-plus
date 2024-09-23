@@ -12,7 +12,10 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
     const { app, lib } = plugin;
 
     // 1. Try to access a BacklinkRenderer instance from a backlinks view
-    const backlinkView = app.workspace.getLeavesOfType('backlink')[0]?.view as BacklinkView | undefined;
+    const backlinkView = app.workspace
+        .getLeavesOfType('backlink')
+        // leaf.view might be a deffered view even if the view type says 'backlink'
+        .find((leaf) => lib.isBacklinkView(leaf.view))?.view as BacklinkView | undefined;
     const backlinkRenderer = backlinkView?.backlink;
 
     // The below is commented out because this feature is irrerevant to "backlink in document"
@@ -28,11 +31,10 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
 
     plugin.register(around(Object.getPrototypeOf(backlinkView.constructor.prototype), {
         onLoadFile(old) {
-            return async function (file: TFile) {
-                const self = this as BacklinkView;
+            return async function (this: BacklinkView, file: TFile) {
                 await old.call(this, file);
-                if (self.getViewType() === 'backlink' && file.extension === 'pdf') {
-                    self.pdfManager = new BacklinkPanePDFManager(plugin, self.backlink, file).setParents(plugin, self);
+                if (this.getViewType() === 'backlink' && file.extension === 'pdf') {
+                    this.pdfManager = new BacklinkPanePDFManager(plugin, this.backlink, file).setParents(plugin, this);
                 }
             }
         },

@@ -225,24 +225,29 @@ export class BacklinkPanePDFPageTracker extends PDFPlusComponent {
         );
     }
 
-    onload() {
+    async onload() {
         this.renderer.backlinkDom.filter = undefined;
 
-        const view = this.lib.workspace.getExistingPDFViewOfFile(this.file);
-        if (view) {
-            view.viewer.then((child) => {
-                this.renderer.backlinkDom.filter = (file, linkCache) => {
-                    return child.pdfViewer.pdfViewer ? this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache) : true;
-                }
-                this.updateBacklinkDom();
+        const leaf = this.lib.workspace.getExistingLeafForPDFFile(this.file);
+        if (leaf) {
+            await this.lib.workspace.ensureViewLoaded(leaf);
+            const view = leaf.view;
 
-                this.lib.registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
-                    const page = typeof data.pageNumber === 'number' ? (data.pageNumber as number) : child.pdfViewer.pdfViewer?.currentPageNumber;
-                    if (page) this.renderer.backlinkDom.filter = (file, linkCache) => this.filter(page, linkCache);
-
+            if (this.lib.isPDFView(view)) {
+                view.viewer.then((child) => {
+                    this.renderer.backlinkDom.filter = (file, linkCache) => {
+                        return child.pdfViewer.pdfViewer ? this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache) : true;
+                    }
                     this.updateBacklinkDom();
+
+                    this.lib.registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
+                        const page = typeof data.pageNumber === 'number' ? (data.pageNumber as number) : child.pdfViewer.pdfViewer?.currentPageNumber;
+                        if (page) this.renderer.backlinkDom.filter = (file, linkCache) => this.filter(page, linkCache);
+
+                        this.updateBacklinkDom();
+                    });
                 });
-            });
+            }
         }
 
         // `Component.prototype.unload` not only unloads children components, but also removes them from the parent.

@@ -626,7 +626,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                         if (this.settings.openAfterExtractPages) {
                             const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
                             await leaf.openFile(file);
-                            this.lib.workspace.revealLeaf(leaf);
+                            await this.lib.workspace.revealLeaf(leaf);
                         }
                     });
             });
@@ -669,7 +669,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                         if (this.settings.openAfterExtractPages) {
                             const leaf = this.lib.workspace.getLeaf(this.settings.howToOpenExtractedPDF);
                             await leaf.openFile(file);
-                            this.lib.workspace.revealLeaf(leaf);
+                            await this.lib.workspace.revealLeaf(leaf);
                         }
                     });
             });
@@ -831,9 +831,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         const openFile = async () => {
             const { leaf, isExistingLeaf } = await this.lib.copyLink.prepareMarkdownLeafForPaste(file);
             if (leaf) {
-                this.lib.workspace.revealLeaf(leaf);
+                await this.lib.workspace.revealLeaf(leaf);
                 this.app.workspace.setActiveLeaf(leaf);
                 const view = leaf.view;
+                // We don't have to care about the case where the view is a deferred view
+                // thanks to the awaited revealLeaf call above.
                 if (view instanceof MarkdownView) {
                     const editor = view.editor;
                     editor.focus();

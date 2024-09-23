@@ -358,7 +358,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                         if (settings.openAfterExtractPages) {
                                             const leaf = lib.workspace.getLeaf(settings.howToOpenExtractedPDF);
                                             await leaf.openFile(file);
-                                            lib.workspace.revealLeaf(leaf);
+                                            await lib.workspace.revealLeaf(leaf);
                                         }
                                     });
                             });

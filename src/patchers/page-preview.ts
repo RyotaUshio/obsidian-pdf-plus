@@ -25,13 +25,10 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
 
                 if (file?.extension === 'pdf' && sourcePath.endsWith('.md')) {
                     if (plugin.settings.hoverPDFLinkToOpen) {
-                        const leaf = lib.workspace.getExistingPDFLeafOfFile(file);
-                        if (leaf) {
-                            leaf.openLinkText(linktext, sourcePath, {
-                                active: !plugin.settings.dontActivateAfterOpenPDF
-                            });
-                            return;
-                        }
+                        // If the target PDF is already opened in a tab, open PDF link in that tab
+                        // instead of showing popover preview
+                        const { exists } = lib.workspace.openPDFLinkTextInExistingLeafForTargetPDF(linktext, sourcePath, undefined, file);
+                        if (exists) return;
                     }
 
                     if (plugin.settings.ignoreHeightParamInPopoverPreview && subpath.contains('height=')) {

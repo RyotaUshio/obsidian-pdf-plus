@@ -1,4 +1,4 @@
-import { EditableFileView, HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
+import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
@@ -95,15 +95,16 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         return null;
     }
 
-    getExistingPDFLeafOfFile(file: TFile): WorkspaceLeaf | undefined {
-        return this.app.workspace.getLeavesOfType('pdf').find(leaf => {
-            return leaf.view instanceof EditableFileView && leaf.view.file === file;
-        });
-    }
-
-    getExistingPDFViewOfFile(file: TFile): PDFView | undefined {
-        const leaf = this.getExistingPDFLeafOfFile(file);
-        if (leaf) return leaf.view as PDFView
+    /**
+     * Get an existing leaf that holds the given PDF file, if any.
+     * If the leaf has been already loaded, `leaf.view` will be an instance of `PDFView`.
+     * If not, `leaf.view` will be an instance of `DeferredView`. If you want to ensure that
+     * the view is `PDFView`, do `await leaf.loadIfDeferred()` followed by `if (lib.isPDFView(leaf.view))`.
+     * 
+     * @param file Must be a PDF file.
+     */
+    getExistingLeafForPDFFile(file: TFile): WorkspaceLeaf | null {
+        return this.getExistingLeafForFile(file);
     }
 
     getActiveGroupLeaves() {
@@ -128,6 +129,10 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             }
         }
 
+        // Note: at this point, `markdownLeaf.view` might be a defered view.
+        // However, it does not matter because we do not access any `MarkdownView`-specific properties
+        // before the view is loaded by `openLinkText`.
+
         // About eState:
         // - `line`, `startLoc` & `endLoc`: Highlight & scroll to the specified location in the target markdown file.
         //   In live preview, it requires `focus` to be `true`. Otherwise, the location is not highlighted nor scrolled to.
@@ -147,16 +152,24 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         }
         // Ignore the "dontActivateAfterOpenMD" option when opening a link in a tab in the same split as the current tab
         // I believe using activeLeaf (which is deprecated) is inevitable here
-        if (!(markdownLeaf.parentSplit instanceof WorkspaceTabs && markdownLeaf.parentSplit === this.app.workspace.activeLeaf?.parentSplit)) {
+        if (!(markdownLeaf.parentSplit instanceof WorkspaceTabs
+            && markdownLeaf.parentSplit === this.app.workspace.activeLeaf?.parentSplit)) {
             openViewState.active = !this.plugin.settings.dontActivateAfterOpenMD;
         }
 
         await markdownLeaf.openLinkText(linktext, sourcePath, openViewState);
-        this.revealLeaf(markdownLeaf);
+        await this.revealLeaf(markdownLeaf);
 
         return;
     }
 
+    /**
+     * Get a leaf to open a markdown file in. The leaf can be an existing one or a new one,
+     * depending on the user preference and the current state of the workspace.
+     * 
+     * Note that the returned leaf might contain a deferred view, so it is not guaranteed
+     * that `leaf.view` is an instance of `MarkdownView`.
+     */
     getMarkdownLeafInSidebar(sidebarType: SidebarType) {
         if (this.settings.singleMDLeafInSidebar) {
             return this.lib.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
@@ -167,6 +180,11 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     }
 
     /**
+     * Given a link from a PDF file to a markdown file, return a leaf to open the link in.
+     * The returned leaf can be an existing one or a new one.
+     * Note that the leaf might contain a deferred view, so you need to call `await leaf.loadIfDeferred()`
+     * before accessing any properties specific to the view type.
+     * 
      * @param linktext A link text to a markdown file.
      * @param sourcePath If non-empty, it should end with ".pdf".
      */
@@ -184,7 +202,10 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
             let createInSameParent = true;
 
-            if (leaf.view instanceof MarkdownView) {
+            // The following line uses `getViewType() === 'markdown'` instead of 
+            // `instanceof MarkdownView` in order to ensure a leaf with a deferred markdown views
+            // are also caught.
+            if (leaf.view.getViewType() === 'markdown') {
                 const root = leaf.getRoot();
                 for (const split of this.settings.ignoreExistingMarkdownTabIn) {
                     if (root === this.app.workspace[split]) return;
@@ -193,8 +214,11 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                 if (leaf.parentSplit instanceof WorkspaceTabs) {
                     const sharesSameTabParentWithThePDF = leaf.parentSplit.children.some((item) => {
                         if (item instanceof WorkspaceLeaf && item.view.getViewType() === 'pdf') {
-                            const view = item.view as PDFView;
-                            return view.file?.path === sourcePath;
+                            return this.getFilePathFromView(item.view) === sourcePath;
+
+                            // The following will not work if the view is a DeferredView
+                            // const view = item.view as PDFView;
+                            // return view.file?.path === sourcePath;
                         }
                     });
                     if (sharesSameTabParentWithThePDF) {
@@ -204,7 +228,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
                 if (createInSameParent) markdownLeafParent = leaf.parentSplit;
 
-                if (leaf.view.file === file) {
+                if (file && this.getFilePathFromView(leaf.view) === file.path) {
                     markdownLeaf = leaf;
                 }
             }
@@ -259,6 +283,12 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         return this.getNewLeafInSidebar(sidebarType);
     }
 
+    /**
+     * Get an existing leaf that is opened a markdown file in the sidebar
+     * specified by `sidebarType`, if any.
+     * Note that the returned leaf can contain a deferred view, so it is not guaranteed
+     * that `leaf.view` is an instance of `MarkdownView`.
+     */
     getExistingMarkdownLeafInSidebar(sidebarType: SidebarType): WorkspaceLeaf | null {
         let sidebarLeaf: WorkspaceLeaf | undefined;
         const root = sidebarType === 'right-sidebar'
@@ -268,7 +298,8 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (sidebarLeaf || leaf.getRoot() !== root) return;
 
-            if (leaf.view instanceof MarkdownView) sidebarLeaf = leaf;
+            // Don't use `instanceof MarkdownView` here because the view might be a deferred view.
+            if (leaf.view.getViewType() === 'markdown') sidebarLeaf = leaf;
         });
 
         return sidebarLeaf ?? null;
@@ -286,11 +317,13 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
      * Almost the same as Workspace.prototype.revealLeaf, but this version
      * properly reveals a leaf even when it is contained in a secondary window.
      * 
-     * (Update: The upstream bug of Obsidian has been fixed in v1.5.11: https://obsidian.md/changelog/2024-03-13-desktop-v1.5.11/)
+     * Update: The upstream bug of Obsidian has been fixed in v1.5.11: https://obsidian.md/changelog/2024-03-13-desktop-v1.5.11/
+     * 
+     * Update 2: From Obsidian v1.7.2, the original `revealLeaf` is async (it now awaits `loadIfDeferred` inside), hence this method is now async as well.
      */
-    revealLeaf(leaf: WorkspaceLeaf) {
+    async revealLeaf(leaf: WorkspaceLeaf) {
         if (requireApiVersion('1.5.11')) {
-            this.app.workspace.revealLeaf(leaf);
+            await this.app.workspace.revealLeaf(leaf);
             return;
         }
 
@@ -322,46 +355,103 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             this.plugin.subpathWhenPatched = subpath;
         }
 
-        return leaf.openLinkText(linktext, sourcePath, openViewState).then(() => {
-            this.revealLeaf(leaf);
+        return leaf.openLinkText(linktext, sourcePath, openViewState).then(async () => {
+            await this.revealLeaf(leaf);
 
-            const view = leaf.view as PDFView;
+            const view = leaf.view;
 
-            view.viewer.then((child) => {
-                const duration = this.plugin.settings.highlightDuration;
-                this.lib.highlight.viewer.highlightSubpath(child, duration);
-            });
+            if (this.lib.isPDFView(view)) {
+                view.viewer.then((child) => {
+                    const duration = this.plugin.settings.highlightDuration;
+                    this.lib.highlight.viewer.highlightSubpath(child, duration);
+                });
+            }
         });
     }
 
+    /**
+     * If the target PDF file is already opened in a tab, open the link in that tab.
+     * 
+     * @param linktext A link text to a PDF file.
+     * @param sourcePath 
+     * @param openViewState `active` will be overwritten acccording to `this.plugin.settings.dontActivateAfterOpenPDF`.
+     * @param targetFile If provided, it must be the target PDF file that the link points to.
+     * @returns An object containing a boolean value indicating whether a tab with the target PDF file already exists and a promise that resolves when the link is opened.
+     */
+    openPDFLinkTextInExistingLeafForTargetPDF(linktext: string, sourcePath: string, openViewState?: OpenViewState, targetFile?: TFile): { exists: boolean, promise: Promise<void> } {
+        if (!targetFile) {
+            const { path } = parseLinktext(linktext);
+            targetFile = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath) ?? undefined;
+        }
+        if (!targetFile) return { exists: false, promise: Promise.resolve() };
+
+        const sameFileLeaf = this.getExistingLeafForPDFFile(targetFile);
+        if (!sameFileLeaf) return { exists: false, promise: Promise.resolve() };
+
+
+        // Ignore the "dontActivateAfterOpenPDF" option when opening a link in a tab in the same split as the current tab
+        // I believe using activeLeaf (which is deprecated) is inevitable here
+        if (!(sameFileLeaf.parentSplit instanceof WorkspaceTabs && sameFileLeaf.parentSplit === this.app.workspace.activeLeaf?.parentSplit)) {
+            openViewState = openViewState ?? {};
+            openViewState.active = !this.settings.dontActivateAfterOpenPDF;
+        }
+
+        if (sameFileLeaf.isVisible() && this.settings.highlightExistingTab) {
+            sameFileLeaf.containerEl.addClass('pdf-plus-link-opened', 'is-highlighted');
+            setTimeout(() => sameFileLeaf.containerEl.removeClass('pdf-plus-link-opened', 'is-highlighted'), this.settings.existingTabHighlightDuration * 1000);
+        }
+
+        const promise = this.openPDFLinkTextInLeaf(sameFileLeaf, linktext, sourcePath, openViewState);
+        return { exists: true, promise };
+    }
+
+    /**
+     * Get an existing leaf that holds the given file, if any.
+     * If the leaf has been already loaded, `leaf.view` will be an instance of a subclass of `FileView`,
+     * e.g., `PDFView` for a PDF file, `MarkdownView` for a markdown file.
+     * If not, `leaf.view` will be an instance of `DeferredView`. If you want to ensure that
+     * the view is not deferred and is indeed an instance of a view class corresponding to the file type,
+     * do `await leaf.loadIfDeferred()` followed by `if (lib.isPDFView(leaf.view))`.
+     */
+    getExistingLeafForFile(file: TFile): WorkspaceLeaf | null {
+        // Get the view type that corresponds to the file extension.
+        // e.g. 'markdown' for '.md', 'pdf' for '.pdf'
+        const viewType = this.app.viewRegistry.getTypeByExtension(file.extension);
+        if (!viewType) return null;
+
+        let leaf: WorkspaceLeaf | null = null;
+
+        this.app.workspace.iterateAllLeaves((l) => {
+            if (leaf) return;
+
+            // About the if check below:
+            // Before Obsidian v1.7.2 introduced DeferredView, the condition was something like
+            // `l.view instanceof (...)View && l.view.file === file`.
+            // Now, it is invalid because the first condition will filter out `DeferredView`,
+            // which is not the desired behavior in most cases.
+            // (Also, a `DeferredView` does not have a `file` property.)
+
+            // One more thing to note is that the view type checking is crucial
+            // to filtering out "linked file views" like backlink views, outgoing link views, and outline views.
+
+            if (l.view.getViewType() === viewType && this.getFilePathFromView(l.view) === file.path) {
+                leaf = l;
+            }
+        });
+
+        return leaf;
+    }
+
+    /**
+     * Returns a leaf that holds the given markdown file, if any.
+     * `leaf.view` can be an instance of `MarkdownView` or `DeferredView`.
+     */
     getExistingLeafForMarkdownFile(file: TFile): WorkspaceLeaf | null {
-        let markdownLeaf: WorkspaceLeaf | undefined;
-
-        this.app.workspace.iterateAllLeaves((leaf) => {
-            if (leaf.view instanceof MarkdownView && leaf.view.file) {
-                if (leaf.view.file.path === file.path) {
-                    markdownLeaf = leaf;
-                }
-            }
-        });
-
-        return markdownLeaf ?? null;
-    }
-
-    getExistingVisibleMarkdownView(): MarkdownView | null {
-        let view: MarkdownView | undefined;
-
-        this.app.workspace.iterateAllLeaves((leaf) => {
-            if (leaf.view instanceof MarkdownView && leaf.isVisible()) {
-                view = leaf.view;
-            }
-        });
-
-        return view ?? null;
+        return this.getExistingLeafForFile(file);
     }
 
     isMarkdownFileOpened(file: TFile): boolean {
-        return this.getExistingLeafForMarkdownFile(file) !== null;
+        return !!this.getExistingLeafForMarkdownFile(file);
     }
 
     registerHideSidebar(leaf: WorkspaceLeaf) {
@@ -377,6 +467,28 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                     this.app.workspace.offref(eventRef);
                 }
             });
+        }
+    }
+
+    /**
+     * Returns the path of the file opened in the given view.
+     * This method ensures that it works even if the view is a `DeferredView`.
+     * @param view An actual `FileView` or a `DefferedView` for a `FileView`.
+     * @returns 
+     */
+    getFilePathFromView(view: View): string | null {
+        // `view.file?.path` will fail if the view is a `DeferredView`.
+        const path = view.getState().file;
+        return typeof path === 'string' ? path : null;
+    }
+
+    /**
+     * Ensuress that the view in the given leaf is fully loaded (not deferred)
+     * after the returned promise is resolved. Never forget to await it when you call this method.
+     */
+    async ensureViewLoaded(leaf: WorkspaceLeaf): Promise<void> {
+        if (requireApiVersion('1.7.2')) {
+            await leaf.loadIfDeferred();
         }
     }
 }

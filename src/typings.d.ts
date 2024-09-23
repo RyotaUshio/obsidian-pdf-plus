@@ -767,6 +767,10 @@ interface CustomArrayDict<T> {
     count: () => number;
 }
 
+interface ViewRegistry extends Events {
+    getTypeByExtension(extension: string): string | undefined;
+}
+
 interface Embed extends Component {
     loadFile(): Promise<void>;
 }
@@ -1000,6 +1004,7 @@ declare module 'obsidian' {
         }
         hotkeyManager: HotkeyManager;
         dragManager: DragManager;
+        viewRegistry: ViewRegistry;
         embedRegistry: EmbedRegistry;
         openWithDefaultApp(path: string): Promise<void>;
         getObsidianUrl(file: TFile): string;
@@ -1050,7 +1055,6 @@ declare module 'obsidian' {
         group: string | null;
         /** As of Obsidian v1.5.8, this is just a read-only alias for `this.parent`. */
         readonly parentSplit?: WorkspaceParent;
-        parent?: WorkspaceParent;
         containerEl: HTMLElement;
         openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
         highlight(): void;

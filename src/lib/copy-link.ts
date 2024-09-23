@@ -583,7 +583,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (file) { // auto-focus target found
             const { leaf, isExistingLeaf } = await this.prepareMarkdownLeafForPaste(file);
             if (leaf && leaf.view instanceof MarkdownView) {
-                this.updateAndRevealCursorInEditor(leaf.view, {
+                await this.updateAndRevealCursorInEditor(leaf.view, {
                     focus: true,
                     goEnd: !isExistingLeaf
                 });
@@ -644,6 +644,10 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return null;
     }
 
+    /**
+     * Note that if this method returns a workspace leaf, its view IS guaranteed to be loaded
+     * (i.e. the view is not a detached view).
+     */
     async prepareMarkdownLeafForPaste(file: TFile) {
         let leaf = this.lib.workspace.getExistingLeafForMarkdownFile(file);
         const isExistingLeaf = !!leaf;
@@ -660,7 +664,12 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             }
 
             if (leaf && this.settings.openAutoFocusTargetInEditingView) {
+                // The follwoing line should be unnecesary because this block is
+                // only executed when the leaf is newly created.
+                // But I'll put it here just in case.
+                await this.lib.workspace.ensureViewLoaded(leaf);
                 const view = leaf.view;
+
                 if (view instanceof MarkdownView) {
                     await view.setState({ mode: 'source' }, { history: false });
                     view.setEphemeralState({ focus: false });
@@ -669,6 +678,9 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         }
 
         if (leaf) {
+            // GUARANTEE THAT THE VIEW IS LOADED
+            await this.lib.workspace.ensureViewLoaded(leaf);
+
             this.lib.workspace.hoverEditor.postProcessHoverEditorLeaf(leaf);
             if (this.settings.closeSidebarWhenLostFocus) {
                 this.lib.workspace.registerHideSidebar(leaf);
@@ -713,7 +725,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // the backlink highlight will be visibile as soon as possible.
             view.save();
 
-            this.updateAndRevealCursorInEditor(leaf.view, {
+            await this.updateAndRevealCursorInEditor(leaf.view, {
                 focus: this.settings.focusEditorAfterAutoPaste,
                 goEnd: !this.settings.respectCursorPositionWhenAutoPaste
             });
@@ -731,9 +743,9 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 // When the file opened in some tab, 
                 // - focus the tab and move the cursor to the end of the file if the `focusEditorAfterAutoPaste` option is on
                 // - scroll to the end of the file without focusing if `focusEditorAfterAutoPaste` option is off
-                activeWindow.setTimeout(() => {
+                activeWindow.setTimeout(async () => {
                     if (leaf.view instanceof MarkdownView) {
-                        this.updateAndRevealCursorInEditor(leaf.view, {
+                        await this.updateAndRevealCursorInEditor(leaf.view, {
                             focus: this.settings.focusEditorAfterAutoPaste,
                             goEnd: true
                         });
@@ -743,7 +755,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         }
     }
 
-    updateAndRevealCursorInEditor(view: MarkdownView, options: { focus: boolean, goEnd: boolean }) {
+    async updateAndRevealCursorInEditor(view: MarkdownView, options: { focus: boolean, goEnd: boolean }) {
         const { focus, goEnd } = options;
 
         const editor = view.editor;
@@ -751,7 +763,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (focus) {
             if (goEnd) editor.exec('goEnd');
 
-            this.lib.workspace.revealLeaf(view.leaf);
+            await this.lib.workspace.revealLeaf(view.leaf);
             this.app.workspace.setActiveLeaf(view.leaf);
             editor.focus();
         }

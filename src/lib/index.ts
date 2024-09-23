@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, normalizePath, parseLinktext, requestUrl } from 'obsidian';
+import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, normalizePath, parseLinktext, requestUrl } from 'obsidian';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 
@@ -14,7 +14,7 @@ import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
 import { PDFPageLabels } from './page-labels';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap, BacklinkView } from 'typings';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
@@ -606,6 +606,7 @@ export class PDFPlusLib {
 
                 const view = leaf.view;
 
+               // We should not use view.getViewType() here because it cannot detect deferred views.
                 if (view instanceof MarkdownView) {
                     pdfEmbed = this.getPDFEmbedInMarkdownView(view);
                 } else if (this.isCanvasView(view)) {
@@ -798,6 +799,7 @@ export class PDFPlusLib {
         if (this.plugin.classes.PDFView) {
             return view instanceof this.plugin.classes.PDFView;
         }
+        // The instanceof check is necessary for correctly handling DeferredView.
         return view instanceof EditableFileView && view.getViewType() === 'pdf';
     }
 
@@ -814,6 +816,7 @@ export class PDFPlusLib {
     }
 
     isCanvasView(view: View): view is CanvasView {
+        // The instanceof check is necessary for correctly handling DeferredView.
         return view instanceof TextFileView && view.getViewType() === 'canvas' && 'canvas' in view
     }
 
@@ -826,6 +829,11 @@ export class PDFPlusLib {
             return true;
         }
         return false;
+    }
+
+    isBacklinkView(view: View): view is BacklinkView {
+        // The instanceof check is necessary for correctly handling DeferredView.
+        return view instanceof FileView && view.getViewType() === 'backlink';
     }
 
     getAvailablePathForCopy(file: TFile) {

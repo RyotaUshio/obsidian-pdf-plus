@@ -11,6 +11,8 @@ export const patchClipboardManager = (plugin: PDFPlus) => {
     let clipboardManager: ClipboardManager | undefined;
 
     app.workspace.iterateAllLeaves((leaf) => {
+        // leaf.view.getViewType() === 'markdown' is not reliable here
+        // because the view might be a deferred view, which does not have editMode
         if (leaf.view instanceof MarkdownView) {
             clipboardManager = leaf.view.editMode.clipboardManager;
         }
@@ -27,7 +29,7 @@ export const patchClipboardManager = (plugin: PDFPlus) => {
          * > and no other handlers or built-in behavior will be activated for it.
          */
         handleDragOver(old) {
-            return function (evt: DragEvent): void {
+            return function (this: ClipboardManager, evt: DragEvent): void {
                 const draggable = app.dragManager.draggable;
                 if (!draggable || draggable.source !== 'pdf-plus') {
                     return old.call(this, evt);
@@ -43,26 +45,26 @@ export const patchClipboardManager = (plugin: PDFPlus) => {
             }
         },
         handleDrop(old) {
-            return function (evt: DragEvent): boolean | undefined {
+            return function (this: ClipboardManager, evt: DragEvent): boolean | undefined {
                 const draggable = app.dragManager.draggable;
 
                 if (!draggable || draggable.source !== 'pdf-plus') {
                     return old.call(this, evt);
                 }
 
-                const self = this as ClipboardManager;
-
-                if (self.info instanceof MarkdownView && (Platform.isMacOS ? evt.shiftKey : evt.altKey)) {
+                // the instanceof check ensures that this.info has the handleDrop method
+                // (here, we don't have to care about deferred views because the user is interacting with the view when dragging & dropping)
+                if (this.info instanceof MarkdownView && (Platform.isMacOS ? evt.shiftKey : evt.altKey)) {
                     evt.preventDefault();
-                    self.info.handleDrop(evt, draggable, false);
+                    this.info.handleDrop(evt, draggable, false);
                     return true;
                 }
 
-                const editor = self.info.editor;
+                const editor = this.info.editor;
                 if (!editor) return false;
 
                 // @ts-ignore
-                const textToInsert = draggable.getText(self.getPath());
+                const textToInsert = draggable.getText(this.getPath());
 
                 const offset = editor.cm.posAtCoords({ x: evt.clientX, y: evt.clientY }, false);
                 const pos = editor.offsetToPos(offset);
@@ -86,7 +88,7 @@ export const patchClipboardManager = (plugin: PDFPlus) => {
 
 // taken from app.js
 
-const allowDropAffectMap = {
+const allowDropEffectMap = {
     none: [],
     copy: ['copy'],
     copyLink: ['copy', 'link'],
@@ -104,7 +106,7 @@ function setDragEffect(evt: DragEvent, dropEffect: DropEffect) {
 
     if (dropEffect === 'none')
         return evt.dataTransfer.dropEffect = dropEffect;
-    const allowDropAffects = allowDropAffectMap[evt.dataTransfer.effectAllowed];
+    const allowDropAffects = allowDropEffectMap[evt.dataTransfer.effectAllowed];
     if (allowDropAffects.contains(dropEffect)) {
         evt.dataTransfer.dropEffect = dropEffect
     }

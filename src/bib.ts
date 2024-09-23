@@ -203,8 +203,8 @@ export class BibliographyManager extends PDFPlusComponent {
 
     on(name: 'extracted', callback: (destId: string, bibText: string) => any, ctx?: any): ReturnType<Events['on']>;
     on(name: 'parsed', callback: (destId: string, parsedBib: string) => any, ctx?: any): ReturnType<Events['on']>;
-    on(...args: Parameters<Events['on']>) {
-        return this.events.on(...args);
+    on(name: string, callback: (...args: any[]) => any, ctx?: any) {
+        return this.events.on(name, callback, ctx);
     }
 }
 

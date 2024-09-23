@@ -1,4 +1,4 @@
-import { OpenViewState, PaneType, Workspace, WorkspaceTabs, parseLinktext, Platform } from 'obsidian';
+import { OpenViewState, PaneType, Workspace, parseLinktext, Platform } from 'obsidian';
 import { around } from 'monkey-around';
 
 import PDFPlus from 'main';
@@ -32,22 +32,8 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                         }
 
                         if (plugin.settings.singleTabForSinglePDF) {
-                            const sameFileLeaf = lib.workspace.getExistingPDFLeafOfFile(file);
-                            if (sameFileLeaf) {
-                                // Ignore the "dontActivateAfterOpenPDF" option when opening a link in a tab in the same split as the current tab
-                                // I believe using activeLeaf (which is deprecated) is inevitable here
-                                if (!(sameFileLeaf.parentSplit instanceof WorkspaceTabs && sameFileLeaf.parentSplit === app.workspace.activeLeaf?.parentSplit)) {
-                                    openViewState = openViewState ?? {};
-                                    openViewState.active = !plugin.settings.dontActivateAfterOpenPDF;
-                                }
-
-                                if (sameFileLeaf.isVisible() && plugin.settings.highlightExistingTab) {
-                                    sameFileLeaf.containerEl.addClass('pdf-plus-link-opened', 'is-highlighted');
-                                    setTimeout(() => sameFileLeaf.containerEl.removeClass('pdf-plus-link-opened', 'is-highlighted'), plugin.settings.existingTabHighlightDuration * 1000);
-                                }
-
-                                return lib.workspace.openPDFLinkTextInLeaf(sameFileLeaf, linktext, sourcePath, openViewState);
-                            }
+                            const { exists, promise } = lib.workspace.openPDFLinkTextInExistingLeafForTargetPDF(linktext, sourcePath, openViewState, file);
+                            if (exists) return promise;
                         }
 
                         if (plugin.settings.openLinkNextToExistingPDFTab || plugin.settings.paneTypeForFirstPDFLeaf) {
