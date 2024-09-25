@@ -147,14 +147,36 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         }
     }
 
-    getTextToCopy(child: PDFViewerChild, template: string, displayTextFormat: string | undefined, file: TFile, page: number, subpath: string, text: string, colorName: string, sourcePath?: string) {
+    /**
+     * @param child 
+     * @param template 
+     * @param displayTextFormat 
+     * @param file 
+     * @param page 
+     * @param subpath 
+     * @param text 
+     * @param colorName 
+     * @param sourcePath 
+     * @param comment This will be used as the `comment` template variable.
+     * Assuming the subpath points to an annotation (e.g. `#page=1&annotation=123R`),
+     * if this parameter is not provided, the comment will be extracted from the annotation layer.
+     * This means that if the page is not loaded yet (lazy loading), the comment will not be extracted.
+     * (This is necessary for making this function synchronous.)
+     * Therefore, you must extract the comment by yourself beforehand and provide it as the `comment` parameter
+     * if the page may not be loaded yet.
+     * (See also: https://github.com/RyotaUshio/obsidian-pdf-plus/issues/260)
+     * @returns 
+     */
+    getTextToCopy(child: PDFViewerChild, template: string, displayTextFormat: string | undefined, file: TFile, page: number, subpath: string, text: string, colorName: string, sourcePath?: string, comment?: string) {
         const pageView = child.getPage(page);
 
         // need refactor
-        const annotationId = subpathToParams(subpath).get('annotation');
-        // @ts-ignore
-        let comment: string = (typeof annotationId === 'string' && pageView?.annotationLayer?.annotationLayer?.getAnnotation(annotationId)?.data?.contentsObj?.str) || '';
-        comment = this.lib.toSingleLine(comment);
+        if (typeof comment !== 'string') {
+            const annotationId = subpathToParams(subpath).get('annotation');
+            // @ts-ignore
+            comment = (typeof annotationId === 'string' && pageView?.annotationLayer?.annotationLayer?.getAnnotation(annotationId)?.data?.contentsObj?.str);
+            comment = this.lib.toSingleLine(comment || '');
+        }
 
         const processor = new PDFPlusTemplateProcessor(this.plugin, {
             file,

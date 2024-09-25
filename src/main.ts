@@ -88,6 +88,7 @@ export default class PDFPlus extends Plugin {
 		await this.loadSettings();
 		await this.saveSettings();
 
+
 		this.domManager = this.addChild(new DomManager(this));
 		this.domManager.registerCalloutRenderer();
 
@@ -103,8 +104,6 @@ export default class PDFPlus extends Plugin {
 
 		this.registerGlobalVariables();
 
-		this.registerGlobalDomEvents();
-
 		this.registerEvents();
 
 		this.startTrackingActiveMarkdownFile();
@@ -112,6 +111,8 @@ export default class PDFPlus extends Plugin {
 		this.registerObsidianProtocolHandler('pdf-plus', this.obsidianProtocolHandler.bind(this));
 
 		this.addSettingTab(this.settingTab = new PDFPlusSettingTab(this));
+
+		this.registerStyleSettings();
 	}
 
 	async onunload() {
@@ -139,7 +140,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	checkVersion() {
-		const untestedVersion = '1.7.0';
+		const untestedVersion = '1.8.0';
 		if (requireApiVersion(untestedVersion)) {
 			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian ${untestedVersion} or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose).`);
 		}
@@ -285,6 +286,16 @@ export default class PDFPlus extends Plugin {
 
 	saveLocalStorage(key: string, value?: any) {
 		this.app.saveLocalStorage(this.manifest.id + '-' + key, value);
+	}
+
+	/**
+	 * Tell the Style Settings plugin to parse styles.css on load and unload
+	 * so that the Style Settings pane can be updated.
+	 */
+	private registerStyleSettings() {
+		// See https://github.com/mgmeyers/obsidian-style-settings?tab=readme-ov-file#plugin-support
+		this.app.workspace.trigger('parse-style-settings');
+		this.register(() => this.app.workspace.trigger('parse-style-settings'));
 	}
 
 	private registerRibbonIcons() {
@@ -474,6 +485,21 @@ export default class PDFPlus extends Plugin {
 				}
 			});
 
+			// Make PDF embeds with a subpath unscrollable
+			if (this.settings.embedUnscrollable) {
+				for (const eventType of [
+					'wheel', // mousewheel
+					'touchmove' // finger swipe
+				] as const) {
+					this.registerDomEvent(embed.containerEl, eventType, (evt) => {
+						if (isTargetHTMLElement(evt, evt.target)
+							&& evt.target.closest('.pdf-embed[src*="#"] .pdf-viewer-container')) {
+							evt.preventDefault();
+						}
+					}, { passive: false });
+				}
+			}
+
 			if (embed instanceof PDFCroppedEmbed) {
 				this.registerDomEvent(embed.containerEl, 'click', (evt) => {
 					if (isTargetHTMLElement(evt, evt.target) && evt.target.closest('.cm-editor')) {
@@ -506,21 +532,6 @@ export default class PDFPlus extends Plugin {
 	private registerGlobalVariables() {
 		this.registerGlobalVariable('pdfPlus', this, false);
 		this.registerGlobalVariable('pdflib', pdflib, false);
-	}
-
-	registerGlobalDomEvent<K extends keyof DocumentEventMap>(type: K, callback: (this: HTMLElement, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void {
-		this.lib.registerGlobalDomEvent(this, type, callback, options);
-	}
-
-	private registerGlobalDomEvents() {
-		// Make PDF embeds with a subpath unscrollable
-		this.registerGlobalDomEvent('wheel', (evt) => {
-			if (this.settings.embedUnscrollable
-				&& isTargetHTMLElement(evt, evt.target)
-				&& evt.target.closest('.pdf-embed[src*="#"] .pdf-viewer-container')) {
-				evt.preventDefault();
-			}
-		}, { passive: false });
 	}
 
 	private registerEvents() {

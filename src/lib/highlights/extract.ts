@@ -5,7 +5,7 @@ import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { Rect, TextContentItem } from 'typings';
 
 
-type AnnotatedTextsInPage = Map<string, { text: string, rgb: RGB | null }>;
+type AnnotatedTextsInPage = Map<string, { text: string, rgb: RGB | null, comment?: string }>;
 type AnnotatedTextsInDocument = Map<number, AnnotatedTextsInPage>;
 type PDFTextRange = { text: string, from: { index: number, offset: number }, to: { index: number, offset: number } };
 
@@ -30,7 +30,7 @@ export class HighlightExtractor extends PDFPlusLibSubmodule {
             page.getAnnotations()
         ]);
 
-        const results: { id: string, textRanges: PDFTextRange[], rgb: RGB | null, left: number, top: number }[] = [];
+        const results: { id: string, textRanges: PDFTextRange[], rgb: RGB | null, comment?: string, left: number, top: number }[] = [];
 
         for (const annot of annots) {
             const isTextMarkupAnnot = ['Highlight', 'Underline', 'Squiggly', 'StrikeOut'].includes(annot.subtype);
@@ -54,9 +54,11 @@ export class HighlightExtractor extends PDFPlusLibSubmodule {
 
             const rgb = annot.color ? { r: annot.color[0], g: annot.color[1], b: annot.color[2] } as RGB : null;
 
+            const comment = annot.contentsObj?.str;
+
             const firstRect = annot.quadPoints[0];
 
-            results.push({ id: annot.id, textRanges, rgb, left: firstRect[0].x, top: firstRect[0].y });
+            results.push({ id: annot.id, textRanges, rgb, comment, left: firstRect[0].x, top: firstRect[0].y });
         }
 
         return new Map(
@@ -74,7 +76,7 @@ export class HighlightExtractor extends PDFPlusLibSubmodule {
                         .map((range) => range.text)
                         .join('\n');
                     text = this.lib.toSingleLine(text);
-                    return [result.id, { text, rgb: result.rgb }];
+                    return [result.id, { text, rgb: result.rgb, comment: result.comment }];
                 })
         );
     }

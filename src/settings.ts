@@ -1450,11 +1450,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.component.load();
 
 
+		// Show which section is currently being displayed by highlighting the corresponding icon in the header.
 		activeWindow.setTimeout(() => this.updateHeaderElClass());
-		this.component.registerDomEvent(
-			this.contentEl, 'wheel',
-			debounce(() => this.updateHeaderElClass(), 100)
-		);
+		for (const eventType of ['wheel', 'touchmove'] as const) {
+			this.component.registerDomEvent(
+				this.contentEl, eventType,
+				debounce(() => this.updateHeaderElClass(), 100),
+				{ passive: true }
+			);
+		}
 
 
 		this.contentEl.createDiv('top-note', async (el) => {
@@ -2396,7 +2400,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			})
 			.then((setting) => {
 				if (this.plugin.requireModKeyForLinkHover(PDFInternalLinkPostProcessor.HOVER_LINK_SOURCE_ID)) setting.setDesc(`You may want to turn this off to avoid conflicts with hover+${modKey}.`);
-				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
+				setting.descEl.appendText('Reopen tabs or reload the app after changing this option.');
 			});
 		this.addToggleSetting('enableHoverPDFInternalLink', () => this.events.trigger('update'))
 			.setName(`Show a popover preview of PDF internal links by hover(+${modKey})`);
@@ -2526,18 +2530,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			})
 			.then((setting) => {
 				if (this.plugin.requireModKeyForLinkHover(PDFOutlineItemPostProcessor.HOVER_LINK_SOURCE_ID)) setting.setDesc(`You may want to turn this off to avoid conflicts with hover+${modKey}.`);
-				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
+				setting.descEl.appendText('Reopen tabs or reload the app after changing this option.');
 			});
 		this.addToggleSetting('popoverPreviewOnOutlineHover', () => this.events.trigger('update'))
 			.setName(`Show popover preview by hover(+${modKey})`)
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
+			.setDesc('Reopen tabs or reload the app after changing this option.');
 		this.showConditionally(
 			this.addRequireModKeyOnHoverSetting(PDFOutlineItemPostProcessor.HOVER_LINK_SOURCE_ID),
 			() => this.plugin.settings.popoverPreviewOnOutlineHover
 		);
 		this.addToggleSetting('recordHistoryOnOutlineClick')
 			.setName('Record to history when clicking an outline item')
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
+			.setDesc('Reopen tabs or reload the app after changing this option.');
 		this.addToggleSetting('outlineContextMenu')
 			.setName('Replace the built-in context menu in the outline with a custom one')
 			.setDesc('This enables you to insert a section link with a custom format by right-clicking an item in the outline. Moreover, you will be able to add, rename, or delete outline items if PDF modification is enabled.')
@@ -2604,18 +2608,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			})
 			.then((setting) => {
 				if (this.plugin.requireModKeyForLinkHover(PDFThumbnailItemPostProcessor.HOVER_LINK_SOURCE_ID)) setting.setDesc(`You may want to turn this off to avoid conflicts with hover+${modKey}`);
-				setting.descEl.appendText('Reopen the tabs or reload the app after changing this option.');
+				setting.descEl.appendText('Reopen tabs or reload the app after changing this option.');
 			});
 		this.addToggleSetting('popoverPreviewOnThumbnailHover', () => this.events.trigger('update'))
 			.setName(`Show popover preview by hover(+${modKey})`)
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
+			.setDesc('Reopen tabs or reload the app after changing this option.');
 		this.showConditionally(
 			this.addRequireModKeyOnHoverSetting(PDFThumbnailItemPostProcessor.HOVER_LINK_SOURCE_ID),
 			() => this.plugin.settings.popoverPreviewOnThumbnailHover
 		)
 		this.addToggleSetting('recordHistoryOnThumbnailClick')
 			.setName('Record to history when clicking a thumbnail')
-			.setDesc('Reopen the tabs or reload the app after changing this option.');
+			.setDesc('Reopen tabs or reload the app after changing this option.');
 		this.addToggleSetting('thumbnailContextMenu')
 			.setName('Replace the built-in context menu in thumbnails with a custom one')
 			.setDesc('This enables you to copy a page link with a custom display text format specified in the PDF toolbar by right-clicking a thumbnail. Moreover, you will be able to insert, delete, extract pages if PDF modification is enabled.');
@@ -2815,7 +2819,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addToggleSetting('persistentAnnotationHighlightsInEmbed')
 			.setName('Don\'t clear highlights in an annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
-			.setName('Make PDF embeds with a page specified unscrollable');
+			.setName('Make PDF embeds with a page specified unscrollable')
+			.setDesc('After changing this option, you need to reopen tabs or reload the app.');
 
 
 		this.addHeading('Backlinks pane for PDF files', 'backlink-view', 'links-coming-in')

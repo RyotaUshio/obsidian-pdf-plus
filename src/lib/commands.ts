@@ -348,7 +348,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!pdfViewer) return false;
 
         const el = pdfViewer.dom?.containerEl;
-        
+
         if (!pdfViewer.isEmbed || (el && el.contains(el.doc.activeElement))) {
             const sidebar = pdfViewer?.pdfSidebar;
             if (sidebar) {
@@ -882,7 +882,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 const highlights = await this.lib.highlight.extract.getAnnotatedTextsInDocument(doc);
 
                 highlights.forEach((resultsInPage, pageNumber) => {
-                    resultsInPage.forEach(({ text, rgb }, id) => {
+                    resultsInPage.forEach(({ text, rgb, comment }, id) => {
                         if (data) {
                             data = data.trimEnd() + '\n\n';
                         }
@@ -891,7 +891,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
                         data += this.lib.copyLink.getTextToCopy(
                             child, template, undefined, file, pageNumber,
-                            `#page=${pageNumber}&annotation=${id}`, text, color
+                            `#page=${pageNumber}&annotation=${id}`,
+                            text, color, undefined,
+                            // We have to get the comment content before calling getTextToCopy and pass it as the last argument.
+                            // See the docstring of getTextToCopy for more details. 
+                            comment
                         );
                     })
                 });
@@ -986,7 +990,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
         const selection = doc.getSelection();
         if (!selection || !selection.focusNode || selection.isCollapsed) return false;
-        
+
         if (!checking) showContextMenuAtSelection(this.plugin, child, selection);
 
         return true;
