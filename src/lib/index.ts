@@ -476,7 +476,7 @@ export class PDFPlusLib {
                 : '[['.concat(linktext, ']]');
         }
 
-        return 'md' !== file.extension ? '!' + nonEmbedLink : nonEmbedLink;
+        return nonEmbedLink;
     }
 
     getBacklinkIndexForFile(file: TFile) {

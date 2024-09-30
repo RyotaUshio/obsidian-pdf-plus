@@ -623,7 +623,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                                         if (!display && annot.data.rect) {
                                             display = child.getTextByRect(pageView, annot.data.rect);
                                         }
-                                        const link = lib.generateMarkdownLink(file, '', subpath, display ?? undefined).slice(1);
+                                        const link = lib.generateMarkdownLink(file, '', subpath, display ?? undefined);
                                         // How does the electron version differ?
                                         navigator.clipboard.writeText(link);
                                         plugin.lastCopiedDestInfo = { file, destName: destId };

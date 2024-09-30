@@ -570,7 +570,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         getMarkdownLink(old) {
             return function (this: PDFViewerChild, subpath?: string, alias?: string, embed?: boolean): string {
                 if (!this.file) return old.call(this, subpath, alias, embed);
-                const embedLink = lib.generateMarkdownLink(this.file, '', subpath, alias);
+                const embedLink = /*"!" +*/ lib.generateMarkdownLink(this.file, '', subpath, alias); //comment added to reflect a change in the function used
                 if (embed) return embedLink;
                 return embedLink.slice(1);
             }

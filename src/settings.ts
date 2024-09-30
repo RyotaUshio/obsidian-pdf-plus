@@ -240,6 +240,7 @@ export interface PDFPlusSettings {
 	newFileTemplatePath: string;
 	newPDFLocation: NewFileLocation;
 	newPDFFolderPath: string;
+	rectEmbed: boolean;
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
 	rectImageExtension: ImageExtension;
@@ -514,6 +515,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	newFileTemplatePath: '',
 	newPDFLocation: 'current',
 	newPDFFolderPath: '',
+	rectEmbed: true,
 	rectEmbedStaticImage: false,
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
@@ -1656,22 +1658,29 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'You can embed a specified rectangular area from a PDF page into your note. [Learn more](https://ryotaushio.github.io/obsidian-pdf-plus/embedding-rectangular-selections.html)'
 				], setting.descEl);
 			});
-		this.addSliderSetting('rectEmbedResolution', 10, 200, 1)
-			.setName('Rendering resolution')
-			.setDesc('The higher the value, the better the rendering quality, but the longer time it takes to render. The default value is 100.');
-		this.addToggleSetting('rectEmbedStaticImage', () => this.redisplay())
-			.setName('Paste as image')
-			.setDesc('By default, rectangular selection embeds are re-rendered every time you open the markdown file, which can slow down the loading time. Turn on this option to replace them with static images and improve the performance.');
-		if (this.plugin.settings.rectEmbedStaticImage) {
-			this.addDropdownSetting('rectImageFormat', { 'file': 'Create & embed image file', 'data-url': 'Embed as data URL' }, () => this.redisplay())
-				.setName('How to embed the image')
-				.then((setting) => this.renderMarkdown([
-					'- "Create & embed image file": Create an image file and embed it in the markdown file. The image file will be saved in the folder you specify in the "Default location for new attachments" setting in the core Obsidian settings.',
-					'- "Embed as data URL": Embed the image as a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs) without creating a file. This option is useful when you don\'t want to mess up your attachment folder. It also helps you make your notes self-contained.',
-				], setting.descEl));
-			if (this.plugin.settings.rectImageFormat === 'file') {
-				this.addDropdownSetting('rectImageExtension', IMAGE_EXTENSIONS)
-					.setName('Image file format');
+
+		this.addToggleSetting('rectEmbed', () => this.redisplay())
+			.setName('Embed Link')
+			.setDesc('If the link should embed the rectangular section or just give a link to it');
+
+		if(this.plugin.settings.rectEmbed) {
+			this.addSliderSetting('rectEmbedResolution', 10, 200, 1)
+				.setName('Rendering resolution')
+				.setDesc('The higher the value, the better the rendering quality, but the longer time it takes to render. The default value is 100.');
+			this.addToggleSetting('rectEmbedStaticImage', () => this.redisplay())
+				.setName('Paste as image')
+				.setDesc('By default, rectangular selection embeds are re-rendered every time you open the markdown file, which can slow down the loading time. Turn on this option to replace them with static images and improve the performance.');
+			if (this.plugin.settings.rectEmbedStaticImage) {
+				this.addDropdownSetting('rectImageFormat', { 'file': 'Create & embed image file', 'data-url': 'Embed as data URL' }, () => this.redisplay())
+					.setName('How to embed the image')
+					.then((setting) => this.renderMarkdown([
+						'- "Create & embed image file": Create an image file and embed it in the markdown file. The image file will be saved in the folder you specify in the "Default location for new attachments" setting in the core Obsidian settings.',
+						'- "Embed as data URL": Embed the image as a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs) without creating a file. This option is useful when you don\'t want to mess up your attachment folder. It also helps you make your notes self-contained.',
+					], setting.descEl));
+				if (this.plugin.settings.rectImageFormat === 'file') {
+					this.addDropdownSetting('rectImageExtension', IMAGE_EXTENSIONS)
+						.setName('Image file format');
+				}
 			}
 		}
 		this.addToggleSetting('includeColorWhenCopyingRectLink')

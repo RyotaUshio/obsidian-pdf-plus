@@ -95,20 +95,20 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
     getLinkTemplateVariables(child: PDFViewerChild, displayTextFormat: string | undefined, file: TFile, subpath: string, page: number, text: string, comment: string, sourcePath?: string) {
         sourcePath = sourcePath ?? '';
-        const link = this.app.fileManager.generateMarkdownLink(file, sourcePath, subpath).slice(1);
+        const link = this.app.fileManager.generateMarkdownLink(file, sourcePath, subpath) ;
         let linktext = this.app.metadataCache.fileToLinktext(file, sourcePath) + subpath;
         if (this.app.vault.getConfig('useMarkdownLinks')) {
             linktext = encodeLinktext(linktext);
         }
         const display = this.getDisplayText(child, displayTextFormat, file, page, text, comment);
         // https://github.com/obsidianmd/obsidian-api/issues/154
-        // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, subpath, display).slice(1);
-        const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display || undefined).slice(1);
+        // const linkWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, subpath, display) ;
+        const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display || undefined) ;
 
-        const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
+        const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`) ;
         // https://github.com/obsidianmd/obsidian-api/issues/154
-        // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`, display).slice(1);
-        const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined).slice(1);
+        // const linkToPageWithDisplay = app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`, display) ;
+        const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined) ;
 
         return {
             link,
@@ -417,14 +417,17 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             const display = this.getDisplayText(child, undefined, file, pageNumber, '');
             let subpath = `#page=${pageNumber}&rect=${rect.map((num) => Math.round(num)).join(',')}`;
             if (colorName) subpath += `&color=${colorName}`;
-            const embedLink = this.lib.generateMarkdownLink(file, sourcePath ?? '', subpath, display);
+            const nonembedLink = this.lib.generateMarkdownLink(file, sourcePath ?? '', subpath, display);
 
             (async () => {
-                let text = embedLink;
+                let text =nonembedLink;
                 const page = child.getPage(pageNumber).pdfPage;
                 const extension = this.settings.rectImageExtension;
-
-                if (!this.settings.rectEmbedStaticImage) {
+                if (!this.settings.rectEmbed) {
+                    await navigator.clipboard.writeText(text);
+                    this.onCopyFinish(text);
+                } else if (!this.settings.rectEmbedStaticImage) {
+                    text = "!" + nonembedLink;
                     await navigator.clipboard.writeText(text);
 
                     this.onCopyFinish(text);
@@ -432,7 +435,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     const imagePath = await this.app.fileManager.getAvailablePathForAttachment(file.basename + '.' + extension, '');
                     const useWikilinks = !this.app.vault.getConfig('useMarkdownLinks');
                     const imageEmbedLink = useWikilinks ? `![[${imagePath}]]` : `![](${encodeLinktext(imagePath)})`;
-                    text = imageEmbedLink + '\n\n' + embedLink.slice(1);
+                    text = imageEmbedLink + '\n\n' + nonembedLink ;
 
                     await navigator.clipboard.writeText(text);
 
@@ -449,7 +452,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 } else {
                     const dataUrl = await this.lib.pdfPageToImageDataUrl(page, { type: `image/${extension}`, cropRect: rect });
                     const imageEmbedLink = `![](${dataUrl})`;
-                    text = imageEmbedLink + '\n\n' + embedLink.slice(1);
+                    text = imageEmbedLink + '\n\n' + nonembedLink ;
 
                     await navigator.clipboard.writeText(text);
 
@@ -474,7 +477,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
         if (!checking) {
             const display = this.lib.copyLink.getDisplayText(child, undefined, file, pageNumber, query);
-            const link = this.lib.generateMarkdownLink(file, '', `#search=${query}`, display).slice(1);
+            const link = this.lib.generateMarkdownLink(file, '', `#search=${query}`, display) ;
 
             (async () => {
                 await navigator.clipboard.writeText(link);

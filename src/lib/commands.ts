@@ -333,7 +333,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 destArray = [state.page - 1, 'XYZ', state.left, state.top, state.zoom ?? 0];
             }
             const display = view.viewer.child?.getPageLinkAlias(state.page);
-            const link = this.lib.generateMarkdownLink(view.file, '', subpath, display).slice(1);
+            const link = this.lib.generateMarkdownLink(view.file, '', subpath, display);
             navigator.clipboard.writeText(link);
             new Notice(`${this.plugin.manifest.name}: Link copied to clipboard`);
 
