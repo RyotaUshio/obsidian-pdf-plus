@@ -2,9 +2,12 @@ There are many reasons why you will want to use PDF++ instead of external PDF ed
 
 ## Auto-update links after adding/removing/extracting PDF pages
 
-Suppose you have a 300-page PDF of a book. It is often a good idea to divide such a large PDF into smaller parts (e.g. chapters) for better loading speed or sync performance.
+> [!warning]
+> Due to how pdf-lib is implemented, PDF++ commands for dividing PDF documents or extracting PDF pages will **not** reduce file sizes. See https://github.com/Hopding/pdf-lib/issues/140 for the details.
+> 
+> You might want submit a feature request to [cantoo-scribe/pdf-lib](https://github.com/cantoo-scribe/pdf-lib) (a fork of the original pdf-lib repository that this plugin is using) so that `removePage` will actually remove the specified page from the page tree.
 
-However, if you use external apps like Acrobat for such a page reorganization, some of the existing links to a page in the PDF will no longer point to the original page and become useless.
+If you use external apps like Acrobat for reorganizing PDF pages (e.g. divide a PDF document into two parts), some of the existing links to a page in the PDF will no longer point to the original page and become useless.
 
 Here's where PDF++ comes in: by using PDF++ commands such as "Divide this PDF into two files at this page", you can re-organize PDF pages and **auto-update links** at the same time so that your links can keep functioning.
 Obviously, this is not what external apps can do, regardless of how expensive they are. (PDF++ is free and open-source!)
