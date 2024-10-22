@@ -1,51 +1,14 @@
 {
   "settingsVersion": "1.8.01",
-  "makeOfflineCompatible": false,
-  "inlineAssets": false,
-  "includePluginCSS": "",
-  "includeSvelteCSS": true,
-  "titleProperty": "title",
-  "customHeadContentPath": "",
-  "faviconPath": "",
-  "documentWidth": "40em",
-  "sidebarWidth": "20em",
-  "minOutlineCollapse": 2,
-  "startOutlineCollapsed": false,
-  "allowFoldingHeadings": true,
-  "allowFoldingLists": true,
-  "allowResizingSidebars": true,
-  "logLevel": "warning",
-  "minifyHTML": true,
-  "makeNamesWebStyle": true,
-  "onlyExportModified": false,
-  "deleteOldFiles": true,
-  "addThemeToggle": true,
-  "addOutline": true,
-  "addFileNav": true,
-  "addSearchBar": true,
-  "addGraphView": true,
-  "addTitle": true,
-  "addRSSFeed": false,
-  "siteURL": "",
-  "authorName": "Ryota Ushio",
-  "vaultTitle": "Obsidian PDF++",
-  "exportPreset": "website",
-  "openAfterExport": false,
-  "graphAttractionForce": 1,
-  "graphLinkLength": 10,
-  "graphRepulsionForce": 150,
-  "graphCentralForce": 3,
-  "graphEdgePruning": 100,
-  "graphMinNodeSize": 3,
-  "graphMaxNodeSize": 7,
-  "showDefaultTreeIcons": false,
-  "emojiStyle": "Native",
-  "defaultFileIcon": "lucide//file",
-  "defaultFolderIcon": "lucide//folder",
-  "defaultMediaIcon": "lucide//file-image",
-  "exportPath": "/Users/ryotaushio/Obsidian/pdf-plus/docs",
-  "filesToExport": [
-    [
+  "exportOptions": {
+    "createDocumentContainer": true,
+    "createPusherElement": true,
+    "makeHeadersTrees": true,
+    "postProcess": true,
+    "displayProgress": true,
+    "inlineHTML": false,
+    "exportPath": "/Users/ryotaushio/Obsidian/pdf-plus/docs",
+    "filesToExport": [
       "Attachments",
       "Settings",
       "Annotating PDFs.md",
@@ -64,6 +27,184 @@
       "Page labels.md",
       "Pasting a copied link to a text selection in PDF.md",
       "Templating.md"
-    ]
+    ],
+    "addBodyClasses": true,
+    "addMathjaxStyles": true,
+    "addHeadTag": true,
+    "addRSS": true,
+    "addTitle": true,
+    "backlinkOptions": {
+      "featureId": "backlinks",
+      "enabled": true,
+      "displayTitle": "Backlinks",
+      "featurePlacement": {
+        "selector": ".footer",
+        "type": "start"
+      }
+    },
+    "tagOptions": {
+      "featureId": "tags",
+      "enabled": true,
+      "displayTitle": "",
+      "featurePlacement": {
+        "selector": ".header .data-bar",
+        "type": "end"
+      },
+      "showInlineTags": {
+        "show": true,
+        "description": "Show tags that are inline in the document"
+      },
+      "showFrontmatterTags": {
+        "show": true,
+        "description": "Show tags that are in the frontmatter"
+      }
+    },
+    "aliasOptions": {
+      "featureId": "aliases",
+      "enabled": true,
+      "displayTitle": "",
+      "featurePlacement": {
+        "selector": ".header .data-bar",
+        "type": "start"
+      }
+    },
+    "propertiesOptions": {
+      "featureId": "properties",
+      "enabled": true,
+      "displayTitle": "Properties",
+      "featurePlacement": {
+        "selector": ".header",
+        "type": "start"
+      }
+    },
+    "fileNavigationOptions": {
+      "featureId": "file-navigation",
+      "enabled": true,
+      "displayTitle": "",
+      "featurePlacement": {
+        "selector": "#left-sidebar-content",
+        "type": "end"
+      },
+      "showDefaultFolderIcons": false,
+      "showDefaultFileIcons": false,
+      "defaultFolderIcon": "lucide//folder",
+      "defaultFileIcon": "lucide//file",
+      "defaultMediaIcon": "lucide//file-image",
+      "exposeStartingPath": true,
+      "includePath": "site-lib/html/file-tree.html"
+    },
+    "searchOptions": {
+      "featureId": "search",
+      "enabled": true,
+      "displayTitle": "Search...",
+      "featurePlacement": {
+        "selector": "#left-sidebar .topbar-content",
+        "type": "start"
+      }
+    },
+    "outlineOptions": {
+      "featureId": "outline",
+      "enabled": true,
+      "displayTitle": "Outline",
+      "featurePlacement": {
+        "selector": "#right-sidebar-content",
+        "type": "end"
+      },
+      "startCollapsed": false,
+      "minCollapseDepth": 0
+    },
+    "themeToggleOptions": {
+      "featureId": "theme-toggle",
+      "enabled": true,
+      "displayTitle": "",
+      "featurePlacement": {
+        "selector": "#right-sidebar .topbar-content",
+        "type": "start"
+      }
+    },
+    "graphViewOptions": {
+      "featureId": "graph-view",
+      "enabled": true,
+      "displayTitle": "Graph View",
+      "featurePlacement": {
+        "selector": "#right-sidebar-content",
+        "type": "start"
+      },
+      "showOrphanNodes": true,
+      "showAttachments": false,
+      "allowGlobalGraph": true,
+      "allowExpand": true,
+      "attractionForce": 1,
+      "linkLength": 15,
+      "repulsionForce": 80,
+      "centralForce": 2,
+      "edgePruning": 100,
+      "minNodeRadius": 3,
+      "maxNodeRadius": 7
+    },
+    "sidebarOptions": {
+      "featureId": "sidebar",
+      "enabled": true,
+      "allowResizing": true,
+      "allowCollapsing": true,
+      "rightDefaultWidth": "20em",
+      "leftDefaultWidth": "20em"
+    },
+    "customHeadOptions": {
+      "featureId": "custom-head",
+      "enabled": true,
+      "displayTitle": "",
+      "featurePlacement": {
+        "selector": "head",
+        "type": "start"
+      },
+      "sourcePath": "",
+      "includePath": "site-lib/html/custom-head.html"
+    },
+    "fileOptions": {
+      "featureId": "obsidian-document",
+      "enabled": true,
+      "allowFoldingLists": true,
+      "allowFoldingHeadings": true,
+      "documentWidth": "40em"
+    },
+    "relativeHeaderLinks": false,
+    "includeJS": true,
+    "includeCSS": true,
+    "inlineMedia": false,
+    "inlineCSS": false,
+    "inlineJS": false,
+    "inlineFonts": false,
+    "inlineOther": false,
+    "combineAsSingleFile": false,
+    "offlineResources": false,
+    "themeName": "",
+    "slugifyPaths": true,
+    "flattenExportPaths": false,
+    "fixLinks": true,
+    "siteURL": "",
+    "siteName": "Obsidian PDF++",
+    "faviconPath": "",
+    "customHeadPath": "",
+    "iconEmojiStyle": "Native",
+    "authorName": "",
+    "exportRoot": "",
+    "includePluginCSS": [],
+    "includeSvelteCSS": true
+  },
+  "logLevel": "warning",
+  "titleProperty": "title",
+  "onlyExportModified": false,
+  "deleteOldFiles": true,
+  "exportPreset": "online",
+  "openAfterExport": false,
+  "filePickerBlacklist": [
+    "(^|\\/)node_modules\\/",
+    "(^|\\/)dist\\/",
+    "(^|\\/)dist-ssr\\/",
+    "(^|\\/)\\.vscode\\/"
+  ],
+  "filePickerWhitelist": [
+    "\\.\\w+$"
   ]
 }

@@ -1,4 +1,6 @@
-You can hover over a citation link to display a popup showing the corresponding bibliographic information. This feature is inspired by [Google Scholar's PDF viewer](https://scholar.googleblog.com/2024/03/supercharge-your-pdf-reading-follow.html). You can find the related settings [here](obsidian://pdf-plus?setting=heading:citation).
+You can hover over a citation link to display a popup showing the corresponding bibliographic information. This feature is inspired by [Google Scholar's PDF viewer](https://scholar.googleblog.com/2024/03/supercharge-your-pdf-reading-follow.html).
+
+See [here](https://github.com/RyotaUshio/obsidian-pdf-plus/releases/tag/0.39.0) for demos. You can find the related settings [here](obsidian://pdf-plus?setting=heading:citation).
 
 It works without any additional stuff, but you can further boost the visibility by installing [AnyStyle](https://github.com/inukshuk/anystyle) (desktop only).
  
