@@ -5,7 +5,7 @@ There are many reasons why you will want to use PDF++ instead of external PDF ed
 > [!warning]
 > Due to how pdf-lib is implemented, PDF++ commands for dividing PDF documents or extracting PDF pages will **not** reduce file sizes. See https://github.com/Hopding/pdf-lib/issues/140 for the details.
 > 
-> You might want submit a feature request to [cantoo-scribe/pdf-lib](https://github.com/cantoo-scribe/pdf-lib) (a fork of the original pdf-lib repository that this plugin is using) so that `removePage` will actually remove the specified page from the page tree.
+> You might want to submit a feature request to [cantoo-scribe/pdf-lib](https://github.com/cantoo-scribe/pdf-lib) (a fork of the original pdf-lib repository that this plugin is using) so that `removePage` will actually remove the specified page from the page tree.
 
 If you use external apps like Acrobat for reorganizing PDF pages (e.g. divide a PDF document into two parts), some of the existing links to a page in the PDF will no longer point to the original page and become useless.
 
