@@ -76,7 +76,7 @@ export class DummyFileManager extends PDFPlusLibSubmodule {
             const folderPath = this.getFolderPathForDummyFiles(info.file);
             const dummyFiles = await this.createDummyFilesInFolder(folderPath, uris);
 
-            new Notice(`${this.plugin.manifest.name}: Created dummy files created successfully.`);
+            new Notice(`${this.plugin.manifest.name}: Dummy files created successfully.`);
 
             // Insert links to dummy files into the editor
             dummyFiles.forEach((dummyFile, index) => {
