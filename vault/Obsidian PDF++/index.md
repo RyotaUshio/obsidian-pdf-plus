@@ -16,7 +16,9 @@ PDF++ is **the most Obsidian-native PDF annotation & editing tool ever**, which 
 Start your exploration from here: [[Getting started]]
 
 > [!important] Support Development
-> It is not an easy work to develop and maintain this plugin; it requires investigating Obsidian's unexposed internals, the knowledge of the technical specification of the PDF file format and PDF-related libraries, and more.
+> This plugin was created and is maintained by an unpaid student.
+> 
+> It is not an easy work; it requires investigating Obsidian's unexposed internals, the knowledge of the technical specification of the PDF file format and PDF-related libraries, and more.
 > 
 > Therefore, **your financial support is crucial for ensuring PDF++ can help you organize your knowledge base for the years to come.**
 > 

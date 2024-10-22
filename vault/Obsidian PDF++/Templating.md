@@ -1,5 +1,8 @@
 Each `{{...}}` will be evaluated as a JavaScript expression given the variables listed below.
 
+> [!note]
+> It is possible that this list is outdated. The up-to-date list is available in the plugin settings.
+
 ## Available variables for display text formats
 
 - `file` or `pdf`: The PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). Use `file.basename` for the file name without extension, `file.name` for the file name with extension, `file.path` for the full path relative to the vault root, etc.
@@ -8,6 +11,7 @@ Each `{{...}}` will be evaluated as a JavaScript expression given the variables 
     - **Tip**: You can modify page labels with PDF++'s "Edit page labels" command.
 - `pageCount`: The total number of pages (`Number`).
 - `text` or `selection`: The selected text (`String`).
+- `comment`: In the case of links to annotations written directly in the PDF file, this is the comment associated with the annotation (`String`). Otherwise, it is an empty string `""`.
 - `folder`: The folder containing the PDF file ([`TFolder`](https://docs.obsidian.md/Reference/TypeScript+API/TFolder)). This is an alias for `file.parent`.
 - `obsidian`: The Obsidian API. See the [official developer documentation](https://docs.obsidian.md/Home) and the type definition file [`obsidian.d.ts`](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts) for the details.
 - `dv`: Available if the [Dataview](obsidian://show-plugin?id=dataview) plugin is enabled. See Dataview's [official documentation](https://blacksmithgu.github.io/obsidian-dataview/api/code-reference/) for the details. You can use it almost the same as the `dv` variable available in `dataviewjs` code blocks, but there are some differences. For example, `dv.current()` is not available.
@@ -37,4 +41,4 @@ In addition to the variables listed above, you can use
 - `linkToPage`: The link to the page without display text, e.g. `[[file.pdf#page = 1]]`,
 - `linkToPageWithDisplay`: The link to the page with display text, e.g. `[[file.pdf#page = 1 | file, page 1]]`,
 - `calloutType`: The callout type you specify in the "Callout type name" setting
-- `colorName`: In the case of text selections, this is the name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string. For text markup annotations (e.g. highlights and underlines), this is the RGB value of the color, e.g. `255, 208, 0`.
+- `color` (or `colorName`): In the case of text selections, this is the name of the selected color in lowercase, e.g. `red`. If no color is specified, it will be an empty string. For text markup annotations (e.g. highlights and underlines), this is the RGB values of the color, e.g. `255, 208, 0`.

@@ -27,7 +27,7 @@
   "addTitle": true,
   "addRSSFeed": false,
   "siteURL": "",
-  "authorName": "",
+  "authorName": "Ryota Ushio",
   "vaultTitle": "Obsidian PDF++",
   "exportPreset": "website",
   "openAfterExport": false,
@@ -46,7 +46,24 @@
   "exportPath": "/Users/ryotaushio/Obsidian/pdf-plus/docs",
   "filesToExport": [
     [
-      "all"
+      "Attachments",
+      "Settings",
+      "Annotating PDFs.md",
+      "Auto-copy, auto-focus & auto-paste.md",
+      "Backlink highlighting - Basics.md",
+      "Backlink highlighting - Colors.md",
+      "Bookmarklet to create dummy PDF files.md",
+      "Citation links.md",
+      "Community resources.md",
+      "Editing PDFs.md",
+      "Embedding rectangular selections.md",
+      "External PDF files.md",
+      "Getting started.md",
+      "index.md",
+      "Link copy formats.md",
+      "Page labels.md",
+      "Pasting a copied link to a text selection in PDF.md",
+      "Templating.md"
     ]
   ]
 }

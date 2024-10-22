@@ -27,6 +27,8 @@ A dummy PDF file is a plain text file that
 
 ### Create a dummy file manually
 
+Don't worry, there are also [[#How to create dummy files easily|easier ways]] - but let's create a dummy PDF file manually just to get the idea.
+
 For example, open your favorite text editor and create a text file with the following content:
 
 ```
@@ -42,14 +44,47 @@ Open `example.pdf` in Obsidian. Then, the following PDF file will be displayed i
 
 It looks as if a normal PDF file located in your vault, and various PDF-related features work the same - you can copy a link to a text selection, [[Embedding rectangular selections|embed a rectangular selection]], [[Backlink highlighting - Basics|highlight backlinks]], and so on.
 
-### Create dummy files from the command
+### How to create dummy files easily
 
-PDF++ offers an alternative way to create dummy PDF files: the **PDF++: Create dummy file for external PDF** command.
+PDF++ offers several ways to make the creation of dummy files easier: with drag & drop, via a command, and by a bookmarklet.
 
-### Create dummy files with a bookmarklet
+#### Drag & drop
+
+While holding `Shift` (by default), drag and drop a PDF file from your OS's file manager (Finder, File Explorer, etc.), or from your browser, to Obsidian's editor to create a dummy file and insert a link to it.
+
+You can customize which modifier key to use (or not to use any key) in the [settings](obsidian://pdf-plus?setting=modifierToDropExternalPDFToCreateDummy). By choosing "None" or `Option` (macOS) / `Ctrl` (other), you can override [Obsidian's built-in drag-and-drop actions](https://help.obsidian.md/User+interface/Drag+and+drop#Dragging%20from%20outside%20Obsidian) if you want to.
+
+##### Dragging from Finder/File Explorer
+
+Note that this does not work on mobile.
+
+![[Screen Recording 2024-10-22 at 9.47.01.mov]]
+
+##### Dragging links from a browser
+
+Dragging from your browser will work whether you are on a desktop or mobile device like an iPad. Note that on mobile, you might need to start holding `Shift` (or any modifier key you choose in the setting) before dragging.
+
+![[Screen Recording 2024-10-22 at 9.50.56.mov]]
+
+##### Dragging from a browser's URL bar
+
+![[Screen Recording 2024-10-22 at 9.52.59.mov]]
+
+#### Command
+
+You can also create dummy files using the **PDF++: Create dummy file for external PDF** command.
+
+#### Bookmarklet
 
 You can create a bookmarklet for quickly creating dummy files from your browser.
 See here for the details: [[Bookmarklet to create dummy PDF files]].
+
+
+## Where to save dummy files
+
+You can specified the default save location of dummy PDF files in the [settings](obsidian://pdf-plus?setting=dummyFileFolderPath). By default, they are saved in the same folder as Obsidian's attachment folder (Obsidian Settings > Files and links > Default location for new attachments). 
+
+You can also choose a different folder. For example, using a dedicated folder for dummy PDF files might be helpful for later file management.
 
 ## Importing external PDFs
 
@@ -76,7 +111,7 @@ If PDF++ stops working, they will not displayed properly even in Obsidian.
 
 However, they are just plain text files so you can easily open them with any text editor, and then replace them with actual PDF files.
 
-It would not be hard to distinguish dummy & actual PDFs based on file sizes because dummy PDFs are <= 300 bytes, which is a unusually small size for PDFs.
+It is pretty easy to distinguish dummy & actual PDFs because the actual ones always start with a string of the form "%PDF-x.y". It is trivial to write a tiny script (in Python or whatever language) that checks if a given PDF file is a dummy or not. Even if you don't know how to code, you can just open the file as a plain text file using any text editor to check its content. In practice, you will also be able to use file sizes because dummy PDFs are <= 300 bytes, which is a unusually small size for PDFs.
 
 > [!NOTE]
 > The icon <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-import"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg> was taken from [Lucide](https://lucide.dev/).
