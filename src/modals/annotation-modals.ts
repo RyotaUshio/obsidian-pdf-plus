@@ -50,9 +50,9 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
 
     static forSubtype(subtype: typeof PDFAnnotationEditModal.supportedSubtypes[number], ...args: ConstructorParameters<typeof PDFAnnotationModal>): PDFAnnotationEditModal {
         if (subtype === 'Link') {
-            return PDFAnnotationEditModal.forLinkAnnotation(...args)
+            return PDFAnnotationEditModal.forLinkAnnotation(...args);
         } else {
-            return PDFAnnotationEditModal.forTextMarkupAnnotation(...args)
+            return PDFAnnotationEditModal.forTextMarkupAnnotation(...args);
         }
     }
 
@@ -134,7 +134,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                                             { type: 'rgb', rgb },
                                             { linktext: false }
                                         );
-                                    })
+                                    });
                                 });
                         });
                     }
@@ -279,7 +279,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                     if (this.plugin.settings.renderMarkdownInStickyNote) {
                         setting.setDesc(`Press ${this.app.hotkeyManager.printHotkeyForCommand('markdown:toggle-preview')} to toggle preview.`);
                     } else {
-                        setting.setDesc('Tip: There is an option called "Render markdown in annotation popups when the annotation has text contents".')
+                        setting.setDesc('Tip: There is an option called "Render markdown in annotation popups when the annotation has text contents".');
                     }
                 })
                 .addTextArea((textarea) => {
@@ -359,7 +359,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
             this.previewEl.setCssStyles({
                 width: `${this.editorEl.clientWidth}px`,
                 height: `${this.editorEl.clientHeight}px`
-            })
+            });
             this.previewEl.empty();
             await MarkdownRenderer.render(this.app, this.textarea?.getValue() ?? '', this.previewEl, '', this.component);
             hookInternalLinkMouseEventHandlers(this.app, this.previewEl, this.file.path);

@@ -186,4 +186,4 @@ const isCloseTo = (prevLinkEl: HTMLElement, thisLinkEl: HTMLElement) => {
                 || Math.abs(thisRect.bottom - prevRect.top) < xThreshold
             )
         );
-}
+};

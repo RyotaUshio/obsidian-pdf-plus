@@ -236,7 +236,7 @@ class PDFPlusCalloutRenderer extends MarkdownRenderChild {
 	onload() {
 		const metadata = this.containerEl.dataset.calloutMetadata;
 		if (metadata) {
-			const rgb = metadata.split(',').map((val) => parseInt(val))
+			const rgb = metadata.split(',').map((val) => parseInt(val));
 			const isRgb = rgb.length === 3 && rgb.every((val) => 0 <= val && val <= 255);
 
 			if (isRgb) {

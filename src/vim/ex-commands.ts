@@ -123,7 +123,7 @@ export const exCommands = (vim: VimBindings): ExCommand[] => {
                 if (targets.includes('all')) targets = ['link', 'annot', 'backlink'];
                 vim.hintMode.setTarget(...targets.map((target) => {
                     switch (target) {
-                        case 'link': return VimHintTarget.Link
+                        case 'link': return VimHintTarget.Link;
                         case 'annot': return VimHintTarget.NonLinkAnnot;
                         case 'backlink': return VimHintTarget.BacklinkHighlight;
                         default: throw Error(`Unknown hint target: ${target}`);
@@ -134,14 +134,14 @@ export const exCommands = (vim: VimBindings): ExCommand[] => {
             }
         }
     ];
-}
+};
 
 
 const lint = (str: string, indentSize = 12, escapeAngleBrackets = true) => {
     str = str
         .replace(new RegExp(`^ {${indentSize}}`, 'gm'), '') // remove indentation
-        .replace(/^\s*/, '') // remove leading whitespaces and newlines
+        .replace(/^\s*/, ''); // remove leading whitespaces and newlines
     return escapeAngleBrackets ? str.replace(/([<>])/g, '\\$1') : str;
-}
+};
 
 const mapDesc = (signature: string, modes: string[], noremap = false) => `:${signature} <from> <to> - Map <from> to <to> ${noremap ? 'non-recusively ' : ''}in ${modes.length > 1 ? modes.slice(0, -1).join(', ') + ' and ' + modes.at(-1)! + ' modes' : modes[0] + ' mode'}. If <to> is an ex-command, it must be start with ":".`;

@@ -26,7 +26,7 @@ export function rgbToHex(rgb: RGB) {
 export function rgbStringToObject(rgbString: string): RGB {
     const [r, g, b] = rgbString // "R, G, B"
         .split(',')
-        .map((s) => parseInt(s.trim())) // [R, G, B];
+        .map((s) => parseInt(s.trim())); // [R, G, B];
     return { r, g, b };
 }
 
@@ -34,7 +34,7 @@ export function getObsidianDefaultHighlightColorRGB(): RGB {
     const [r, g, b] = getComputedStyle(document.body)
         .getPropertyValue('--text-highlight-bg-rgb') // "R, G, B"
         .split(',')
-        .map((s) => parseInt(s.trim())) // [R, G, B];
+        .map((s) => parseInt(s.trim())); // [R, G, B];
     return { r, g, b };
 }
 

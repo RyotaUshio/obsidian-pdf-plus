@@ -754,7 +754,8 @@ interface AppSetting extends Modal {
 
 // From https://github.com/Fevol/obsidian-typings/blob/b708f5ee3702a8622d16dab5cd0752be544c97a8/obsidian-ex.d.ts#L738
 interface CustomArrayDict<T> {
-    data: Record<string, T[]>;
+    // From 1.7.2, this is a map instead of a record.
+    data: Map<string, T[]>;
 
     add: (key: string, value: T) => void;
     remove: (key: string, value: T) => void;
@@ -1144,6 +1145,7 @@ declare module 'obsidian' {
         getConfig(name: 'tabSize'): number;
         getConfig(name: 'alwaysUpdateLinks'): boolean;
         getConfig(name: 'newFileLocation'): 'root' | 'current' | 'folder';
+        getConfig(name: 'attachmentFolderPath'): string;
         getAvailablePath(pathWithoutExtension: string, extension: string): string;
     }
 

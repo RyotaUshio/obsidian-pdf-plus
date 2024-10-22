@@ -173,7 +173,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     getMarkdownLeafInSidebar(sidebarType: SidebarType) {
         if (this.settings.singleMDLeafInSidebar) {
             return this.lib.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
-                ?? this.lib.workspace.getNewLeafInSidebar(sidebarType)
+                ?? this.lib.workspace.getNewLeafInSidebar(sidebarType);
         } else {
             return this.lib.workspace.getNewLeafInSidebar(sidebarType);
         }
@@ -276,7 +276,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                 return this.app.workspace.createLeafBySplit(leaf, 'horizontal', direction === 'up');
             }
         }
-        return this.app.workspace.createLeafInParent(this.app.workspace.rootSplit, 0)
+        return this.app.workspace.createLeafInParent(this.app.workspace.rootSplit, 0);
     }
 
     getLeafInSidebar(sidebarType: SidebarType): WorkspaceLeaf {

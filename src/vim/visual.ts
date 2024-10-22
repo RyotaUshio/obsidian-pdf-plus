@@ -138,7 +138,7 @@ export class VimVisualMode extends VimBindingsMode {
     }
 
     getTextDivContainingNode(node: Node) {
-        const element = node.instanceOf(Element) ? node : node.parentElement
+        const element = node.instanceOf(Element) ? node : node.parentElement;
         if (!element) return null;
 
         const textDiv = element.closest<HTMLElement>('.textLayerNode');
@@ -188,7 +188,7 @@ export class VimVisualMode extends VimBindingsMode {
 
         const isNodeNonemptyTextDiv = (node: Node): node is HTMLElement => {
             return node.instanceOf(HTMLElement) && node.hasClass('textLayerNode') && !!node.textContent;
-        }
+        };
 
         if (offset < 0) {
             let prevDiv = textDiv.previousSibling;

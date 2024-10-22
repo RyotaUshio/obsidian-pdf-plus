@@ -13,4 +13,4 @@ export const patchPDFInternalFromPDFEmbed = (plugin: PDFPlus): boolean => {
     // don't return true here; if the patch is successful, plugin.patchStatus.pdfInternals
     // will be set to true when this function is called next time
     return false;
-}
+};

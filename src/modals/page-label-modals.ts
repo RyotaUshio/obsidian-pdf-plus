@@ -62,7 +62,7 @@ class PDFPageLabelSettingsForRange {
                         if (isPageLabelNumberingStyle(value)) this.dict.style = value;
                         else delete this.dict.style;
                     });
-            })
+            });
     }
 
     addStartSetting() {
@@ -118,7 +118,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                     setting.descEl,
                     '',
                     this.component
-                )
+                );
             })
             .then((setting) => this.contentEl.prepend(setting.settingEl));
 
@@ -169,7 +169,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
         const pageCount = doc.getPageCount();
 
         for (let i = 0; i < pageLabels.ranges.length; i++) {
-            const rangeEl = this.controlEl.createDiv('page-label-range')
+            const rangeEl = this.controlEl.createDiv('page-label-range');
 
             const range = pageLabels.ranges[i];
             const prevRange = pageLabels.ranges[i - 1];
@@ -187,7 +187,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                                     pageLabels.divideRangeAtPage(range.pageFrom + 1, false);
                                     this.redisplay();
                                 });
-                        })
+                        });
                     }
                 })
                 .addExtraButton((button) => {
@@ -245,7 +245,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                             if (text.disabled) {
                                 setTooltip(text.inputEl, 'The last range cannot be extended.');
                             }
-                        })
+                        });
                     text.inputEl.addEventListener('blur', () => this.redisplay(), { once: true });
                 })
                 .then((setting) => this.addPreviewButton(setting, pageTo));
@@ -260,7 +260,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
             .setHeading()
             .then((setting) => {
                 const iconEl = createDiv();
-                setting.settingEl.prepend(iconEl)
+                setting.settingEl.prepend(iconEl);
                 setIcon(iconEl, iconName);
             });
     }
@@ -277,9 +277,9 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                             linktext: this.file.path + `#page=${page}`,
                             targetEl: button.extraSettingsEl,
                             hoverParent: this.component
-                        })
+                        });
                     });
-                })
+                });
         });
     }
 
@@ -293,7 +293,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                         .onClick(async () => {
                             if (this.pageLabels && this.doc) {
                                 if (this.pageLabels.rangeCount() > 0) {
-                                    this.pageLabels.setToDocument(this.doc)
+                                    this.pageLabels.setToDocument(this.doc);
                                 } else PDFPageLabels.removeFromDocument(this.doc);
                                 await this.app.vault.modifyBinary(this.file, await this.doc.save());
                             } else {

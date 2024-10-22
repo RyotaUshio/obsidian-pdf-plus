@@ -53,7 +53,7 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
             return resolve(true);
         });
     });
-}
+};
 
 function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
     const { lib } = plugin;
@@ -65,7 +65,7 @@ function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
         // Clean up the old keymaps already registered by PDFViewerChild,
         // which causes an error because the listener references the old instance of PDFFindBar.
         // This keymap hanldler will be re-registered in `PDFViewerChild.load` by the following `viewer.load()`.
-        const oldEscapeHandler = viewer.scope.keys.find((handler) => handler.modifiers === '' && handler.key === 'Escape')
+        const oldEscapeHandler = viewer.scope.keys.find((handler) => handler.modifiers === '' && handler.key === 'Escape');
         if (oldEscapeHandler) viewer.scope.unregister(oldEscapeHandler);
 
         viewer.load();
@@ -88,17 +88,17 @@ const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerC
                 });
 
                 return ret;
-            }
+            };
         },
         onload(old) {
             return async function (this: PDFViewerComponent) {
                 const ret = await old.call(this);
                 VimBindings.register(plugin, this);
                 return ret;
-            }
+            };
         }
     }));
-}
+};
 
 const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
     const { app, lib } = plugin;
@@ -125,7 +125,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     let isModEvent = false;
                     const updateIsModEvent = (evt: MouseEvent) => {
                         isModEvent ||= isModifierName(plugin.settings.showContextMenuOnMouseUpIf) && Keymap.isModifier(evt, plugin.settings.showContextMenuOnMouseUpIf);
-                    }
+                    };
 
                     this.component.registerDomEvent(viewerContainerEl, 'pointerdown', (evt) => {
                         lib.highlight.viewer.clearRectHighlight(this);
@@ -184,7 +184,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         new Notice(`${plugin.manifest.name}: An error occurred while mounting the color palette to the toolbar.`);
                         console.error(e);
                     }
-                }
+                };
 
                 addColorPaletteToToolbar();
                 plugin.on('update-dom', addColorPaletteToToolbar);
@@ -215,14 +215,14 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 return ret;
-            }
+            };
 
         },
         unload(old) {
             return function (this: PDFViewerChild) {
                 this.component?.unload();
                 return old.call(this);
-            }
+            };
         },
         onResize(old) {
             return function (this: PDFViewerChild) {
@@ -232,7 +232,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 return old.call(this);
-            }
+            };
         },
         loadFile(old) {
             return async function (this: PDFViewerChild, file: TFile, subpath?: string) {
@@ -407,7 +407,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         }, plugin.settings.viewSyncPageDebounceInterval * 1000)
                     );
                 }
-            }
+            };
         },
         /** 
          * Modified applySubpath() from Obsidian's app.js so that 
@@ -422,22 +422,22 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 const _parseInt = (num: string) => {
                     if (!num) return null;
                     const parsed = parseInt(num);
-                    return Number.isNaN(parsed) ? null : parsed
+                    return Number.isNaN(parsed) ? null : parsed;
                 };
 
                 const _parseFloat = (num: string) => {
                     if (!num) return null;
                     const parsed = parseFloat(num);
-                    return Number.isNaN(parsed) ? null : parsed
+                    return Number.isNaN(parsed) ? null : parsed;
                 };
 
                 if (subpath) {
-                    subpath = subpath.startsWith('#') ? subpath.substring(1) : subpath
+                    subpath = subpath.startsWith('#') ? subpath.substring(1) : subpath;
                     const pdfViewer = this.pdfViewer;
                     const params = new URLSearchParams(subpath);
 
                     if (params.has('search') && this.findBar) {
-                        const query = params.get('search')!
+                        const query = params.get('search')!;
 
                         const settings: Partial<PDFSearchSettings> = {};
                         if (plugin.settings.searchLinkHighlightAll !== 'default') {
@@ -461,7 +461,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                     settings[key] = value === 'true';
                                 }
                             }
-                        }
+                        };
 
                         parseSearchSettings('highlightAll');
                         parseSearchSettings('caseSensitive');
@@ -553,19 +553,19 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             dest: JSON.stringify(dest),
                             highlight,
                             // height
-                        }
+                        };
                     })(subpath);
 
                     const pdfLoadingTask = pdfViewer.pdfLoadingTask;
                     if (pdfLoadingTask) {
-                        pdfLoadingTask.promise.then(() => pdfViewer.applySubpath(dest))
+                        pdfLoadingTask.promise.then(() => pdfViewer.applySubpath(dest));
                     } else {
                         pdfViewer.subpath = dest;
                     }
 
                     this.subpathHighlight = highlight;
                 }
-            }
+            };
         },
         getMarkdownLink(old) {
             return function (this: PDFViewerChild, subpath?: string, alias?: string, embed?: boolean): string {
@@ -573,7 +573,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 const embedLink = lib.generateMarkdownLink(this.file, '', subpath, alias);
                 if (embed) return embedLink;
                 return embedLink.slice(1);
-            }
+            };
         },
         getPageLinkAlias(old) {
             return function (this: PDFViewerChild, page: number): string {
@@ -583,7 +583,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 return old.call(this, page);
-            }
+            };
         },
         highlightText(old) {
             return function (this: PDFViewerChild, page: number, range: [[number, number], [number, number]]) {
@@ -620,7 +620,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }, true);
 
                 plugin.trigger('highlight', { type: 'selection', source: 'obsidian', pageNumber: page, child: this });
-            }
+            };
         },
         highlightAnnotation(old) {
             return function (this: PDFViewerChild, page: number, id: string) {
@@ -628,7 +628,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     if (this.annotationHighlight) return this.annotationHighlight;
                     const pageView = this.getPage(page);
                     return pageView.annotationLayer?.div.querySelector<HTMLElement>(`[data-annotation-id="${id}"]`);
-                }
+                };
 
                 if (plugin.settings.trimSelectionEmbed
                     && this.pdfViewer.isEmbed
@@ -657,12 +657,12 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     activeWindow.setTimeout(() => {
                         window.pdfjsViewer.scrollIntoView(el, {
                             top: - plugin.settings.embedMargin
-                        }, true)
+                        }, true);
                     });
                 }
 
                 plugin.trigger('highlight', { type: 'annotation', source: 'obsidian', pageNumber: page, child: this });
-            }
+            };
         },
         clearTextHighlight(old) {
             return function (this: PDFViewerChild) {
@@ -670,7 +670,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     return;
                 }
                 old.call(this);
-            }
+            };
         },
         clearAnnotationHighlight(old) {
             return function (this: PDFViewerChild) {
@@ -678,13 +678,13 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     return;
                 }
                 old.call(this);
-            }
+            };
         },
         clearEphemeralUI(old) {
             return function (this: PDFViewerChild) {
                 old.call(this);
                 lib.highlight.viewer.clearRectHighlight(this);
-            }
+            };
         },
         renderAnnotationPopup(old) {
             return function (this: PDFViewerChild, annotationElement: AnnotationElement, ...args: any[]) {
@@ -731,7 +731,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                 setIcon(iconEl, 'lucide-copy');
                                 setTooltip(iconEl, 'Copy link');
                                 iconEl.addEventListener('click', async () => {
-                                    const palette = lib.getColorPaletteAssociatedWithNode(popupMetaEl)
+                                    const palette = lib.getColorPaletteAssociatedWithNode(popupMetaEl);
                                     if (!palette) return;
                                     const template = plugin.settings.copyCommands[palette.actionIndex].template;
 
@@ -821,13 +821,13 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 return ret;
-            }
+            };
         },
         destroyAnnotationPopup(old) {
             return function () {
                 plugin.lastAnnotationPopupChild = null;
                 return old.call(this);
-            }
+            };
         },
         onContextMenu(old) {
             return async function (evt: MouseEvent): Promise<void> {
@@ -839,7 +839,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 onContextMenu(plugin, this, evt);
-            }
+            };
         },
         onMobileCopy(old) {
             return function (this: PDFViewerChild, evt: ClipboardEvent, pageView: PDFPageView) {
@@ -853,7 +853,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     case 'obsidian':
                         return old.call(this, evt, pageView);
                 }
-            }
+            };
         },
         onThumbnailContextMenu(old) {
             return function (this: PDFViewerChild, evt: MouseEvent) {
@@ -862,7 +862,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 onThumbnailContextMenu(plugin, this, evt);
-            }
+            };
         },
         getTextByRect(old) {
             return function (this: PDFViewerChild, pageView: PDFPageView, rect: Rect) {
@@ -906,7 +906,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 }
 
                 return text;
-            }
+            };
         },
     }));
 
@@ -922,7 +922,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             dataTransfer.setData('text/plain', text);
         }
     };
-}
+};
 
 /** Monkey-patch ObsidianViewer so that it can open external PDF files. */
 const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
@@ -942,7 +942,7 @@ const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
                 delete this.pdfPlusRedirect;
 
                 return await old.call(this, args);
-            }
+            };
         },
         load(old) {
             return function (this: ObsidianViewer, doc: PDFDocumentProxy, ...args: any[]) {
@@ -955,7 +955,7 @@ const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
                 delete this.pdfPlusCallbacksOnDocumentLoaded;
 
                 return old.call(this, doc, ...args);
-            }
+            };
         }
     }));
 };
@@ -970,7 +970,7 @@ const patchObsidianServices = (plugin: PDFPlus) => {
                     spreadModeOnLoad: plugin.settings.spreadModeOnLoad,
                 });
                 return old.call(this, ...args);
-            }
+            };
         }
     }));
 };

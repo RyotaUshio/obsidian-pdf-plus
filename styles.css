@@ -467,6 +467,10 @@ body.pdf-plus-backlink-selection-underline {
     }
 }
 
+.pdf-plus-restore-default-modal {
+    user-select: text;
+}
+
 .pdf-content-container {
     --sidebar-width: var(--pdf-plus-sidebar-width, 140px);
 }

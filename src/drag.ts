@@ -34,7 +34,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                     title,
                     getText: textGenerator,
                     item
-                }
+                };
             });
 
             app.dragManager.handleDrop(item.selfEl, (evt, draggable, dragging) => {
@@ -74,10 +74,10 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                         dropEffect: 'move',
                         hoverEl: item.el,
                         hoverClass: 'is-being-dragged-over',
-                    }
+                    };
                 }
             }, false);
-        })())
+        })());
     }
 
     await Promise.all(promises);
@@ -116,10 +116,10 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                 dropEffect: 'move',
                 hoverEl: pdfOutlineViewer.childrenEl,
                 hoverClass: 'is-being-dragged-over',
-            }
+            };
         }
     }, false);
-}
+};
 
 export const registerThumbnailDrag = (plugin: PDFPlus, child: PDFViewerChild, file: TFile) => {
     const { app, lib } = plugin;
@@ -150,11 +150,11 @@ export const registerThumbnailDrag = (plugin: PDFPlus, child: PDFViewerChild, fi
                             file, pageNumber, `#page=${pageNumber}`, '', '', sourcePath
                         );
                     }
-                }
+                };
             });
 
         });
-}
+};
 
 export const registerAnnotationPopupDrag = (plugin: PDFPlus, popupEl: HTMLElement, child: PDFViewerChild, file: TFile, page: number, id: string) => {
     const { app, lib } = plugin;
@@ -177,7 +177,7 @@ export const registerAnnotationPopupDrag = (plugin: PDFPlus, popupEl: HTMLElemen
                     getText: (sourcePath: string) => {
                         return lib.copyLink.getTextToCopy(child, template, undefined, file, page, `#page=${page}&annotation=${id}`, text ?? '', '', sourcePath);
                     }
-                }
+                };
             });
         });
-}
+};

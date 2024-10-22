@@ -77,14 +77,14 @@ export class ScrollController {
         if (!this.viewerContainerEl) return;
         const pageDiv = this.getPageDiv();
         if (!pageDiv) return;
-        this.viewerContainerEl.scrollTo({ top: pageDiv.offsetTop, behavior: (this.settings.vimSmoothScroll ? 'smooth' : 'instant') as ScrollBehavior })
+        this.viewerContainerEl.scrollTo({ top: pageDiv.offsetTop, behavior: (this.settings.vimSmoothScroll ? 'smooth' : 'instant') as ScrollBehavior });
     }
 
     scrollToBottom() {
         if (!this.viewerContainerEl) return;
         const pageDiv = this.getPageDiv();
         if (!pageDiv) return;
-        this.viewerContainerEl.scrollTo({ top: pageDiv.offsetTop + pageDiv.offsetHeight - this.viewerContainerEl.clientHeight, behavior: (this.settings.vimSmoothScroll ? 'smooth' : 'instant') as ScrollBehavior })
+        this.viewerContainerEl.scrollTo({ top: pageDiv.offsetTop + pageDiv.offsetHeight - this.viewerContainerEl.clientHeight, behavior: (this.settings.vimSmoothScroll ? 'smooth' : 'instant') as ScrollBehavior });
     }
 
     /** Here "page" does not mean the PDF page but the "visual page", i.e. the region of the screen that is currently visible. */

@@ -1,3 +1,4 @@
+import { Modifier } from 'obsidian';
 import { App, Component, Keymap, Platform } from 'obsidian';
 
 
@@ -102,7 +103,7 @@ export function onModKeyPress(evt: MouseEvent | TouchEvent | KeyboardEvent, targ
         doc.removeEventListener('keydown', onKeyDown);
         doc.removeEventListener('mouseover', onMouseOver);
         doc.removeEventListener('mouseleave', onMouseLeave);
-    }
+    };
 
     // Watch for the mod key press
     const onKeyDown = (e: KeyboardEvent) => {
@@ -122,7 +123,7 @@ export function onModKeyPress(evt: MouseEvent | TouchEvent | KeyboardEvent, targ
     // Stop watching for the mod key press when the mouse leaves the document
     const onMouseLeave = (e: MouseEvent) => {
         if (removed) return;
-        if (e.target === doc) removeHandlers()
+        if (e.target === doc) removeHandlers();
     };
 
     doc.addEventListener('keydown', onKeyDown);
@@ -206,5 +207,16 @@ export function hover(target: HTMLElement, mod?: boolean, options?: MouseEventIn
         clientX: x,
         clientY: y,
         ...options
+    });
+}
+
+const MODIFIERS: Modifier[] = ['Mod', 'Ctrl', 'Meta', 'Shift', 'Alt'];
+
+export function matchModifiers(evt: MouseEvent, modifiers: Modifier[]): boolean {
+    return MODIFIERS.every((modifier) => {
+        if (modifiers.includes(modifier)) {
+            return Keymap.isModifier(evt, modifier);
+        }
+        return !Keymap.isModifier(evt, modifier);
     });
 }

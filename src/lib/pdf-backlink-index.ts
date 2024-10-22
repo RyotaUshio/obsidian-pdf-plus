@@ -112,7 +112,7 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
         cache.page = pageNumber;
 
         if (params.has('selection')) {
-            const selectionPos = params.get('selection')!.split(',').map((s) => parseInt(s.trim()))
+            const selectionPos = params.get('selection')!.split(',').map((s) => parseInt(s.trim()));
             if (selectionPos.length === 4 && selectionPos.every((pos) => !isNaN(pos))) {
                 const [beginIndex, beginOffset, endIndex, endOffset] = selectionPos;
                 cache.selection = { beginIndex, beginOffset, endIndex, endOffset };
@@ -340,7 +340,7 @@ export class PDFBacklinkCache {
     }
 
     set selection(selection: PDFBacklinkCache['_selection']) {
-        const pageIndex = this.getPageIndex()
+        const pageIndex = this.getPageIndex();
 
         if (pageIndex) {
             if (this.selection) {

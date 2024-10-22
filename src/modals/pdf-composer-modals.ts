@@ -51,7 +51,7 @@ export class PDFPageDeleteModal extends PDFPlusModal {
                     .setButtonText('Cancel')
                     .onClick(() => {
                         this.#resolve(false);
-                        this.close()
+                        this.close();
                     });
             })
             .then((setting) => setting.setClass('no-border'));
@@ -114,7 +114,7 @@ export class PDFComposerModal extends PDFPlusModal {
         if (this.askPageLabelUpdateMethod || this.askInPlace) this.open();
         else this.#resolve({ pageLabelUpdateMethod: this.defaultMethod, inPlace: this.defaultInPlace });
 
-        return this
+        return this;
     }
 
     then(callback: (keepLabels: boolean, inPlace: boolean) => any) {
@@ -138,7 +138,7 @@ export class PDFComposerModal extends PDFPlusModal {
             new Setting(this.contentEl)
                 .setName('Update the page labels?')
                 .setDesc(createFragment((el) => {
-                    el.createEl('a', { text: 'Learn more', href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels' })
+                    el.createEl('a', { text: 'Learn more', href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels' });
                 }))
                 .addDropdown((dropdown) => {
                     dropdown

@@ -218,7 +218,7 @@ function* hintnames_simple(
     for (let taglen = 1; true; taglen++) {
         yield* map(permutationsWithReplacement(hintchars, taglen), e =>
             e.join(''),
-        )
+        );
     }
 }
 
@@ -298,5 +298,5 @@ function* map<T>(arr: Iterable<T>, func: (v: T) => any) {
  * Taken from https://github.com/tridactyl/tridactyl/blob/4a4c9c7306b436611088b6ff2dceff77e7ccbfd6/src/lib/number.mod.ts#L9-L12
  */
 function knuth_mod(dividend: number, divisor: number) {
-    return dividend - divisor * Math.floor(dividend / divisor)
+    return dividend - divisor * Math.floor(dividend / divisor);
 }

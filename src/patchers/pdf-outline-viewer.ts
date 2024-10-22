@@ -18,9 +18,9 @@ export const patchPDFOutlineViewer = (plugin: PDFPlus, pdfOutlineViewer: PDFOutl
                 }
 
                 onOutlineItemContextMenu(plugin, child, file, item, evt);
-            }
+            };
         }
     }));
 
     return true;
-}
+};

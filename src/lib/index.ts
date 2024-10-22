@@ -19,11 +19,12 @@ import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
 import * as utils from 'utils';
+import { DummyFileManager } from './dummy-file-manager';
 
 
 export class PDFPlusLib {
     app: App;
-    plugin: PDFPlus
+    plugin: PDFPlus;
 
     PDFOutlines = PDFOutlines;
     NameTree = NameTree;
@@ -37,6 +38,7 @@ export class PDFPlusLib {
     highlight: HighlightLib;
     workspace: WorkspaceLib;
     composer: PDFComposer;
+    dummyFileManager: DummyFileManager;
     speech: Speech;
 
     utils = utils;
@@ -50,6 +52,7 @@ export class PDFPlusLib {
         this.highlight = new HighlightLib(plugin);
         this.workspace = new WorkspaceLib(plugin);
         this.composer = new PDFComposer(plugin);
+        this.dummyFileManager = new DummyFileManager(plugin);
         this.speech = new Speech(plugin);
     }
 
@@ -206,7 +209,7 @@ export class PDFPlusLib {
     getColorPaletteAssociatedWithNode(node: Node) {
         const toolbarEl = this.getToolbarAssociatedWithNode(node);
         if (!toolbarEl) return null;
-        const paletteEl = toolbarEl.querySelector<HTMLElement>('.' + ColorPalette.CLS)
+        const paletteEl = toolbarEl.querySelector<HTMLElement>('.' + ColorPalette.CLS);
         if (!paletteEl) return null;
 
         return ColorPalette.elInstanceMap.get(paletteEl) ?? null;
@@ -255,7 +258,7 @@ export class PDFPlusLib {
                 if (!child && c.containerEl.contains(node)) {
                     child = c;
                 }
-            })
+            });
         }
 
         return child ?? null;
@@ -306,7 +309,7 @@ export class PDFPlusLib {
             ...dest
                 .slice(2) as (number | null)[]
             // .filter((param: number | null): param is number => typeof param === 'number')
-        ]
+        ];
     }
 
     normalizePdfLibDestArray(dest: PDFArray, doc: PDFDocument): DestArray | null {
@@ -413,7 +416,7 @@ export class PDFPlusLib {
         return {
             page: annot.parent.page.pageNumber,
             id: annot.data.id,
-        }
+        };
     }
 
     getAnnotationInfoFromPopupEl(popupEl: HTMLElement) {
@@ -452,8 +455,12 @@ export class PDFPlusLib {
     }
 
     /**
-     * The same as app.fileManager.generateMarkdownLink(), but respects the "alias" parameter for non-markdown files as well.
-     * See https://github.com/obsidianmd/obsidian-api/issues/154
+     * The same as `app.fileManager.generateMarkdownLink()`, but before Obsidian 1.7, it did not respect
+     * the `alias` parameter for non-markdown files.
+     * This function fixes that issue. Other than that, it is the same as the original function.
+     * 
+     * Note that this problem has been fixed in Obsidian 1.7. However, it will make sense to keep using this
+     * function for make this plugin work for older versions of Obsidian without an extra `requireApiVersion` check.
      */
     generateMarkdownLink(file: TFile, sourcePath: string, subpath?: string, alias?: string) {
         const app = this.app;
@@ -791,7 +798,7 @@ export class PDFPlusLib {
         let view: PDFView | null = null;
         this.workspace.iteratePDFViews((v) => {
             if (v.viewer.child === child) view = v;
-        })
+        });
         return view;
     }
 
@@ -817,7 +824,7 @@ export class PDFPlusLib {
 
     isCanvasView(view: View): view is CanvasView {
         // The instanceof check is necessary for correctly handling DeferredView.
-        return view instanceof TextFileView && view.getViewType() === 'canvas' && 'canvas' in view
+        return view instanceof TextFileView && view.getViewType() === 'canvas' && 'canvas' in view;
     }
 
     isCanvasPDFNode(node: CanvasNode): node is CanvasFileNode {
@@ -837,11 +844,13 @@ export class PDFPlusLib {
     }
 
     getAvailablePathForCopy(file: TFile) {
-        return this.app.vault.getAvailablePath(removeExtension(file.path), file.extension)
+        return this.app.vault.getAvailablePath(removeExtension(file.path), file.extension);
     }
 
+    
+
     get metadataCacheUpdatePromise() {
-        return new Promise<void>((resolve) => this.app.metadataCache.onCleanCache(resolve))
+        return new Promise<void>((resolve) => this.app.metadataCache.onCleanCache(resolve));
     }
 
     async renderPDFPageToCanvas(page: PDFPageProxy, resolution?: number): Promise<HTMLCanvasElement> {

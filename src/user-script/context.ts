@@ -74,12 +74,12 @@ export class UserScriptContext extends PDFPlusComponent {
         if (!this.file) return '';
         if (typeof this.page !== 'number') return '';
         
-        const res = this.lib.copyLink.getPageAndTextRangeFromSelection(this.doc.getSelection())
+        const res = this.lib.copyLink.getPageAndTextRangeFromSelection(this.doc.getSelection());
         if (!res) return '';
 
         const { page, selection } = res;
         if (!selection) return '';
-        const subpath = paramsToSubpath({ page, selection: `${selection.beginIndex},${selection.beginOffset},${selection.endIndex},${selection.endOffset}`, color: color ? color.toLowerCase() : undefined })
+        const subpath = paramsToSubpath({ page, selection: `${selection.beginIndex},${selection.beginOffset},${selection.endIndex},${selection.endOffset}`, color: color ? color.toLowerCase() : undefined });
         return this.lib.copyLink.getTextToCopy(this.child, copyFormat, displayTextFormat, this.file, this.page, subpath, this.text, color ? color.toLowerCase() : '');
     }
 

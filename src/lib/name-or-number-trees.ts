@@ -174,7 +174,7 @@ abstract class NameOrNumberTreeNode<Key extends string | number> {
 
                 return { done: false, value: [key, value] };
             }
-        }
+        };
     }
 
     keys() {
@@ -276,7 +276,7 @@ abstract class NameOrNumberTreeNode<Key extends string | number> {
             const newLeaf = this.dict.context.obj({ [this.leafKey]: namesOrNums, Limits: limits });
             const newLeafRef = this.dict.context.register(newLeaf);
             newLeafRefs.push(newLeafRef);
-        }
+        };
 
         for (const [key, value] of this) {
             keyVals.push(key, value);
@@ -340,7 +340,7 @@ abstract class NameOrNumberTreeNode<Key extends string | number> {
         const keyOrVals = this.dict.get(PDFName.of(this.leafKey));
         if (!(keyOrVals instanceof PDFArray)) return null;
         return keyOrVals.asArray().map((keyOrVal, index) => {
-            return index % 2 ? keyOrVal : this._toStringOrNumber(keyOrVal)
+            return index % 2 ? keyOrVal : this._toStringOrNumber(keyOrVal);
         });
     }
 }

@@ -234,7 +234,7 @@ export class ColorPalette extends PDFPlusComponent {
     addCopyActionDropdown(paletteEl: HTMLElement) {
         let tooltip = 'Link copy format';
         if (!this.plugin.settings.colorPaletteInToolbar) {
-            tooltip = `${this.plugin.manifest.name}: link copy options (trigger via hotkeys)`
+            tooltip = `${this.plugin.manifest.name}: link copy options (trigger via hotkeys)`;
         }
 
         const buttonEl = this.addDropdown(
@@ -427,7 +427,7 @@ export class ColorPalette extends PDFPlusComponent {
     addCropButton(paletteEl: HTMLElement) {
         this.cropButtonEl = paletteEl.createDiv('clickable-icon pdf-plus-rect-select', (el) => {
             setIcon(el, 'lucide-box-select');
-            setTooltip(el, 'Copy embed link to rectangular selection')
+            setTooltip(el, 'Copy embed link to rectangular selection');
 
             el.addEventListener('click', () => {
                 this.startRectangularSelection(false);
@@ -470,7 +470,7 @@ export class ColorPalette extends PDFPlusComponent {
             // Determine the target page based on the event target
             if (!(isTargetHTMLElement(evt, evt.target))) return;
 
-            const pageEl = evt.target.closest<HTMLElement>('.pdf-viewer div.page[data-page-number]')
+            const pageEl = evt.target.closest<HTMLElement>('.pdf-viewer div.page[data-page-number]');
             if (!pageEl) return;
 
             const pageNumber = pageEl.dataset.pageNumber;

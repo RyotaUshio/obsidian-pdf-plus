@@ -117,7 +117,7 @@ export class PDFOutlineMoveModal extends FuzzySuggestModal<PDFOutlineItem> {
     }
 
     askDestination() {
-        this.open()
+        this.open();
         return this;
     }
 

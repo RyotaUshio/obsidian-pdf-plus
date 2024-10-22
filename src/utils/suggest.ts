@@ -13,7 +13,7 @@ type FuzzyInputSuggestOptions = {
 const DEFAULT_FUZZY_INPUT_SUGGEST_OPTIONS: FuzzyInputSuggestOptions = {
     blurOnSelect: true,
     closeOnSelect: true,
-}
+};
 
 
 export abstract class FuzzyInputSuggest<T> extends AbstractInputSuggest<FuzzyMatch<T>> {
@@ -31,7 +31,7 @@ export abstract class FuzzyInputSuggest<T> extends AbstractInputSuggest<FuzzyMat
 
 	getSuggestions(query: string) {
 		const search = prepareFuzzySearch(query.trim());
-		const items = this.getItems()
+		const items = this.getItems();
 
 		const results: FuzzyMatch<T>[] = [];
 
@@ -83,7 +83,7 @@ export class FuzzyFileSuggest extends FuzzyInputSuggest<TFile> {
 
 export class FuzzyFolderSuggest extends FuzzyInputSuggest<TFolder> {
 	getItems() {
-		return this.app.vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder)
+		return this.app.vault.getAllLoadedFiles().filter((file): file is TFolder => file instanceof TFolder);
 	}
 
 	getItemText(file: TFolder) {

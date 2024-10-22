@@ -13,13 +13,13 @@ export const patchMenu = (plugin: PDFPlus) => {
                 }
                 plugin.shownMenus.add(this);
                 return old.call(this, ...args);
-            }
+            };
         },
         hide(old) {
             return function (this: Menu, ...args: any[]) {
                 plugin.shownMenus.delete(this);
                 return old.call(this, ...args);
-            }
+            };
         }
     }));
-}
+};

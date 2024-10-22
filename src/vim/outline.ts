@@ -106,7 +106,7 @@ export class VimOutlineMode extends VimBindingsMode {
             if (outline) {
                 func(outline, n);
             }
-        }
+        };
     }
 
     changeActiveItemTo(newActiveItem: PDFOutlineTreeNode) {

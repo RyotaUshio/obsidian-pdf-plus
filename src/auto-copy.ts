@@ -33,7 +33,7 @@ export class AutoCopyMode extends PDFPlusComponent {
                                 this.plugin.openSettingTab().scrollToHeading('auto-copy');
                             });
                     });
-                    menu.onHide(() => { menuShown = false });
+                    menu.onHide(() => { menuShown = false; });
                     menu.showAtMouseEvent(evt);
                     menuShown = true;
                 });

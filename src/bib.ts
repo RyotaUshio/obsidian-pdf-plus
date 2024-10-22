@@ -91,7 +91,7 @@ export class BibliographyManager extends PDFPlusComponent {
             hoverPopover.addChild(
                 new BibliographyDom(this, destId, bibContainerEl)
             );
-        }
+        };
 
         if (this.plugin.requireModKeyForLinkHover(BibliographyManager.HOVER_LINK_SOURCE_ID)) {
             onModKeyPress(event, targetEl, spawnBibPopover);

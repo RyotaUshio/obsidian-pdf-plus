@@ -79,10 +79,10 @@ export function getTextLayerNode(pageEl: HTMLElement, node: Node) {
     while (n = n.parentNode) {
         if (n === pageEl) return null;
         if (n.instanceOf(HTMLElement) && n.hasClass('textLayerNode'))
-            return n
+            return n;
     }
 
-    return null
+    return null;
 }
 
 // Taken from app.js.
@@ -144,7 +144,7 @@ export function* toPDFCoords(pageView: PDFPageView, screenCoords: Iterable<{ x: 
     const pageRect = pageEl.getBoundingClientRect();
 
     for (const { x, y } of screenCoords) {
-        const xRelativeToPage = x - (pageRect.left + borderLeft + paddingLeft)
+        const xRelativeToPage = x - (pageRect.left + borderLeft + paddingLeft);
         const yRelativeToPage = y - (pageRect.top + borderTop + paddingTop);
         yield pageView.getPagePoint(xRelativeToPage, yRelativeToPage) as [number, number];
     }
@@ -196,7 +196,7 @@ export function getModifierDictInPlatform(): Partial<Record<Modifier, string>> {
             dict[modifier] = name;
         }
     }
-    return dict
+    return dict;
 }
 
 export function isModifierName(name: string): name is Modifier {
@@ -254,7 +254,7 @@ export function parsePDFSubpath(subpath: string): { page: number } | { page: num
     const page = +params.get('page')!;
     if (isNaN(page)) return null;
     if (params.has('selection')) {
-        const selectionPos = params.get('selection')!.split(',').map((s) => parseInt(s.trim()))
+        const selectionPos = params.get('selection')!.split(',').map((s) => parseInt(s.trim()));
         if (selectionPos.length !== 4 || selectionPos.some((pos) => isNaN(pos))) return null;
         const [beginIndex, beginOffset, endIndex, endOffset] = selectionPos;
         return { page, beginIndex, beginOffset, endIndex, endOffset };
@@ -337,7 +337,7 @@ export function isAncestorOf<TreeNode extends { children: TreeNode[], parent: Tr
 
 export function getCJKRegexp(options?: Partial<{ japanese: boolean, korean: boolean }>) {
     options = { japanese: true, korean: true, ...options };
-    let pattern = ''
+    let pattern = '';
 
     // CJK Unified Ideographs
     pattern += '\\u4e00-\\u9fff';
@@ -464,7 +464,7 @@ export function binarySearchForRangeStartingWith<T>(array: T[], prefix: string, 
         const { index: to } = binarySearch(array, cmp, { findLast: true, ...options, ...{ from } });
         return { from, to };
     }
-    return null
+    return null;
 }
 
 export function areOverlapping(range1: { from: number, to: number }, range2: { from: number, to: number }) {

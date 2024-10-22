@@ -75,7 +75,7 @@ export class BacklinkPanePDFManager extends PDFPlusComponent {
 
                         backlinkItemEl.removeEventListener('mouseout', listener);
                     }
-                }
+                };
 
                 backlinkItemEl.addEventListener('mouseout', listener);
             });
@@ -237,7 +237,7 @@ export class BacklinkPanePDFPageTracker extends PDFPlusComponent {
                 view.viewer.then((child) => {
                     this.renderer.backlinkDom.filter = (file, linkCache) => {
                         return child.pdfViewer.pdfViewer ? this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache) : true;
-                    }
+                    };
                     this.updateBacklinkDom();
 
                     this.lib.registerPDFEvent('pagechanging', child.pdfViewer.eventBus, this, (data) => {
@@ -279,7 +279,7 @@ export class BacklinkPanePDFPageTracker extends PDFPlusComponent {
             if (!this.settings.showBacklinkToPage) {
                 if (!params.has('selection') && !params.has('annotation') && !params.has('offset') && !params.has('rect')) return false;
             }
-            const page = +params.get('page')!
+            const page = +params.get('page')!;
             return page === pageNumber;
         }
         return false;

@@ -33,7 +33,7 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
                         ret.zoom = pdfViewer.currentScale;
                     }
                     return ret;
-                }
+                };
             },
             setState(old) {
                 return function (state: any, result: ViewStateResult): Promise<void> {
@@ -50,7 +50,7 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
                             }
                         }
                     });
-                }
+                };
             },
             // Called inside onModify
             onLoadFile(old) {
@@ -62,7 +62,7 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
                     const state = self.getState();
                     const subpath = lib.viewStateToSubpath(state);
                     return self.viewer.loadFile(file, subpath ?? undefined);
-                }
+                };
             }
         }));
 
@@ -78,4 +78,4 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
     // will be set to true when this function is called next time, and then this function will
     // return true
     return false;
-}
+};

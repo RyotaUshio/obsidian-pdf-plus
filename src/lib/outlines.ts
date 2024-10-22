@@ -127,7 +127,7 @@ export class PDFOutlines {
                     str = str + '  '.repeat(item.depth - 1) + '- ' + item.title + '\n';
                 }
             }
-        })
+        });
         return str;
     }
 

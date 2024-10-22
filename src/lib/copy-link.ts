@@ -57,7 +57,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     };
             }
         }
-        return null
+        return null;
     }
 
     getTemplateVariables(subpathParams: Record<string, any>) {
@@ -292,7 +292,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                             }
                         }
                     }
-                })()
+                })();
             }
 
             return true;
@@ -341,7 +341,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, colorName: string, autoPaste?: boolean) {
         if (!checking) {
             (async () => {
-                const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, `#page=${page}&annotation=${id}`, text, colorName)
+                const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, `#page=${page}&annotation=${id}`, text, colorName);
                 await navigator.clipboard.writeText(evaluated);
                 this.onCopyFinish(evaluated);
 
@@ -387,14 +387,14 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
                         // TODO: Needs refactor
                         if (rects) {
-                            const left = Math.min(...rects.map((rect) => rect[0]))
-                            const top = Math.max(...rects.map((rect) => rect[3]))
+                            const left = Math.min(...rects.map((rect) => rect[0]));
+                            const top = Math.max(...rects.map((rect) => rect[3]));
                             if (typeof left === 'number' && typeof top === 'number') {
                                 this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
                             }
                         }
                     }, 300);
-                })
+                });
         }
 
         return true;
@@ -736,7 +736,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 editor.replaceSelection(text);
             } else {
                 let data = editor.getValue();
-                data = data.trimEnd()
+                data = data.trimEnd();
                 if (data) data += '\n\n';
                 data += text;
                 editor.setValue(data);
@@ -755,7 +755,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // Otherwise we just use the vault interface
             await this.app.vault.process(file, (data) => {
                 // If the file does not end with a blank line, add one
-                data = data.trimEnd()
+                data = data.trimEnd();
                 if (data) data += '\n\n';
                 data += text;
                 return data;

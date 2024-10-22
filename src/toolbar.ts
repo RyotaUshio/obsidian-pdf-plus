@@ -109,7 +109,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                                         source: toolbar,
                                         value: 'page-width'
                                     });
-                                })
+                                });
                         })
                         .addItem((item) => {
                             item.setSection('zoom')

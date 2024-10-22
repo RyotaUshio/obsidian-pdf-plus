@@ -10,7 +10,7 @@ import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement } from 'utils';
 import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
-import { ExternalPDFModal, InstallerVersionModal } from 'modals';
+import { InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
 import { BibliographyManager } from 'bib';
 
@@ -88,7 +88,6 @@ export default class PDFPlus extends Plugin {
 		await this.loadSettings();
 		await this.saveSettings();
 
-
 		this.domManager = this.addChild(new DomManager(this));
 		this.domManager.registerCalloutRenderer();
 
@@ -153,13 +152,18 @@ export default class PDFPlus extends Plugin {
 		addIcon('vim', '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="48" fill="currentColor" style="letter-spacing:2; font-weight:bold;">VIM</text>');
 	}
 
+	getDefaultSettings() {
+		// Use structuredClone to ensure DEFAULT_SETTINGS and its properties are intact
+		return structuredClone(DEFAULT_SETTINGS);
+	}
+
 	async restoreDefaultSettings() {
-		this.settings = structuredClone(DEFAULT_SETTINGS);
+		this.settings = this.getDefaultSettings();
 		await this.saveSettings();
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), await this.loadData());
+		this.settings = Object.assign(this.getDefaultSettings(), await this.loadData());
 
 		// The AnyStyle path had been saved in data.json until v0.39.3, but now it's saved in the local storage
 		if (!this.settings.anystylePath) {
@@ -253,7 +257,7 @@ export default class PDFPlus extends Plugin {
 	}
 
 	private loadContextMenuConfig() {
-		const defaultConfig = DEFAULT_SETTINGS.contextMenuConfig;
+		const defaultConfig = this.getDefaultSettings().contextMenuConfig;
 		const config: typeof defaultConfig = [];
 		for (const defaultSectionConfig of defaultConfig) {
 			const existingSectionConfig = this.settings.contextMenuConfig.find(({ id }) => id === defaultSectionConfig.id);
@@ -322,7 +326,7 @@ export default class PDFPlus extends Plugin {
 							this.openSettingTab().scrollToHeading('auto-focus');
 						});
 				});
-				menu.onHide(() => { menuShown = false });
+				menu.onHide(() => { menuShown = false; });
 				menu.showAtMouseEvent(evt);
 				menuShown = true;
 			});
@@ -346,7 +350,7 @@ export default class PDFPlus extends Plugin {
 							this.openSettingTab().scrollToHeading('auto-paste');
 						});
 				});
-				menu.onHide(() => { menuShown = false });
+				menu.onHide(() => { menuShown = false; });
 				menu.showAtMouseEvent(evt);
 				menuShown = true;
 			});
@@ -506,7 +510,7 @@ export default class PDFPlus extends Plugin {
 						// Prevent the click event causing the editor to select the link like an image embed
 						evt.preventDefault();
 					}
-				})
+				});
 			}
 
 			if (params.has('color')) {
@@ -590,6 +594,10 @@ export default class PDFPlus extends Plugin {
 		this.registerEvent(this.app.workspace.on('quit', async () => {
 			await this.cleanUpResources();
 		}));
+
+		// 
+		// https://github.com/RyotaUshio/obsidian-pdf-plus/issues/285
+		this.registerEvent(this.app.workspace.on('editor-drop', (evt, editor, info) => this.lib.dummyFileManager.createDummyFilesOnEditorDrop(evt, editor, info)));
 	}
 
 	registerOneTimeEvent<T extends Events>(events: T, ...[evt, callback, ctx]: OverloadParameters<T['on']>) {
@@ -672,7 +680,7 @@ export default class PDFPlus extends Plugin {
 
 	obsidianProtocolHandler(params: ObsidianProtocolData) {
 		if ('create-dummy' in params) {
-			return ExternalPDFModal.createDummyFilesFromObsidianUrl(this, params);
+			return this.lib.dummyFileManager.createDummyFilesFromObsidianUrl(params);
 		}
 
 		if ('setting' in params) {

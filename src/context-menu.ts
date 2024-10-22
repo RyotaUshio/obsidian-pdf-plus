@@ -39,7 +39,7 @@ export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt:
     if (!evt.defaultPrevented) {
         await showContextMenu(plugin, child, evt);
     }
-}
+};
 
 export async function showContextMenu(plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent) {
     const menu = await PDFPlusContextMenu.fromMouseEvent(plugin, child, evt);
@@ -65,7 +65,7 @@ export async function showContextMenuAtSelection(plugin: PDFPlus, child: PDFView
     const { x, y } = range.getBoundingClientRect();
 
     const menu = new PDFPlusContextMenu(plugin, child);
-    await menu.addItems()
+    await menu.addItems();
     child.clearEphemeralUI();
     plugin.shownMenus.forEach((menu) => menu.hide());
     menu.showAtPosition({ x, y }, doc);
@@ -94,7 +94,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                         (evt.view ?? activeWindow).navigator.clipboard.writeText(link);
                         const file = child.file;
                         if (file) plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'XYZ', null, null, null] };
-                    })
+                    });
             });
 
         if (lib.isEditable(child)) {
@@ -108,7 +108,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                             return;
                         }
                         lib.commands._insertPage(file, pageNumber, pageNumber);
-                    })
+                    });
             })
                 .addItem((item) => {
                     item.setTitle('Insert page after this page')
@@ -120,7 +120,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                                 return;
                             }
                             lib.commands._insertPage(file, pageNumber + 1, pageNumber);
-                        })
+                        });
                 })
                 .addItem((item) => {
                     item.setTitle('Delete page')
@@ -132,7 +132,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                                 return;
                             }
                             lib.commands._deletePage(file, pageNumber);
-                        })
+                        });
                 })
                 .addItem((item) => {
                     item.setTitle('Extract page to new file')
@@ -166,12 +166,12 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                         .onClick(() => {
                             plugin.openSettingTab().scrollToHeading('thumbnail');
                         });
-                })
+                });
         }
 
         menu.showAtMouseEvent(evt);
     }
-}
+};
 
 // TODO: split into smaller methods
 export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, item: PDFOutlineTreeNode, evt: MouseEvent) => {
@@ -201,7 +201,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                         const destArray = lib.normalizePDFJsDestArray(dest, pageNumber);
                         plugin.lastCopiedDestInfo = { file, destArray };
                     }
-                })
+                });
         });
 
     if (lib.isEditable(child)) {
@@ -375,7 +375,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
     }
 
     menu.showAtMouseEvent(evt);
-}
+};
 
 
 export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, file: TFile, evt: MouseEvent) => {
@@ -410,7 +410,7 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
             })
             .showAtMouseEvent(evt);
     }
-}
+};
 
 
 export class PDFPlusMenu extends Menu {
@@ -435,7 +435,7 @@ export class PDFPlusMenu extends Menu {
 }
 
 export class PDFPlusContextMenu extends PDFPlusMenu {
-    child: PDFViewerChild
+    child: PDFViewerChild;
 
     constructor(plugin: PDFPlus, child: PDFViewerChild) {
         super(plugin);
@@ -474,7 +474,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
 
         const isVisible = (id: string) => {
             return this.settings.contextMenuConfig.find((section) => section.id === id)?.visible;
-        }
+        };
 
         // If macOS, add "look up selection" action
         if (Platform.isMacOS && Platform.isDesktopApp && this.win.electron && selectedText && isVisible('action')) {
@@ -660,7 +660,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                                 .onClick(() => {
                                     navigator.clipboard.writeText(url);
                                 });
-                        })
+                        });
                     }
                 }
             }
@@ -722,7 +722,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                         // How does the electron version differ?
                         navigator.clipboard.writeText(annotatedText!);
                     });
-            })
+            });
         }
 
         if (selectedText && selection && isVisible('search')) {
@@ -887,13 +887,13 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
 
                 if (this.section && menu === this.rootMenu) item.setSection(this.section);
 
-                this.itemToColorName.set(item, i >= 0 ? colorNames[i] : null)
+                this.itemToColorName.set(item, i >= 0 ? colorNames[i] : null);
 
                 const hex = this.settings.colors[i >= 0 ? colorNames[i] : 'transparent'];
                 item.dom.addClass('pdf-plus-color-menu-item');
                 item.titleEl.before(createDiv('pdf-plus-color-indicator', (el) => {
                     el.setCssStyles({ backgroundColor: hex });
-                }))
+                }));
             });
         }
 

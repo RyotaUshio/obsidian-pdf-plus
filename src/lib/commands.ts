@@ -1,7 +1,7 @@
 import { Command, MarkdownView, Notice, TFile, normalizePath, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
-import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, ExternalPDFModal } from 'modals';
+import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, DummyFileModal } from 'modals';
 import { PDFOutlines } from './outlines';
 import { TemplateProcessor } from 'template';
 import { parsePDFSubpath } from 'utils';
@@ -9,6 +9,7 @@ import { DestArray } from 'typings';
 import { PDFPlusSettingTab } from 'settings';
 import { SidebarView } from 'pdfjs-enums';
 import { showContextMenuAtSelection } from 'context-menu';
+import { RestoreDefaultModal } from 'modals/restore-default-modal';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -187,6 +188,10 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'create-dummy',
                 name: 'Create dummy file for external PDF',
                 callback: () => this.createDummyForExternalPDF()
+            }, {
+                id: 'restore-default',
+                name: 'Restore default settings',
+                callback: () => (new RestoreDefaultModal(this.plugin)).open()
             }
         ];
 
@@ -513,10 +518,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     addPage(checking: boolean) {
-        if (!this.lib.composer.isEnabled()) return false;
+        const child = this.lib.getPDFViewerChild(true);
+        if (!child || !this.lib.isEditable(child)) return false;
 
-        const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== 'pdf') return false;
+        const file = child.file;
+        if (!file) return false;
 
         if (!checking) this.lib.composer.addPage(file);
 
@@ -524,11 +530,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     insertPage(checking: boolean, before: boolean) {
-        if (!this.lib.composer.isEnabled()) return false;
-
         const view = this.lib.workspace.getActivePDFView();
         if (!view || !view.file) return false;
         const file = view.file;
+        const child = view.viewer.child;
+        if (!child || !this.lib.isEditable(child)) return false;
 
         const basePage = view.getState().page;
         const page = basePage + (before ? 0 : 1);
@@ -558,11 +564,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     deletePage(checking: boolean) {
-        if (!this.lib.composer.isEnabled()) return false;
-
         const view = this.lib.workspace.getActivePDFView();
         if (!view || !view.file) return false;
         const file = view.file;
+        const child = view.viewer.child;
+        if (!child || !this.lib.isEditable(child)) return false;
 
         const page = view.getState().page;
 
@@ -590,12 +596,12 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     extractThisPage(checking: boolean) {
-        if (!this.lib.composer.isEnabled()) return false;
-
         const view = this.lib.workspace.getActivePDFView();
         if (!view) return false;
         const file = view.file;
         if (!file) return false;
+        const child = view.viewer.child;
+        if (!child || !this.lib.isEditable(child)) return false;
 
         if (!checking) {
             const page = view.getState().page;
@@ -633,12 +639,12 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     dividePDF(checking: boolean) {
-        if (!this.lib.composer.isEnabled()) return false;
-
         const view = this.lib.workspace.getActivePDFView();
         if (!view) return false;
         const file = view.file;
         if (!file) return false;
+        const child = view.viewer.child;
+        if (!child || !this.lib.isEditable(child)) return false;
 
         if (!checking) {
             const page = view.getState().page;
@@ -897,7 +903,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                             // See the docstring of getTextToCopy for more details. 
                             comment
                         );
-                    })
+                    });
                 });
 
                 navigator.clipboard.writeText(data);
@@ -911,7 +917,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     copyDebugInfo() {
         const settings = Object.assign({}, this.settings, { author: '*'.repeat(this.settings.author.length) });
         // @ts-ignore
-        const fullStyleSettings = this.app.plugins.plugins['obsidian-style-settings']?.settingsManager.settings
+        const fullStyleSettings = this.app.plugins.plugins['obsidian-style-settings']?.settingsManager.settings;
         const styleSettings = fullStyleSettings ? Object.fromEntries(
             Object.entries(fullStyleSettings)
                 .filter(([key]) => key.startsWith('pdf-plus@@'))
@@ -979,7 +985,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     createDummyForExternalPDF() {
-        new ExternalPDFModal(this.plugin).open();
+        new DummyFileModal(this.plugin).open();
     }
 
     showContextMenu(checking: boolean) {

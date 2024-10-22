@@ -31,7 +31,7 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         return await this.linkUpdater.updateLinks(
             () => this.fileOperator.addPage(file),
             [file],
-            (f, n) => { return {} }
+            (f, n) => { return {}; }
         );
     }
 
@@ -39,7 +39,7 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         return await this.linkUpdater.updateLinks(
             () => this.fileOperator.insertPage(file, pageNumber, basePageNumber, keepLabels),
             [file],
-            (f, n) => { return { pageNumber: typeof n === 'number' && n >= pageNumber ? n + 1 : n } }
+            (f, n) => { return { pageNumber: typeof n === 'number' && n >= pageNumber ? n + 1 : n }; }
         );
     }
 
@@ -47,7 +47,7 @@ export class PDFComposer extends PDFPlusLibSubmodule {
         return await this.linkUpdater.updateLinks(
             () => this.fileOperator.removePage(file, pageNumber, keepLabels),
             [file],
-            (f, n) => { return { pageNumber: typeof n === 'number' && n > pageNumber ? n - 1 : n } }
+            (f, n) => { return { pageNumber: typeof n === 'number' && n > pageNumber ? n - 1 : n }; }
         );
     }
 
@@ -191,7 +191,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         const resultFile = await this.write(file1.path, doc1, true);
         if (resultFile === null) return null;
 
-        await this.app.vault.delete(file2);
+        await this.app.fileManager.trashFile(file2);
 
         return resultFile;
     }
@@ -214,7 +214,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         ]);
 
         // Get the pages to keep in the source file (pages not in the `pages` array)
-        const srcPages = []
+        const srcPages = [];
         for (let page = 1; page <= srcDoc.getPageCount(); page++) {
             if (!pages.includes(page)) srcPages.push(page);
         }
@@ -257,7 +257,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
         const doc = await this.read(srcFile);
 
         // Get the pages not to include in the resulting document (pages not in the `pages` array)
-        const pagesToRemove = []
+        const pagesToRemove = [];
         for (let page = 1; page <= doc.getPageCount(); page++) {
             if (!pages.includes(page)) pagesToRemove.push(page);
         }
@@ -336,7 +336,7 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
         await Promise.all(promises);
 
         if (counts.links) {
-            new Notice(`${this.plugin.manifest.name}: Updated ${counts.links} links in ${counts.files} files.`)
+            new Notice(`${this.plugin.manifest.name}: Updated ${counts.links} links in ${counts.files} files.`);
         }
 
         return newFile;

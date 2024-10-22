@@ -117,7 +117,7 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
                 linktext = await this.getLinkText(event);
             } catch (e) {
                 if (e.name === 'UnknownErrorException') {
-                    return console.warn(`${this.plugin.manifest.name}: The destination was not found in this document.`)
+                    return console.warn(`${this.plugin.manifest.name}: The destination was not found in this document.`);
                 }
                 throw e;
             }

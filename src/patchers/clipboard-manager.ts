@@ -42,7 +42,7 @@ export const patchClipboardManager = (plugin: PDFPlus) => {
                     setDragEffect(evt, 'link');
                     app.dragManager.setAction('Insert link here');
                 }
-            }
+            };
         },
         handleDrop(old) {
             return function (this: ClipboardManager, evt: DragEvent): boolean | undefined {
@@ -79,7 +79,7 @@ export const patchClipboardManager = (plugin: PDFPlus) => {
                 }
 
                 return false;
-            }
+            };
         }
     }));
 
@@ -108,6 +108,6 @@ function setDragEffect(evt: DragEvent, dropEffect: DropEffect) {
         return evt.dataTransfer.dropEffect = dropEffect;
     const allowDropAffects = allowDropEffectMap[evt.dataTransfer.effectAllowed];
     if (allowDropAffects.contains(dropEffect)) {
-        evt.dataTransfer.dropEffect = dropEffect
+        evt.dataTransfer.dropEffect = dropEffect;
     }
 }

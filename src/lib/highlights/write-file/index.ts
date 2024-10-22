@@ -51,7 +51,7 @@ export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
                 file: child.file,
                 page,
                 ...await this.addAnnotationToTextRange(annotator, child, page, beginIndex, beginOffset, endIndex, endOffset)
-            }
+            };
         }
         return null;
     }

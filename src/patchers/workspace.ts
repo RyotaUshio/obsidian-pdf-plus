@@ -41,7 +41,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                             if (pdfLeaf) {
                                 if (plugin.settings.openLinkNextToExistingPDFTab && pdfLeaf.parentSplit) {
                                     const newLeaf = app.workspace.createLeafInParent(pdfLeaf.parentSplit, -1);
-                                    return lib.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState)
+                                    return lib.workspace.openPDFLinkTextInLeaf(newLeaf, linktext, sourcePath, openViewState);
                                 }
                             } else if (plugin.settings.paneTypeForFirstPDFLeaf) {
                                 const newLeaf = lib.workspace.getLeaf(plugin.settings.paneTypeForFirstPDFLeaf);
@@ -52,7 +52,7 @@ export const patchWorkspace = (plugin: PDFPlus) => {
                 }
 
                 return old.call(this, linktext, sourcePath, newLeaf, openViewState);
-            }
+            };
         }
     }));
 

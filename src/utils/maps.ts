@@ -60,7 +60,7 @@ export class BidirectionalMultiValuedMap<Key, Value> {
         const values = this.keyToValues.get(key);
         if (values) {
             for (const value of values) {
-                const keys = this.valueToKeys.get(value)
+                const keys = this.valueToKeys.get(value);
                 if (!keys) {
                     throw new Error('Value has no keys');
                 }

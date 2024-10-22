@@ -36,7 +36,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
                 if (this.getViewType() === 'backlink' && file.extension === 'pdf') {
                     this.pdfManager = new BacklinkPanePDFManager(plugin, this.backlink, file).setParents(plugin, this);
                 }
-            }
+            };
         },
         onUnloadFile(old) {
             return async function (file: TFile) {
@@ -45,7 +45,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
                     self.pdfManager.unload();
                 }
                 await old.call(this, file);
-            }
+            };
         }
     }));
 
@@ -79,7 +79,7 @@ export const patchBacklink = (plugin: PDFPlus): boolean => {
                 }
 
                 return old.call(this, file, result, content, showTitle);
-            }
+            };
         }
     }));
 

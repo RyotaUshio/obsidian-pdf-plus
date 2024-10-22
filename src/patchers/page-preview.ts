@@ -43,11 +43,11 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
                 }
 
                 old.call(this, hoverParent, targetEl, linktext, sourcePath, state);
-            }
+            };
         }
     }));
 
     plugin.patchStatus.pagePreview = true;
 
     return true;
-}
+};

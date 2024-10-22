@@ -162,7 +162,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
                                 backlinkItemEl.removeClass('hovered-backlink');
                                 el.removeEventListener('mouseout', listener);
                             }
-                        }
+                        };
                         el.addEventListener('mouseout', listener);
                     }
                 });

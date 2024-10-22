@@ -45,7 +45,7 @@ export function addProductMenuItems(rootMenu: Menu, itemAdders: ((menu: Menu) =>
                 }
             }
         }
-    }
+    };
 
     addItemsToMenu(rootMenu, 0);
 }
@@ -80,7 +80,7 @@ export function fixOpenSubmenu(menu: Menu, timeout?: number) {
             this.closeSubmenu();
         }
         return Menu.prototype.openSubmenu.call(this, item);
-    }
+    };
 
     menu.openSubmenuSoon = debounce(menu.openSubmenu.bind(menu), timeout ?? 250, true);
 }
