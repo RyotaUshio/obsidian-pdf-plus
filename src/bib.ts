@@ -228,7 +228,7 @@ class BibliographyTextExtractor {
         const dests = await this.doc.getDestinations();
         const promises: Promise<void>[] = [];
         for (const destId in dests) {
-            if (destId.startsWith('cite.')) {
+            if (/^cite\.|^bib/.test(destId)) {
                 const destArray = dests[destId] as PDFJsDestArray;
                 promises.push(
                     this.extractBibTextForDest(destArray)
