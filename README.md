@@ -3,7 +3,11 @@
 <img src="https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%238a5cf5&label=downloads&query=%24%5B%22pdf-plus%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json" alt="Obsidian Downloads">
 </p>
 
-> [!note]
+> [!warning]
+> For those who has a [Catalyst license](https://help.obsidian.md/Licenses+and+payment/Catalyst+license): PDF++ 0.40.13 might be incompatible with Obsidian's latest early-access version ([1.8.0](https://obsidian.md/changelog/2024-12-18-desktop-v1.8.0/)).
+> Please do not update Obsidian until PDF++ 0.40.14 is available. [Learn more](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/311)
+
+> [!note] 
 > All contribution to this plugin has been made by a single voluntary student (me).
 > 
 > - If you like this plugin, don't forget to star this repository!
