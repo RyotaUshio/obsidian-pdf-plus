@@ -4,7 +4,7 @@ import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { PDFBacklinkCache, PDFBacklinkIndex, PDFPageBacklinkIndex } from 'lib/pdf-backlink-index';
 import { PDFPageView, PDFViewerChild, Rect } from 'typings';
-import { MultiValuedMap, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
+import { MultiValuedMap, getTextLayerInfo, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { onBacklinkVisualizerContextMenu } from 'context-menu';
 import { BidirectionalMultiValuedMap } from 'utils';
 import { MergedRect } from 'lib/highlights/geometry';
@@ -294,9 +294,10 @@ export class RectangleCache extends PDFPlusComponent {
 
         const textLayer = pageView.textLayer;
         if (!textLayer) return null;
-        if (!textLayer.textDivs.length) return null;
+        const textLayerInfo = getTextLayerInfo(textLayer);
+        if (!textLayerInfo.textDivs.length) return null;
 
-        const rects = this.lib.highlight.geometry.computeMergedHighlightRects(textLayer, beginIndex, beginOffset, endIndex, endOffset);
+        const rects = this.lib.highlight.geometry.computeMergedHighlightRects(textLayerInfo, beginIndex, beginOffset, endIndex, endOffset);
         return rects;
     }
 }
@@ -407,7 +408,8 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
         const textLayer = pageView.textLayer;
         if (!textLayer) return;
-        if (!textLayer.textDivs.length) return;
+        const { textDivs } = getTextLayerInfo(textLayer);
+        if (!textDivs.length) return;
 
         const rects = this.rectangleCache.getRectsForSelection(pageNumber, id);
         if (!rects) return;
@@ -417,7 +419,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
             rectEl.addClasses(['pdf-plus-backlink', 'pdf-plus-backlink-selection']);
 
             // font-size is used to set the padding of this highlight in em unit
-            const textDiv = textLayer.textDivs[indices[0]];
+            const textDiv = textDivs[indices[0]];
             rectEl.setCssStyles({
                 fontSize: textDiv.style.fontSize
             });

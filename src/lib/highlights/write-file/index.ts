@@ -3,7 +3,7 @@ import { Notice, TFile } from 'obsidian';
 import PDFPlus from 'main';
 import { PdfLibIO } from './pdf-lib';
 import { PDFPlusLibSubmodule } from 'lib/submodule';
-import { parsePDFSubpath } from 'utils';
+import { getTextLayerInfo, parsePDFSubpath } from 'utils';
 import { DestArray, PDFViewerChild, Rect } from 'typings';
 
 
@@ -63,7 +63,8 @@ export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
         if (1 <= pageNumber && pageNumber <= child.pdfViewer.pagesCount) {
             const pageView = child.getPage(pageNumber);
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
-                const results = this.lib.highlight.geometry.computeMergedHighlightRects(pageView.textLayer, beginIndex, beginOffset, endIndex, endOffset);
+                const textLayerInfo = getTextLayerInfo(pageView.textLayer);
+                const results = this.lib.highlight.geometry.computeMergedHighlightRects(textLayerInfo, beginIndex, beginOffset, endIndex, endOffset);
                 const rects = results.map(({ rect }) => rect);
                 let annotationID;
                 try {

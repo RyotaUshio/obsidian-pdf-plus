@@ -11,7 +11,7 @@ import { patchPDFOutlineViewer } from 'patchers';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { camelCaseToKebabCase, getCharactersWithBoundingBoxesInPDFCoords, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
+import { camelCaseToKebabCase, getCharactersWithBoundingBoxesInPDFCoords, getTextLayerInfo, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices, PDFPageView } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim/vim';
@@ -588,26 +588,32 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         highlightText(old) {
             return function (this: PDFViewerChild, page: number, range: [[number, number], [number, number]]) {
                 const pageView = this.getPage(page);
-                const indexFirst = range[0][0];
-                const textDivFirst = pageView.textLayer?.textDivs[indexFirst];
+                const textLayer = pageView.textLayer;
+                let textDivFirst: HTMLElement | null = null;
 
-                if (plugin.settings.trimSelectionEmbed
-                    && this.pdfViewer.isEmbed
-                    && this.pdfViewer.dom
-                    && !(plugin.settings.ignoreHeightParamInPopoverPreview
-                        && this.pdfViewer.dom.containerEl.parentElement?.matches('.hover-popover'))
-                ) {
-                    const indexLast = range[1][0];
-                    const textDivLast = pageView.textLayer?.textDivs[indexLast];
+                if (textLayer) {
+                    const textDivs = getTextLayerInfo(textLayer).textDivs;
+                    const indexFirst = range[0][0];
+                    textDivFirst = textDivs[indexFirst];
 
-                    if (textDivFirst && textDivLast) {
-                        setTimeout(() => {
-                            const containerRect = this.pdfViewer.dom!.viewerContainerEl.getBoundingClientRect();
-                            const firstRect = textDivFirst.getBoundingClientRect();
-                            const lastRect = textDivLast.getBoundingClientRect();
-                            const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
-                            this.pdfViewer.setHeight(height);
-                        }, 100);
+                    if (plugin.settings.trimSelectionEmbed
+                        && this.pdfViewer.isEmbed
+                        && this.pdfViewer.dom
+                        && !(plugin.settings.ignoreHeightParamInPopoverPreview
+                            && this.pdfViewer.dom.containerEl.parentElement?.matches('.hover-popover'))
+                    ) {
+                        const indexLast = range[1][0];
+                        const textDivLast = textDivs[indexLast];
+
+                        if (textDivFirst && textDivLast) {
+                            setTimeout(() => {
+                                const containerRect = this.pdfViewer.dom!.viewerContainerEl.getBoundingClientRect();
+                                const firstRect = textDivFirst!.getBoundingClientRect();
+                                const lastRect = textDivLast.getBoundingClientRect();
+                                const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
+                                this.pdfViewer.setHeight(height);
+                            }, 100);
+                        }
                     }
                 }
 
@@ -615,9 +621,11 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     old.call(this, page, range);
                 }
 
-                window.pdfjsViewer.scrollIntoView(textDivFirst, {
-                    top: - plugin.settings.embedMargin
-                }, true);
+                if (textDivFirst) {
+                    window.pdfjsViewer.scrollIntoView(textDivFirst, {
+                        top: - plugin.settings.embedMargin
+                    }, true);
+                }
 
                 plugin.trigger('highlight', { type: 'selection', source: 'obsidian', pageNumber: page, child: this });
             };
@@ -868,10 +876,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             return function (this: PDFViewerChild, pageView: PDFPageView, rect: Rect) {
                 let text = '';
 
-                const items = pageView.textLayer?.textContentItems;
-                const divs = pageView.textLayer?.textDivs;
-
-                if (items) {
+                const textLayer = pageView.textLayer;
+                if (textLayer) {
+                    const { textContentItems: items, textDivs: divs } = getTextLayerInfo(textLayer);
                     const [left, bottom, right, top] = rect;
 
                     for (let index = 0; index < items.length; index++) {

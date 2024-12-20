@@ -415,7 +415,7 @@ interface PDFPageView {
     viewport: PageViewport;
     div: HTMLDivElement; // div.page[data-page-number][data-loaded]
     canvas: HTMLCanvasElement;
-    textLayer: TextLayerBuilder | null;
+    textLayer: TextLayerBuilder | OldTextLayerBuilder | null;
     annotationLayer: AnnotationLayerBuilder | null;
     /**
      * Converts viewport coordinates to the PDF location.
@@ -424,11 +424,43 @@ interface PDFPageView {
     getPagePoint(x: number, y: number): number[];
 }
 
+/**
+ * The TextLayerBuilder class in the customized PDF.js bundled with Obsidian v1.8.0 or later.
+ */
 interface TextLayerBuilder {
     div: HTMLDivElement; // div.textLayer
-    textDivs: HTMLElement[];
-    textContentItems: TextContentItem[]; // Specific to Obsidian's customized PDF.js
+    /** This property exists since Obsidian v1.8.0. It was private and inaccessible before then. */
+    textLayer: TextLayer;
     render(): Promise<any>;
+}
+
+/**
+ * The TextLayerBuilder class in the customized PDF.js bundled with Obsidian v1.7.7 or earlier.
+ */
+interface OldTextLayerBuilder {
+    div: HTMLDivElement; // div.textLayer
+    render(): Promise<any>;
+    /** This property does NOT exist since Obsidian 1.8.0. */
+    textDivs: HTMLElement[];
+    /** This property does NOT exist since Obsidian 1.8.0. */
+    textContentItems: TextContentItem[]; // Specific to Obsidian's customized PDF.js
+}
+
+/**
+ * In the original PDF.js, this cannot be accessed since the `TextLayerBuilder`'s `#textLayer` property is private.
+ * This was the case for Obsidian's customized PDF.js as well before Obsidian v1.8.0.
+ * 
+ * However, starting from Obsidian v1.8.0, the `textLayer` property is public, so we can access it.
+ * At the same time, several properties, including `textDivs` and `textContentItems`,
+ * have been moved to the `TextLayer` object from the parent `TextLayerBuilder` object.
+ * 
+ * The following typings are based on the PDF.js version bundled with Obsidian v1.8.0.
+ */
+interface TextLayer {
+    textDivs: HTMLElement[];
+    textContentItemsStr: string[];
+    /** Specific to Obsidian's customized PDF.js */
+    textContentItems: TextContentItem[];
 }
 
 interface AnnotationLayerBuilder {
@@ -439,6 +471,12 @@ interface AnnotationLayerBuilder {
     annotationStorage: AnnotationStorage;
     renderForms: boolean;
     render(): Promise<any>;
+}
+
+interface AnnotationLayer {
+    getAnnotation(id: string): AnnotationElement;
+    page: PDFPageProxy;
+    viewport: PageViewport;
 }
 
 /**
@@ -522,12 +560,6 @@ interface PDFEmbed extends Embed {
     subpath?: string;
     containerEl: HTMLElement;
     viewer: PDFViewerComponent;
-}
-
-interface AnnotationLayer {
-    getAnnotation(id: string): AnnotationElement;
-    page: PDFPageProxy;
-    viewport: PageViewport;
 }
 
 /** Backlink view */

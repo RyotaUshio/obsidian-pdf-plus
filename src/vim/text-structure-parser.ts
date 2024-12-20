@@ -2,7 +2,7 @@ import { TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
-import { areOverlapping, areOverlappingStrictly, binarySearch, getNodeAndOffsetOfTextPos, toPDFCoords } from 'utils';
+import { areOverlapping, areOverlappingStrictly, binarySearch, getNodeAndOffsetOfTextPos, getTextLayerInfo, toPDFCoords } from 'utils';
 import { PDFPageView, PDFViewer, TextContentItem } from 'typings';
 
 
@@ -31,9 +31,9 @@ export class PDFDocumentTextStructureParser extends PDFPlusComponent {
         if (!parser) {
             const page = this.pdfViewer.getPageView(pageNumber - 1);
             if (page) {
-                const items = page.textLayer?.textContentItems;
-                const divs = page.textLayer?.textDivs;
-                if (items && divs) {
+                const textLayer = page.textLayer;
+                if (textLayer) {
+                    const { textContentItems: items, textDivs: divs } = getTextLayerInfo(textLayer);
                     parser = new PDFPageTextStructureParser(page, items, divs);
                     this.pages.set(pageNumber, parser);
                 }
@@ -206,7 +206,7 @@ export class PDFPageTextStructureParser {
         range.setStart(textNode, offset);
         range.setEnd(textNode, offset + 1);
         const rect = range.getBoundingClientRect();
-        const [[from], [to]] = [...toPDFCoords(this.pageView, [{x: rect.left, y: rect.bottom}, {x: rect.right, y: rect.top}])];
+        const [[from], [to]] = [...toPDFCoords(this.pageView, [{ x: rect.left, y: rect.bottom }, { x: rect.right, y: rect.top }])];
 
         return { from, to };
     }

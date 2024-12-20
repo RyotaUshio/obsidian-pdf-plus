@@ -12,7 +12,7 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
      * Each rectangle is obtained by merging the rectangles of the text content items contained in the selection, when possible (typically when the text selection is within a single line).
      * Each rectangle is associated with an array of indices of the text content items contained in the rectangle.
      */
-    computeMergedHighlightRects(textLayer: TextLayerBuilder, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): MergedRect[] {
+    computeMergedHighlightRects(textLayer: { textDivs: HTMLElement[], textContentItems: TextContentItem[] }, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): MergedRect[] {
         const { textContentItems, textDivs } = textLayer;
 
         const results: MergedRect[] = [];

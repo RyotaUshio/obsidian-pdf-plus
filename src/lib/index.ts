@@ -658,7 +658,10 @@ export class PDFPlusLib {
     }
 
     getTextContentItems() {
-        return this.getPage(true)?.textLayer?.textContentItems;
+        const textLayer = this.getPage(true)?.textLayer;
+        if (textLayer) {
+            return utils.getTextLayerInfo(textLayer).textContentItems;
+        }
     }
 
     getPDFDocument(activeOnly: boolean = false) {
