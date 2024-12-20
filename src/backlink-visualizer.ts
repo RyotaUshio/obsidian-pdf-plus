@@ -4,7 +4,7 @@ import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { PDFBacklinkCache, PDFBacklinkIndex, PDFPageBacklinkIndex } from 'lib/pdf-backlink-index';
 import { PDFPageView, PDFViewerChild, Rect } from 'typings';
-import { MultiValuedMap, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
+import { MultiValuedMap, getTextLayerInfo, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { onBacklinkVisualizerContextMenu } from 'context-menu';
 import { BidirectionalMultiValuedMap } from 'utils';
 import { MergedRect } from 'lib/highlights/geometry';
@@ -37,7 +37,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
 
     private pagewiseCacheToDomsMap = new Map<number, BidirectionalMultiValuedMap<PDFBacklinkCache, HTMLElement>>;
     private pagewiseStatus = new Map<number, { onPageReady: boolean, onTextLayerReady: boolean, onAnnotationLayerReady: boolean }>;
-    private pagewiseOnClearDomCallbacksMap = new MultiValuedMap<number, () => any>(); 
+    private pagewiseOnClearDomCallbacksMap = new MultiValuedMap<number, () => any>();
 
     constructor(visualizer: PDFViewerBacklinkVisualizer) {
         super(visualizer.plugin);
@@ -214,7 +214,7 @@ export class BacklinkDomManager extends PDFPlusComponent {
     onClearDomInPage(pageNumber: number, callback: () => any) {
         this.pagewiseOnClearDomCallbacksMap.addValue(pageNumber, callback);
     }
-    
+
     registerDomEventForCache<K extends keyof HTMLElementEventMap>(cache: PDFBacklinkCache, el: HTMLElement, type: K, callback: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions) {
         this.registerDomEvent(el, type, callback, options);
         if (cache.page && cache.annotation) {
@@ -294,9 +294,10 @@ export class RectangleCache extends PDFPlusComponent {
 
         const textLayer = pageView.textLayer;
         if (!textLayer) return null;
-        if (!textLayer.textDivs.length) return null;
+        const textLayerInfo = getTextLayerInfo(textLayer);
+        if (!textLayerInfo.textDivs.length) return null;
 
-        const rects = this.lib.highlight.geometry.computeMergedHighlightRects(textLayer, beginIndex, beginOffset, endIndex, endOffset);
+        const rects = this.lib.highlight.geometry.computeMergedHighlightRects(textLayerInfo, beginIndex, beginOffset, endIndex, endOffset);
         return rects;
     }
 }
@@ -305,7 +306,7 @@ export class RectangleCache extends PDFPlusComponent {
 export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implements HoverParent {
     child: PDFViewerChild;
     domManager: BacklinkDomManager;
-    rectangleCache: RectangleCache;    
+    rectangleCache: RectangleCache;
 
     constructor(plugin: PDFPlus, file: TFile, child: PDFViewerChild) {
         super(plugin, file);
@@ -407,7 +408,10 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
         const textLayer = pageView.textLayer;
         if (!textLayer) return;
-        if (!textLayer.textDivs.length) return;
+        const { textDivs } = getTextLayerInfo(textLayer);
+        // textDivs should not be null, but it seems it is in some cases in Obsidian 1.8.x.
+        // So I added `!textDivs` check here.
+        if (!textDivs || !textDivs.length) return;
 
         const rects = this.rectangleCache.getRectsForSelection(pageNumber, id);
         if (!rects) return;
@@ -417,7 +421,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
             rectEl.addClasses(['pdf-plus-backlink', 'pdf-plus-backlink-selection']);
 
             // font-size is used to set the padding of this highlight in em unit
-            const textDiv = textLayer.textDivs[indices[0]];
+            const textDiv = textDivs[indices[0]];
             rectEl.setCssStyles({
                 fontSize: textDiv.style.fontSize
             });

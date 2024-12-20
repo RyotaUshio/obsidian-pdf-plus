@@ -11,7 +11,7 @@ import { patchPDFOutlineViewer } from 'patchers';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { camelCaseToKebabCase, getCharactersWithBoundingBoxesInPDFCoords, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
+import { camelCaseToKebabCase, getCharactersWithBoundingBoxesInPDFCoords, getTextLayerInfo, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
 import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices, PDFPageView } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim/vim';
@@ -45,8 +45,6 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
             plugin.classes.PDFViewerComponent = pdfViewerComponent.constructor;
             // @ts-ignore
             plugin.classes.PDFViewerChild = child.constructor;
-            // @ts-ignore
-            plugin.classes.ObsidianViewer = child.pdfViewer?.constructor; // ? is unnecessary but just in case
 
             onPDFInternalsPatchSuccess(plugin);
 
@@ -131,10 +129,14 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         lib.highlight.viewer.clearRectHighlight(this);
 
                         updateIsModEvent(evt);
-                        this.component?.registerDomEvent(viewerContainerEl, 'mouseup', onMouseUp);
+                        // Before Obsidian v1.8.0, I was listening to mouseup event.
+                        // However, after then the auto-copy stopped working.
+                        // Somehow mouseup event is not fired from within the PDF viewer anymore.
+                        // I fixed it by listening to pointerup event instead of mouseup event.
+                        this.component?.registerDomEvent(viewerContainerEl, 'pointerup', onPointerUp);
                     });
 
-                    const onMouseUp = (evt: MouseEvent) => {
+                    const onPointerUp = (evt: MouseEvent) => {
                         updateIsModEvent(evt);
 
                         if (plugin.settings.autoCopy) {
@@ -150,7 +152,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             }
                         }
 
-                        viewerContainerEl.removeEventListener('mouseup', onMouseUp);
+                        viewerContainerEl.removeEventListener('pointerup', onPointerUp);
                         isModEvent = false;
                     };
                 }
@@ -588,26 +590,32 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         highlightText(old) {
             return function (this: PDFViewerChild, page: number, range: [[number, number], [number, number]]) {
                 const pageView = this.getPage(page);
-                const indexFirst = range[0][0];
-                const textDivFirst = pageView.textLayer?.textDivs[indexFirst];
+                const textLayer = pageView.textLayer;
+                let textDivFirst: HTMLElement | null = null;
 
-                if (plugin.settings.trimSelectionEmbed
-                    && this.pdfViewer.isEmbed
-                    && this.pdfViewer.dom
-                    && !(plugin.settings.ignoreHeightParamInPopoverPreview
-                        && this.pdfViewer.dom.containerEl.parentElement?.matches('.hover-popover'))
-                ) {
-                    const indexLast = range[1][0];
-                    const textDivLast = pageView.textLayer?.textDivs[indexLast];
+                if (textLayer) {
+                    const textDivs = getTextLayerInfo(textLayer).textDivs;
+                    const indexFirst = range[0][0];
+                    textDivFirst = textDivs[indexFirst];
 
-                    if (textDivFirst && textDivLast) {
-                        setTimeout(() => {
-                            const containerRect = this.pdfViewer.dom!.viewerContainerEl.getBoundingClientRect();
-                            const firstRect = textDivFirst.getBoundingClientRect();
-                            const lastRect = textDivLast.getBoundingClientRect();
-                            const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
-                            this.pdfViewer.setHeight(height);
-                        }, 100);
+                    if (plugin.settings.trimSelectionEmbed
+                        && this.pdfViewer.isEmbed
+                        && this.pdfViewer.dom
+                        && !(plugin.settings.ignoreHeightParamInPopoverPreview
+                            && this.pdfViewer.dom.containerEl.parentElement?.matches('.hover-popover'))
+                    ) {
+                        const indexLast = range[1][0];
+                        const textDivLast = textDivs[indexLast];
+
+                        if (textDivFirst && textDivLast) {
+                            setTimeout(() => {
+                                const containerRect = this.pdfViewer.dom!.viewerContainerEl.getBoundingClientRect();
+                                const firstRect = textDivFirst!.getBoundingClientRect();
+                                const lastRect = textDivLast.getBoundingClientRect();
+                                const height = lastRect.bottom - firstRect.top + 2 * Math.abs(firstRect.top - containerRect.top);
+                                this.pdfViewer.setHeight(height);
+                            }, 100);
+                        }
                     }
                 }
 
@@ -615,9 +623,11 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     old.call(this, page, range);
                 }
 
-                window.pdfjsViewer.scrollIntoView(textDivFirst, {
-                    top: - plugin.settings.embedMargin
-                }, true);
+                if (textDivFirst) {
+                    window.pdfjsViewer.scrollIntoView(textDivFirst, {
+                        top: - plugin.settings.embedMargin
+                    }, true);
+                }
 
                 plugin.trigger('highlight', { type: 'selection', source: 'obsidian', pageNumber: page, child: this });
             };
@@ -868,10 +878,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             return function (this: PDFViewerChild, pageView: PDFPageView, rect: Rect) {
                 let text = '';
 
-                const items = pageView.textLayer?.textContentItems;
-                const divs = pageView.textLayer?.textDivs;
-
-                if (items) {
+                const textLayer = pageView.textLayer;
+                if (textLayer) {
+                    const { textContentItems: items, textDivs: divs } = getTextLayerInfo(textLayer);
                     const [left, bottom, right, top] = rect;
 
                     for (let index = 0; index < items.length; index++) {
@@ -926,7 +935,21 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
 /** Monkey-patch ObsidianViewer so that it can open external PDF files. */
 const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
-    plugin.register(around(pdfViewer.constructor.prototype, { // equivalent to window.pdfjsViewer.ObsidianViewer
+    // What this prototype actually is will change depending on the Obsidian version.
+    // 
+    // In Obsidian v1.7.7 or earlier, `pdfViewer` is an instance of the `ObsidianViewer` (which is a class).
+    // Therefore, `prototype` is the prototype of the `ObsidianViewer` class, that is
+    // `Object.getPrototypeOf(pdfViewer) === pdfViewer.constructor.prototype === window.pdfjsViewer.ObsidianViewer.prototype`.
+    //
+    // In Obsidian v1.8.0 or later, `pdfViewer` is a raw object whose prototype is `PDFViewerApplication`.
+    // `PDFViewerApplication` was a class (the base class of `ObsidianViewer`) in the previous versions,
+    // but it is now a raw object. Therefore, `prototype` is the `PDFViewerApplication` object itself, that is
+    // `Object.getPrototypeOf(pdfViewer) === window.pdfjsViewer.PDFViewerApplication`.
+    //
+    // See the docstring of the `ObsidianViewer` interface for more details.
+    const prototype = Object.getPrototypeOf(pdfViewer);
+
+    plugin.register(around(prototype, {
         open(old) {
             return async function (this: ObsidianViewer, args: any) {
                 if (this.pdfPlusRedirect) {

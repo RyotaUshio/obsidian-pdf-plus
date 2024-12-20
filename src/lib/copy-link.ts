@@ -2,7 +2,7 @@ import { Editor, EditorRange, MarkdownFileInfo, MarkdownView, Notice, TFile } fr
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFPlusTemplateProcessor } from 'template';
-import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams } from 'utils';
+import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerInfo, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
 
@@ -76,9 +76,12 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             page = child.pdfViewer.pdfViewer?.currentPageNumber ?? page;
         }
 
+        const selectionStr = child.getTextSelectionRangeStr(pageEl);
+        if (!selectionStr) return null;
+
         const subpath = paramsToSubpath({
             page,
-            selection: child.getTextSelectionRangeStr(pageEl),
+            selection: selectionStr,
             ...subpathParams
         });
 
@@ -283,12 +286,16 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     // TODO: Needs refactor
                     const result = parsePDFSubpath(subpath);
                     if (result && 'beginIndex' in result) {
-                        const item = child.getPage(page).textLayer?.textContentItems[result.beginIndex];
-                        if (item) {
-                            const left = item.transform[4];
-                            const top = item.transform[5] + item.height;
-                            if (typeof left === 'number' && typeof top === 'number') {
-                                this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
+                        const textLayer = child.getPage(page).textLayer;
+                        if (textLayer) {
+                            const { textContentItems } = getTextLayerInfo(textLayer);
+                            const item = textContentItems[result.beginIndex];
+                            if (item) {
+                                const left = item.transform[4];
+                                const top = item.transform[5] + item.height;
+                                if (typeof left === 'number' && typeof top === 'number') {
+                                    this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
+                                }
                             }
                         }
                     }

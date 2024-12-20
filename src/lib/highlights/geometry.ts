@@ -1,6 +1,6 @@
 import { PDFPlusLibSubmodule } from 'lib/submodule';
-import { PropRequired } from 'utils';
-import { TextLayerBuilder, Rect, TextContentItem } from 'typings';
+import { getNodeAndOffsetOfTextPos, PropRequired } from 'utils';
+import { Rect, TextContentItem } from 'typings';
 
 
 export type MergedRect = { rect: Rect, indices: number[] };
@@ -12,8 +12,8 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
      * Each rectangle is obtained by merging the rectangles of the text content items contained in the selection, when possible (typically when the text selection is within a single line).
      * Each rectangle is associated with an array of indices of the text content items contained in the rectangle.
      */
-    computeMergedHighlightRects(textLayer: TextLayerBuilder, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): MergedRect[] {
-        const { textContentItems, textDivs, div } = textLayer;
+    computeMergedHighlightRects(textLayer: { textDivs: HTMLElement[], textContentItems: TextContentItem[] }, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): MergedRect[] {
+        const { textContentItems, textDivs } = textLayer;
 
         const results: MergedRect[] = [];
 
@@ -34,7 +34,7 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
             if (!item.str) continue;
 
             // the minimum rectangle that contains all the chars of this text content item
-            const rect = this.computeHighlightRectForItem(div, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
+            const rect = this.computeHighlightRectForItem(item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
             if (!rect) continue;
 
             if (!mergedRect) {
@@ -59,13 +59,13 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
         return results;
     }
 
-    computeHighlightRectForItem(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
+    computeHighlightRectForItem(item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
         // If the item has the `chars` property filled, use it to get the bounding rectangle of each character in the item.
         if (item.chars && item.chars.length >= item.str.length) {
             return this.computeHighlightRectForItemFromChars(item as PropRequired<TextContentItem, 'chars'>, index, beginIndex, beginOffset, endIndex, endOffset);
         }
         // Otherwise, use the text layer divs to get the bounding rectangle of the text selection.
-        return this.computeHighlightRectForItemFromTextLayer(textLayerDiv, item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
+        return this.computeHighlightRectForItemFromTextLayer(item, textDiv, index, beginIndex, beginOffset, endIndex, endOffset);
     }
 
     computeHighlightRectForItemFromChars(item: PropRequired<TextContentItem, 'chars'>, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
@@ -92,39 +92,39 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
         ];
     }
 
-    // Inspired by PDFViewerChild.prototype.hightlightText from Obsidian's app.js
-    computeHighlightRectForItemFromTextLayer(textLayerDiv: HTMLElement, item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
-        const offsetFrom = index === beginIndex ? beginOffset : 0;
-        // `endOffset` is computed from the `endOffset` property (https://developer.mozilla.org/en-US/docs/Web/API/Range/endOffset) 
-        // of the `Range` contained in the selection, which is the number of characters from the start of the `Range` to its end.
-        // Therefore, `endOffset` is 1 greater than the index of the last character in the selection.
-        const offsetTo = index === endIndex ? endOffset : undefined;
-
+    computeHighlightRectForItemFromTextLayer(item: TextContentItem, textDiv: HTMLElement, index: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number): Rect | null {
         // the bounding box of the whole text content item
         const x1 = item.transform[4];
         const y1 = item.transform[5];
         const x2 = item.transform[4] + item.width;
         const y2 = item.transform[5] + item.height;
 
-        const textDivCopied = textDiv.cloneNode() as HTMLElement;
-        textLayerDiv.appendChild(textDivCopied);
+        const range = textDiv.doc.createRange();
 
-        const textBefore = item.str.substring(0, offsetFrom);
-        textDivCopied.appendText(textBefore);
-
-        const text = item.str.substring(offsetFrom, offsetTo);
-        const boundingEl = textDivCopied.createSpan();
-        boundingEl.appendText(text);
-
-        if (offsetTo !== undefined) {
-            const textAfter = item.str.substring(offsetTo);
-            textDivCopied.appendText(textAfter);
+        if (index === beginIndex) {
+            const posFrom = getNodeAndOffsetOfTextPos(textDiv, beginOffset);
+            if (posFrom) {
+                range.setStart(posFrom.node, posFrom.offset);
+            } else {
+                range.setStartBefore(textDiv);
+            }
+        } else {
+            range.setStartBefore(textDiv);
         }
 
-        const rect = boundingEl.getBoundingClientRect();
-        const parentRect = textDiv.getBoundingClientRect();
+        if (index === endIndex) {
+            const posTo = getNodeAndOffsetOfTextPos(textDiv, endOffset);
+            if (posTo) {
+                range.setEnd(posTo.node, posTo.offset);
+            } else {
+                range.setEndAfter(textDiv);
+            }
+        } else {
+            range.setEndAfter(textDiv);
+        }
 
-        textDivCopied.remove();
+        const rect = range.getBoundingClientRect();
+        const parentRect = textDiv.getBoundingClientRect();
 
         return [
             x1 + (rect.left - parentRect.left) / parentRect.width * item.width,
