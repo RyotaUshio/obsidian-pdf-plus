@@ -4,7 +4,7 @@
 </p>
 
 > [!note] 
-> All contribution to this plugin has been made by a single voluntary student (me).
+> This plugin is maintained by a single voluntary student (me).
 > 
 > - If you like this plugin, don't forget to star this repository!
 > - If this plugin has become an important piece of your workflow, please consider [donation](#support-development) to show some love for this project.

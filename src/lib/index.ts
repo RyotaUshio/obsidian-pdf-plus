@@ -1009,4 +1009,8 @@ export class PDFPlusLib {
 
         return null;
     }
+
+    isCitationId(dest: string | PDFJsDestArray): dest is string {
+        return typeof dest === 'string' && this.plugin.citationIdRegex.test(dest);
+    }
 }

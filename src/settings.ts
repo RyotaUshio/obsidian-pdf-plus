@@ -279,6 +279,7 @@ export interface PDFPlusSettings {
 	enableBibInEmbed: boolean;
 	enableBibInHoverPopover: boolean;
 	enableBibInCanvas: boolean;
+	citationIdPatterns: string;
 	copyAsSingleLine: boolean;
 	removeWhitespaceBetweenCJChars: boolean;
 	// Follows the same format as Obsidian's "Default location for new attachments
@@ -559,6 +560,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInEmbed: false,
 	enableBibInHoverPopover: false,
 	enableBibInCanvas: true,
+	citationIdPatterns: '^cite.\n^bib\\d+$',
 	copyAsSingleLine: true,
 	removeWhitespaceBetweenCJChars: true,
 	dummyFileFolderPath: '',
@@ -1008,7 +1010,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				locationDropdown.setValue('root');
 				return;
 			}
-			if (value !== '.' && value !== './') {	
+			if (value !== '.' && value !== './') {
 				if (value.startsWith('./')) {
 					const subfolderName = value.slice(2);
 					locationDropdown.setValue('subfolder');
@@ -1016,7 +1018,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					return;
 				}
 				locationDropdown.setValue('folder');
-				folderPathText.setValue(value !== defaultSubfolder ? defaultSubfolder : '');	
+				folderPathText.setValue(value !== defaultSubfolder ? defaultSubfolder : '');
 				return;
 			}
 			locationDropdown.setValue('current');
@@ -2600,6 +2602,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						], setting.descEl);
 					}),
 				() => Platform.isDesktopApp && this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover'
+			);
+
+			this.showConditionally(
+				this.addTextAreaSetting('citationIdPatterns', undefined, () => this.plugin.setCitationIdRegex())
+					.setName('Citation ID patterns')
+					.setDesc('You don\'t need to care about this option in most use cases - just leave it to the default value. For advanced users: most internal links in PDF files use so-called destination names to specify the target location. This option allows you to specify the regular expressions (separated by line breaks) that determine whether a given internal link is a citation link based on the dsetination name.'),
+				() => this.plugin.settings.actionOnCitationHover !== 'none'
 			);
 
 			this.showConditionally(

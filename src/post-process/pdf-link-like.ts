@@ -3,7 +3,7 @@ import { App, HoverParent, HoverPopover, Keymap } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
 import { AnnotationElement, PDFOutlineTreeNode, PDFViewerChild, PDFJsDestArray } from 'typings';
-import { isCitationId, isMouseEventExternal, isTargetHTMLElement } from 'utils';
+import { isMouseEventExternal, isTargetHTMLElement } from 'utils';
 import { BibliographyManager } from 'bib';
 
 
@@ -214,7 +214,7 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
         if (this.plugin.settings.actionOnCitationHover === 'google-scholar-popover'
             && this.lib.requirePluginNewerThan('surfing', '0.9.5')) {
             const destId = this.getDest();
-            if (isCitationId(destId)) {
+            if (this.lib.isCitationId(destId)) {
                 const doc = this.child.pdfViewer.pdfViewer?.pdfDocument;
                 if (doc) {
                     const url = this.child.bib?.getGoogleScholarSearchUrlFromDest(destId);
@@ -240,7 +240,7 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
 
     isCitationLink() {
         const destId = this.getDest();
-        return isCitationId(destId);
+        return this.lib.isCitationId(destId);
     }
 
     get hoverLinkSourceId() {
@@ -258,7 +258,7 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
         if (this.plugin.settings.actionOnCitationHover === 'pdf-plus-bib-popover'
             && this.child.bib && this.child.bib.isEnabled()) {
             const destId = this.getDest();
-            if (typeof destId === 'string' && destId.startsWith('cite.')) {
+            if (this.lib.isCitationId(destId)) {
                 this.child.bib.spawnBibPopoverOnModKeyDown(destId, this, evt, this.targetEl);
                 return true;
             }

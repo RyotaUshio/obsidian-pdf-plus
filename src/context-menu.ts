@@ -631,7 +631,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                                 });
                         });
 
-                        if (destId.startsWith('cite.')) {
+                        if (plugin.lib.isCitationId(destId)) {
                             this.addItem((item) => {
                                 item.setSection('link')
                                     .setTitle('Search on Google Scholar')
