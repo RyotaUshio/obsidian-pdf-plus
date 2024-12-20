@@ -933,7 +933,21 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
 /** Monkey-patch ObsidianViewer so that it can open external PDF files. */
 const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
-    plugin.register(around(pdfViewer.constructor.prototype, { // equivalent to window.pdfjsViewer.ObsidianViewer
+    // What this prototype actually is will change depending on the Obsidian version.
+    // 
+    // In Obsidian v1.7.7 or earlier, `pdfViewer` is an instance of the `ObsidianViewer` (which is a class).
+    // Therefore, `prototype` is the prototype of the `ObsidianViewer` class, that is
+    // `Object.getPrototypeOf(pdfViewer) === pdfViewer.constructor.prototype === window.pdfjsViewer.ObsidianViewer.prototype`.
+    //
+    // In Obsidian v1.8.0 or later, `pdfViewer` is a raw object whose prototype is `PDFViewerApplication`.
+    // `PDFViewerApplication` was a class (the base class of `ObsidianViewer`) in the previous versions,
+    // but it is now a raw object. Therefore, `prototype` is the `PDFViewerApplication` object itself, that is
+    // `Object.getPrototypeOf(pdfViewer) === window.pdfjsViewer.PDFViewerApplication`.
+    //
+    // See the docstring of the `ObsidianViewer` interface for more details.
+    const prototype = Object.getPrototypeOf(pdfViewer);
+
+    plugin.register(around(prototype, {
         open(old) {
             return async function (this: ObsidianViewer, args: any) {
                 if (this.pdfPlusRedirect) {

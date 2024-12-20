@@ -110,8 +110,8 @@ export class VimBindings extends PDFPlusComponent {
             'N': (n) => this.search.findPrevious(n),
             'gn': (n) => this.search.findAndSelectNextMatch((n ?? 1) - 1),
             'gN': (n) => this.search.findAndSelectNextMatch((n ?? 1) - 1, false),
-            '+': (n) => this.obsidianViewer?.zoomIn(n),
-            '-': (n) => this.obsidianViewer?.zoomOut(n),
+            '+': repeatable(() => this.obsidianViewer?.zoomIn()),
+            '-': repeatable(() => this.obsidianViewer?.zoomOut()),
             '=': (n) => {
                 if (typeof n === 'number' && this.pdfViewer) {
                     this.pdfViewer.currentScaleValue = '' + 0.01 * n;
