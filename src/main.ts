@@ -69,6 +69,7 @@ export default class PDFPlus extends Plugin {
 	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
 	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
 	vimrc: string | null = null;
+	citationIdRegex: RegExp;
 	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object. */
 	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
 	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
@@ -163,6 +164,8 @@ export default class PDFPlus extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign(this.getDefaultSettings(), await this.loadData());
+
+		this.setCitationIdRegex();
 
 		// The AnyStyle path had been saved in data.json until v0.39.3, but now it's saved in the local storage
 		if (!this.settings.anystylePath) {
@@ -289,6 +292,13 @@ export default class PDFPlus extends Plugin {
 
 	saveLocalStorage(key: string, value?: any) {
 		this.app.saveLocalStorage(this.manifest.id + '-' + key, value);
+	}
+
+	setCitationIdRegex() {
+		const sources = this.settings.citationIdPatterns
+			.split(/\r?\n/)
+			.filter((line) => line.trim());
+		this.citationIdRegex = new RegExp(sources.join('|'));
 	}
 
 	/**

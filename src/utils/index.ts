@@ -1,7 +1,7 @@
 import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
-import { ObsidianViewer, OldTextLayerBuilder, PDFJsDestArray, PDFPageView, Rect, TextContentItem, TextLayerBuilder } from 'typings';
+import { ObsidianViewer, OldTextLayerBuilder, PDFPageView, Rect, TextContentItem, TextLayerBuilder } from 'typings';
 
 export * from './color';
 export * from './suggest';
@@ -406,10 +406,6 @@ export function toSingleLine(str: string, removeWhitespaceBetweenCJChars = false
 export function encodeLinktext(linktext: string) {
     // eslint-disable-next-line no-control-regex
     return linktext.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (component) => encodeURIComponent(component));
-}
-
-export function isCitationId(dest: string | PDFJsDestArray): dest is string {
-    return typeof dest === 'string' && dest.startsWith('cite.');
 }
 
 /** Register a keymap that detects a certain character, e.g. "+", "=", "*". Works regardless of the user's keyboard layout. */

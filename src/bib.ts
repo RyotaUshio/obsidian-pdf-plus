@@ -60,7 +60,7 @@ export class BibliographyManager extends PDFPlusComponent {
     private async extractBibText() {
         return new Promise<void>((resolve) => {
             this.lib.onDocumentReady(this.child.pdfViewer, (doc) => {
-                new BibliographyTextExtractor(doc)
+                new BibliographyTextExtractor(this.plugin, doc)
                     .onExtracted((destId, bibText) => {
                         this.destIdToBibText.set(destId, bibText);
                         this.events.trigger('extracted', destId, bibText);
@@ -210,11 +210,13 @@ export class BibliographyManager extends PDFPlusComponent {
 
 
 class BibliographyTextExtractor {
+    plugin: PDFPlus;
     doc: PDFDocumentProxy;
     pageRefToTextContentItemsPromise: Record<string, Promise<TextContentItem[]> | undefined>;
     onExtractedCallback?: (destId: string, bibText: string) => any;
 
-    constructor(doc: PDFDocumentProxy) {
+    constructor(plugin: PDFPlus, doc: PDFDocumentProxy) {
+        this.plugin = plugin;
         this.doc = doc;
         this.pageRefToTextContentItemsPromise = {};
     }
@@ -228,7 +230,7 @@ class BibliographyTextExtractor {
         const dests = await this.doc.getDestinations();
         const promises: Promise<void>[] = [];
         for (const destId in dests) {
-            if (/^cite\.|^bib/.test(destId)) {
+            if (this.plugin.lib.isCitationId(destId)) {
                 const destArray = dests[destId] as PDFJsDestArray;
                 promises.push(
                     this.extractBibTextForDest(destArray)
