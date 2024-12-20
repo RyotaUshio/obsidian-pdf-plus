@@ -45,8 +45,6 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
             plugin.classes.PDFViewerComponent = pdfViewerComponent.constructor;
             // @ts-ignore
             plugin.classes.PDFViewerChild = child.constructor;
-            // @ts-ignore
-            plugin.classes.ObsidianViewer = child.pdfViewer?.constructor; // ? is unnecessary but just in case
 
             onPDFInternalsPatchSuccess(plugin);
 
@@ -131,10 +129,14 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         lib.highlight.viewer.clearRectHighlight(this);
 
                         updateIsModEvent(evt);
-                        this.component?.registerDomEvent(viewerContainerEl, 'mouseup', onMouseUp);
+                        // Before Obsidian v1.8.0, I was listening to mouseup event.
+                        // However, after then the auto-copy stopped working.
+                        // Somehow mouseup event is not fired from within the PDF viewer anymore.
+                        // I fixed it by listening to pointerup event instead of mouseup event.
+                        this.component?.registerDomEvent(viewerContainerEl, 'pointerup', onPointerUp);
                     });
 
-                    const onMouseUp = (evt: MouseEvent) => {
+                    const onPointerUp = (evt: MouseEvent) => {
                         updateIsModEvent(evt);
 
                         if (plugin.settings.autoCopy) {
@@ -150,7 +152,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             }
                         }
 
-                        viewerContainerEl.removeEventListener('mouseup', onMouseUp);
+                        viewerContainerEl.removeEventListener('pointerup', onPointerUp);
                         isModEvent = false;
                     };
                 }

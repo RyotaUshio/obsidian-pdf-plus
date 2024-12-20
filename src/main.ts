@@ -9,7 +9,7 @@ import { DomManager } from 'dom-manager';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement } from 'utils';
-import { DestArray, ObsidianViewer, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
+import { DestArray, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
 import { InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
 import { BibliographyManager } from 'bib';
@@ -56,7 +56,6 @@ export default class PDFPlus extends Plugin {
 		PDFView?: Constructor<PDFView>;
 		PDFViewerComponent?: Constructor<PDFViewerComponent>;
 		PDFViewerChild?: Constructor<PDFViewerChild>;
-		ObsidianViewer?: Constructor<ObsidianViewer>; // In fact, this is already accessible as `pdfjsViewer.ObsidianViewer`
 		PDFEmbed?: Constructor<PDFEmbed>;
 	} = {};
 	/** 

@@ -1,6 +1,6 @@
 import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { getNodeAndOffsetOfTextPos, PropRequired } from 'utils';
-import { TextLayerBuilder, Rect, TextContentItem } from 'typings';
+import { Rect, TextContentItem } from 'typings';
 
 
 export type MergedRect = { rect: Rect, indices: number[] };
