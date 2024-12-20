@@ -1923,6 +1923,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addEnumDropdownSetting('scrollModeOnLoad', {
 			[ScrollMode.VERTICAL]: 'Vertical',
 			[ScrollMode.HORIZONTAL]: 'Horizontal',
+			[ScrollMode.PAGE]: 'In-page',
 			[ScrollMode.WRAPPED]: 'Wrapped',
 		}, () => toggleSpreadModeOnLoadSettingVisibility())
 			.setName('Default scroll mode');

@@ -1,7 +1,7 @@
 import { VimBindings } from './vim';
 import { VimBindingsMode } from './mode';
 import { PDFPageTextStructureParser, PDFTextPos } from './text-structure-parser';
-import { getNodeAndOffsetOfTextPos, isSelectionForward, repeat, swapSelectionAnchorAndFocus } from 'utils';
+import { getNodeAndOffsetOfTextPos, getTextLayerInfo, isSelectionForward, repeat, swapSelectionAnchorAndFocus } from 'utils';
 import { showContextMenuAtSelection } from 'context-menu';
 
 
@@ -297,7 +297,9 @@ export class VimVisualMode extends VimBindingsMode {
 
         const getNodeAndOffset = (anchorOrHead: typeof anchor) => {
             const { page, pos } = anchorOrHead;
-            const textDivs = this.vim.child?.getPage(page).textLayer?.textDivs;
+            const textLayer = this.vim.child?.getPage(page).textLayer;
+            if (!textLayer) return;
+            const textDivs = getTextLayerInfo(textLayer).textDivs;
             if (!textDivs || !textDivs.length) return;
 
             const textDiv = textDivs[pos.index];

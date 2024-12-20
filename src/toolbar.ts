@@ -161,6 +161,18 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         })
                         .addItem((item) => {
                             item.setSection('scroll')
+                                .setIcon('lucide-sticky-note')
+                                .setTitle('In-page scroll')
+                                .setChecked(scrollMode === ScrollMode.PAGE)
+                                .onClick(() => {
+                                    eventBus.dispatch('switchscrollmode', {
+                                        source: toolbar,
+                                        mode: ScrollMode.PAGE
+                                    });
+                                });
+                        })
+                        .addItem((item) => {
+                            item.setSection('scroll')
                                 .setIcon('lucide-wrap-text')
                                 .setTitle('Wrapped scroll')
                                 .setChecked(scrollMode === ScrollMode.WRAPPED)

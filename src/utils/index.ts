@@ -1,7 +1,7 @@
 import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
-import { ObsidianViewer, PDFJsDestArray, PDFPageView, Rect } from 'typings';
+import { ObsidianViewer, OldTextLayerBuilder, PDFJsDestArray, PDFPageView, Rect, TextContentItem, TextLayerBuilder } from 'typings';
 
 export * from './color';
 export * from './suggest';
@@ -154,6 +154,14 @@ export function* getCharactersWithBoundingBoxesInPDFCoords(pageView: PDFPageView
     for (const { char, rect } of getCharacterBoundingBoxes(textLayerNode)) {
         yield { char, rect: [...toPDFCoords(pageView, [{ x: rect.left, y: rect.bottom }, { x: rect.right, y: rect.top }])].flat() as Rect };
     }
+}
+
+/** Use this utility function whenever accessing textDivs or textContentItems in order to deal with different version of PDF.js bundled with Obsidian. */
+export function getTextLayerInfo(textLayerBuilder: TextLayerBuilder | OldTextLayerBuilder): { textDivs: HTMLElement[], textContentItems: TextContentItem[] } {
+    if ('textLayer' in textLayerBuilder) { // true if Obsidian is v1.8.0 or later
+        return textLayerBuilder.textLayer;
+    }
+    return textLayerBuilder;
 }
 
 export function getFirstTextNodeIn(node: Node): Text | null {
