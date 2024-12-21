@@ -70,7 +70,7 @@ export default class PDFPlus extends Plugin {
 	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
 	vimrc: string | null = null;
 	citationIdRegex: RegExp;
-	/** Maps a `div.pdf-viewer` element to the corresponding `PDFViewerChild` object. */
+	/** Maps a `div.pdf-container` element to the corresponding `PDFViewerChild` object. */
 	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
 	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
 	pdfViewerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
@@ -550,8 +550,8 @@ export default class PDFPlus extends Plugin {
 	private registerEvents() {
 		// keep this.pdfViewerChildren up-to-date
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
-			for (const viewerEl of this.pdfViewerChildren.keys()) {
-				if (!viewerEl?.isShown()) this.pdfViewerChildren.delete(viewerEl);
+			for (const pdfContainerEl of this.pdfViewerChildren.keys()) {
+				if (!pdfContainerEl?.isShown()) this.pdfViewerChildren.delete(pdfContainerEl);
 			}
 		}));
 

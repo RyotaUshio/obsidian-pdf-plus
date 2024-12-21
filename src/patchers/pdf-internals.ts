@@ -228,9 +228,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         },
         onResize(old) {
             return function (this: PDFViewerChild) {
-                const viewerEl = this.containerEl.querySelector<HTMLElement>('.pdf-viewer');
-                if (viewerEl) {
-                    plugin.pdfViewerChildren.set(viewerEl, this);
+                const pdfContainerEl = this.containerEl.querySelector<HTMLElement>('.pdf-container');
+                if (pdfContainerEl) {
+                    plugin.pdfViewerChildren.set(pdfContainerEl, this);
                 }
 
                 return old.call(this);
@@ -276,9 +276,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     await old.call(this, file, subpath);
                 }
 
-                const viewerEl = this.containerEl.querySelector<HTMLElement>('.pdf-viewer');
-                if (viewerEl) {
-                    plugin.pdfViewerChildren.set(viewerEl, this);
+                const pdfContainerEl = this.containerEl.querySelector<HTMLElement>('.pdf-container');
+                if (pdfContainerEl) {
+                    plugin.pdfViewerChildren.set(pdfContainerEl, this);
                 }
 
                 this.bib?.unload();

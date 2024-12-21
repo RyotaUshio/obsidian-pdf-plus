@@ -240,16 +240,13 @@ export class PDFPlusLib {
     }
 
     getPDFViewerChildAssociatedWithNode(node: Node) {
-        // for (const [viewerEl, child] of this.plugin.pdfViwerChildren) {
-        //     if (viewerEl.contains(node)) return child;
-        // }
         let child: PDFViewerChild | undefined;
 
         const el = node.instanceOf(HTMLElement) ? node : node.parentElement;
         if (el) {
-            const viewerEl = el.closest<HTMLElement>('.pdf-viewer');
-            if (viewerEl) {
-                child = this.plugin.pdfViewerChildren.get(viewerEl);
+            const pdfContainerEl = el.closest<HTMLElement>('.pdf-container');
+            if (pdfContainerEl) {
+                child = this.plugin.pdfViewerChildren.get(pdfContainerEl);
             }
         }
 
