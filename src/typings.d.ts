@@ -424,7 +424,11 @@ interface PDFViewer {
         rotation: number;
         pdfOpenParams: string;
     } | null;
-    viewer: HTMLElement; // div.pdf-viewer
+    /** 
+     * - Obsidian v1.7.7 or earlier: div.pdf-viewer
+     * - Obsidian v1.8.0 or later: div.pdfViewer
+     */
+    viewer: HTMLElement;
     container: HTMLElement; // div.pdf-viewer-container
     eventBus: EventBus;
     linkService: PDFLinkService;

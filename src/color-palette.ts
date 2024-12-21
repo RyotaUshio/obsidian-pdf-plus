@@ -466,11 +466,11 @@ export class ColorPalette extends PDFPlusComponent {
         const viewerEl = child.pdfViewer.dom.viewerEl;
 
         const selectBox = { left: 0, top: 0, width: 0, height: 0 };
-        const onMouseDown = (evt: MouseEvent | TouchEvent) => {
+        const onPointerDown = (evt: PointerEvent | TouchEvent) => {
             // Determine the target page based on the event target
             if (!(isTargetHTMLElement(evt, evt.target))) return;
 
-            const pageEl = evt.target.closest<HTMLElement>('.pdf-viewer div.page[data-page-number]');
+            const pageEl = evt.target.closest<HTMLElement>('div.page[data-page-number]');
             if (!pageEl) return;
 
             const pageNumber = pageEl.dataset.pageNumber;
@@ -497,7 +497,7 @@ export class ColorPalette extends PDFPlusComponent {
                 top: (selectBox.top - (pageRect.top + borderTop + paddingTop)) + 'px',
             });
 
-            const onMouseMove = (evt: MouseEvent | TouchEvent) => {
+            const onPointerMove = (evt: PointerEvent | TouchEvent) => {
                 // Update the bottom-right corner of the selection box
                 const { x, y } = getEventCoords(evt);
                 const newPageRect = pageEl.getBoundingClientRect();
@@ -510,16 +510,21 @@ export class ColorPalette extends PDFPlusComponent {
                     height: selectBox.height + 'px',
                 });
 
+                // Prevent scrolling on mobile: probably this is redundant, but I follow the "if it ain't broke, don't fix it" principle
+                evt.preventDefault();
+                evt.stopImmediatePropagation();
+            };
+
+            const onTouchMove = (evt: TouchEvent) => {
                 // Prevent scrolling on mobile
                 evt.preventDefault();
                 evt.stopImmediatePropagation();
             };
 
-            const onMouseUp = () => {
-                pageEl.removeEventListener('mousemove', onMouseMove);
-                pageEl.removeEventListener('touchmove', onMouseMove);
-                pageEl.removeEventListener('mouseup', onMouseUp);
-                pageEl.removeEventListener('touchend', onMouseUp);
+            const onPointerUp = () => {
+                pageEl.removeEventListener('pointermove', onPointerMove);
+                pageEl.removeEventListener('touchmove', onTouchMove);
+                pageEl.removeEventListener('pointerup', onPointerUp);
                 pageEl.removeChild(boxEl);
 
                 // Discard empty selections
@@ -551,10 +556,9 @@ export class ColorPalette extends PDFPlusComponent {
             // `pageEl` is not a part of this component, so just `pageEl.addEventListener` & `pageEl.removeEventListener`is not enough.
             // We have to explicitly remove the event listeners not just when the selection is done, but also
             // when this component gets unloaded.
-            this.registerDomEvent(pageEl, 'mousemove', onMouseMove);
-            this.registerDomEvent(pageEl, 'touchmove', onMouseMove);
-            this.registerDomEvent(pageEl, 'mouseup', onMouseUp);
-            this.registerDomEvent(pageEl, 'touchend', onMouseUp);
+            this.registerDomEvent(pageEl, 'pointermove', onPointerMove);
+            this.registerDomEvent(pageEl, 'touchmove', onTouchMove);
+            this.registerDomEvent(pageEl, 'pointerup', onPointerUp);
         };
 
         const toggle = () => {
@@ -568,11 +572,9 @@ export class ColorPalette extends PDFPlusComponent {
                 // `viewerEl` is not a part of this component, so just `viewerEl.addEventListener` & `viewerEl.removeEventListener`is not enough.
                 // We have to explicitly remove the event listeners not just when the selection is done, but also
                 // when this component gets unloaded.
-                this.registerDomEvent(viewerEl, 'mousedown', onMouseDown);
-                this.registerDomEvent(viewerEl, 'touchstart', onMouseDown);
+                this.registerDomEvent(viewerEl, 'pointerdown', onPointerDown);
             } else {
-                viewerEl.removeEventListener('mousedown', onMouseDown);
-                viewerEl.removeEventListener('touchstart', onMouseDown);
+                viewerEl.removeEventListener('pointerdown', onPointerDown);
             }
         };
 
