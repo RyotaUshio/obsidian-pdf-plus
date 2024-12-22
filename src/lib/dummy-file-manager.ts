@@ -1,4 +1,4 @@
-import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, ObsidianProtocolData, Platform, TFile } from 'obsidian';
+import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, ObsidianProtocolData, TFile } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { DummyFileModal } from 'modals';
@@ -90,11 +90,17 @@ export class DummyFileManager extends PDFPlusLibSubmodule {
     }
 
     getUrisFromDataTransfer(dataTransfer: DataTransfer) {
-        if (Platform.isDesktopApp) { // file.path is available only in the desktop app
+        if (window.electron) { // the file path is available only in the desktop app
             const droppedFiles = Array.from(dataTransfer.files);
             if (droppedFiles.length && droppedFiles.every((file) => file.type === 'application/pdf')) {
-                // Now, `files` is ensured to contain only PDF files
-                return droppedFiles.map((file) => this.absolutePathToFileUri(file.path));
+                // Now, `droppedFiles` is ensured to contain only PDF files
+                return droppedFiles.map((file) => {
+                    // `file.path` has been removed in Electron 32 (Obsidian 1.7.7 uses 32.2.5).
+                    // We need to use `webUtils.getPathForFile` instead.
+                    // https://github.com/electron/electron/blob/main/docs/breaking-changes.md#removed-filepath
+                    const path = window.electron!.webUtils.getPathForFile(file);
+                    return this.absolutePathToFileUri(path);
+                });
             }
         }
 
