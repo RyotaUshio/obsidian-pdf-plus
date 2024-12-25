@@ -1,4 +1,5 @@
 import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, normalizePath, parseLinktext, requestUrl } from 'obsidian';
+import { CanvasFileData } from 'obsidian/canvas';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
 
@@ -561,28 +562,50 @@ export class PDFPlusLib {
         return null;
     }
 
-    getPDFEmbedInMarkdownView(view: MarkdownView): PDFEmbed | null {
-        // @ts-ignore
-        const children = view.currentMode._children as any[];
-        const pdfEmbed = children.find((component): component is PDFEmbed => this.isPDFEmbed(component));
-        return pdfEmbed ?? null;
+    getPDFEmbedsInComponent(component: Component, firstOnly: boolean): PDFEmbed[] {
+        const embeds: PDFEmbed[] = [];
+        // It is not enough to look through the direct children of the component.
+        // We have to recurse through all descendants in order to capture PDF embeds
+        // in an embedded markdown file inside another markdown file, or those embedded in
+        // a canvas text node, etc.
+        utils.walkDescendantComponents(component, (child) => {
+            if (firstOnly && embeds.length) return false;
+
+            if (this.isPDFEmbed(child)) {
+                embeds.push(child);
+                return false;
+            }
+        });
+        return embeds;
     }
 
-    getAllPDFEmbedInMarkdownView(view: MarkdownView): PDFEmbed[] {
-        // @ts-ignore
-        const children = view.currentMode._children as any[];
-        return children.filter((component): component is PDFEmbed => this.isPDFEmbed(component));
+    getPDFEmbedInMarkdownView(view: MarkdownView): PDFEmbed | null {
+        return this.getPDFEmbedsInComponent(view.currentMode as unknown as Component, true).first() ?? null;
+    }
+
+    getAllPDFEmbedsInMarkdownView(view: MarkdownView): PDFEmbed[] {
+        return this.getPDFEmbedsInComponent(view.currentMode as unknown as Component, false);
     }
 
     getPDFEmbedInCanvasView(view: CanvasView): PDFEmbed | null {
-        const canvasPDFFileNode = Array.from(view.canvas.nodes.values()).find((node): node is CanvasFileNode => this.isCanvasPDFNode(node));
-        return (canvasPDFFileNode?.child as PDFEmbed | undefined) ?? null;
+        const nodes = Array.from(view.canvas.nodes.values());
+        for (const node of nodes) {
+            if ('child' in node && node.child instanceof Component) {
+                const embeds = this.getPDFEmbedsInComponent(node.child, true);
+                if (embeds.length) return embeds[0];
+            }
+        }
+        return null;
     }
 
-    getAllPDFEmbedInCanvasView(view: CanvasView): PDFEmbed[] {
+    getAllPDFEmbedsInCanvasView(view: CanvasView): PDFEmbed[] {
         return Array.from(view.canvas.nodes.values())
-            .filter((node): node is CanvasFileNode => this.isCanvasPDFNode(node))
-            .map(node => node.child as PDFEmbed);
+            .flatMap((node) => {
+                if ('child' in node && node.child instanceof Component) {
+                    return this.getPDFEmbedsInComponent(node.child, false);
+                }
+                return [];
+            });
     }
 
     getPDFEmbedInActiveView(): PDFEmbed | null {
@@ -610,7 +633,7 @@ export class PDFPlusLib {
 
                 const view = leaf.view;
 
-               // We should not use view.getViewType() here because it cannot detect deferred views.
+                // We should not use view.getViewType() here because it cannot detect deferred views.
                 if (view instanceof MarkdownView) {
                     pdfEmbed = this.getPDFEmbedInMarkdownView(view);
                 } else if (this.isCanvasView(view)) {
@@ -828,12 +851,13 @@ export class PDFPlusLib {
     }
 
     isCanvasPDFNode(node: CanvasNode): node is CanvasFileNode {
-        if ('file' in node
-            && node.file instanceof TFile
-            && node.file.extension === 'pdf'
-            && node.child instanceof Component
-            && this.isPDFEmbed(node.child)) {
-            return true;
+        // What is the optimal way to write this function in TypeScript?
+        // Ideally, I want TypeScript to understand that if the `data.type ==='file'` check passes,
+        // then `node` is a CanvasFileNode and `node.getData()` is a CanvasFileData.
+        const data = node.getData();
+        if (data.type === 'file') {
+            const path = (data as CanvasFileData).file;
+            return path.endsWith('.pdf');
         }
         return false;
     }
@@ -847,7 +871,7 @@ export class PDFPlusLib {
         return this.app.vault.getAvailablePath(removeExtension(file.path), file.extension);
     }
 
-    
+
 
     get metadataCacheUpdatePromise() {
         return new Promise<void>((resolve) => this.app.metadataCache.onCleanCache(resolve));

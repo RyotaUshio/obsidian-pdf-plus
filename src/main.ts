@@ -72,7 +72,10 @@ export default class PDFPlus extends Plugin {
 	citationIdRegex: RegExp;
 	/** Maps a `div.pdf-container` element to the corresponding `PDFViewerChild` object. */
 	// In most use cases of this map, the goal is also achieved by using lib.workspace.iteratePDFViewerChild.
-	// However, a PDF embed inside a Canvas text node cannot be handled by the function, so we need this map.
+	// However, **before PDF++ 0.40.18**, a PDF embed inside a Canvas text node cannot be handled by the function, so we needed this map.
+	// As of 0.40.18, the function can handle it, but I will keep this map as it could be advantageous
+	// in terms of performance (it can avoid iteration over all PDFViewerChild objects).
+	// Also, there is a saying "if it ain't broke, don't fix it."
 	pdfViewerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 	/** Stores all the shown context menu objects. Used to close all visible menus programatically. */
 	shownMenus: Set<Menu> = new Set();

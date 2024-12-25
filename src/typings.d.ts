@@ -1,5 +1,5 @@
 import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor } from 'obsidian';
-import { CanvasData } from 'obsidian/canvas';
+import { CanvasData, CanvasFileData, CanvasGroupData, CanvasLinkData, CanvasNodeData, CanvasTextData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_storage';
@@ -966,7 +966,7 @@ interface CanvasView extends TextFileView {
 }
 
 interface Canvas {
-    nodes: Map<string, CanvasNode>;
+    nodes: Map<string, CanvasTextNode | CanvasFileNode | CanvasLinkNode | CanvasGroupNode>;
     createTextNode(config: {
         pos: { x: number, y: number };
         position?: 'center' | 'top' | 'right' | 'bottom' | 'left';
@@ -988,26 +988,39 @@ interface Canvas {
     getData(): CanvasData;
 }
 
-type CanvasNode = CanvasFileNode | CanvasTextNode | CanvasLinkNode | CanvasGroupNode;
-
-interface CanvasFileNode {
+interface CanvasNode {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
     app: App;
+    canvas: Canvas;
+    nodeEl: HTMLElement;
+    getData(): CanvasNodeData;
+}
+
+interface CanvasFileNode extends CanvasNode {
     file: TFile | null;
     subpath: string
     child: Embed;
+    getData(): CanvasFileData;
 }
 
-interface CanvasTextNode {
-    app: App;
+interface CanvasTextNode extends CanvasNode {
     text: string;
+    child: Component;
+    getData(): CanvasTextData;
 }
 
-interface CanvasLinkNode {
-    app: App;
+interface CanvasLinkNode extends CanvasNode {
+    url: string;
+    getData(): CanvasLinkData;
 }
 
-interface CanvasGroupNode {
-    app: App;
+interface CanvasGroupNode extends CanvasNode {
+    getData(): CanvasGroupData;
 }
 
 interface HotkeyManager {

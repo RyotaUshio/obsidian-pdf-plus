@@ -1,7 +1,7 @@
 import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
-import { BacklinkView, CanvasView, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
+import { BacklinkView, CanvasView, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 
 
 // Split right, left, down, or up
@@ -56,6 +56,19 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         });
     }
 
+    iteratePDFEmbeds(callback: (embed: PDFEmbed) => any): void {
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            const view = leaf.view;
+            if (view instanceof MarkdownView) {
+                const embeds = this.lib.getAllPDFEmbedsInMarkdownView(view);
+                embeds.forEach(callback);
+            } else if (this.lib.isCanvasView(view)) {
+                const embeds = this.lib.getAllPDFEmbedsInCanvasView(view);
+                embeds.forEach(callback);
+            }
+        });
+    }
+
     iteratePDFViewerComponents(callback: (pdfViewerComponent: PDFViewerComponent, file: TFile | null) => any): void {
         this.app.workspace.iterateAllLeaves((leaf) => {
             const view = leaf.view;
@@ -63,10 +76,10 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             if (this.lib.isPDFView(view)) {
                 callback(view.viewer, view.file);
             } else if (view instanceof MarkdownView) {
-                this.lib.getAllPDFEmbedInMarkdownView(view)
+                this.lib.getAllPDFEmbedsInMarkdownView(view)
                     .forEach((embed) => callback(embed.viewer, embed.file));
             } else if (this.lib.isCanvasView(view)) {
-                this.lib.getAllPDFEmbedInCanvasView(view)
+                this.lib.getAllPDFEmbedsInCanvasView(view)
                     .forEach((embed) => callback(embed.viewer, embed.file));
             }
         });

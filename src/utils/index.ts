@@ -499,3 +499,16 @@ export function repeatable(func: () => any) {
 export function evalInContext(code: string, ctx?: any) {
     return (new Function(code.includes('await') ? '(async () => {' + code + '})()' : code)).call(ctx);
 }
+
+/**
+ * Performs a depth-first traversal of the component tree rooted at the given component and calls the callback on each component.
+ * @param component The component to start walking from.
+ * @param callback Return `false` to stop walking the subtree rooted at the current component.
+ */
+export function walkDescendantComponents(component: Component, callback: (component: Component) => boolean | void) {
+    const ret = callback(component);
+    if (ret === false) return;
+    for (const child of component._children) {
+        walkDescendantComponents(child, callback);
+    }
+}

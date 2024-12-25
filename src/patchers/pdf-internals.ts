@@ -55,21 +55,28 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
 
 function onPDFInternalsPatchSuccess(plugin: PDFPlus) {
     const { lib } = plugin;
-    lib.workspace.iteratePDFViewerComponents((viewer, file) => {
-        // reflect the patch to existing PDF views
-        // especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
-        viewer.unload();
-
-        // Clean up the old keymaps already registered by PDFViewerChild,
-        // which causes an error because the listener references the old instance of PDFFindBar.
-        // This keymap hanldler will be re-registered in `PDFViewerChild.load` by the following `viewer.load()`.
-        const oldEscapeHandler = viewer.scope.keys.find((handler) => handler.modifiers === '' && handler.key === 'Escape');
-        if (oldEscapeHandler) viewer.scope.unregister(oldEscapeHandler);
-
-        viewer.load();
-        if (file) viewer.loadFile(file, plugin.subpathWhenPatched);
-    });
+    // For the detail of `plugin.subpathWhenPatched`, see its docstring.
+    lib.workspace.iteratePDFViews((view) => reloadPDFViewerComponent(view.viewer, view.file, plugin.subpathWhenPatched));
+    // Without passing `embed.subpath`, the embed will display the first page of the PDF file regardless of the subpath,
+    // in which case the subpath like `...#page=5` will be ignored.
+    // See https://github.com/RyotaUshio/obsidian-pdf-plus/issues/322
+    lib.workspace.iteratePDFEmbeds((embed) => reloadPDFViewerComponent(embed.viewer, embed.file, embed.subpath));
 }
+
+const reloadPDFViewerComponent = (viewer: PDFViewerComponent, file: TFile | null, subpath?: string) => {
+    // reflect the patch to existing PDF views
+    // especially reflesh the "contextmenu" event handler (PDFViewerChild.prototype.onContextMenu/onThumbnailContext)
+    viewer.unload();
+
+    // Clean up the old keymaps already registered by PDFViewerChild,
+    // which causes an error because the listener references the old instance of PDFFindBar.
+    // This keymap hanldler will be re-registered in `PDFViewerChild.load` by the following `viewer.load()`.
+    const oldEscapeHandler = viewer.scope.keys.find((handler) => handler.modifiers === '' && handler.key === 'Escape');
+    if (oldEscapeHandler) viewer.scope.unregister(oldEscapeHandler);
+
+    viewer.load();
+    if (file) viewer.loadFile(file, subpath);
+};
 
 const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent) => {
     plugin.register(around(pdfViewerComponent.constructor.prototype, {
