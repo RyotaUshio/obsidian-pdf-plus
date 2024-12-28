@@ -428,7 +428,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
             (async () => {
                 let text = embedLink;
-                const page = child.getPage(pageNumber).pdfPage;
+                let page = child.getPage(pageNumber).pdfPage;
                 const extension = this.settings.rectImageExtension;
 
                 if (!this.settings.rectEmbedStaticImage) {
@@ -444,6 +444,14 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     await navigator.clipboard.writeText(text);
 
                     const createImageFile = async () => {
+                        // I don't know why, but if the PDF viewer is in a popup window (i.e. !== window),
+                        // font rendering fails and characters are rendered as boxes.
+                        // Therefore, we need to load the PDF document again.
+                        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/323
+                        if (child.containerEl.win !== window) {
+                            const doc = await this.lib.loadPDFDocument(file);
+                            page = await doc.getPage(pageNumber);
+                        }
                         const buffer = await this.lib.pdfPageToImageArrayBuffer(page, { type: `image/${extension}`, cropRect: rect });
                         return await this.app.vault.createBinary(imagePath, buffer);
                     };

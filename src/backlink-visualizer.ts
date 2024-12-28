@@ -324,6 +324,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     set hoverPopover(hoverPopover: HoverPopover | null) {
         // We can add some post-processing if needed
         this.child.hoverPopover = hoverPopover;
+        hoverPopover?.hoverEl.addClass('pdf-plus-backlink-popover');
     }
 
     onload() {

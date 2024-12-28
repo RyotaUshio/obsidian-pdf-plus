@@ -871,8 +871,6 @@ export class PDFPlusLib {
         return this.app.vault.getAvailablePath(removeExtension(file.path), file.extension);
     }
 
-
-
     get metadataCacheUpdatePromise() {
         return new Promise<void>((resolve) => this.app.metadataCache.onCleanCache(resolve));
     }
