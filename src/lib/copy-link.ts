@@ -448,7 +448,11 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                         // font rendering fails and characters are rendered as boxes.
                         // Therefore, we need to load the PDF document again.
                         // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/323
-                        if (child.containerEl.win !== window) {
+                        //
+                        // Also, we also have to reload the PDF document when the PDF page is already destroyed
+                        // (which happens if the PDF viewer is already closed)
+                        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/326
+                        if (child.containerEl.win !== window || page.destroyed) {
                             const doc = await this.lib.loadPDFDocument(file);
                             page = await doc.getPage(pageNumber);
                         }
