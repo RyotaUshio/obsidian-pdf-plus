@@ -118,7 +118,7 @@ interface PDFViewerChild {
     getTextByRect(pageView: PDFPageView, rect: Rect): string;
     getAnnotationFromEvt(pageView: PDFPageView, evt: MouseEvent): AnnotationElement | null;
     getPageLinkAlias(page: number): string;
-    getTextSelectionRangeStr(el: HTMLElement): string;
+    getTextSelectionRangeStr(pageEl: HTMLElement): string | null;
     getMarkdownLink(subpath?: string, alias?: string, embed?: boolean): string;
     onContextMenu(evt: MouseEvent): void;
     /** On mobile, tapping on "Copy" in the the OS-provided menu calls this method, in which, in the original implementation, performs "Copy as quote". */
@@ -812,6 +812,7 @@ interface Queue {
 interface AppSetting extends Modal {
     openTab(tab: SettingTab): void;
     openTabById(id: string): any;
+    activeTab: SettingTab | null;
     pluginTabs: PluginSettingTab[];
 }
 

@@ -50,9 +50,9 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 const endOffset = getOffsetInTextLayerNode(endTextLayerNode, range.endContainer, range.endOffset);
                 if (beginIndex !== undefined && endIndex !== undefined && beginOffset !== null && endOffset !== null)
                     return {
-                        beginIndex: +beginIndex,
+                        beginIndex: +beginIndex - this.plugin.textDivFirstIdx,
                         beginOffset,
-                        endIndex: +endIndex,
+                        endIndex: +endIndex - this.plugin.textDivFirstIdx,
                         endOffset
                     };
             }

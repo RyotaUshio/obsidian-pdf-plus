@@ -210,7 +210,7 @@ export class VimVisualMode extends VimBindingsMode {
             }
         }
 
-        return { index, offset };
+        return { index: index - this.plugin.textDivFirstIdx, offset };
     }
 
     extendSelection(getNewHeadPos: (state: { currentHeadPos: PDFTextPos, pageNumber: number, pageParser: PDFPageTextStructureParser }) => PDFTextPos | null) {

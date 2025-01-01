@@ -42,6 +42,7 @@ abstract class PDFLinkLikePostProcessor implements HoverParent {
     set hoverPopover(hoverPopover) {
         this.child.hoverPopover = hoverPopover;
         if (hoverPopover) {
+            hoverPopover.hoverEl.addClass('pdf-plus-pdf-link-like-popover');
             this.onHoverPopoverSet(hoverPopover);
         }
     }
@@ -183,7 +184,6 @@ abstract class PDFDestinationHolderPostProcessor extends PDFLinkLikePostProcesso
 
     onHoverPopoverSet(hoverPopover: HoverPopover): void {
         const el = hoverPopover.hoverEl;
-        el.addClass('pdf-plus-pdf-internal-link-popover');
         const dest = this.getDest();
         if (typeof dest === 'string') el.dataset.dest = dest;
     }
@@ -266,6 +266,11 @@ export class PDFInternalLinkPostProcessor extends PDFDestinationHolderPostProces
 
         return false;
     }
+    
+    onHoverPopoverSet(hoverPopover: HoverPopover): void {
+        super.onHoverPopoverSet(hoverPopover);
+        hoverPopover.hoverEl.addClass('pdf-plus-pdf-internal-link-popover');
+    }
 }
 
 
@@ -299,6 +304,11 @@ export class PDFOutlineItemPostProcessor extends PDFDestinationHolderPostProcess
         return this.plugin.settings.recordHistoryOnOutlineClick
             && !this.child.opts.isEmbed;
     }
+    
+    onHoverPopoverSet(hoverPopover: HoverPopover): void {
+        super.onHoverPopoverSet(hoverPopover);
+        hoverPopover.hoverEl.addClass('pdf-plus-outline-item-popover');
+    }
 }
 
 
@@ -327,5 +337,10 @@ export class PDFThumbnailItemPostProcessor extends PDFLinkLikePostProcessor {
     shouldRecordHistory() {
         return this.plugin.settings.recordHistoryOnThumbnailClick
             && !this.child.opts.isEmbed;
+    }
+
+    onHoverPopoverSet(hoverPopover: HoverPopover): void {
+        super.onHoverPopoverSet(hoverPopover);
+        hoverPopover.hoverEl.addClass('pdf-plus-thumbnail-item-popover');
     }
 }

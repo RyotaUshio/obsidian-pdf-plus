@@ -44,7 +44,12 @@ export class PDFDocumentTextStructureParser extends PDFPlusComponent {
 }
 
 
-export type PDFTextPos = { index: number, offset: number };
+export type PDFTextPos = {
+    /** The 0-origin index of the text layer node containing this position. */
+    index: number;
+    /** The offset of this position within the text layer node. */
+    offset: number;
+};
 
 
 export class PDFPageTextStructureParser {

@@ -584,6 +584,18 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 return embedLink.slice(1);
             };
         },
+        getTextSelectionRangeStr() {
+            return function (this: PDFViewerChild, pageEl: HTMLElement) {
+                const selection = pageEl.win.getSelection();
+                const range = (selection && selection.rangeCount > 0) ? selection.getRangeAt(0) : null;
+                const textSelectionRange = range && lib.copyLink.getTextSelectionRange(pageEl, range);
+                if (textSelectionRange) {
+                    const { beginIndex, beginOffset, endIndex, endOffset } = textSelectionRange;
+                    return `${beginIndex},${beginOffset},${endIndex},${endOffset}`;
+                }
+                return null;
+            };
+        },
         getPageLinkAlias(old) {
             return function (this: PDFViewerChild, page: number): string {
                 if (this.file) {

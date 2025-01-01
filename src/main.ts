@@ -79,6 +79,7 @@ export default class PDFPlus extends Plugin {
 	pdfViewerChildren: Map<HTMLElement, PDFViewerChild> = new Map();
 	/** Stores all the shown context menu objects. Used to close all visible menus programatically. */
 	shownMenus: Set<Menu> = new Set();
+	textDivFirstIdx: number;
 	isDebugMode: boolean = false;
 
 	async onload() {
@@ -142,10 +143,10 @@ export default class PDFPlus extends Plugin {
 	}
 
 	checkVersion() {
-		const untestedVersion = '1.8.0';
-		if (requireApiVersion(untestedVersion)) {
-			console.warn(`${this.manifest.name}: This plugin has not been tested on Obsidian ${untestedVersion} or above. Please report any issue you encounter on GitHub (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/new/choose).`);
-		}
+		// See:
+		// https://forum.obsidian.md/t/in-1-8-0-pdf-copy-link-to-selection-fails-to-copy-proper-links-in-some-cases/93545
+		// https://github.com/RyotaUshio/obsidian-pdf-plus/issues/327
+		this.textDivFirstIdx = requireApiVersion('1.8.0') ? 1 : 0;
 
 		InstallerVersionModal.openIfNecessary(this);
 	}
@@ -733,7 +734,13 @@ export default class PDFPlus extends Plugin {
 
 	openSettingTab(): PDFPlusSettingTab {
 		this.app.setting.open();
-		return this.app.setting.openTabById(this.manifest.id);
+		// This `if` check is necessary. If we omit it, the following bug occurs:
+		// https://github.com/RyotaUshio/obsidian-pdf-plus/issues/309
+		// I learned this from the core Sync plugin's `openSettings` method.
+		if (this.app.setting.activeTab !== this.settingTab) {
+			this.app.setting.openTabById(this.manifest.id);
+		}
+		return this.settingTab;
 	}
 
 	openHotkeySettingTab(query?: string): SettingTab {
