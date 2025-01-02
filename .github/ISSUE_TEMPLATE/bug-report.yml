@@ -9,7 +9,7 @@ body:
         Thank you for taking the time to fill out this bug report!
         
         Please note:
-        - A problem will be considered as PDF++'s bug only if it can be reproducible in a minimal vault where only this plugin (and other relevant plugins if any) are enabled. If you are on desktop, the [sandbox vault](https://help.obsidian.md/Getting+started/Sandbox+vault) is a good place for testing. Alternatively, you can just newly create a clean vault.
+        - A problem will be considered as PDF++'s bug only if it is reproducible in a minimal vault where only this plugin (and other relevant plugins if any) are enabled. If you are on desktop, the [sandbox vault](https://help.obsidian.md/Getting+started/Sandbox+vault) is a good place for testing. Alternatively, you can just newly create a clean vault.
         - If it cannot be reproduced in such a minimal vault, please follow the instructions on [this page](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Trouble-shooting-guide).
         - Make sure the problem occurs **only** when PDF++ is enabled. Otherwise, it is likely to be a bug of Obsidian itself and should be reported on the [forum](https://forum.obsidian.md/c/bug-reports) instead.
         - Changing some options requires reopening PDF files or reloading the plugin to take effect. If it seems something is not working, first try reopening the vault. If it does not help, please file a bug report.
