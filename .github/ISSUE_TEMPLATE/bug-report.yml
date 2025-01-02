@@ -9,9 +9,10 @@ body:
         Thank you for taking the time to fill out this bug report!
         
         Please note:
-        - A problem will be considered as PDF++'s bug only if it can be reproducible in the sandbox vault where only this plugin (and other relevant plugins if any) are enabled. You can open the sandbox vault by running "Open sandbox vault" command from the command palette (the command name may vary depending on the language setting).
-        - If it cannot be reproduced in the sandbox vault, please follow the instructions on [this page](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Trouble-shooting-guide).
-        - As noted in the plugin settings tab, changing some options requires reopening PDF files or reloading the plugin to take effect. If it seems something is not working, first try reopening the vault. If it does not help, please file a bug report.
+        - A problem will be considered as PDF++'s bug only if it can be reproducible in a minimal vault where only this plugin (and other relevant plugins if any) are enabled. If you are on desktop, the [sandbox vault](https://help.obsidian.md/Getting+started/Sandbox+vault) is a good place for testing. Alternatively, you can just newly create a clean vault.
+        - If it cannot be reproduced in such a minimal vault, please follow the instructions on [this page](https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Trouble-shooting-guide).
+        - Make sure the problem occurs **only** when PDF++ is enabled. Otherwise, it is likely to be a bug of Obsidian itself and should be reported on the [forum](https://forum.obsidian.md/c/bug-reports) instead.
+        - Changing some options requires reopening PDF files or reloading the plugin to take effect. If it seems something is not working, first try reopening the vault. If it does not help, please file a bug report.
         - **Please fill in all the required fields**. Identifying where the problem comes from is extremely difficult if any of them are missing. A bug report that does not follow the template and the instructions may be closed.
         - If you have multiple problems to report, please create separate bug reports for each of them instead of including all in a single issue. It makes it easier to track issues.
         - Be nice. Describe only the objective facts and please do not include extra words like "this is annoying".
@@ -19,7 +20,7 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: 'Describe the detailed steps to reproduce the behavior **IN THE SANDBOX VAULT**. If possible, attach a PDF file where you face the problem. If you mind sharing the PDF publically, send it via email: ushio@ms.k.u-tokyo.ac.jp.'
+      description: 'Describe the detailed steps to reproduce the behavior **IN A MINIMAL VAULT**. If possible, attach a PDF file where you face the problem. If you mind sharing the PDF publically, send it via email: ushio@ms.k.u-tokyo.ac.jp.'
       placeholder: |
         1. Go to '...'
         2. Click on '....'
@@ -45,8 +46,8 @@ body:
   - type: textarea
     id: screen-capture
     attributes:
-      label: Screen recordings or screenshots (sandbox vault)
-      description: "Add screen recordings that capture the situation in which the bug is happening **IN THE SANDBOX VAULT**. If it's difficult, add screenshots instead."
+      label: Screen recordings or screenshots
+      description: "Add screen recordings that capture the situation in which the bug is happening **IN THE MINIMAL VAULT**. If it's difficult, add screenshots instead."
       placeholder: 
     validations:
       required: true
@@ -54,7 +55,7 @@ body:
     id: obsidian-debug-info
     attributes:
       label: Obsidian debug info
-      description: "From the command palette **IN THE SANDBOX VAULT**, run the command `Show debug info` (the command name may vary depending on the language setting, e.g. 显示调试信息/顯示除錯資訊 in Chinese). Then select `Copy to clipboard` and paste the result here."
+      description: "From the command palette **IN THE MINIMAL VAULT**, run the command `Show debug info` (the command name may vary depending on the language setting, e.g. 显示调试信息/顯示除錯資訊 in Chinese). Then select `Copy to clipboard` and paste the result here."
       placeholder: 
     validations:
       required: true
@@ -62,7 +63,7 @@ body:
     id: pdf-plus-debug-info
     attributes:
       label: 'PDF++ debug info'
-      description: "From the command palette **IN THE SANDBOX VAULT**, run the command `PDF++: Copy debug info` and paste the result here."
+      description: "From the command palette **IN THE MINIMAL VAULT**, run the command `PDF++: Copy debug info` and paste the result here."
       placeholder:
       render: json
     validations:
