@@ -13,7 +13,7 @@ A bookmarklet ([Wikipedia](https://en.wikipedia.org/wiki/Bookmarklet)) is just l
     ![[Untitled.png]]
 4. Enter some name, and copy & paste the following to the URL box.
     ```    
-    javascript:(()=>{window.location.href="obsidian://pdf-plus?create-dummy="+# encodeURIComponent(window.location.href)})()
+    javascript:(()=>{window.location.href="obsidian://pdf-plus?create-dummy="+encodeURIComponent(window.location.href)})()
     ``` 
    ![[Pasted image 20240318155036.png]]
 4. Save the bookmark. For easier access, it will be a good idea to have it in the bookmark bar.
@@ -36,7 +36,7 @@ If you mind to be asked for the dummy file path every time, you can pre-specify 
 For example, replace the URL with the following to always create dummy files under a folder `Clippings/PDF`:
 
 ```
-javascript:(() => {window.location.href="obsidian://pdf-plus?create-dummy="+# encodeURIComponent(window.location.href)+"&folder=Clilppings/PDF"})()
+javascript:(() => {window.location.href="obsidian://pdf-plus?create-dummy="+encodeURIComponent(window.location.href)+"&folder=Clilppings/PDF"})()
 ```
 
 If the folder path contains whitespaces, replace each of them with `%20`.
