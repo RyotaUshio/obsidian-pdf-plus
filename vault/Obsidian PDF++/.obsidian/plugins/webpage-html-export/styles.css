@@ -1,5 +1,16 @@
 /* THIS FILE IS NOT EXPORTED WITH THE HTML FILE! */
 
+body.html-export-running .workspace-tabs:has(.html-progress-wrapper) .workspace-tab-header-container
+{
+	display: none !important;
+}
+
+body.html-export-running :is(.nav-files-container, .side-dock-actions, .workspace-tab-header-container, .workspace-drawer-vault-actions, .nav-buttons-container)
+{
+	opacity: 0.2 !important;
+	pointer-events: none !important;
+}
+
 /* Flow list used on the settings page */
 .flow-list {
     contain: inline-size;
@@ -39,6 +50,11 @@
     margin-right: 0.5em;
 }
 
+.webpage-html-settings .setting-item.is-disabled
+{
+	opacity: 0.5;
+}
+
 /* Progressbar used in the render progress */
 
 .html-progress-bar
@@ -58,6 +74,17 @@
     background-color: currentColor;
     border-radius: 500px;
 }
+
+button.html-progress-cancel
+{
+	background-color: var(--color-red);
+	color: white;
+	border: none;
+	padding: 0.5em 1em;
+	border-radius: 5px;
+	margin-top: 1em;
+}
+
 
 .file-list-wrapper
 {
@@ -104,10 +131,18 @@
 
 .html-progress-wrapper
 {
+	position: absolute;
 	height: 100%;
 	min-width: 100%;
 	display:flex;
 	flex-direction:column;
+	background-color: var(--background-primary);
+	z-index: 1000;
+}
+
+.workspace-tab-container:has(.html-progress-wrapper)
+{
+	position: relative;
 }
 
 .html-progress-content
