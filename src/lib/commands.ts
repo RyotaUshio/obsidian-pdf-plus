@@ -915,6 +915,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     copyDebugInfo() {
+        // redact the annotation author name
         const settings = Object.assign({}, this.settings, { author: '*'.repeat(this.settings.author.length) });
         // @ts-ignore
         const fullStyleSettings = this.app.plugins.plugins['obsidian-style-settings']?.settingsManager.settings;
@@ -924,7 +925,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         ) : null;
         const styleSheet = this.plugin.domManager.styleEl.textContent;
 
-        navigator.clipboard.writeText(JSON.stringify({ settings, styleSettings, styleSheet }, null, 4));
+        navigator.clipboard.writeText(JSON.stringify({ settings, styleSettings, styleSheet }));
         new Notice(`${this.plugin.manifest.name}: Debug info copied to clipboard.`);
     }
 

@@ -207,6 +207,7 @@ export interface PDFPlusSettings {
 	focusEditorAfterAutoPaste: boolean;
 	clearSelectionAfterAutoPaste: boolean;
 	respectCursorPositionWhenAutoPaste: boolean;
+	blankLineAboveAppendedContent: boolean;
 	autoCopy: boolean;
 	autoFocus: boolean;
 	autoPaste: boolean;
@@ -488,6 +489,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	focusEditorAfterAutoPaste: true,
 	clearSelectionAfterAutoPaste: true,
 	respectCursorPositionWhenAutoPaste: true,
+	blankLineAboveAppendedContent: true,
 	autoCopy: false,
 	autoFocus: false,
 	autoPaste: false,
@@ -1892,6 +1894,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		this.addHeading('Viewer options', 'viewer-option', 'lucide-monitor');
 		this.addSetting('defaultZoomValue')
 			.setName('Default zoom level')
+			.setDesc('This option will be ignored in PDF embeds.')
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOptions({
@@ -2355,9 +2358,15 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setDesc('If enabled, the text selection in the PDF viewer will be automatically cleared after performing auto-pasting.'),
 			() => !this.plugin.settings.focusEditorAfterAutoPaste
 		);
-		this.addToggleSetting('respectCursorPositionWhenAutoPaste')
+		this.addToggleSetting('respectCursorPositionWhenAutoPaste', () => this.events.trigger('update'))
 			.setName('Respect current cursor position')
 			.setDesc('When enabled, triggering auto-pasting will paste the copied text at the current cursor position if the target note is already opened. If disabled, the text will be always appended to the end of the note.');
+		this.showConditionally(
+			this.addToggleSetting('blankLineAboveAppendedContent')
+				.setName('Blank line above the appended content')
+				.setDesc('Because you disabled the option above, auto-pasted content will be added at the end of your note. Enable this option to make sure that you have a blank line between the existing content and the newly added content.'),
+			() => !this.plugin.settings.respectCursorPositionWhenAutoPaste
+		);
 
 		this.addHeading('General', 'auto-general')
 			.setDesc('General settings that apply to both auto-focus and auto-paste.');
@@ -2939,18 +2948,18 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Selection/annotation embeds margin (px)');
 		}
 		this.addToggleSetting('noSidebarInEmbed')
-			.setName('Hide sidebar in PDF embeds embeds or PDF popover previews by default');
+			.setName('Hide sidebar in PDF embeds or PDF popover previews by default');
 		this.addToggleSetting('noSpreadModeInEmbed')
 			.setName('Don\'t display PDF embeds or PDF popover previews in "two page" layout')
 			.setDesc('Regardless of the "two page" layout setting in existing PDF viewer, PDF embeds and PDF popover previews will be always displayed in "single page" layout. You can still turn it on for each embed by clicking the "two page" button in the toolbar, if shown.');
 		this.addToggleSetting('noTextHighlightsInEmbed')
-			.setName('Don\'t highlight text in a text selection embeds');
+			.setName('Don\'t highlight text in text selection embeds');
 		this.addToggleSetting('noAnnotationHighlightsInEmbed')
-			.setName('Don\'t highlight annotations in an annotation embeds');
+			.setName('Don\'t highlight annotations in annotation embeds');
 		this.addToggleSetting('persistentTextHighlightsInEmbed')
-			.setName('Don\'t clear highlights in a text selection embeds');
+			.setName('Don\'t clear highlights in text selection embeds');
 		this.addToggleSetting('persistentAnnotationHighlightsInEmbed')
-			.setName('Don\'t clear highlights in an annotation embeds');
+			.setName('Don\'t clear highlights in annotation embeds');
 		this.addToggleSetting('embedUnscrollable')
 			.setName('Make PDF embeds with a page specified unscrollable')
 			.setDesc('After changing this option, you need to reopen tabs or reload the app.');

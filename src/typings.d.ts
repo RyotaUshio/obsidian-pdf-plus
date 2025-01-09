@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, Menu } from 'obsidian';
 import { CanvasData, CanvasFileData, CanvasGroupData, CanvasLinkData, CanvasNodeData, CanvasTextData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -583,6 +583,7 @@ interface PDFJsEventMap {
     switchscrollmode: { mode: ScrollMode, source?: any };
     scalechanged: { value: string, source?: any };
     scalechanging: { source: PDFViewer, scale: number, presetValue?: number };
+    documentinit: { source: ObsidianViewer };
 }
 
 interface PDFEmbed extends Embed {
@@ -1127,6 +1128,7 @@ declare module 'obsidian' {
             sourcePath?: string;
             state?: any;
         }): void;
+        handleExternalLinkContextMenu(menu: Menu, url: string): boolean;
     }
 
     interface WorkspaceLeaf {

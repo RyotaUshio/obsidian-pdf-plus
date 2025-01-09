@@ -1,4 +1,4 @@
-import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip, Keymap, Menu, Platform, requireApiVersion } from 'obsidian';
+import { Component, MarkdownRenderer, Notice, TFile, debounce, setIcon, setTooltip, Keymap, Menu, Platform, requireApiVersion, apiVersion } from 'obsidian';
 import { around } from 'monkey-around';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
@@ -11,10 +11,11 @@ import { patchPDFOutlineViewer } from 'patchers';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFPlusToolbar } from 'toolbar';
 import { BibliographyManager } from 'bib';
-import { camelCaseToKebabCase, getCharactersWithBoundingBoxesInPDFCoords, getTextLayerInfo, hookInternalLinkMouseEventHandlers, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
-import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, ObsidianServices, PDFPageView } from 'typings';
+import { camelCaseToKebabCase, getCharactersWithBoundingBoxesInPDFCoords, getTextLayerInfo, hookInternalLinkMouseEventHandlers, isEmbed, isModifierName, isNonEmbedLike, showChildElOnParentElHover } from 'utils';
+import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild, PDFSearchSettings, Rect, PDFAnnotationHighlight, PDFTextHighlight, PDFRectHighlight, ObsidianViewer, PDFPageView } from 'typings';
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim/vim';
+import { PDFPlusSettings } from 'settings';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -37,7 +38,7 @@ export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDF
             if (!child.pdfViewer) return resolve(false);
             patchObsidianViewer(plugin, child.pdfViewer);
 
-            patchObsidianServices(plugin);
+            patchAppOptions(plugin);
 
             plugin.patchStatus.pdfInternals = true;
 
@@ -385,7 +386,28 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                 if (plugin.settings.noSpreadModeInEmbed && !isNonEmbedLike(this.pdfViewer)) {
                     lib.registerPDFEvent('pagerendered', this.pdfViewer.eventBus, null, () => {
-                        this.pdfViewer.eventBus.dispatch('switchspreadmode', { mode: SpreadMode.NONE });
+                        this.pdfViewer.eventBus.dispatch('switchspreadmode', {
+                            mode: SpreadMode.NONE,
+                        });
+                    });
+                }
+
+                // Added in PDF++ 0.40.22
+                // In this version, I changed how `defaultZoomValue`, `scrollModeOnLoad` & `spreadModeOnLoad` options
+                // work as Obsidian 1.8.0 update broke the previous mechanism (reported in https://github.com/RyotaUshio/obsidian-pdf-plus/issues/333).
+                // The new implementation worked almost perfectly, but there was one problem.
+                // When plugin.settings.defaultZoomValue is set to 'page-fit', PDF embeds keeps shrinking
+                // and finally the zoom level reachs zero.
+                // (A similar issue was reported before in https://github.com/RyotaUshio/obsidian-pdf-plus/issues/137)
+                // This seems to be due to an infinite loop between the `ObsidianViewer.setHeight` callback fired after resize events
+                // and the `page-fit` behavior.
+                // To fix it, I had to force `page-width` for PDF embeds. 
+                if (isEmbed(this.pdfViewer)) {
+                    lib.registerPDFEvent('documentinit', this.pdfViewer.eventBus, null, () => {
+                        this.pdfViewer.eventBus.dispatch('scalechanged', {
+                            source: this.toolbar,
+                            value: 'page-width',
+                        });
                     });
                 }
 
@@ -584,18 +606,28 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 return embedLink.slice(1);
             };
         },
-        getTextSelectionRangeStr() {
-            return function (this: PDFViewerChild, pageEl: HTMLElement) {
-                const selection = pageEl.win.getSelection();
-                const range = (selection && selection.rangeCount > 0) ? selection.getRangeAt(0) : null;
-                const textSelectionRange = range && lib.copyLink.getTextSelectionRange(pageEl, range);
-                if (textSelectionRange) {
-                    const { beginIndex, beginOffset, endIndex, endOffset } = textSelectionRange;
-                    return `${beginIndex},${beginOffset},${endIndex},${endOffset}`;
+        // The following patch fixes the bug reported in https://forum.obsidian.md/t/in-1-8-0-pdf-copy-link-to-selection-fails-to-copy-proper-links-in-some-cases/93545
+        // (WhiteNoise said "will be fixed in 1.8.2" but it was actually fixed in Obsidian 1.8.1: see https://obsidian.md/changelog/2025-01-07-desktop-v1.8.1/)
+        // Therefore the method will be patched only if the Obsidian version is exactly 1.8.0.
+        // See also https://github.com/RyotaUshio/obsidian-pdf-plus/issues/327
+        ...(
+            apiVersion === '1.8.0'
+                ? {
+                    getTextSelectionRangeStr() {
+                        return function (this: PDFViewerChild, pageEl: HTMLElement) {
+                            const selection = pageEl.win.getSelection();
+                            const range = (selection && selection.rangeCount > 0) ? selection.getRangeAt(0) : null;
+                            const textSelectionRange = range && lib.copyLink.getTextSelectionRange(pageEl, range);
+                            if (textSelectionRange) {
+                                const { beginIndex, beginOffset, endIndex, endOffset } = textSelectionRange;
+                                return `${beginIndex},${beginOffset},${endIndex},${endOffset}`;
+                            }
+                            return null;
+                        };
+                    }
                 }
-                return null;
-            };
-        },
+                : {}
+        ),
         getPageLinkAlias(old) {
             return function (this: PDFViewerChild, page: number): string {
                 if (this.file) {
@@ -1002,17 +1034,16 @@ const patchObsidianViewer = (plugin: PDFPlus, pdfViewer: ObsidianViewer) => {
     }));
 };
 
-const patchObsidianServices = (plugin: PDFPlus) => {
-    plugin.register(around(window.pdfjsViewer.ObsidianServices.prototype, {
-        createPreferences(old) {
-            return function (this: ObsidianServices, ...args: any[]) {
-                Object.assign(this.preferences, {
-                    defaultZoomValue: plugin.settings.defaultZoomValue,
-                    scrollModeOnLoad: plugin.settings.scrollModeOnLoad,
-                    spreadModeOnLoad: plugin.settings.spreadModeOnLoad,
-                });
-                return old.call(this, ...args);
+const patchAppOptions = (plugin: PDFPlus) => {
+    plugin.register(around(window.pdfjsViewer.AppOptions, {
+        get(old) {
+            return function (...args: any[]) {
+                const name = args[0];
+                if (['defaultZoomValue', 'scrollModeOnLoad', 'spreadModeOnLoad'].includes(name)) {
+                    return plugin.settings[name as keyof PDFPlusSettings];
+                }
+                return old.apply(this, args);
             };
-        }
+        },
     }));
 };

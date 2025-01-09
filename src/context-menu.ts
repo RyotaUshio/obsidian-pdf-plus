@@ -436,10 +436,12 @@ export class PDFPlusMenu extends Menu {
 
 export class PDFPlusContextMenu extends PDFPlusMenu {
     child: PDFViewerChild;
+    currentSection: string | null;
 
     constructor(plugin: PDFPlus, child: PDFViewerChild) {
         super(plugin);
         this.child = child;
+        this.currentSection = null;
         this.setUseNativeMenu(false);
         this.addSections(Object.keys(DEFAULT_SETTINGS.contextMenuConfig));
 
@@ -456,6 +458,16 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
 
     get win() {
         return this.child.containerEl.win;
+    }
+
+    addItem(cb: (item: MenuItem) => any): this {
+        if (this.currentSection) {
+            return super.addItem((item) => {
+                cb(item);
+                item.setSection(this.currentSection!);
+            });
+        }
+        return super.addItem(cb);
     }
 
     // TODO: divide into smaller methods
@@ -653,14 +665,9 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                     if ('url' in annot.data && typeof annot.data.url === 'string') {
                         const url = annot.data.url;
 
-                        this.addItem((item) => {
-                            item.setSection('link')
-                                .setTitle('Copy URL')
-                                .setIcon('lucide-copy')
-                                .onClick(() => {
-                                    navigator.clipboard.writeText(url);
-                                });
-                        });
+                        this.currentSection = 'link';
+                        app.workspace.handleExternalLinkContextMenu(this, url);
+                        this.currentSection = null;
                     }
                 }
             }

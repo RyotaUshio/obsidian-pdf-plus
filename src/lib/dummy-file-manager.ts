@@ -1,4 +1,4 @@
-import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, ObsidianProtocolData, TFile } from 'obsidian';
+import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, ObsidianProtocolData, Platform, TFile } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { DummyFileModal } from 'modals';
@@ -20,11 +20,15 @@ export class DummyFileManager extends PDFPlusLibSubmodule {
 
         return await Promise.all(uris.map(async (uri) => {
             // Find an available file path in the folder
-            let fileName = normalizePath(folderPath + '/' + uri.split('/').pop()!.replace(/%20/g, ' '));
-            if (fileName.endsWith('.pdf')) {
-                fileName = fileName.slice(0, -4);
+            let fileName = uri.split('/').pop()!.replace(/%20/g, ' ');
+            if (Platform.isWin) {
+                fileName = fileName.replace(/\?/g, ' ');
             }
-            const availableFilePath = this.app.vault.getAvailablePath(fileName, 'pdf');
+            let filePath = normalizePath(folderPath + '/' + fileName);
+            if (filePath.endsWith('.pdf')) {
+                filePath = filePath.slice(0, -4);
+            }
+            const availableFilePath = this.app.vault.getAvailablePath(filePath, 'pdf');
             // Create the dummy file
             try {
                 const file = await this.app.vault.create(availableFilePath, uri);

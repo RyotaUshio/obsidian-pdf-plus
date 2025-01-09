@@ -16,7 +16,7 @@ import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
 import { PDFPageLabels } from './page-labels';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap, BacklinkView } from 'typings';
-import { PDFCroppedEmbed } from 'pdf-cropped-embed';
+import { PDFCroppedEmbed } from '../pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
 import * as utils from 'utils';
@@ -26,12 +26,6 @@ import { DummyFileManager } from './dummy-file-manager';
 export class PDFPlusLib {
     app: App;
     plugin: PDFPlus;
-
-    PDFOutlines = PDFOutlines;
-    NameTree = NameTree;
-    NumberTree = NumberTree;
-    PDFNamedDestinations = PDFNamedDestinations;
-    PDFPageLabels = PDFPageLabels;
 
     /** Sub-modules */
     commands: PDFPlusCommands;
@@ -43,6 +37,15 @@ export class PDFPlusLib {
     speech: Speech;
 
     utils = utils;
+
+    PDFCroppedEmbed = PDFCroppedEmbed;
+
+    /** PDF-LIB helper classes */
+    PDFOutlines = PDFOutlines;
+    NameTree = NameTree;
+    NumberTree = NumberTree;
+    PDFNamedDestinations = PDFNamedDestinations;
+    PDFPageLabels = PDFPageLabels;
 
     constructor(plugin: PDFPlus) {
         this.app = plugin.app;

@@ -1,4 +1,4 @@
-import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, loadPdfJs, requireApiVersion } from 'obsidian';
+import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, apiVersion, loadPdfJs } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
@@ -146,7 +146,7 @@ export default class PDFPlus extends Plugin {
 		// See:
 		// https://forum.obsidian.md/t/in-1-8-0-pdf-copy-link-to-selection-fails-to-copy-proper-links-in-some-cases/93545
 		// https://github.com/RyotaUshio/obsidian-pdf-plus/issues/327
-		this.textDivFirstIdx = requireApiVersion('1.8.0') ? 1 : 0;
+		this.textDivFirstIdx = apiVersion === '1.8.0' ? 1 : 0;
 
 		InstallerVersionModal.openIfNecessary(this);
 	}

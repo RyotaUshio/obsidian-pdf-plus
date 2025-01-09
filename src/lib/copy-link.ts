@@ -756,7 +756,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             } else {
                 let data = editor.getValue();
                 data = data.trimEnd();
-                if (data) data += '\n\n';
+                if (data) data += this.settings.blankLineAboveAppendedContent ? '\n\n' : '\n';
                 data += text;
                 editor.setValue(data);
             }
@@ -775,7 +775,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             await this.app.vault.process(file, (data) => {
                 // If the file does not end with a blank line, add one
                 data = data.trimEnd();
-                if (data) data += '\n\n';
+                if (data) data += this.settings.blankLineAboveAppendedContent ? '\n\n' : '\n';
                 data += text;
                 return data;
             });
