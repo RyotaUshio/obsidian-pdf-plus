@@ -272,6 +272,7 @@ export interface PDFPlusSettings {
 	defaultZoomValue: string; // 'page-width' | 'page-height' | 'page-fit' | '<PERCENTAGE>'
 	scrollModeOnLoad: ScrollMode;
 	spreadModeOnLoad: SpreadMode;
+	usePageUpAndPageDown: boolean;
 	hoverableDropdownMenuInToolbar: boolean;
 	zoomLevelInputBoxInToolbar: boolean;
 	popoverPreviewOnExternalLinkHover: boolean;
@@ -554,6 +555,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	defaultZoomValue: 'page-width',
 	scrollModeOnLoad: ScrollMode.VERTICAL,
 	spreadModeOnLoad: SpreadMode.NONE,
+	usePageUpAndPageDown: true,
 	hoverableDropdownMenuInToolbar: true,
 	zoomLevelInputBoxInToolbar: true,
 	popoverPreviewOnExternalLinkHover: true,
@@ -1623,7 +1625,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			.setName('Enable PDF editing')
 			.then((setting) => {
 				this.renderMarkdown([
-					'PDF++ will not modify PDF files themselves unless you turn on this option. <span style="color: var(--text-warning);">The author assumes no responsibility for any data corruption. Please make sure you have a backup of your files.</span>',
+					'PDF++ will not modify PDF files themselves unless you turn on this option. <span style="color: var(--text-warning);">The author assumes no responsibility for any data corruption. Please make sure you have a backup of your files.</span> Also note that PDF++ currently does not support editing encrypted PDFs.',
 				], setting.descEl);
 			});
 		if (this.plugin.settings.enablePDFEdit) {
@@ -1637,8 +1639,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					const inputEl = (setting.components[0] as TextComponent).inputEl;
 					inputEl.toggleClass('error', !inputEl.value);
 				});
-			this.addToggleSetting('enableEditEncryptedPDF')
-				.setName('Enable editing encrypted PDF files');
+			// this.addToggleSetting('enableEditEncryptedPDF')
+				// .setName('Enable editing encrypted PDF files');
 		}
 
 
@@ -1941,7 +1943,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setName('Default spread mode'),
 			() => this.plugin.settings.scrollModeOnLoad !== ScrollMode.WRAPPED
 		);
-
+		this.addToggleSetting('usePageUpAndPageDown')
+			.setName('Use PageUp/PageDown key to go to previous/next page')
+			.setDesc(createFragment((el) => {
+				el.appendText('You need to reopen PDF viewers after changing this option. Note that you can achieve the same thing (and even more advanced stuff) using ');
+				el.appendChild(this.createLinkToHeading('vim', 'Vim keybindings'));
+				el.appendText('.');
+			}));
 
 		this.addHeading('Context menu in PDF viewer', 'context-menu', 'lucide-mouse-pointer-click')
 			.setDesc('(Desktop & tablet only) Customize the behavior of the context menu that pops up when you right-click in the PDF viewer. For mobile users, see also the next section.');

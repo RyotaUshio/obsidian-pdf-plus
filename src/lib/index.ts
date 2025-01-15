@@ -683,7 +683,7 @@ export class PDFPlusLib {
     getTextContentItems() {
         const textLayer = this.getPage(true)?.textLayer;
         if (textLayer) {
-            return utils.getTextLayerInfo(textLayer).textContentItems;
+            return utils.getTextLayerInfo(textLayer)?.textContentItems;
         }
     }
 
@@ -786,10 +786,10 @@ export class PDFPlusLib {
 
     async loadPdfLibDocumentFromArrayBuffer(buffer: ArrayBuffer, readonly: boolean = false): Promise<PDFDocument> {
         try {
-            return await PDFDocument.load(buffer, { ignoreEncryption: readonly || this.plugin.settings.enableEditEncryptedPDF });
+            return await PDFDocument.load(buffer, { ignoreEncryption: readonly });
         } catch (e) {
-            if (e instanceof EncryptedPDFError && !this.plugin.settings.enableEditEncryptedPDF) {
-                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. Please consider enabling "Enable editing encrypted PDF files" in the plugin settings.`);
+            if (e instanceof EncryptedPDFError) {
+                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. This plugin currently does not support editing encrypted PDF files.`, 8);
             }
             throw e;
         }
