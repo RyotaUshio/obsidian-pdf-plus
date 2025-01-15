@@ -234,6 +234,8 @@ export default class PDFPlus extends Plugin {
 			this.settings.showContextMenuOnMouseUpIf = 'Mod';
 		}
 
+		this.settings.enableEditEncryptedPDF = false;
+
 		this.renameSetting('enalbeWriteHighlightToFile', 'enablePDFEdit');
 
 		this.renameSetting('selectToCopyToggleRibbonIcon', 'autoCopyToggleRibbonIcon');

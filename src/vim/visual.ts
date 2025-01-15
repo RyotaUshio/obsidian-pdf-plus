@@ -299,7 +299,9 @@ export class VimVisualMode extends VimBindingsMode {
             const { page, pos } = anchorOrHead;
             const textLayer = this.vim.child?.getPage(page).textLayer;
             if (!textLayer) return;
-            const textDivs = getTextLayerInfo(textLayer).textDivs;
+            const textLayerInfo = getTextLayerInfo(textLayer);
+            if (!textLayerInfo) return;
+            const textDivs = textLayerInfo.textDivs;
             if (!textDivs || !textDivs.length) return;
 
             const textDiv = textDivs[pos.index];

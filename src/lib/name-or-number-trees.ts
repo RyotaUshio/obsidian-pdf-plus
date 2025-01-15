@@ -75,7 +75,7 @@ abstract class NameOrNumberTreeNode<Key extends string | number> {
     abstract _toStringOrNumber(key: PDFObject): Key;
     abstract _toPDFStringOrPDFNumber(key: Key): PDFObject;
 
-    is(another: typeof this): boolean {
+    is(another: NameOrNumberTreeNode<Key>): boolean {
         return this.dict === another.dict;
     }
 
@@ -196,8 +196,8 @@ abstract class NameOrNumberTreeNode<Key extends string | number> {
     }
 
     /** Iterate over leaf nodes (and the root node if it is the only node in the tree). */
-    iterLeaves(callback: (node: typeof this) => any) {
-        const stack = [this];
+    iterLeaves(callback: (node: NameOrNumberTreeNode<Key>) => any) {
+        const stack: NameOrNumberTreeNode<Key>[] = [this];
         while (stack.length) {
             const node = stack.shift()!;
 
@@ -208,7 +208,7 @@ abstract class NameOrNumberTreeNode<Key extends string | number> {
     }
 
     getLeaves() {
-        const leaves: (typeof this)[] = [];
+        const leaves: NameOrNumberTreeNode<Key>[] = [];
         this.iterLeaves((node) => leaves.push(node));
         return leaves;
     }

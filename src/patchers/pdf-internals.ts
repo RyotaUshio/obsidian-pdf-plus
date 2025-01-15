@@ -99,7 +99,20 @@ const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerC
         onload(old) {
             return async function (this: PDFViewerComponent) {
                 const ret = await old.call(this);
+
+                if (plugin.settings.usePageUpAndPageDown) {
+                    this.scope.register([], 'PageUp', () => {
+                        this.child?.pdfViewer?.pdfViewer?.previousPage();
+                        return false;
+                    });
+                    this.scope.register([], 'PageDown', () => {
+                        this.child?.pdfViewer?.pdfViewer?.nextPage();
+                        return false;
+                    });
+                }
+                
                 VimBindings.register(plugin, this);
+
                 return ret;
             };
         }
@@ -642,10 +655,11 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
             return function (this: PDFViewerChild, page: number, range: [[number, number], [number, number]]) {
                 const pageView = this.getPage(page);
                 const textLayer = pageView.textLayer;
+                const textLayerInfo = textLayer && getTextLayerInfo(textLayer);
                 let textDivFirst: HTMLElement | null = null;
 
-                if (textLayer) {
-                    const textDivs = getTextLayerInfo(textLayer).textDivs;
+                if (textLayerInfo) {
+                    const textDivs = textLayerInfo.textDivs;
                     const indexFirst = range[0][0];
                     textDivFirst = textDivs[indexFirst];
 
@@ -930,8 +944,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 let text = '';
 
                 const textLayer = pageView.textLayer;
-                if (textLayer) {
-                    const { textContentItems: items, textDivs: divs } = getTextLayerInfo(textLayer);
+                const textLayerInfo = textLayer && getTextLayerInfo(textLayer);
+                if (textLayerInfo) {
+                    const { textContentItems: items, textDivs: divs } = textLayerInfo;
                     const [left, bottom, right, top] = rect;
 
                     for (let index = 0; index < items.length; index++) {

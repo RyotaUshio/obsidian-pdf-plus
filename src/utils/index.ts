@@ -157,7 +157,7 @@ export function* getCharactersWithBoundingBoxesInPDFCoords(pageView: PDFPageView
 }
 
 /** Use this utility function whenever accessing textDivs or textContentItems in order to deal with different version of PDF.js bundled with Obsidian. */
-export function getTextLayerInfo(textLayerBuilder: TextLayerBuilder | OldTextLayerBuilder): { textDivs: HTMLElement[], textContentItems: TextContentItem[] } {
+export function getTextLayerInfo(textLayerBuilder: TextLayerBuilder | OldTextLayerBuilder): { textDivs: HTMLElement[], textContentItems: TextContentItem[] } | null {
     if ('textLayer' in textLayerBuilder) { // true if Obsidian is v1.8.0 or later
         return textLayerBuilder.textLayer;
     }
