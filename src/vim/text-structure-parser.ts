@@ -32,9 +32,8 @@ export class PDFDocumentTextStructureParser extends PDFPlusComponent {
             const page = this.pdfViewer.getPageView(pageNumber - 1);
             if (page) {
                 const textLayer = page.textLayer;
-                const textLayerInfo = textLayer && getTextLayerInfo(textLayer);
-                if (textLayerInfo) {
-                    const { textContentItems: items, textDivs: divs } = textLayerInfo;
+                if (textLayer) {
+                    const { textContentItems: items, textDivs: divs } = getTextLayerInfo(textLayer);
                     parser = new PDFPageTextStructureParser(page, items, divs);
                     this.pages.set(pageNumber, parser);
                 }

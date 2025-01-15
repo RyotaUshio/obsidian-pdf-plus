@@ -288,16 +288,13 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                     if (result && 'beginIndex' in result) {
                         const textLayer = child.getPage(page).textLayer;
                         if (textLayer) {
-                            const textLayerInfo = getTextLayerInfo(textLayer);
-                            if (textLayerInfo) {
-                                const { textContentItems } = textLayerInfo;
-                                const item = textContentItems[result.beginIndex];
-                                if (item) {
-                                    const left = item.transform[4];
-                                    const top = item.transform[5] + item.height;
-                                    if (typeof left === 'number' && typeof top === 'number') {
-                                        this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
-                                    }
+                            const { textContentItems } = getTextLayerInfo(textLayer);
+                            const item = textContentItems[result.beginIndex];
+                            if (item) {
+                                const left = item.transform[4];
+                                const top = item.transform[5] + item.height;
+                                if (typeof left === 'number' && typeof top === 'number') {
+                                    this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
                                 }
                             }
                         }

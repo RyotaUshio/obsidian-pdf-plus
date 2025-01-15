@@ -273,7 +273,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     addContentsSetting() {
         if (this.oldValues.contents || this.allowNoValue.contents) {
             new Setting(this.contentEl)
-                .setName('Comment')
+                .setName('Contents')
                 .then((setting) => {
                     this.previewEl = setting.controlEl.createDiv('preview-container markdown-rendered');
                     if (this.plugin.settings.renderMarkdownInStickyNote) {

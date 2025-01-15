@@ -295,7 +295,7 @@ export class RectangleCache extends PDFPlusComponent {
         const textLayer = pageView.textLayer;
         if (!textLayer) return null;
         const textLayerInfo = getTextLayerInfo(textLayer);
-        if (!textLayerInfo || !textLayerInfo.textDivs.length) return null;
+        if (!textLayerInfo.textDivs.length) return null;
 
         const rects = this.lib.highlight.geometry.computeMergedHighlightRects(textLayerInfo, beginIndex, beginOffset, endIndex, endOffset);
         return rects;
@@ -409,9 +409,7 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
 
         const textLayer = pageView.textLayer;
         if (!textLayer) return;
-        const textLayerInfo = getTextLayerInfo(textLayer);
-        if (!textLayerInfo) return;
-        const { textDivs } = textLayerInfo;
+        const { textDivs } = getTextLayerInfo(textLayer);
         // textDivs should not be null, but it seems it is in some cases in Obsidian 1.8.x.
         // So I added `!textDivs` check here.
         if (!textDivs || !textDivs.length) return;

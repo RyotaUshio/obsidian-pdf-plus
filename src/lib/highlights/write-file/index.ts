@@ -64,18 +64,16 @@ export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
             const pageView = child.getPage(pageNumber);
             if (pageView?.textLayer && pageView.div.dataset.loaded) {
                 const textLayerInfo = getTextLayerInfo(pageView.textLayer);
-                if (textLayerInfo) {
-                    const results = this.lib.highlight.geometry.computeMergedHighlightRects(textLayerInfo, beginIndex, beginOffset, endIndex, endOffset);
-                    const rects = results.map(({ rect }) => rect);
-                    let annotationID;
-                    try {
-                        annotationID = await annotator(child.file, pageNumber, rects);
-                    } catch (e) {
-                        new Notice(`${this.plugin.manifest.name}: An error occurred while attemping to add an annotation.`);
-                        console.error(e);
-                    }
-                    return { annotationID, rects };
+                const results = this.lib.highlight.geometry.computeMergedHighlightRects(textLayerInfo, beginIndex, beginOffset, endIndex, endOffset);
+                const rects = results.map(({ rect }) => rect);
+                let annotationID;
+                try {
+                    annotationID = await annotator(child.file, pageNumber, rects);
+                } catch (e) {
+                    new Notice(`${this.plugin.manifest.name}: An error occurred while attemping to add an annotation.`);
+                    console.error(e);
                 }
+                return { annotationID, rects };
             }
         }
     }
