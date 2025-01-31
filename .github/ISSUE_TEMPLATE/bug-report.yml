@@ -56,7 +56,7 @@ body:
     attributes:
       label: Debug info
       description: "From the command palette **IN THE MINIMAL VAULT**, run the command `PDF++: Copy debug info` and paste the result here."
-      placeholder: Many people ignore this but it is crucial for debugging! Please do not omit it 🙏
+      placeholder: Please do not omit this as it is crucial for debugging. Thanks!
     validations:
       required: true
   - type: textarea
