@@ -4,6 +4,9 @@ import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { AnnotationStorage } from 'pdfjs-dist/types/src/display/annotation_storage';
 import { PDFName, PDFNumber, PDFRef, PDFNull } from '@cantoo/pdf-lib';
+import { CapacitorGlobal } from '@capacitor/core';
+import { App as CapacitorAppPlugin } from '@capacitor/app';
+import { Device } from '@capacitor/device';
 
 import PDFPlus from 'main';
 import { BacklinkPanePDFManager } from 'pdf-backlink';
@@ -30,6 +33,14 @@ declare global {
             [key: string]: any;
         };
         electron?: typeof import('electron');
+        Capacitor: CapacitorGlobal & {
+            Plugins: {
+                // The following plugins are available only if Platform.isMobileApp is true.
+                // I don't know how to type them properly.
+                App: typeof CapacitorAppPlugin;
+                Device: typeof Device;
+            }
+        }
     }
 
     interface Selection {
@@ -817,6 +828,23 @@ interface AppSetting extends Modal {
     pluginTabs: PluginSettingTab[];
 }
 
+interface ThemeManifest {
+    author: string;
+    authorUrl: string;
+    dir: string;
+    minAppVersion: string;
+    name: string;
+    version: string;
+}
+
+interface CustomCss extends Component {
+    app: App;
+    theme: string;
+    themes: Record<string, ThemeManifest>;
+    snippets: string[];
+    enabledSnippets: Set<string>;
+}
+
 // From https://github.com/Fevol/obsidian-typings/blob/b708f5ee3702a8622d16dab5cd0752be544c97a8/obsidian-ex.d.ts#L738
 interface CustomArrayDict<T> {
     // From 1.7.2, this is a map instead of a record.
@@ -1059,6 +1087,8 @@ declare module 'obsidian' {
                 [id: string]: Plugin | undefined;
             }
             enabledPlugins: Set<string>;
+            /** Whether restricted mode is on */
+            isEnabled(): boolean;
         };
         internalPlugins: {
             plugins: {
@@ -1076,6 +1106,7 @@ declare module 'obsidian' {
                 }
             }
         };
+        customCss: CustomCss;
         commands: {
             commands: Record<string, Command>;
             executeCommandById(id: string, lastEvent?: UserEvent): boolean;

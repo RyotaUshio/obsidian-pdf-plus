@@ -4,7 +4,7 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, DummyFileModal } from 'modals';
 import { PDFOutlines } from './outlines';
 import { TemplateProcessor } from 'template';
-import { parsePDFSubpath } from 'utils';
+import { getObsidianDebugInfo, getStyleSettings, parsePDFSubpath } from 'utils';
 import { DestArray } from 'typings';
 import { PDFPlusSettingTab } from 'settings';
 import { SidebarView } from 'pdfjs-enums';
@@ -906,26 +906,47 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                     });
                 });
 
-                navigator.clipboard.writeText(data);
-                new Notice(`${this.plugin.manifest.name}: Highlighted text copied to clipboard.`);
+                if (data) {
+                    await navigator.clipboard.writeText(data);
+                    new Notice(`${this.plugin.manifest.name}: Highlighted text copied to clipboard.`);
+                } else {
+                    new Notice(`${this.plugin.manifest.name}: No highlighted text found.`);
+                }
             })();
         }
 
         return true;
     }
 
-    copyDebugInfo() {
-        // redact the annotation author name
-        const settings = Object.assign({}, this.settings, { author: '*'.repeat(this.settings.author.length) });
-        // @ts-ignore
-        const fullStyleSettings = this.app.plugins.plugins['obsidian-style-settings']?.settingsManager.settings;
-        const styleSettings = fullStyleSettings ? Object.fromEntries(
-            Object.entries(fullStyleSettings)
-                .filter(([key]) => key.startsWith('pdf-plus@@'))
-        ) : null;
+    async copyDebugInfo() {
+        // Obsidian debug info
+        const obsidianDebugInfo = await getObsidianDebugInfo(this.app);
+        // PDF++ settings
+        const settings = Object.assign({}, this.settings,
+            // redact the annotation author name 
+            { author: '*'.repeat(this.settings.author.length) }
+        );
+        // Style settings related to PDF++
+        const styleSettings = getStyleSettings(this.app);
+        // CSS style sheet of the PDF++ dom manager
         const styleSheet = this.plugin.domManager.styleEl.textContent;
 
-        navigator.clipboard.writeText(JSON.stringify({ settings, styleSettings, styleSheet }));
+        // Text to be pasted into GitHub issue
+        let text = '#### Obsidian debug info\n\n';
+        for (const [key, value] of Object.entries(obsidianDebugInfo)) {
+            if (Array.isArray(value)) {
+                text += `- ${key}: ${value.length}\n`;
+                value.forEach((item) => {
+                    text += `    - ${item}\n`;
+                });
+                continue;
+            }
+            text += `- ${key}: ${value}\n`;
+        }
+        text += '\n#### PDF++ debug info\n\n';
+        text += '```\n' + JSON.stringify({ settings, styleSettings, styleSheet }) + '\n```\n';
+
+        await navigator.clipboard.writeText(text);
         new Notice(`${this.plugin.manifest.name}: Debug info copied to clipboard.`);
     }
 

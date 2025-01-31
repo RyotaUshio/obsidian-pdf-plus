@@ -3,6 +3,7 @@ import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 
 import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { Rect, TextContentItem } from 'typings';
+import { pdfJsQuadPointsToArrayOfRects } from 'utils';
 
 
 type AnnotatedTextsInPage = Map<string, { text: string, rgb: RGB | null, comment?: string }>;
@@ -36,29 +37,15 @@ export class HighlightExtractor extends PDFPlusLibSubmodule {
             const isTextMarkupAnnot = ['Highlight', 'Underline', 'Squiggly', 'StrikeOut'].includes(annot.subtype);
             if (!isTextMarkupAnnot) continue;
 
-            const textRanges: PDFTextRange[] = [];
-
-            for (const rectInQuodPoints of annot.quadPoints) {
-                const topRight = rectInQuodPoints[1];
-                const bottomLeft = rectInQuodPoints[2];
-                let rect = [bottomLeft.x, bottomLeft.y, topRight.x, topRight.y];
-
-                if (rect.some((num) => typeof num !== 'number')) {
-                    throw new Error('Invalid rect');
-                }
-
-                rect = window.pdfjsLib.Util.normalizeRect(rect);
-
-                textRanges.push(this.getTextByRect(items as TextContentItem[], rect as Rect));
-            }
+            const rects = pdfJsQuadPointsToArrayOfRects(annot.quadPoints);
+            if (!rects.length) continue;
+            const textRanges = rects
+                .map((rect) => this.getTextByRect(items as TextContentItem[], rect));
 
             const rgb = annot.color ? { r: annot.color[0], g: annot.color[1], b: annot.color[2] } as RGB : null;
-
             const comment = annot.contentsObj?.str;
 
-            const firstRect = annot.quadPoints[0];
-
-            results.push({ id: annot.id, textRanges, rgb, comment, left: firstRect[0].x, top: firstRect[0].y });
+            results.push({ id: annot.id, textRanges, rgb, comment, left: rects[0][0], top: rects[0][3] });
         }
 
         return new Map(

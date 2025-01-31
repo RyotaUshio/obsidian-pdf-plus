@@ -1,6 +1,6 @@
 {
     "name": "obsidian-pdf-plus",
-    "version": "0.40.23",
+    "version": "0.40.24",
     "description": "The most Obsidian-native PDF annotation tool ever.",
     "scripts": {
         "dev": "node esbuild.config.mjs",
@@ -12,6 +12,9 @@
     "license": "MIT",
     "devDependencies": {
         "@cantoo/pdf-lib": "^2.2.4",
+        "@capacitor/app": "^7.0.0",
+        "@capacitor/core": "^7.0.1",
+        "@capacitor/device": "^7.0.0",
         "@types/node": "^22.10.6",
         "@typescript-eslint/eslint-plugin": "7.x",
         "@typescript-eslint/parser": "7.x",

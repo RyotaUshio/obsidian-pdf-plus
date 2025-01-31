@@ -1,4 +1,4 @@
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener, apiVersion, App } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
 import { ObsidianViewer, OldTextLayerBuilder, PDFPageView, Rect, TextContentItem, TextLayerBuilder } from 'typings';
@@ -17,6 +17,50 @@ export function getDirectPDFObj(dict: PDFDict, key: string) {
         return dict.context.lookup(obj);
     }
     return obj;
+}
+
+/**
+ * Convert quad points retrieved from a PDF.js annotation element to an array of Rects.
+ * This function works for both the old and new data structure of quad points.
+ * 
+ * From Obsidian 1.8.0, the data structure in which quad points are stored has changed.
+ * Previously, `annotationElement.data.quadPoints` was an array of arrays, each of which represents
+ * a single rectangle in the form of `[{ x, y }, { x, y }, { x, y }, { x, y }]`.
+ * Now, `annotationElement.data.quadPoints` is a flat array of numbers of length of a multiple of 8.
+ * Each group of 8 numbers represents a single rectangle in the form of `[x1, y1, x2, y2, x3, y3, x4, y4]`.
+ * @param quadPoints 
+ */
+export function pdfJsQuadPointsToArrayOfRects(quadPoints: Float32Array | Array<Array<{ x: number, y: number }>>): Array<Rect> {
+    const rects: Rect[] = [];
+
+    // Obsidian 1.8.0 and later
+    if (ArrayBuffer.isView(quadPoints)) {
+        if (quadPoints.length % 8) {
+            return rects;
+        }
+
+        for (let i = 0; i < quadPoints.length; i += 8) {
+            const [x1, y1, x2, y2, x3, y3, x4, y4] = quadPoints.slice(i, i + 8);
+            const minX = Math.min(x1, x2, x3, x4);
+            const maxX = Math.max(x1, x2, x3, x4);
+            const minY = Math.min(y1, y2, y3, y4);
+            const maxY = Math.max(y1, y2, y3, y4);
+            rects.push([minX, minY, maxX, maxY]);
+        }
+
+        return rects;
+    }
+
+    // Obsidian 1.7.7 and earlier
+    for (const rectInQuodPoints of quadPoints) {
+        const topRight = rectInQuodPoints[1];
+        const bottomLeft = rectInQuodPoints[2];
+        let rect = [bottomLeft.x, bottomLeft.y, topRight.x, topRight.y];
+        rect = window.pdfjsLib.Util.normalizeRect(rect);
+        rects.push(rect as Rect);
+    }
+
+    return rects;
 }
 
 export function showMenuUnderParentEl(menu: Menu, parentEl: HTMLElement) {
@@ -230,6 +274,64 @@ export function getInstallerVersion(): string | null {
         // @ts-ignore
         window.electron.remote.app.getVersion() :
         null;
+}
+
+/**
+ * Get the information about the Obsidian app and the system.
+ * This is the same as the "SYSTEM INFO" section in the result of the "Show debug info" command.
+ */
+export async function getSystemInfo(): Promise<any> {
+    if (window.electron) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const os = require('os') as typeof import('os');
+        return {
+            'Obsidian version': window.electron.ipcRenderer.sendSync('version'),
+            // @ts-ignore
+            'Installer version': window.electron.remote.app.getVersion(),
+            'Operating system': os.version() + ' ' + os.release(),
+        };
+    }
+    const appInfo = await window.Capacitor.Plugins.App.getInfo();
+    const deviceInfo = await window.Capacitor.Plugins.Device.getInfo();
+    return {
+        'Obsidian version': `${appInfo.version} (${appInfo.build})`,
+        'API version': apiVersion,
+        'Operating system': `${deviceInfo.platform} ${deviceInfo.osVersion} (${deviceInfo.manufacturer} ${deviceInfo.model})`,
+    };
+}
+
+/** Selected subset of the "Show debug info" command's result with some additional entries. */
+export async function getObsidianDebugInfo(app: App) {
+    // This is an empty string if it's the default theme
+    const themeName = app.customCss.theme;
+    const themeManifest = app.customCss.themes[themeName];
+    const numSnippets = app.customCss.snippets.filter((e) => app.customCss.enabledSnippets.has(e)).length;
+    const plugins = app.plugins.plugins;
+
+    return {
+        ...await getSystemInfo(),
+        // This entry is not in Obsidian's built-in "Show debug info" command
+        'Use [[Wikilinks]]': app.vault.getConfig('useMarkdownLinks'),
+        // This entry is not in Obsidian's built-in "Show debug info" command.
+        // It replaces the "Base theme" entry for identifying the color scheme even if it's set to be "adapt to system"
+        'Base color scheme': document.body.hasClass('theme-dark') ? 'dark' : 'light',
+        // This entry is not in Obsidian's built-in "Show debug info" command
+        'PDF "Adapt to theme"': !!app.loadLocalStorage('pdfjs-is-themed'),
+        'Community theme': themeName ? `${themeName} v${themeManifest.version}` : 'none',
+        'Snippets enabled': numSnippets,
+        'Plugins installed': Object.keys(app.plugins.manifests).length,
+        'Plugins enabled': Object.values(plugins).map((plugin) => `${plugin!.manifest.name} v${plugin!.manifest.version}`),
+    };
+}
+
+export function getStyleSettings(app: App) {
+    // @ts-ignore
+    const fullStyleSettings = app.plugins.plugins['obsidian-style-settings']?.settingsManager.settings;
+    const pdfPlusStyleSettings = fullStyleSettings ? Object.fromEntries(
+        Object.entries(fullStyleSettings)
+            .filter(([key]) => key.startsWith('pdf-plus@@'))
+    ) : null;
+    return pdfPlusStyleSettings;
 }
 
 export function findReferenceCache(cache: CachedMetadata, start: number, end: number): ReferenceCache | undefined {
