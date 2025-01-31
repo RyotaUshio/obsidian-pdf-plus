@@ -21,7 +21,7 @@ jobs:
         MINIMUM_CHARACTERS=100
 
         # Extract the content of the "Debug info" section (if it exists)
-        DEBUG_INFO_CONTENT=$(echo "$ISSUE_BODY" | sed -n '/### Debug info/,/^### /p' | sed '1d;$d' | xargs)
+        DEBUG_INFO_CONTENT=$(echo "$ISSUE_BODY" | sed -n '/### Debug info/,/^### /p' | sed '1d;$d')
 
         # Validate the content length
         if [ ${#DEBUG_INFO_CONTENT} -lt $MINIMUM_CHARACTERS ]; then
