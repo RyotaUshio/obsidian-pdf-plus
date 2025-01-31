@@ -1065,6 +1065,10 @@ interface HotkeyManager {
     printHotkeyForCommand(id: string): string;
 }
 
+interface TCanvasFile extends TFile {
+    extension: 'canvas';
+}
+
 declare module 'obsidian' {
     interface App {
         setting: AppSetting;
@@ -1142,6 +1146,18 @@ declare module 'obsidian' {
         initialized: boolean;
         on(name: 'initialized', callback: () => void, ctx?: any): EventRef;
         getBacklinksForFile(file: TFile): CustomArrayDict<ReferenceCache>;
+    }
+
+    interface CachedMetadata {
+        // For Advanced Canvas's metadata cache support
+        // See https://github.com/Developer-Mike/obsidian-advanced-canvas/tree/main?tab=readme-ov-file#full-metadata-cache-support
+        nodes?: Record<string, Omit<CachedMetadata, 'nodes'>>;
+    }
+
+    interface Pos {
+        // For Advanced Canvas's metadata cache support
+        // See https://github.com/Developer-Mike/obsidian-advanced-canvas/tree/main?tab=readme-ov-file#full-metadata-cache-support
+        nodeId?: string;
     }
 
     interface Workspace {
