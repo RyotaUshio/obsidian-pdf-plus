@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, MarkdownRenderer, Editor, HoverParent } from 'obsidian';
 import { CanvasData, CanvasFileData, CanvasGroupData, CanvasLinkData, CanvasNodeData, CanvasTextData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -991,6 +991,173 @@ interface RecentFileTracker {
     }): string[];
 }
 
+interface FoldInfo {
+    folder: Array<{ from: number, to: number }>
+    lines: number
+}
+
+/** Markdown editor */
+
+interface IMarkdownEditor {
+
+}
+
+declare class MarkdownPreviewModeInEmbed extends MarkdownRenderer {
+    readonly file: TFile;
+    showSearch(): void;
+}
+
+declare class MarkdownEditMode extends Component {
+    file: TFile | null;
+    hoverPopover: HoverPopover | null;
+    editable: boolean;
+    text: string;
+    dirty: boolean;
+    useIframe: boolean;
+    app: App;
+    containerEl: HTMLElement;
+    state: unknown;
+    previewEl: HTMLElement;
+    editorEl: HTMLElement;
+    previewMode: MarkdownPreviewModeInEmbed;
+    editMode?: unknown | null;
+    scope?: Scope | null;
+
+    /** If `this.file` is present, the file's path. Otherwise, an empty string. */
+    readonly path: string;
+    readonly editor?: Editor;
+    readonly scroll: unknown;
+
+    // save(text: string, clear?: boolean): void;
+    set(text: string, arg2: unknown): void;
+    showSearch(arg: unknown): void;
+    destroyEditor(arg?: boolean): void;
+    showPreview(arg?: boolean): void;
+    showEditor(arg: unknown): void;
+    getMode(): 'preview' | 'source';
+    toggleMode(): void;
+    /** Triggers the "markdown-scroll" workspace event. */
+    onMarkdownScroll(): void;
+    applyScope(scope: Scope | null): void;
+}
+
+declare class MarkdownEditModeInEmbed extends MarkdownEditMode {
+
+}
+
+declare abstract class EditableMarkdownEmbed extends Component implements MarkdownFileInfo {
+    file: TFile | null;
+    hoverPopover: HoverPopover | null;
+    editable: boolean;
+    text: string;
+    dirty: boolean;
+    useIframe: boolean;
+    app: App;
+    containerEl: HTMLElement;
+    state: unknown;
+    previewEl: HTMLElement;
+    editorEl: HTMLElement;
+    previewMode: MarkdownPreviewModeInEmbed;
+    editMode?: unknown | null;
+    scope?: Scope | null;
+
+    /** If `this.file` is present, the file's path. Otherwise, an empty string. */
+    readonly path: string;
+    readonly editor?: Editor;
+    readonly scroll: unknown;
+
+    // save(text: string, clear?: boolean): void;
+    set(text: string, arg2: unknown): void;
+    showSearch(arg: unknown): void;
+    destroyEditor(arg?: boolean): void;
+    showPreview(arg?: boolean): void;
+    showEditor(arg: unknown): void;
+    getMode(): 'preview' | 'source';
+    toggleMode(): void;
+    /** Triggers the "markdown-scroll" workspace event. */
+    onMarkdownScroll(): void;
+    abstract applyScope(scope: Scope | null): void;
+}
+
+/**
+ * This is a type of markdown embed that is used in a page preview of markdown files,
+ * markdown embeds in reading view/live preview.
+ * The `containerEl` has a child div with the class `markdown-embed-link`,
+ * which is unique to this class.
+ * This is an "lucide-link" icon with a tooltip "Open link".
+ */
+declare class EditableMarkdownEmbedWithFile extends EditableMarkdownEmbed implements Embed, IMarkdownEditor {
+    subpath: string;
+    data: string;
+    subpathNotFound: boolean;
+    before: string;
+    after: string;
+    heading: string;
+    indent: string;
+    lastSavedData: string | null;
+    saving: boolean;
+    saveAgain: boolean;
+    fileBeingRenamed: TFile | null;
+    /** .markdown-embed */
+    containerEl: HTMLElement;
+    /** .embed-title.markdown-embed-title */
+    headerEl: HTMLElement;
+    /** .inline-title */
+    inlineTitleEl: HTMLElement;
+
+    applyIndent(data: string): string;
+    save(clear?: boolean): Promise<void>;
+    onTitlePaste(el: HTMLElement, evt: ClipboardEvent): void;
+    onTitleChange(arg: unknown): void;
+    onTitleKeydown(evt: KeyboardEvent): void;
+    saveTitle(arg: unknown): Promise<unknown>;
+    onFileChanged(file: TFile, data: string, cache: CachedMetadata): void;
+    onFileRename(file: TFile, oldPath: string): void;
+    loadFile(): Promise<void>;
+    getFoldInfo(): FoldInfo | null;
+    loadFileInternal(data: string, cache: CachedMetadata): void;
+    loadContents(data: string, cache: CachedMetadata): void;
+    applyScope(scope: Scope | null): void;
+    onMarkdownFold(): void;
+}
+
+declare class CanvasTextNodeEditor extends EditableMarkdownEmbed implements IMarkdownEditor {
+    node: CanvasTextNode;
+    /** .markdown-embed */
+    containerEl: HTMLElement;
+
+    readonly linktext: string;
+
+    save(text: string, clear?: boolean): void;
+    applyScope(scope: Scope | null): void;
+    getFoldInfo(): FoldInfo | null;
+    onMarkdownFold(): void;
+}
+
+declare class NonEditableMarkdownEmbed extends Component implements HoverParent, Embed {
+    hoverPopover: HoverPopover | null;
+    app: App;
+    /** .markdown-embed */
+    containerEl: HTMLElement;
+    /** .markdown-embed-title */
+    headerEl: HTMLElement;
+    file: TFile;
+    subpath: string;
+
+    readonly path: string;
+
+    loadFile(): Promise<void>;
+}
+
+/** Canvas */
+
+interface CanvasBBox {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+}
+
 interface CanvasView extends TextFileView {
     canvas: Canvas;
 }
@@ -1016,6 +1183,7 @@ interface Canvas {
     }): CanvasFileNode;
     posCenter(): { x: number, y: number };
     getData(): CanvasData;
+    zoomToBbox(bbox: CanvasBBox): void;
 }
 
 interface CanvasNode {
@@ -1029,6 +1197,13 @@ interface CanvasNode {
     canvas: Canvas;
     nodeEl: HTMLElement;
     getData(): CanvasNodeData;
+    isEditable(): boolean;
+    startEditing(): void;
+    getBBox(): CanvasBBox;
+    focus(): void;
+    blur(): void;
+    select(): void;
+    deselect(): void;
 }
 
 interface CanvasFileNode extends CanvasNode {
@@ -1063,10 +1238,6 @@ interface HotkeyManager {
     setHotkeys(id: string, hotkeys: Hotkey[]): void;
     removeHotkeys(id: string): void;
     printHotkeyForCommand(id: string): string;
-}
-
-interface TCanvasFile extends TFile {
-    extension: 'canvas';
 }
 
 declare module 'obsidian' {
@@ -1251,12 +1422,12 @@ declare module 'obsidian' {
         getScrollInfo(): EditorScrollInfo;
     }
 
-    interface MarkdownView {
+    interface MarkdownView extends IMarkdownEditor {
         editMode: MarkdownEditView;
         backlinks?: BacklinkRenderer;
     }
 
-    interface MarkdownEditView {
+    interface MarkdownEditView extends MarkdownEditMode {
         clipboardManager: ClipboardManager;
     }
 
