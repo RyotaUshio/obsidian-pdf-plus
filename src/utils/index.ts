@@ -1,11 +1,13 @@
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener, apiVersion, App } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener, apiVersion, App, WorkspaceLeaf } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
 import { ObsidianViewer, OldTextLayerBuilder, PDFPageView, Rect, TextContentItem, TextLayerBuilder } from 'typings';
 
 export * from './color';
 export * from './suggest';
+export * from './markdown-editor';
 export * from './maps';
+export * from './obsidian-canvas';
 export * from './html-canvas';
 export * from './events';
 export * from './typescript';
@@ -218,6 +220,27 @@ export function swapSelectionAnchorAndFocus(selection: Selection) {
     if (anchorNode && focusNode) {
         selection.setBaseAndExtent(focusNode, focusOffset, anchorNode, anchorOffset);
     }
+}
+
+export function getLeafContainerElContainingNode(node: Node): HTMLElement | null {
+    let n: Node | null = node;
+    while (n && !(n.instanceOf(HTMLDivElement) && n.hasClass('workspace-leaf'))) {
+        n = n.parentNode;
+    }
+    return n;
+}
+
+export function getLeafContainingNode(app: App, node: Node): WorkspaceLeaf | null {
+    const leafContainerEl = getLeafContainerElContainingNode(node);
+    if (!leafContainerEl) return null;
+
+    let leaf: WorkspaceLeaf | null = null;
+    app.workspace.iterateAllLeaves((l) => {
+        if (l.containerEl === leafContainerEl) {
+            leaf = l;
+        }
+    });
+    return leaf;
 }
 
 export const MODIFIERS: Modifier[] = ['Mod', 'Ctrl', 'Meta', 'Shift', 'Alt'];

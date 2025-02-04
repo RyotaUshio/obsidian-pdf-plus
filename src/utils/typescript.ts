@@ -2,6 +2,15 @@
 // Typescript utilities //
 //////////////////////////
 
+
+/**
+ * `Object.hasOwnProperty` with type guard
+ * https://github.com/microsoft/TypeScript/issues/41915
+ */
+export function hasOwnProperty<T extends Object, K extends PropertyKey>(obj: T, v: K): obj is T & Record<K, unknown> {
+    return obj.hasOwnProperty(v);
+}
+
 // Inspired by https://stackoverflow.com/a/50851710/13613783
 export type KeysOfType<Obj, Type> = NonNullable<{ [k in keyof Obj]: Obj[k] extends Type ? k : never }[keyof Obj]>;
 

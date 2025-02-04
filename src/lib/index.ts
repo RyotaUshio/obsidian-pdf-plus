@@ -15,7 +15,7 @@ import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
 import { PDFPageLabels } from './page-labels';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap, BacklinkView } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap, BacklinkView, AnyCanvasNode } from 'typings';
 import { PDFCroppedEmbed } from '../pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
@@ -703,6 +703,18 @@ export class PDFPlusLib {
         return this.getPDFViewerComponent(activeOnly)?.vim;
     }
 
+    getActiveCanvasNode() {
+        const view = this.workspace.getActiveCanvasView();
+        if (view) {
+            const canvas = view.canvas;
+            return Array.from(canvas.selection.values())
+                .reverse()
+                .find((nodeOrEdge): nodeOrEdge is AnyCanvasNode => utils.hasOwnProperty(nodeOrEdge, 'nodeEl'))
+                ?? null;
+        }
+        return null;
+    }
+
     search(findBar: PDFFindBar, query: string, settings?: Partial<PDFSearchSettings>, findPrevious?: boolean) {
         findBar.showSearch();
         findBar.searchComponent.setValue(query);
@@ -849,8 +861,7 @@ export class PDFPlusLib {
     }
 
     isCanvasView(view: View): view is CanvasView {
-        // The instanceof check is necessary for correctly handling DeferredView.
-        return view instanceof TextFileView && view.getViewType() === 'canvas' && 'canvas' in view;
+        return utils.isCanvasView(view);
     }
 
     isCanvasPDFNode(node: CanvasNode): node is CanvasFileNode {

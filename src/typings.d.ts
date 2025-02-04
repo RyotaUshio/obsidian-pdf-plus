@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, MarkdownRenderer, Editor, HoverParent } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, MarkdownRenderer, Editor, HoverParent, MarkdownSubView, Point } from 'obsidian';
 import { CanvasData, CanvasFileData, CanvasGroupData, CanvasLinkData, CanvasNodeData, CanvasTextData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -1003,46 +1003,43 @@ interface IMarkdownEditor {
 }
 
 declare class MarkdownPreviewModeInEmbed extends MarkdownRenderer {
-    readonly file: TFile;
+    owner: EditableMarkdownEmbed;
+    get file(): TFile;
+    set(data: string): void;
+    edit(data: string): void;
     showSearch(): void;
 }
 
-declare class MarkdownEditMode extends Component {
-    file: TFile | null;
-    hoverPopover: HoverPopover | null;
-    editable: boolean;
-    text: string;
-    dirty: boolean;
-    useIframe: boolean;
+/**
+ * The common parent class of `MarkdownEditMode` and `TableCell`.
+ */
+declare class MarkdownEditModeBase extends Component {
     app: App;
+    owner: MarkdownFileInfo;
+    editor: Editor;
+    cm: EditorView;
+    clipboardManager: ClipboardManager;
+    tableCell: TableCell | null;
     containerEl: HTMLElement;
-    state: unknown;
-    previewEl: HTMLElement;
-    editorEl: HTMLElement;
-    previewMode: MarkdownPreviewModeInEmbed;
-    editMode?: unknown | null;
-    scope?: Scope | null;
+    sourceMode: boolean;
 
-    /** If `this.file` is present, the file's path. Otherwise, an empty string. */
-    readonly path: string;
-    readonly editor?: Editor;
-    readonly scroll: unknown;
+    get(): string;
+    set(data: string, clear: boolean): void;
+}
 
-    // save(text: string, clear?: boolean): void;
-    set(text: string, arg2: unknown): void;
-    showSearch(arg: unknown): void;
-    destroyEditor(arg?: boolean): void;
-    showPreview(arg?: boolean): void;
-    showEditor(arg: unknown): void;
-    getMode(): 'preview' | 'source';
-    toggleMode(): void;
-    /** Triggers the "markdown-scroll" workspace event. */
-    onMarkdownScroll(): void;
-    applyScope(scope: Scope | null): void;
+declare class TableCell extends MarkdownEditModeBase { }
+
+/**
+ * The common parent class of `MarkdownEditView` and `MarkdownEditModeInEmbed`.
+ */
+declare class MarkdownEditMode extends MarkdownEditModeBase implements MarkdownSubView {
+    getScroll(): number;
+    applyScroll(scroll: number): void;
+    showSearch(isReplace?: boolean): void;
 }
 
 declare class MarkdownEditModeInEmbed extends MarkdownEditMode {
-
+    owner: EditableMarkdownEmbed;
 }
 
 declare abstract class EditableMarkdownEmbed extends Component implements MarkdownFileInfo {
@@ -1058,20 +1055,20 @@ declare abstract class EditableMarkdownEmbed extends Component implements Markdo
     previewEl: HTMLElement;
     editorEl: HTMLElement;
     previewMode: MarkdownPreviewModeInEmbed;
-    editMode?: unknown | null;
+    editMode?: MarkdownEditModeInEmbed | null;
     scope?: Scope | null;
 
     /** If `this.file` is present, the file's path. Otherwise, an empty string. */
-    readonly path: string;
-    readonly editor?: Editor;
-    readonly scroll: unknown;
+    get path(): string;
+    get editor(): Editor | undefined;
+    get scroll(): number;
 
     // save(text: string, clear?: boolean): void;
-    set(text: string, arg2: unknown): void;
-    showSearch(arg: unknown): void;
-    destroyEditor(arg?: boolean): void;
-    showPreview(arg?: boolean): void;
-    showEditor(arg: unknown): void;
+    set(data: string, clear: boolean): void;
+    showSearch(isReplace?: boolean): void;
+    destroyEditor(save?: boolean): void;
+    showPreview(save?: boolean): void;
+    showEditor(coords?: Point): void;
     getMode(): 'preview' | 'source';
     toggleMode(): void;
     /** Triggers the "markdown-scroll" workspace event. */
@@ -1126,7 +1123,7 @@ declare class CanvasTextNodeEditor extends EditableMarkdownEmbed implements IMar
     /** .markdown-embed */
     containerEl: HTMLElement;
 
-    readonly linktext: string;
+    get linktext(): string;
 
     save(text: string, clear?: boolean): void;
     applyScope(scope: Scope | null): void;
@@ -1144,7 +1141,7 @@ declare class NonEditableMarkdownEmbed extends Component implements HoverParent,
     file: TFile;
     subpath: string;
 
-    readonly path: string;
+    get path(): string;
 
     loadFile(): Promise<void>;
 }
@@ -1160,10 +1157,19 @@ interface CanvasBBox {
 
 interface CanvasView extends TextFileView {
     canvas: Canvas;
+    hoverPopover: HoverPopover | null;
 }
 
 interface Canvas {
-    nodes: Map<string, CanvasTextNode | CanvasFileNode | CanvasLinkNode | CanvasGroupNode>;
+    app: App;
+    view: CanvasView;
+    nodes: Map<string, AnyCanvasNode>;
+    edges: Map<string, CanvasEdge>;
+    selection: Set<AnyCanvasNode | CanvasEdge>;
+    x: number;
+    y: number;
+    zoom: number;
+    scale: number;
     createTextNode(config: {
         pos: { x: number, y: number };
         position?: 'center' | 'top' | 'right' | 'bottom' | 'left';
@@ -1226,6 +1232,27 @@ interface CanvasLinkNode extends CanvasNode {
 
 interface CanvasGroupNode extends CanvasNode {
     getData(): CanvasGroupData;
+}
+
+type AnyCanvasNode = CanvasTextNode | CanvasFileNode | CanvasLinkNode | CanvasGroupNode;
+
+interface CanvasEdge {
+    color: string;
+    label: string;
+    unknownData: unknown;
+    initialized: boolean;
+    canvas: Canvas;
+    id: string;
+    from: CanvasEdgeEnd;
+    to: CanvasEdgeEnd;
+    lineGroupEl: SVGElement;
+    lineEndGroupEl: SVGElement;
+}
+
+interface CanvasEdgeEnd {
+    node: AnyCanvasNode;
+    side: 'top' | 'right' | 'bottom' | 'left';
+    end: 'none' | 'arrow';
 }
 
 interface HotkeyManager {
@@ -1428,7 +1455,23 @@ declare module 'obsidian' {
     }
 
     interface MarkdownEditView extends MarkdownEditMode {
-        clipboardManager: ClipboardManager;
+        // clipboardManager: ClipboardManager; // moved to MarkdownEditModeBase
+        view: MarkdownView;
+    }
+
+    interface MarkdownRenderer {
+        readonly path: string;
+        renderer: MarkdownPreviewRenderer;
+    }
+
+    interface MarkdownPreviewView {
+        type: 'preview';
+        view: MarkdownView;
+    }
+
+    interface MarkdownPreviewRenderer {
+        text: string;
+        set(data: string): void;
     }
 
     interface ItemView {
