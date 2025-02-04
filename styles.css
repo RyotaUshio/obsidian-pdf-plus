@@ -455,6 +455,12 @@ body.pdf-plus-backlink-selection-underline {
             padding-top: var(--size-4-2);
         }
     }
+
+    .pdf-plus-annotation-edit-modal-save-instructions {
+        color: var(--text-muted);
+        font-size: calc(var(--font-text-size) * 0.65);
+        text-align: end;
+    }
 }
 
 .popupWrapper {
