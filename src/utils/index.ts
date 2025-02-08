@@ -614,3 +614,16 @@ export function walkDescendantComponents(component: Component, callback: (compon
         walkDescendantComponents(child, callback);
     }
 }
+
+/**
+ * Almost the same as `Component.prototype.load`, but if the component's `onload` method is async, 
+ * this function waits for the promise to resolve.
+ */
+export async function loadComponentAsync(component: Component) {
+    if (!component._loaded) {
+        component._loaded = true;
+        await component.onload();
+        const promises = component._children.map(loadComponentAsync);
+        await Promise.all(promises);
+    }
+}
