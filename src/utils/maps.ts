@@ -30,6 +30,16 @@ export class MultiValuedMap<Key, Value> {
         return this.map.has(key) && this.map.get(key)!.size > 0;
     }
 
+    keys() {
+        return this.map.keys();
+    }
+
+    *values() {
+        for (const values of this.map.values()) {
+            yield* values;
+        }
+    }
+
     [Symbol.iterator]() {
         return this.map[Symbol.iterator]();
     }
