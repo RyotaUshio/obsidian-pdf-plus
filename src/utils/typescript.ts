@@ -7,7 +7,7 @@
  * `Object.hasOwnProperty` with type guard
  * https://github.com/microsoft/TypeScript/issues/41915
  */
-export function hasOwnProperty<T extends Object, K extends PropertyKey>(obj: T, v: K): obj is T & Record<K, unknown> {
+export function hasOwnProperty<T extends object, K extends PropertyKey>(obj: T, v: K): obj is T & Record<K, unknown> {
     return obj.hasOwnProperty(v);
 }
 

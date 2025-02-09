@@ -1,7 +1,7 @@
 import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, apiVersion, loadPdfJs } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
-import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
+import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu, patchCanvasIndex } from 'patchers';
 import { PDFPlusLib } from 'lib';
 import { AutoCopyMode } from 'auto-copy';
 import { ColorPalette } from 'color-palette';
@@ -9,7 +9,7 @@ import { DomManager } from 'dom-manager';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
 import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
 import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement } from 'utils';
-import { DestArray, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
+import { CanvasCachedMetadata, DestArray, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
 import { InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
 import { BibliographyManager } from 'bib';
@@ -421,6 +421,7 @@ export default class PDFPlus extends Plugin {
 			patchWorkspace(this);
 			patchPagePreview(this);
 			patchMenu(this);
+			patchCanvasIndex(this);
 		});
 		this.tryPatchUntilSuccess(patchPDFView);
 		this.tryPatchUntilSuccess(patchPDFInternalFromPDFEmbed);
@@ -722,6 +723,7 @@ export default class PDFPlus extends Plugin {
 	trigger(evt: 'highlight', data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }): void;
 	trigger(evt: 'color-palette-state-change', data: { source: ColorPalette }): void;
 	trigger(evt: 'update-dom'): void;
+	trigger(evt: 'canvas-index-changed', file: TFile, cache: CanvasCachedMetadata): void;
 
 	trigger(evt: string, ...args: any[]): void {
 		this.events.trigger(evt, ...args);

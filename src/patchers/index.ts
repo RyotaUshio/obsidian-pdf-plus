@@ -5,5 +5,6 @@ export * from './pdf-outline-viewer';
 export * from './workspace';
 export * from './page-preview';
 export * from './backlink';
+export * from './canvas-index';
 export * from './clipboard-manager';
 export * from './menu';

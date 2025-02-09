@@ -5,18 +5,18 @@ import { getCanvasNodeContainingEl, isCanvasFileNode, getLeafContainingNode, has
 
 export const isMarkdownView = (mdEditor: MarkdownFileInfo): mdEditor is MarkdownView => {
     return mdEditor instanceof MarkdownView;
-}
+};
 
 export const isEditableMarkdownEmbedWithFile = (mdEditor: MarkdownFileInfo): mdEditor is EditableMarkdownEmbedWithFile => {
     // This class is the only one that has `inlineTitleEl` property except for MarkdownView
     return !isMarkdownView(mdEditor) && hasOwnProperty(mdEditor, 'inlineTitleEl');
-}
+};
 
 export const isCanvasTextNodeEditor = (mdEditor: MarkdownFileInfo): mdEditor is CanvasTextNodeEditor => {
     return hasOwnProperty(mdEditor, 'node')
         // the above line should be sufficient, but just in case
         && (mdEditor.node as AnyCanvasNode).getData().type === 'text';
-}
+};
 
 export abstract class MarkdownEditorInterface {
         get leaf(): WorkspaceLeaf | null {

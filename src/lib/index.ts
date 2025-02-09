@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, TextFileView, View, base64ToArrayBuffer, normalizePath, parseLinktext, requestUrl } from 'obsidian';
+import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, View, base64ToArrayBuffer, normalizePath, parseLinktext, requestUrl } from 'obsidian';
 import { CanvasFileData } from 'obsidian/canvas';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
