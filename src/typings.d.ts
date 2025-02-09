@@ -1264,6 +1264,7 @@ declare abstract class FileIndex<Metadata> extends Component {
     /** Internal map from a file path to the corresponding metadata. */
     index: Record<string, Metadata>;
     fileQueue: Array<TFile>;
+    frame: object | null; 
 
     getAll(): typeof this.index;
     getForPath(path: string): Metadata | null;
@@ -1281,6 +1282,7 @@ declare abstract class FileIndex<Metadata> extends Component {
 }
 
 declare class CanvasIndex extends FileIndex<CanvasCachedMetadata> {
+    refNodeIds: WeakMap<Reference, string>;
     canProcess(file: TFile): boolean;
     process(file: TFile): Promise<CanvasCachedMetadata>;
     parseText(text: string): Promise<CachedMetadata>;
@@ -1292,6 +1294,16 @@ interface CanvasCachedMetadata {
     embeds: Array<{ file: TFile, subpath?: string }>;
     /** Cached metadata for text nodes. Each key is a node id. */
     caches: Record<string, CachedMetadata>;
+}
+
+declare class CanvasLinkUpdater implements LinkUpdater {
+    app: App;
+    canvas: Canvas;
+    iterateReferences(callback: (sourcePath: string, ref: Reference) => any): void;
+}
+
+interface LinkUpdater {
+    iterateReferences(callback: (sourcePath: string, ref: Reference) => boolean | void): void;
 }
 
 interface HotkeyManager {
@@ -1375,6 +1387,11 @@ declare module 'obsidian' {
         // getNewFileParent(sourcePath: string, newFilePath?: string): TFolder;
         createNewMarkdownFile(folder: TFolder, name: string, data?: string): Promise<TFile>;
         createNewFile(folder: TFolder, name: string, extension: string, data?: string): Promise<TFile>;
+        
+        linkUpdaters: {
+            canvas: CanvasLinkUpdater;
+        };
+        iterateAllRefs(cb: (sourcePath: string, ref: Reference) => boolean | void): void;
     }
 
     interface PluginSettingTab {
@@ -1383,8 +1400,12 @@ declare module 'obsidian' {
 
     interface MetadataCache {
         initialized: boolean;
-        on(name: 'initialized', callback: () => void, ctx?: any): EventRef;
+        // "initialized" has been removed in Obsidian 1.7.1 or 1.7.2
+        // on(name: 'initialized', callback: () => void, ctx?: any): EventRef;
+        on(name: 'finished', callback: () => void, ctx?: any): EventRef;
         getBacklinksForFile(file: TFile): CustomArrayDict<ReferenceCache>;
+        iterateReferences(callback: (sourcePath: string, ref: Reference) => boolean | void): void;
+        onCleanCache(callback: () => any): void;
     }
 
     interface CachedMetadata {
@@ -1528,10 +1549,6 @@ declare module 'obsidian' {
         getConfig(name: 'newFileLocation'): 'root' | 'current' | 'folder';
         getConfig(name: 'attachmentFolderPath'): string;
         getAvailablePath(pathWithoutExtension: string, extension: string): string;
-    }
-
-    interface MetadataCache {
-        onCleanCache(callback: () => any): void;
     }
 
     interface Component {

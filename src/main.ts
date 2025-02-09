@@ -38,7 +38,8 @@ export default class PDFPlus extends Plugin {
 		pdfView: false,
 		pdfInternals: false,
 		pdfOutlineViewer: false,
-		backlink: false
+		backlink: false,
+		canvasIndex: false,
 	};
 	/** 
 	 * When no PDF view or PDF embed is opened at the moment the plugin is loaded, the PDF internals will
@@ -707,6 +708,8 @@ export default class PDFPlus extends Plugin {
 	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
 	on(evt: 'color-palette-state-change', callback: (data: { source: ColorPalette }) => any, context?: any): EventRef;
 	on(evt: 'update-dom', callback: () => any, context?: any): EventRef;
+	on(evt: 'canvas-index-changed', callback: (file: TFile, cache: CanvasCachedMetadata) => any, context?: any): EventRef;
+	on(evt: 'canvas-index-initialized', callback: () => any, context?: any): EventRef;
 
 	on(evt: string, callback: (...data: any) => any, context?: any): EventRef {
 		return this.events.on(evt, callback, context);
@@ -723,6 +726,7 @@ export default class PDFPlus extends Plugin {
 	trigger(evt: 'highlight', data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }): void;
 	trigger(evt: 'color-palette-state-change', data: { source: ColorPalette }): void;
 	trigger(evt: 'update-dom'): void;
+	trigger(evt: 'canvas-index-initialized'): void;
 	trigger(evt: 'canvas-index-changed', file: TFile, cache: CanvasCachedMetadata): void;
 
 	trigger(evt: string, ...args: any[]): void {

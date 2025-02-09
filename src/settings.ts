@@ -201,6 +201,7 @@ export interface PDFPlusSettings {
 	highlightBacklinksInEmbed: boolean;
 	highlightBacklinksInHoverPopover: boolean;
 	highlightBacklinksInCanvas: boolean;
+	includeBacklinksInCanvas: boolean;
 	clickPDFInternalLinkWithModifierKey: boolean;
 	clickOutlineItemWithModifierKey: boolean;
 	clickThumbnailWithModifierKey: boolean;
@@ -484,6 +485,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	highlightBacklinksInEmbed: false,
 	highlightBacklinksInHoverPopover: false,
 	highlightBacklinksInCanvas: true,
+	includeBacklinksInCanvas: true,
 	clickPDFInternalLinkWithModifierKey: true,
 	clickOutlineItemWithModifierKey: true,
 	clickThumbnailWithModifierKey: true,

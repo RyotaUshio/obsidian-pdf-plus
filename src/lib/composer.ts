@@ -287,6 +287,7 @@ type LinkInfoUpdater = (file: TFile, pageNumber?: number) => {
 export class PDFLinkUpdater extends PDFPlusLibSubmodule {
 
     // TODO: rewrite using PDFBacklinkIndex
+    // TODO: support links in canvas
     async updateLinks(operator: () => Promise<TFile | null>, files: TFile[], updater: LinkInfoUpdater): Promise<TFile | null> {
         await this.lib.metadataCacheUpdatePromise;
 

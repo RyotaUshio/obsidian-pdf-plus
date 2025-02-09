@@ -3,6 +3,7 @@ import { RGB, TFile, parseLinktext, getLinkpath, CachedMetadata, FrontmatterLink
 import PDFPlus from 'main';
 import { PDFPlusComponent } from './component';
 import { MultiValuedMap } from 'utils';
+import { CanvasCachedMetadata } from 'typings';
 
 
 export class PDFBacklinkIndex extends PDFPlusComponent {
@@ -14,34 +15,69 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
     sourcePaths: MultiValuedMap<string, PDFBacklinkCache>;
     backlinks: Set<PDFBacklinkCache>;
 
-    constructor(plugin: PDFPlus, file: TFile) {
+    includeBacklinksInCanvas: boolean;
+
+    constructor(plugin: PDFPlus, file: TFile, includeBacklinksInCanvas?: boolean) {
         super(plugin);
         this.file = file;
         this.events = new Events();
+        this.includeBacklinksInCanvas = includeBacklinksInCanvas ?? this.plugin.settings.includeBacklinksInCanvas;
     }
 
     onload() {
         this.init();
-        this.registerEvent(this.app.metadataCache.on('changed', (sourceFile, _, cache) => {
-            this.update(sourceFile.path, cache);
-            this.trigger('update');
-        }));
+        this.registerEvent(this.app.metadataCache.on('changed', this.onChanged, this));
+        if (this.includeBacklinksInCanvas) {
+            this.registerEvent(this.plugin.on('canvas-index-changed', this.onCanvasIndexChanged, this));
+            // the following listenr is necessary for the case where the Canvas core plugin is enabled after PDF++
+            this.registerEvent(this.plugin.on('canvas-index-initialized', this.onCanvasIndexInitialized, this));
+        }
         // the 'changed' event is not fired when a file is deleted!
-        this.registerEvent(this.app.metadataCache.on('deleted', (sourceFile) => {
-            this.deleteCachesForSourcePath(sourceFile.path);
-            this.trigger('update');
-        }));
+        this.registerEvent(this.app.metadataCache.on('deleted', this.onDeleted, this));
         // the 'changed' event is not fired when a file is renamed!
-        this.registerEvent(this.app.vault.on('rename', (sourceFile, oldSourcePath) => {
-            if (sourceFile instanceof TFile) {
-                this.deleteCachesForSourcePath(oldSourcePath);
+        this.registerEvent(this.app.vault.on('rename', this.onRename, this));
+    }
+
+    onChanged(sourceFile: TFile, data: string, cache: CachedMetadata) {
+        this.updateCacheForMarkdown(sourceFile.path, cache);
+        this.trigger('update');
+    }
+
+    onCanvasIndexChanged(file: TFile, canvasCache: CanvasCachedMetadata) {
+        this.updateCacheForCanvas(file.path, canvasCache);
+        this.trigger('update');
+    }
+
+    onCanvasIndexInitialized() {
+        for (const [sourcePath, canvasCache] of Object.entries(this.lib.getCanvasIndex().getAll())) {
+            this.updateCacheForCanvas(sourcePath, canvasCache);
+        }
+        this.trigger('update');
+    }
+
+    onDeleted(sourceFile: TFile) {
+        this.deleteCachesForSourcePath(sourceFile.path);
+        this.trigger('update');
+    }
+
+    onRename(sourceFile: TFile, oldSourcePath: string) {
+        if (sourceFile instanceof TFile) {
+            this.deleteCachesForSourcePath(oldSourcePath);
+
+            if (sourceFile.extension === 'canvas') {
+                const canvasCache = this.lib.getCanvasFileCache(sourceFile);
+                if (canvasCache) {
+                    this.updateCacheForCanvas(sourceFile.path, canvasCache);
+                }
+            } else {
                 const cache = this.app.metadataCache.getFileCache(sourceFile);
                 if (cache) {
-                    this.update(sourceFile.path, cache);
+                    this.updateCacheForMarkdown(sourceFile.path, cache);
                 }
-                this.trigger('update');
             }
-        }));
+
+            this.trigger('update');
+        }
     }
 
     init() {
@@ -49,17 +85,19 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
         this.sourcePaths = new MultiValuedMap();
         this.backlinks = new Set();
 
-        const dict = this.app.metadataCache.getBacklinksForFile(this.file);
+        const sourcePathToBacklinks = this.lib.getBacklinksForFile(this.file);
 
-        for (const sourcePath of dict.keys()) {
-            const backlinks = dict.get(sourcePath);
-            for (const backlink of backlinks ?? []) {
+        for (const [sourcePath, backlinks] of sourcePathToBacklinks) {
+            for (const backlink of backlinks) {
+                // @ts-ignore
                 this.createCache(backlink, sourcePath);
             }
         }
+
+        return this;
     }
 
-    update(sourcePath: string, cache: CachedMetadata) {
+    updateCacheForMarkdown(sourcePath: string, cache: CachedMetadata) {
         this.deleteCachesForSourcePath(sourcePath);
 
         const refs = [...cache.links ?? [], ...cache.embeds ?? [], ...cache.frontmatterLinks ?? []];
@@ -68,6 +106,21 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
             const targetFile = this.app.metadataCache.getFirstLinkpathDest(getLinkpath(linktext), sourcePath);
             if (targetFile === this.file) {
                 this.createCache(ref, sourcePath);
+            }
+        }
+    }
+
+    updateCacheForCanvas(sourcePath: string, canvasCache: CanvasCachedMetadata) {
+        this.deleteCachesForSourcePath(sourcePath);
+
+        for (const cache of Object.values(canvasCache.caches)) {
+            const refs = [...cache.links ?? [], ...cache.embeds ?? [], ...cache.frontmatterLinks ?? []];
+            for (const ref of refs) {
+                const linktext = ref.link;
+                const targetFile = this.app.metadataCache.getFirstLinkpathDest(getLinkpath(linktext), sourcePath);
+                if (targetFile === this.file) {
+                    this.createCache(ref, sourcePath);
+                }
             }
         }
     }
@@ -96,6 +149,8 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
     }
 
     createCache(refCache: LinkCache | EmbedCache | FrontmatterLinkCache, sourcePath: string) {
+        if (!this.includeBacklinksInCanvas && sourcePath.endsWith('.canvas')) return;
+
         const cache = new PDFBacklinkCache(this, refCache);
 
         this.backlinks.add(cache);

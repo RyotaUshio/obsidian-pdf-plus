@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, View, base64ToArrayBuffer, normalizePath, parseLinktext, requestUrl } from 'obsidian';
+import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, View, base64ToArrayBuffer, getLinkpath, normalizePath, parseLinktext, requestUrl, Reference } from 'obsidian';
 import { CanvasFileData } from 'obsidian/canvas';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
@@ -17,7 +17,7 @@ import { PDFNamedDestinations } from './destinations';
 import { PDFPageLabels } from './page-labels';
 import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap, BacklinkView, AnyCanvasNode } from 'typings';
 import { PDFCroppedEmbed } from '../pdf-cropped-embed';
-import { PDFBacklinkIndex } from './pdf-backlink-index';
+import { PDFBacklinkIndex, PDFPageBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
 import * as utils from 'utils';
 import { DummyFileManager } from './dummy-file-manager';
@@ -487,23 +487,56 @@ export class PDFPlusLib {
         return 'md' !== file.extension ? '!' + nonEmbedLink : nonEmbedLink;
     }
 
-    getBacklinkIndexForFile(file: TFile) {
-        return new PDFBacklinkIndex(this.plugin, file);
+    /**
+     * Similar to `MetadataCache.getBacklinksForFile`, but it differs in the following ways:
+     * - It searches for backlinks in canvas files as well, not just markdown files (in fact any file types that has link updater registerd in `FileManager`).
+     * - It returns a `MultiValuedMap` instead of a `CustomArrayDict`.
+     * For obtaining the node ID of a backlink in a canvas file, use `this.getCanvasNodeIdForRef(backlinkCache)`.
+     */
+    getBacklinksForFile(file: TFile) {
+        const map = new utils.MultiValuedMap<string, Reference & { nodeId?: string }>();
+        this.app.fileManager.iterateAllRefs((sourcePath, ref: Reference & { nodeId?: string }) => {
+            const linkpath = getLinkpath(ref.link);
+            const targetFile = this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
+            if (targetFile && targetFile === file) {
+                map.addValue(sourcePath, ref);
+            }
+        });
+        return map;
     }
 
-    async getLatestBacklinkIndexForFile(file: TFile) {
-        const backlinkIndex = this.getBacklinkIndexForFile(file);
+    getCanvasIndex() {
+        return this.app.internalPlugins.plugins.canvas.instance.index;
+    }
+
+    getCanvasNodeIdForRef(ref: Reference): string | null {
+        return this.getCanvasIndex().refNodeIds.get(ref) ?? null;
+    }
+
+    getCanvasCache(path: string) {
+        return this.getCanvasIndex().getForPath(path);
+    }
+
+    getCanvasFileCache(file: TFile) {
+        return this.getCanvasCache(file.path);
+    }
+
+    getBacklinkIndexForFile(file: TFile, includeCanvas = true) {
+        return new PDFBacklinkIndex(this.plugin, file, includeCanvas);
+    }
+
+    async getLatestBacklinkIndexForFile(file: TFile, includeCanvas = true) {
+        const backlinkIndex = this.getBacklinkIndexForFile(file, includeCanvas);
         await this.metadataCacheUpdatePromise;
         backlinkIndex.init();
         return backlinkIndex;
     }
 
-    async getLatestBacklinksForAnnotation(file: TFile, pageNumber: number, id: string) {
-        const index = await this.getLatestBacklinkIndexForFile(file);
+    async getLatestBacklinksForAnnotation(file: TFile, pageNumber: number, id: string, includeCanvas = true) {
+        const index = await this.getLatestBacklinkIndexForFile(file, includeCanvas);
         return index.getPageIndex(pageNumber).annotations.get(id);
     }
 
-    // TODO: rewrite using PDFBacklinkIndex
     isBacklinked(file: TFile, subpathParams?: { page: number, selection?: [number, number, number, number], annotation?: string }): boolean {
         // validate parameters
         if (subpathParams) {
@@ -519,34 +552,29 @@ export class PDFPlusLib {
         const isSelectionQuery = subpathParams && !!(subpathParams.selection);
         const isAnnotationQuery = typeof subpathParams?.annotation === 'string';
 
-        const backlinkDict = this.app.metadataCache.getBacklinksForFile(file);
+        const index = this.getBacklinkIndexForFile(file, true).init();
 
-        if (isFileQuery) return backlinkDict.count() > 0;
+        if (isFileQuery) {
+            return index.backlinks.size > 0;
+        }
 
-        for (const sourcePath of backlinkDict.keys()) {
-            const backlinks = backlinkDict.get(sourcePath);
-            if (!backlinks) continue;
+        const pageIndex = index.getPageIndex(subpathParams.page);
 
-            for (const backlink of backlinks) {
-                const { subpath } = parseLinktext(backlink.link);
-                const result = parsePDFSubpath(subpath);
-                if (!result) continue;
+        if (isPageQuery) {
+            return pageIndex.backlinks.size > 0;
+        }
 
-                if (isPageQuery && result.page === subpathParams.page) return true;
-                if (isSelectionQuery
-                    && 'beginIndex' in result
-                    && result.page === subpathParams.page
-                    && result.beginIndex === subpathParams.selection![0]
-                    && result.beginOffset === subpathParams.selection![1]
-                    && result.endIndex === subpathParams.selection![2]
-                    && result.endOffset === subpathParams.selection![3]
-                ) return true;
-                if (isAnnotationQuery
-                    && 'annotation' in result
-                    && result.page === subpathParams.page
-                    && result.annotation === subpathParams.annotation
-                ) return true;
-            }
+        if (isSelectionQuery) {
+            return pageIndex.selections.has(PDFPageBacklinkIndex.selectionId({
+                beginIndex: subpathParams.selection![0],
+                beginOffset: subpathParams.selection![1],
+                endIndex: subpathParams.selection![2],
+                endOffset: subpathParams.selection![3],
+            }));
+        }
+
+        if (isAnnotationQuery) {
+            return pageIndex.annotations.has(subpathParams.annotation!);
         }
 
         return false;
