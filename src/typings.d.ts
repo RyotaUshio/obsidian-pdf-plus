@@ -1155,6 +1155,20 @@ interface CanvasPlugin {
 interface CanvasView extends TextFileView {
     canvas: Canvas;
     hoverPopover: HoverPopover | null;
+    setEphemeralState(eState: CanvasEphemeralState): void;
+}
+
+interface EditableFileViewEphemeralState {
+    rename?: 'start' | 'end' | 'all';
+}
+
+interface CanvasEphemeralState extends EditableFileViewEphemeralState {
+    focus?: boolean;
+    match?: {
+        nodeId?: string;
+        content: string;
+        matches: SearchMatches;
+    }
 }
 
 interface Canvas {
@@ -1264,7 +1278,7 @@ declare abstract class FileIndex<Metadata> extends Component {
     /** Internal map from a file path to the corresponding metadata. */
     index: Record<string, Metadata>;
     fileQueue: Array<TFile>;
-    frame: object | null; 
+    frame: object | null;
 
     getAll(): typeof this.index;
     getForPath(path: string): Metadata | null;
@@ -1387,7 +1401,7 @@ declare module 'obsidian' {
         // getNewFileParent(sourcePath: string, newFilePath?: string): TFolder;
         createNewMarkdownFile(folder: TFolder, name: string, data?: string): Promise<TFile>;
         createNewFile(folder: TFolder, name: string, extension: string, data?: string): Promise<TFile>;
-        
+
         linkUpdaters: {
             canvas: CanvasLinkUpdater;
         };
@@ -1531,9 +1545,45 @@ declare module 'obsidian' {
         view: MarkdownView;
     }
 
+    interface MarkdownPreviewSection { }
+
     interface MarkdownPreviewRenderer {
         text: string;
+        sections: MarkdownPreviewSection[];
         set(data: string): void;
+        /** 
+         * Strictly speaking, this function could return null in some rare cases, but
+         * here I assume that it always returns a number following the public API's typing
+         * for `MarkdownPreviewView.getScroll()` (which internally just calls this function).
+         */
+        getScroll(): number;
+        applyScroll(
+            scroll: number,
+            options?: {
+                highlight?: boolean,
+                center?: boolean,
+            }
+        ): boolean;
+        /** Returns -1 if failed to find the section. */
+        getSectionTop(section: MarkdownPreviewSection): number;
+        showSection(section: MarkdownPreviewSection): void;
+        /** Returns true unless the internal `getSectionTop` call fails (i.e. returns -1). */
+        applyScrollSection(section: MarkdownPreviewSection): true | void;
+        /**
+         * Immdiately attempts to scroll to the given position, and if it fails, it will try again
+         * after the current rendering is done.
+         * @param scroll 
+         * @param options 
+         * @param cb Callback function that is called after the scroll is applied.
+         */
+        applyScrollDelayed(
+            scroll: number,
+            options?: {
+                highlight?: boolean,
+                center?: boolean,
+            },
+            cb?: () => void,
+        ): void;
     }
 
     interface ItemView {
