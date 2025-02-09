@@ -36,6 +36,16 @@ settings:
         step: 0.01
         default: 0.05
         format: em
+    -
+        id: pdf-plus-highlight-border-radius
+        title: Highlight edge roundness
+        description: Radius of the highlight edge (em). 0 for sharp edges and 0.5 for rounded edges.
+        type: variable-number-slider
+        min: 0
+        max: 0.5
+        step: 0.01
+        default: 0.1
+        format: em
     - 
         id: pdf-rect
         title: Rectanglular selection
@@ -373,7 +383,7 @@ body:not(.pdf-plus-backlink-selection-underline) .pdf-plus-backlink-highlight-la
     background-color: rgb(from var(--pdf-plus-color) r g b / var(--pdf-plus-highlight-opacity, 0.2));
     padding: var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em));
     margin: calc(var(--pdf-plus-highlight-padding-vertical-em, var(--pdf-plus-highlight-padding-default-em)) * -1) calc(var(--pdf-plus-highlight-padding-horizontal-em, var(--pdf-plus-highlight-padding-default-em)) * -1);
-    border-radius: 0.1em;
+    border-radius: var(--pdf-plus-highlight-border-radius, 0.1em);
 }
 
 body.pdf-plus-backlink-selection-underline {
@@ -454,6 +464,12 @@ body.pdf-plus-backlink-selection-underline {
             width: 100%;
             padding-top: var(--size-4-2);
         }
+    }
+
+    .pdf-plus-annotation-edit-modal-save-instructions {
+        color: var(--text-muted);
+        font-size: calc(var(--font-text-size) * 0.65);
+        text-align: end;
     }
 }
 
