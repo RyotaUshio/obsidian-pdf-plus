@@ -1148,11 +1148,8 @@ declare class NonEditableMarkdownEmbed extends Component implements HoverParent,
 
 /** Canvas */
 
-interface CanvasBBox {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
+interface CanvasPlugin {
+    index: CanvasIndex;
 }
 
 interface CanvasView extends TextFileView {
@@ -1255,6 +1252,48 @@ interface CanvasEdgeEnd {
     end: 'none' | 'arrow';
 }
 
+interface CanvasBBox {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+}
+
+declare abstract class FileIndex<Metadata> extends Component {
+    app: App;
+    /** Internal map from a file path to the corresponding metadata. */
+    index: Record<string, Metadata>;
+    fileQueue: Array<TFile>;
+
+    getAll(): typeof this.index;
+    getForPath(path: string): Metadata | null;
+    get(file: TFile): Metadata | null;
+
+    abstract canProcess(file: TFile): boolean;
+    abstract process(file: TFile): Promise<Metadata>;
+
+    onCreate(file: TFile): void;
+    onModify(file: TFile): void;
+    onRename(file: TFile, oldPath: string): void;
+    onDelete(file: TFile): void;
+    queue(file: TFile): void;
+    run(): Promise<void>;
+}
+
+declare class CanvasIndex extends FileIndex<CanvasCachedMetadata> {
+    canProcess(file: TFile): boolean;
+    process(file: TFile): Promise<CanvasCachedMetadata>;
+    parseText(text: string): Promise<CachedMetadata>;
+}
+
+/** No metadata ara available for group nodes without background and link nodes. */
+interface CanvasCachedMetadata {
+    /** Metadata for file nodes, or group nodes with background */
+    embeds: Array<{ file: TFile, subpath?: string }>;
+    /** Cached metadata for text nodes. Each key is a node id. */
+    caches: Record<string, CachedMetadata>;
+}
+
 interface HotkeyManager {
     save(): Promise<void>;
     load(): Promise<void>;
@@ -1265,6 +1304,17 @@ interface HotkeyManager {
     setHotkeys(id: string, hotkeys: Hotkey[]): void;
     removeHotkeys(id: string): void;
     printHotkeyForCommand(id: string): string;
+}
+
+declare class InternalPlugin<Instance> extends Events {
+    instance: Instance;
+    enabled: boolean;
+    enable(): Promise<void>;
+    disable(): void;
+}
+
+interface PagePreviewPlugin {
+    onLinkHover(hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void;
 }
 
 declare module 'obsidian' {
@@ -1294,18 +1344,9 @@ declare module 'obsidian' {
         };
         internalPlugins: {
             plugins: {
-                'page-preview': {
-                    instance: {
-                        onLinkHover(hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void;
-                    }
-                    enabled: boolean;
-                    enable(): void;
-                    disable(): void;
-                },
-                [id: string]: {
-                    instance: any;
-                    enabled: boolean;
-                }
+                'page-preview': InternalPlugin<PagePreviewPlugin>;
+                'canvas': InternalPlugin<CanvasPlugin>;
+                [id: string]: InternalPlugin<any>;
             }
         };
         customCss: CustomCss;
