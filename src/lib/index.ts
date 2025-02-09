@@ -1,4 +1,4 @@
-import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, View, base64ToArrayBuffer, getLinkpath, normalizePath, parseLinktext, requestUrl, Reference } from 'obsidian';
+import { App, Component, EditableFileView, FileView, MarkdownView, Notice, Platform, TFile, View, base64ToArrayBuffer, getLinkpath, normalizePath, requestUrl, Reference } from 'obsidian';
 import { CanvasFileData } from 'obsidian/canvas';
 import { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 import { EncryptedPDFError, PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRef } from '@cantoo/pdf-lib';
@@ -8,7 +8,7 @@ import { ColorPalette, ColorPaletteState } from 'color-palette';
 import { copyLinkLib } from './copy-link';
 import { HighlightLib } from './highlights';
 import { WorkspaceLib } from './workspace-lib';
-import { cropCanvas, encodeLinktext, getDirectPDFObj, isVersionNewerThan, parsePDFSubpath, removeExtension, rotateCanvas, toSingleLine, isTargetNode } from 'utils';
+import { cropCanvas, encodeLinktext, getDirectPDFObj, isVersionNewerThan, removeExtension, rotateCanvas, toSingleLine, isTargetNode } from 'utils';
 import { PDFPlusCommands } from './commands';
 import { PDFComposer } from './composer';
 import { PDFOutlines } from './outlines';

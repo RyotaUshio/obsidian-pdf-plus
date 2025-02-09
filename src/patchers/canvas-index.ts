@@ -21,7 +21,7 @@ export const patchCanvasIndex = (plugin: PDFPlus): boolean => {
                         plugin.trigger('canvas-index-initialized');
                         registerCanvasIndexChanged(plugin, this);
                     }
-                }
+                };
             },
         });
     }

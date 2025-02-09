@@ -291,7 +291,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                                     const tab = this.plugin.openSettingTab();
                                     tab.scrollTo('renderMarkdownInStickyNote', { behavior: 'smooth' });
                                     tab.updateHeaderElClassOnScroll(evt);
-                                }
+                                };
                              });
                                 
                             el.append('Tip: There is an option called ');
