@@ -203,7 +203,7 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
     }
 
     async open(options: Parameters<MarkdownEditorContainer['open']>[0]) {
-        let eState: any = {
+        const eState: any = {
             focus: !this.settings.dontActivateAfterOpenMD
         };
 
