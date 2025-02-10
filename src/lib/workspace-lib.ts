@@ -182,8 +182,8 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         }
         // Ignore the "dontActivateAfterOpenMD" option when opening a link in a tab in the same split as the current tab
         // I believe using activeLeaf (which is deprecated) is inevitable here
-        if (!(markdownLeaf.parentSplit instanceof WorkspaceTabs
-            && markdownLeaf.parentSplit === this.app.workspace.activeLeaf?.parentSplit)) {
+        if (!(markdownLeaf.parent instanceof WorkspaceTabs
+            && markdownLeaf.parent === this.app.workspace.activeLeaf?.parent)) {
             openViewState.active = !this.plugin.settings.dontActivateAfterOpenMD;
         }
 
@@ -241,8 +241,8 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                     if (root === this.app.workspace[split]) return;
                 }
 
-                if (leaf.parentSplit instanceof WorkspaceTabs) {
-                    const sharesSameTabParentWithThePDF = leaf.parentSplit.children.some((item) => {
+                if (leaf.parent instanceof WorkspaceTabs) {
+                    const sharesSameTabParentWithThePDF = leaf.parent.children.some((item) => {
                         if (item instanceof WorkspaceLeaf && item.view.getViewType() === 'pdf') {
                             return this.getFilePathFromView(item.view) === sourcePath;
 
@@ -256,7 +256,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                     }
                 }
 
-                if (createInSameParent) markdownLeafParent = leaf.parentSplit;
+                if (createInSameParent) markdownLeafParent = leaf.parent;
 
                 if (file && this.getFilePathFromView(leaf.view) === file.path) {
                     markdownLeaf = leaf;
@@ -421,7 +421,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
         // Ignore the "dontActivateAfterOpenPDF" option when opening a link in a tab in the same split as the current tab
         // I believe using activeLeaf (which is deprecated) is inevitable here
-        if (!(sameFileLeaf.parentSplit instanceof WorkspaceTabs && sameFileLeaf.parentSplit === this.app.workspace.activeLeaf?.parentSplit)) {
+        if (!(sameFileLeaf.parent instanceof WorkspaceTabs && sameFileLeaf.parent === this.app.workspace.activeLeaf?.parent)) {
             openViewState = openViewState ?? {};
             openViewState.active = !this.settings.dontActivateAfterOpenPDF;
         }

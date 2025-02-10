@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, MarkdownRenderer, Editor, HoverParent, MarkdownSubView, Point } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, MarkdownRenderer, Editor, HoverParent, MarkdownSubView, Point, WorkspaceLeaf } from 'obsidian';
 import { CanvasData, CanvasFileData, CanvasGroupData, CanvasLinkData, CanvasNodeData, CanvasTextData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -1467,8 +1467,12 @@ declare module 'obsidian' {
 
     interface WorkspaceLeaf {
         group: string | null;
-        /** As of Obsidian v1.5.8, this is just a read-only alias for `this.parent`. */
-        readonly parentSplit?: WorkspaceParent;
+        /** 
+         * @deprecated Since Obsidian v1.6.6, `parent` is public.
+         * 
+         * As of Obsidian v1.5.8-v1.8.4, this is just a read-only alias for `this.parent`.
+         */
+        readonly parentSplit: WorkspaceLeaf['parent'];
         containerEl: HTMLElement;
         openLinkText(linktext: string, sourcePath: string, openViewState?: OpenViewState): Promise<void>;
         highlight(): void;
