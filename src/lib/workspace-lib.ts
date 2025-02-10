@@ -210,7 +210,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     }
 
     /**
-     * Given a link from a PDF file to a markdown file, return a leaf to open the link in.
+     * Given a (hypothetical) link from a PDF file to a markdown file, return a leaf to open the link in.
      * The returned leaf can be an existing one or a new one.
      * Note that the leaf might contain a deferred view, so you need to call `await leaf.loadIfDeferred()`
      * before accessing any properties specific to the view type.
