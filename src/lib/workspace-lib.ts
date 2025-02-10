@@ -185,22 +185,6 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     }
 
     /**
-     * Get a leaf to open a markdown file in. The leaf can be an existing one or a new one,
-     * depending on the user preference and the current state of the workspace.
-     * 
-     * Note that the returned leaf might contain a deferred view, so it is not guaranteed
-     * that `leaf.view` is an instance of `MarkdownView`.
-     */
-    getMarkdownLeafInSidebar(sidebarType: SidebarType) {
-        if (this.settings.singleMDLeafInSidebar) {
-            return this.lib.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
-                ?? this.lib.workspace.getNewLeafInSidebar(sidebarType);
-        } else {
-            return this.lib.workspace.getNewLeafInSidebar(sidebarType);
-        }
-    }
-
-    /**
      * Given a (hypothetical) link from a PDF file to a markdown file, return a leaf to open the link in.
      * The returned leaf can be an existing one or a new one.
      * Note that the leaf might contain a deferred view, so you need to call `await leaf.loadIfDeferred()`
@@ -251,6 +235,22 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         }
 
         return markdownLeaf;
+    }
+
+    /**
+     * Get a leaf to open a markdown file in. The leaf can be an existing one or a new one,
+     * depending on the user preference and the current state of the workspace.
+     * 
+     * Note that the returned leaf might contain a deferred view, so it is not guaranteed
+     * that `leaf.view` is an instance of `MarkdownView`.
+     */
+    getMarkdownLeafInSidebar(sidebarType: SidebarType) {
+        if (this.settings.singleMDLeafInSidebar) {
+            return this.lib.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
+                ?? this.lib.workspace.getNewLeafInSidebar(sidebarType);
+        } else {
+            return this.lib.workspace.getNewLeafInSidebar(sidebarType);
+        }
     }
 
     shouldIgnoreLeafWhenOpeningBacklink(leaf: WorkspaceLeaf): boolean {
