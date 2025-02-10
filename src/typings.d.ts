@@ -1488,6 +1488,11 @@ declare module 'obsidian' {
         selectTab(tab: WorkspaceItem): void;
     }
 
+    interface WorkspaceMobileDrawer {
+        /** Probably this is always WorkspaceLeaf[] but here it's typed as WorkspaceItem[] just in case */
+        children: WorkspaceItem[];
+    }
+
     interface WorkspaceContainer {
         focus(): void;
     }

@@ -225,7 +225,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         //// The algorighm in a nutshell:
         //// 1. If the target markdown file is already opened, open the link in the same leaf
         //// 2. If not, create a new leaf under the same parent (tab group) as the first existing markdown leaf
-        
+
         // Step 1: Find an existing leaf that opens the target markdown file
         let markdownLeaf: WorkspaceLeaf | undefined; // result of step 1
         let markdownLeafParent: WorkspaceSplit | undefined; // for step 2
@@ -233,36 +233,15 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (markdownLeaf) return;
 
-            let createInSameParent = true;
-
             // The following line uses `getViewType() === 'markdown'` instead of 
             // `instanceof MarkdownView` in order to ensure a leaf with a deferred markdown views
             // are also caught.
             if (leaf.view.getViewType() === 'markdown') {
-                const root = leaf.getRoot();
-                for (const split of this.settings.ignoreExistingMarkdownTabIn) {
-                    if (root === this.app.workspace[split]) return;
+                if (this.shouldIgnoreLeafWhenOpeningBacklink(leaf)) return;
+
+                if (!markdownLeafParent && this.canCreateNewLeafInSameParentAs(leaf, sourcePath)) {
+                    markdownLeafParent = leaf.parent;
                 }
-
-                if (leaf.parent instanceof WorkspaceTabs) {
-                    // Whether the source leaf (= the leaf with the source PDF file) belongs to
-                    // the same tab group (= WorkspaceTabs) as `leaf` (= the markdown leaf the we are looking into right now).
-                    const leafSharesSameParentWithPDF = leaf.parent.children.some((siblingLeaf) => {
-                        if (siblingLeaf instanceof WorkspaceLeaf && siblingLeaf.view.getViewType() === 'pdf') {
-                            return this.getFilePathFromView(siblingLeaf.view) === sourcePath;
-
-                            // The following will not work if the view is a DeferredView
-
-                            // const view = item.view as PDFView;
-                            // return view.file?.path === sourcePath;
-                        }
-                    });
-                    if (leafSharesSameParentWithPDF) {
-                        createInSameParent = false;
-                    }
-                }
-
-                if (createInSameParent) markdownLeafParent = leaf.parent;
 
                 if (file && this.getFilePathFromView(leaf.view) === file.path) {
                     markdownLeaf = leaf;
@@ -287,6 +266,31 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         }
 
         return markdownLeaf;
+    }
+
+    shouldIgnoreLeafWhenOpeningBacklink(leaf: WorkspaceLeaf): boolean {
+        const root = leaf.getRoot();
+        for (const split of this.settings.ignoreExistingMarkdownTabIn) {
+            if (root === this.app.workspace[split]) return true;
+        }
+        return false;
+    }
+
+    canCreateNewLeafInSameParentAs(leaf: WorkspaceLeaf, sourcePath: string): boolean {
+        // leaf.parent can be a WorkspaceTabs or a WorkspaceMobileDrawer
+        const siblingLeaves = leaf.parent.children;
+
+        // Whether the source leaf (= the leaf with the source PDF file) belongs to
+        // the same tab group (= WorkspaceTabs) as `leaf` (= the markdown leaf the we are looking into right now).
+        const leafSharesSameParentWithPDF = siblingLeaves.some((siblingLeaf) =>
+            siblingLeaf instanceof WorkspaceLeaf
+            && siblingLeaf.view.getViewType() === 'pdf'
+            // The following will not work if the view is a DeferredView:
+            // (siblingLeaf.view as PDFView).file?.path === sourcePath
+            && this.getFilePathFromView(siblingLeaf.view) === sourcePath
+        );
+
+        return !leafSharesSameParentWithPDF;
     }
 
     isInSidebar(item: WorkspaceItem): boolean {
