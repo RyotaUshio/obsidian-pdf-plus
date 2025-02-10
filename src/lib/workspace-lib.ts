@@ -222,10 +222,13 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         const { path: linkpath } = parseLinktext(linktext);
         const file = this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
-        // 1. If the target markdown file is already opened, open the link in the same leaf
-        // 2. If not, create a new leaf under the same parent split as the first existing markdown leaf
-        let markdownLeaf: WorkspaceLeaf | undefined;
-        let markdownLeafParent: WorkspaceSplit | undefined;
+        //// The algorighm in a nutshell:
+        //// 1. If the target markdown file is already opened, open the link in the same leaf
+        //// 2. If not, create a new leaf under the same parent (tab group) as the first existing markdown leaf
+        
+        // Step 1: Find an existing leaf that opens the target markdown file
+        let markdownLeaf: WorkspaceLeaf | undefined; // result of step 1
+        let markdownLeafParent: WorkspaceSplit | undefined; // for step 2
 
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (markdownLeaf) return;
@@ -242,16 +245,19 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                 }
 
                 if (leaf.parent instanceof WorkspaceTabs) {
-                    const sharesSameTabParentWithThePDF = leaf.parent.children.some((item) => {
-                        if (item instanceof WorkspaceLeaf && item.view.getViewType() === 'pdf') {
-                            return this.getFilePathFromView(item.view) === sourcePath;
+                    // Whether the source leaf (= the leaf with the source PDF file) belongs to
+                    // the same tab group (= WorkspaceTabs) as `leaf` (= the markdown leaf the we are looking into right now).
+                    const leafSharesSameParentWithPDF = leaf.parent.children.some((siblingLeaf) => {
+                        if (siblingLeaf instanceof WorkspaceLeaf && siblingLeaf.view.getViewType() === 'pdf') {
+                            return this.getFilePathFromView(siblingLeaf.view) === sourcePath;
 
                             // The following will not work if the view is a DeferredView
+
                             // const view = item.view as PDFView;
                             // return view.file?.path === sourcePath;
                         }
                     });
-                    if (sharesSameTabParentWithThePDF) {
+                    if (leafSharesSameParentWithPDF) {
                         createInSameParent = false;
                     }
                 }
@@ -264,7 +270,9 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             }
         });
 
+        // Step 2: If no such existing leaf is found, create a new leaf
         if (!markdownLeaf) {
+            // edge case
             if (isSidebarType(this.settings.paneTypeForFirstMDLeaf)
                 && this.settings.singleMDLeafInSidebar
                 && markdownLeafParent
