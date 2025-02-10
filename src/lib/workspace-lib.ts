@@ -1,4 +1,4 @@
-import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceMobileDrawer, WorkspaceSidedock, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
+import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceMobileDrawer, WorkspaceSidedock, WorkspaceTabs, getLinkpath, parseLinktext, requireApiVersion } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
@@ -146,18 +146,9 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     }
 
     async openMarkdownLinkFromPDF(linktext: string, sourcePath: string, paneType: PaneType | boolean, position?: { pos: Pos } | { line: number }) {
-        let markdownLeaf: WorkspaceLeaf | undefined;
-
-        if (paneType) {
-            markdownLeaf = this.app.workspace.getLeaf(paneType);
-        } else {
-            // first handle the sidebar case
-            if (isSidebarType(this.settings.paneTypeForFirstMDLeaf) && this.settings.alwaysUseSidebar) {
-                markdownLeaf = this.getMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
-            } else {
-                markdownLeaf = this.getMarkdownLeafForLinkFromPDF(linktext, sourcePath);
-            }
-        }
+        const markdownLeaf = paneType
+            ? this.app.workspace.getLeaf(paneType)
+            : this.getMarkdownLeafForLinkFromPDF(linktext, sourcePath);
 
         // Note: at this point, `markdownLeaf.view` might be a defered view.
         // However, it does not matter because we do not access any `MarkdownView`-specific properties
@@ -219,7 +210,12 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
      * @param sourcePath If non-empty, it should end with ".pdf".
      */
     getMarkdownLeafForLinkFromPDF(linktext: string, sourcePath: string): WorkspaceLeaf {
-        const { path: linkpath } = parseLinktext(linktext);
+        // first handle the sidebar case
+        if (isSidebarType(this.settings.paneTypeForFirstMDLeaf) && this.settings.alwaysUseSidebar) {
+            return this.getMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
+        }
+
+        const linkpath = getLinkpath(linktext);
         const file = this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
 
         //// The algorighm in a nutshell:
