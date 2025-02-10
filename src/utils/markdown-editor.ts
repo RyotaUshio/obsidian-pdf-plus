@@ -58,11 +58,11 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
     static async forFile(plugin: PDFPlus, params: {
         targetFile: TFile,
-        sourcePath: string,
+        sourceLeaf: WorkspaceLeaf,
         paneType: PaneType | boolean,
         nodeId?: string,
     }) {
-        const { targetFile, sourcePath, paneType, nodeId } = params;
+        const { targetFile, paneType, nodeId } = params;
 
         if (targetFile.extension === 'md') {
             return await MarkdownEditorContainer.forMarkdownFile(plugin, targetFile, { paneType });

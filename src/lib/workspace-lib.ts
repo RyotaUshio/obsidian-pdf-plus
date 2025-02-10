@@ -1,4 +1,4 @@
-import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
+import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceMobileDrawer, WorkspaceSidedock, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
@@ -132,14 +132,14 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     /** Will replace openMarkdownLinkFromPDF in the future. supports canvas as target */
     async openBacklinkFromPDF(params: {
         targetFile: TFile,
-        sourcePath: string,
+        sourceLeaf: WorkspaceLeaf,
         paneType: PaneType | boolean,
         nodeId?: string,
         position?: Pos,
         line?: number,
     }) {
-        const { targetFile, sourcePath, paneType, nodeId, position, line } = params;
-        const mdContainer = await MarkdownEditorContainer.forFile(this.plugin, { targetFile, sourcePath, paneType, nodeId });
+        const { targetFile, sourceLeaf, paneType, nodeId, position, line } = params;
+        const mdContainer = await MarkdownEditorContainer.forFile(this.plugin, { targetFile, sourceLeaf, paneType, nodeId });
         if (mdContainer) {
             await mdContainer.open({ position, line });
         }
@@ -228,7 +228,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
         // Step 1: Find an existing leaf that opens the target markdown file
         let markdownLeaf: WorkspaceLeaf | undefined; // result of step 1
-        let markdownLeafParent: WorkspaceSplit | undefined; // for step 2
+        let markdownLeafParent: WorkspaceTabs | WorkspaceMobileDrawer | undefined; // for step 2
 
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (markdownLeaf) return;
@@ -251,18 +251,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
         // Step 2: If no such existing leaf is found, create a new leaf
         if (!markdownLeaf) {
-            // edge case
-            if (isSidebarType(this.settings.paneTypeForFirstMDLeaf)
-                && this.settings.singleMDLeafInSidebar
-                && markdownLeafParent
-                && this.isInSidebar(markdownLeafParent)) {
-                markdownLeaf = this.getExistingMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf)
-                    ?? this.lib.workspace.getNewLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
-            } else {
-                markdownLeaf = markdownLeafParent
-                    ? this.app.workspace.createLeafInParent(markdownLeafParent, -1)
-                    : this.getLeaf(this.plugin.settings.paneTypeForFirstMDLeaf);
-            }
+            markdownLeaf = this.createLeafForOpeningBacklink(markdownLeafParent);
         }
 
         return markdownLeaf;
@@ -291,6 +280,21 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         );
 
         return !leafSharesSameParentWithPDF;
+    }
+
+    createLeafForOpeningBacklink(parent?: WorkspaceTabs | WorkspaceMobileDrawer) {
+        // edge case
+        if (isSidebarType(this.settings.paneTypeForFirstMDLeaf)
+            && this.settings.singleMDLeafInSidebar
+            && parent
+            && this.isInSidebar(parent)) {
+            return this.getExistingMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf)
+                ?? this.lib.workspace.getNewLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
+        } else {
+            return parent
+                ? this.app.workspace.createLeafInParent(parent, -1)
+                : this.getLeaf(this.plugin.settings.paneTypeForFirstMDLeaf);
+        }
     }
 
     isInSidebar(item: WorkspaceItem): boolean {
