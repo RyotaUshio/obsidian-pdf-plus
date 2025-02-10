@@ -1275,13 +1275,16 @@ interface CanvasBBox {
 
 declare abstract class FileIndex<Metadata> extends Component {
     app: App;
-    /** Internal map from a file path to the corresponding metadata. */
+    /** Internal map from a file path to the corresponding metadata. No metadata will be created for an empty canvas. */
     index: Record<string, Metadata>;
     fileQueue: Array<TFile>;
     frame: object | null;
 
+    /** Note that it returns `null` for an empty canvas. */
     getAll(): typeof this.index;
+    /** Note that it returns `null` for an empty canvas. */
     getForPath(path: string): Metadata | null;
+    /** Note that it returns `null` for an empty canvas. */
     get(file: TFile): Metadata | null;
 
     abstract canProcess(file: TFile): boolean;
@@ -1305,7 +1308,7 @@ declare class CanvasIndex extends FileIndex<CanvasCachedMetadata> {
 /** No metadata ara available for group nodes without background and link nodes. */
 interface CanvasCachedMetadata {
     /** Metadata for file nodes, or group nodes with background */
-    embeds: Array<{ file: TFile, subpath?: string }>;
+    embeds: Array<{ file: string, subpath?: string }>;
     /** Cached metadata for text nodes. Each key is a node id. */
     caches: Record<string, CachedMetadata>;
 }
