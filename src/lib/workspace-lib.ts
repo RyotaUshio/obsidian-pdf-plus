@@ -2,6 +2,7 @@ import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFil
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
+import { MarkdownEditorContainer } from 'utils';
 
 
 // Split right, left, down, or up
@@ -126,6 +127,22 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         if (!activeGroup) return null;
 
         return this.app.workspace.getGroupLeaves(activeGroup);
+    }
+
+    /** Will replace openMarkdownLinkFromPDF in the future. supports canvas as target */
+    async openBacklinkFromPDF(params: {
+        targetFile: TFile,
+        sourcePath: string,
+        paneType: PaneType | boolean,
+        nodeId?: string,
+        position?: Pos,
+        line?: number,
+    }) {
+        const { targetFile, sourcePath, paneType, nodeId, position, line } = params;
+        const mdContainer = await MarkdownEditorContainer.forFile(this.plugin, { targetFile, sourcePath, paneType, nodeId });
+        if (mdContainer) {
+            await mdContainer.open({ position, line });
+        }
     }
 
     async openMarkdownLinkFromPDF(linktext: string, sourcePath: string, paneType: PaneType | boolean, position?: { pos: Pos } | { line: number }) {
@@ -465,6 +482,14 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
     isMarkdownFileOpened(file: TFile): boolean {
         return !!this.getExistingLeafForMarkdownFile(file);
+    }
+
+    /**
+     * Returns a leaf that holds the given markdown file, if any.
+     * `leaf.view` can be an instance of `CanvasView` or `DeferredView`.
+     */
+    getExistingLeafForCanvasFile(file: TFile): WorkspaceLeaf | null {
+        return this.getExistingLeafForFile(file);
     }
 
     registerHideSidebar(leaf: WorkspaceLeaf) {

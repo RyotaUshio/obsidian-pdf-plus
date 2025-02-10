@@ -1201,6 +1201,13 @@ interface Canvas {
     posCenter(): { x: number, y: number };
     getData(): CanvasData;
     zoomToBbox(bbox: CanvasBBox): void;
+    /**
+     * 
+     * @param bbox 
+     * @param margin Defaults to `this.gridSpacing`.
+     */
+    panIntoView(bbox: CanvasBBox, margin?: number): void;
+    selectOnly(nodeOrEdge: AnyCanvasNode | CanvasEdge): void;
 }
 
 interface CanvasNode {
@@ -1215,24 +1222,27 @@ interface CanvasNode {
     nodeEl: HTMLElement;
     getData(): CanvasNodeData;
     isEditable(): boolean;
+    /** Combination of `selectOnly` and `zoomToBbox` */
     startEditing(): void;
     getBBox(): CanvasBBox;
     focus(): void;
     blur(): void;
     select(): void;
     deselect(): void;
+    /** `child` is set by this method in `CanvasTextNode` & `CanvasFileNode`. It can be undefined or null before this method is called. */
+    render(): void;
 }
 
 interface CanvasFileNode extends CanvasNode {
     file: TFile | null;
     subpath: string
-    child: Embed;
+    child?: Embed | null;
     getData(): CanvasFileData;
 }
 
 interface CanvasTextNode extends CanvasNode {
     text: string;
-    child: Component;
+    child?: CanvasTextNodeEditor | null;
     getData(): CanvasTextData;
 }
 
@@ -1425,17 +1435,17 @@ declare module 'obsidian' {
         onCleanCache(callback: () => any): void;
     }
 
-    interface CachedMetadata {
-        // For Advanced Canvas's metadata cache support
-        // See https://github.com/Developer-Mike/obsidian-advanced-canvas/tree/main?tab=readme-ov-file#full-metadata-cache-support
-        nodes?: Record<string, Omit<CachedMetadata, 'nodes'>>;
-    }
+    // interface CachedMetadata {
+    //     // For Advanced Canvas's metadata cache support
+    //     // See https://github.com/Developer-Mike/obsidian-advanced-canvas/tree/main?tab=readme-ov-file#full-metadata-cache-support
+    //     nodes?: Record<string, Omit<CachedMetadata, 'nodes'>>;
+    // }
 
-    interface Pos {
-        // For Advanced Canvas's metadata cache support
-        // See https://github.com/Developer-Mike/obsidian-advanced-canvas/tree/main?tab=readme-ov-file#full-metadata-cache-support
-        nodeId?: string;
-    }
+    // interface Pos {
+    //     // For Advanced Canvas's metadata cache support
+    //     // See https://github.com/Developer-Mike/obsidian-advanced-canvas/tree/main?tab=readme-ov-file#full-metadata-cache-support
+    //     nodeId?: string;
+    // }
 
     interface Workspace {
         floatingSplit: WorkspaceFloating;
