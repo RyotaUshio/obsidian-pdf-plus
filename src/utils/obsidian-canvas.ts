@@ -31,3 +31,15 @@ export function getCanvasNodeContainingEl(canvas: Canvas, el: HTMLElement): AnyC
     }
     return null;
 }
+
+export function zoomToNodeId(canvas: Canvas, nodeId: string) {
+    const node = canvas.nodes.get(nodeId);
+    if (node) {
+        zoomToNode(canvas, node);
+    }
+}
+
+export function zoomToNode(canvas: Canvas, node: AnyCanvasNode) {
+    const bbox = node.getBBox();
+    canvas.zoomToBbox(bbox);
+}

@@ -513,6 +513,12 @@ export class PDFPlusLib {
         return this.getCanvasIndex().refNodeIds.get(ref) ?? null;
     }
 
+    isFileEmbeddedInCanvas(filePath: string, canvasPath: string): boolean {
+        const canvasCache = this.getCanvasCache(canvasPath);
+        if (!canvasCache) return false;
+        return canvasCache.embeds.some(({ file }) => file === filePath);
+    }
+
     getCanvasCache(path: string) {
         return this.getCanvasIndex().getForPath(path);
     }
