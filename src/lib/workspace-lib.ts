@@ -1,4 +1,4 @@
-import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceMobileDrawer, WorkspaceSidedock, WorkspaceTabs, getLinkpath, parseLinktext, requireApiVersion } from 'obsidian';
+import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, Reference, ReferenceCache, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceMobileDrawer, WorkspaceSidedock, WorkspaceTabs, getLinkpath, parseLinktext, requireApiVersion } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { BacklinkView, CanvasView, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
@@ -134,14 +134,19 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         targetFile: TFile,
         sourceLeaf: WorkspaceLeaf,
         paneType: PaneType | boolean,
-        nodeId?: string,
-        position?: Pos,
-        line?: number,
+        refCache: ReferenceCache | Reference,
     }) {
-        const { targetFile, sourceLeaf, paneType, nodeId, position, line } = params;
+        const { targetFile, sourceLeaf, paneType, refCache } = params;
+
+        const nodeId = targetFile.extension === 'canvas'
+            ? (this.lib.getCanvasNodeIdForRef(refCache) ?? undefined)
+            : undefined;
+
         const mdContainer = await MarkdownEditorContainer.forFile(this.plugin, { targetFile, sourceLeaf, paneType, nodeId });
+
         if (mdContainer) {
-            await mdContainer.open({ position, line });
+            const position = 'position' in refCache ? refCache.position : undefined;
+            await mdContainer.open({ position });
         }
     }
 
@@ -186,7 +191,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
     getLeafForOpeningBacklink(targetFile: TFile, sourceLeaf: WorkspaceLeaf, conditionsByViewType: Record<string, (targetFile: TFile, filePathOrView: string, leaf: WorkspaceLeaf) => boolean>): WorkspaceLeaf {
         const viewTypes = Object.keys(conditionsByViewType);
-        
+
         // first handle the sidebar case
         if (isSidebarType(this.settings.paneTypeForFirstMDLeaf) && this.settings.alwaysUseSidebar) {
             return this.getLeafOfTypesInSidebar(viewTypes, this.settings.paneTypeForFirstMDLeaf);

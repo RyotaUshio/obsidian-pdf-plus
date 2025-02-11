@@ -8,7 +8,6 @@ import { MultiValuedMap, getLeafContainingNode, getTextLayerInfo, isCanvas, isEm
 import { onBacklinkVisualizerContextMenu } from 'context-menu';
 import { BidirectionalMultiValuedMap } from 'utils';
 import { MergedRect } from 'lib/highlights/geometry';
-import { WorkspaceLib } from 'lib/workspace-lib';
 
 
 export class PDFBacklinkVisualizer extends PDFPlusComponent {
@@ -142,23 +141,15 @@ export class BacklinkDomManager extends PDFPlusComponent {
                 const targetFile = this.app.vault.getAbstractFileByPath(cache.sourcePath);
                 const sourceLeaf = getLeafContainingNode(this.app, this.visualizer.child.containerEl);
                 const paneType = Keymap.isModEvent(event);
+                const refCache = cache.refCache;
 
                 if (targetFile instanceof TFile && sourceLeaf) {
-                    const openParams: Parameters<WorkspaceLib['openBacklinkFromPDF']>[0] = {
+                    this.lib.workspace.openBacklinkFromPDF({
                         targetFile,
                         sourceLeaf,
                         paneType,
-                        position,
-                    };
-
-                    if (targetFile.extension === 'canvas') {
-                        const nodeId = this.lib.getCanvasNodeIdForRef(cache.refCache);
-                        if (nodeId) {
-                            openParams.nodeId = nodeId;
-                        }
-                    }
-
-                    this.lib.workspace.openBacklinkFromPDF(openParams);
+                        refCache,
+                    });
                 }
             }
         });
@@ -567,11 +558,6 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
         return iconEl;
     }
 }
-
-
-// class PDFCanvasBacklinkVisualizer extends PDFViewerBacklinkVisualizer {
-//     // not implemented yet
-// }
 
 
 // class PDFExportBacklinkVisualizer extends PDFBacklinkVisualizer {
