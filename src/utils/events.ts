@@ -220,3 +220,11 @@ export function matchModifiers(evt: MouseEvent, modifiers: Modifier[]): boolean 
         return !Keymap.isModifier(evt, modifier);
     });
 }
+
+export function callWhenInserted(el: HTMLElement, callback: () => any) {
+    if (el.isShown()) {
+        callback();
+        return;
+    }
+    el.onNodeInserted(callback, true);
+}

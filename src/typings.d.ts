@@ -1021,6 +1021,8 @@ declare class MarkdownEditModeBase extends Component {
     clipboardManager: ClipboardManager;
     tableCell: TableCell | null;
     containerEl: HTMLElement;
+    /** .markdown-source-view.cm-s-obsidian.mod-cm6" */
+    editorEl: HTMLElement;
     sourceMode: boolean;
 
     get(): string;
@@ -1052,7 +1054,9 @@ declare abstract class EditableMarkdownEmbed extends Component implements Markdo
     app: App;
     containerEl: HTMLElement;
     state: unknown;
+    /** .markdown-embed-content */
     previewEl: HTMLElement;
+    /** .markdown-embed-content */
     editorEl: HTMLElement;
     previewMode: MarkdownPreviewModeInEmbed;
     editMode?: MarkdownEditModeInEmbed | null;

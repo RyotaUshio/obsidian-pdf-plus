@@ -248,6 +248,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
     getLeafForOpeningBacklinkInCanvasNode(canvasFile: TFile, sourceLeaf: WorkspaceLeaf): WorkspaceLeaf {
         return this.getLeafForOpeningBacklink(canvasFile, sourceLeaf, {
+            'markdown': () => false,
             'canvas': (canvasFile, filePathOrView) => filePathOrView === canvasFile.path,
         });
     }
