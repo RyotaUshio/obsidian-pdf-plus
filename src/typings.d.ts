@@ -1042,6 +1042,9 @@ declare class MarkdownEditMode extends MarkdownEditModeBase implements MarkdownS
 
 declare class MarkdownEditModeInEmbed extends MarkdownEditMode {
     owner: EditableMarkdownEmbed;
+    /** Set if `owner.useIframe` is `true`. `iframe.embed-iframe.is-controlled` */
+    iframeEl?: HTMLIFrameElement;
+    onIframeLoad(): void;
 }
 
 declare abstract class EditableMarkdownEmbed extends Component implements MarkdownFileInfo {
@@ -1226,7 +1229,7 @@ interface CanvasNode {
     nodeEl: HTMLElement;
     getData(): CanvasNodeData;
     isEditable(): boolean;
-    /** Combination of `selectOnly` and `zoomToBbox` */
+    /** Combination of `selectOnly` and `zoomToBbox`. For file & text nodes, it also triggers `showEditor` and `setIsEditing(true)` */
     startEditing(): void;
     getBBox(): CanvasBBox;
     focus(): void;

@@ -2,7 +2,7 @@ import { Component, Editor, MarkdownFileInfo, MarkdownView, PaneType, Pos, TFile
 
 import PDFPlus from 'main';
 import { AnyCanvasNode, CanvasTextNodeEditor, EditableMarkdownEmbedWithFile, CanvasFileNode, CanvasView, Canvas } from 'typings';
-import { getCanvasNodeContainingEl, isCanvasFileNode, getLeafContainingNode, hasOwnProperty, isCanvasView, isCanvasTextNode } from 'utils';
+import { getCanvasNodeContainingEl, isCanvasFileNode, getLeafContainingNode, hasOwnProperty, isCanvasView, isCanvasTextNode, callWhenInserted } from 'utils';
 import { PDFPlusComponent } from 'lib/component';
 
 
@@ -319,31 +319,84 @@ export class CanvasTextNodeEditorContainer extends MarkdownEditorContainer imple
             this.setLeafActive();
         }
 
+        // `this.node.startEditing()` also includes `zoomToBbox`, however 
+        // it might not be triggered depending on the zoom level, so we call it explicitly
         this.canvas.zoomToBbox(this.node.getBBox());
-        // this.canvas.panIntoView(this.node.getBBox());
-        this.canvas.selectOnly(this.node);
 
         if (options.position || typeof options.line === 'number') {
             const startLine = options.position?.start.line ?? options.line!;
-            const startCh = options.position?.start.col ?? 0;
             const endLine = options.position?.end.line ?? options.line!;
             const endCh = options.position?.end.col ?? 0;
 
-            // It's strange that we have to fisrt scroll in preview mode and then switch to edit mode,
-            // but so far, I haven't found a reliable way to apply scroll using only edit mode APIs
-            this.embed.previewMode.renderer.applyScrollDelayed(startLine, {
-                highlight: true,
-                center: true,
-            });
-            this.embed.showEditor();
-            this.embed.editMode?.editor.focus();
+            this.node.startEditing();
 
-            this.embed.editor?.setCursor({ line: endLine, ch: endCh });
-            // The following is probably unnecessary, but I'll keep it for now just in case
-            this.embed.editor?.scrollIntoView({
-                from: { line: startLine, ch: startCh },
-                to: { line: endLine, ch: endCh },
-            });
+            const editMode = this.embed.editMode;
+            if (editMode) {
+                callWhenInserted(editMode.editorEl, () => {
+                    // Currently applyScroll does not have an option to center the line
+                    editMode.applyScroll(startLine);
+
+                    const editor = editMode.editor;
+
+                    editMode.editor.setCursor({ line: endLine, ch: endCh });
+                    editor.focus();
+
+                    if (editMode.iframeEl) {
+                        killFirstBlurEventFakedByIframe(editMode.iframeEl);
+                    }
+                });
+            }
+
+            // // This is the only way that I currently know to center the line, but it involves an awkward step of scrolling in preview mode
+            // this.embed.previewMode.renderer.applyScrollDelayed(startLine, {
+            //     highlight: false,
+            //     center: true,
+            // }, () => {
+            //     this.node.startEditing();
+
+            //     const editMode = this.embed.editMode;
+            //     if (editMode) {
+            //         callWhenInserted(editMode.editorEl, () => {
+            //             const editor = editMode.editor;
+            //             editMode.editor.setCursor({ line: endLine, ch: endCh });
+            //             editor.focus();
+
+            //             if (editMode.iframeEl) {
+            //                 killFirstBlurEventFakedByIframe(editMode.iframeEl);
+            //             }
+            //         });
+            //     }
+            // });
         }
     }
 }
+
+
+/** 
+ * In the `MarkdownEditModeInEmbed.prototype.onIframeLoad` method, 
+ * an blur event handler is added to the iframe content window.
+ * When a blur event is fired in the iframe, the handler creates and dispatches a new blur event to the main window.
+ * 
+ * The first blur event fired to the main window in this way can cause unexpected behavior when opening a backlink
+ * in a canvas text node. If the canvas view is newly created when opening the backlink, the canvas text node
+ * loses focus after some time.
+ * 
+ * This function kills the first blur event fired to the main window by the iframe content window so that 
+ * the canvas text node can keep focus.
+ */
+const killFirstBlurEventFakedByIframe = (iframeEl: HTMLIFrameElement, watchTime = 3000) => {
+    const mainWindow = iframeEl.win;
+
+    const onBlur = (evt: FocusEvent) => {
+        if (evt.win === iframeEl.contentWindow) {
+            evt.preventDefault();
+            evt.stopImmediatePropagation();
+            mainWindow.removeEventListener('blur', onBlur, true);
+        }
+    };
+
+    mainWindow.addEventListener('blur', onBlur, true);
+    mainWindow.setTimeout(() => {
+        mainWindow.removeEventListener('blur', onBlur, true);
+    }, watchTime);
+};
