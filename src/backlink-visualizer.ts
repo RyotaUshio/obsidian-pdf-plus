@@ -116,13 +116,24 @@ export class BacklinkDomManager extends PDFPlusComponent {
     }
 
     hookBacklinkOpeners(el: HTMLElement, cache: PDFBacklinkCache) {
-        const position = 'position' in cache.refCache ? cache.refCache.position : undefined;
-        const lineNumber = position?.start.line;
+        const targetFile = this.app.vault.getAbstractFileByPath(cache.sourcePath);
+        const sourceLeaf = getLeafContainingNode(this.app, this.visualizer.child.containerEl);
+        const refCache = cache.refCache;
 
-        const state: any = { isTriggeredFromBacklinkVisualizer: true };
-        if (typeof lineNumber === 'number') {
-            state.scroll = lineNumber;
+        // hover over the highlight to preview/open the backlink
+
+        const state: any = {
+            pdfPlusBacklinkOpenParams: {
+                targetFile,
+                sourceLeaf,
+                paneType: false,
+                refCache,
+            }
+        };
+        if ('position' in cache.refCache) {
+            state.scroll = cache.refCache.position.start.line;
         }
+
         this.registerDomEventForCache(cache, el, 'mouseover', (event) => {
             this.app.workspace.trigger('hover-link', {
                 event,
@@ -131,23 +142,19 @@ export class BacklinkDomManager extends PDFPlusComponent {
                 targetEl: el,
                 linktext: cache.sourcePath,
                 sourcePath: this.file.path,
-                state
+                state,
             });
         });
 
+        // double click the highlight to open the backlink
+
         this.registerDomEventForCache(cache, el, 'dblclick', (event) => {
             if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
-                // this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, paneType, pos ? { pos } : undefined);
-                const targetFile = this.app.vault.getAbstractFileByPath(cache.sourcePath);
-                const sourceLeaf = getLeafContainingNode(this.app, this.visualizer.child.containerEl);
-                const paneType = Keymap.isModEvent(event);
-                const refCache = cache.refCache;
-
                 if (targetFile instanceof TFile && sourceLeaf) {
                     this.lib.workspace.openBacklinkFromPDF({
                         targetFile,
                         sourceLeaf,
-                        paneType,
+                        paneType: Keymap.isModEvent(event),
                         refCache,
                     });
                 }

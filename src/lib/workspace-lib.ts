@@ -129,7 +129,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         return this.app.workspace.getGroupLeaves(activeGroup);
     }
 
-    /** Will replace openMarkdownLinkFromPDF in the future. supports canvas as target */
+    /** Replaces `openMarkdownLinkFromPDF`. supports canvas as target */
     async openBacklinkFromPDF(params: {
         targetFile: TFile,
         sourceLeaf: WorkspaceLeaf,
@@ -150,6 +150,9 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         }
     }
 
+    /**
+     * @deprecated Since 0.41.0; use `openBacklinkFromPDF` instead.
+     */
     async openMarkdownLinkFromPDF(linktext: string, sourcePath: string, paneType: PaneType | boolean, position?: { pos: Pos } | { line: number }) {
         const markdownLeaf = paneType
             ? this.app.workspace.getLeaf(paneType)
