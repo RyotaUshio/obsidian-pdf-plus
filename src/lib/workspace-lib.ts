@@ -147,6 +147,12 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         if (mdContainer) {
             const position = 'position' in refCache ? refCache.position : undefined;
             await mdContainer.open({ position });
+
+            if (this.plugin.settings.dontActivateAfterOpenMD) {
+                setTimeout(() => {
+                    this.app.workspace.setActiveLeaf(sourceLeaf, { focus: true });
+                }, 500);
+            }
         }
     }
 
