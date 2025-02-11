@@ -184,6 +184,74 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         return;
     }
 
+    getLeafForOpeningBacklink(targetFile: TFile, sourceLeaf: WorkspaceLeaf, conditionsByViewType: Record<string, (targetFile: TFile, filePathOrView: string, leaf: WorkspaceLeaf) => boolean>): WorkspaceLeaf {
+        const viewTypes = Object.keys(conditionsByViewType);
+        
+        // first handle the sidebar case
+        if (isSidebarType(this.settings.paneTypeForFirstMDLeaf) && this.settings.alwaysUseSidebar) {
+            return this.getLeafOfTypesInSidebar(viewTypes, this.settings.paneTypeForFirstMDLeaf);
+        }
+
+        //// The algorighm in a nutshell:
+        //// 1. If the target markdown file is already opened, open the link in the same leaf
+        //// 2. If not, create a new leaf under the same parent (tab group) as the first existing leaf
+
+        // Step 1: Find an existing leaf that opens the target file
+        let leaf: WorkspaceLeaf | undefined; // result of step 1
+        let parent: WorkspaceTabs | WorkspaceMobileDrawer | undefined; // for step 2
+
+        this.app.workspace.iterateAllLeaves((l) => {
+            if (leaf) return;
+
+            if (this.shouldIgnoreLeafWhenOpeningBacklink(l)) return;
+
+            // The following line uses `getViewType()` instead of 
+            // `instanceof ...View` in order to ensure a leaf with a deferred views
+            // are also caught.
+            const viewTypeOfLeaf = l.view.getViewType();
+            if (!viewTypes.includes(viewTypeOfLeaf)) return;
+
+            // In the code below, the view is one of the target view types (potentially deferred).
+
+            // Check if the target file is already opened in this leaf
+            const filePathOfView = this.getFilePathFromView(l.view);
+            if (!filePathOfView) return;
+
+            for (const [viewType, condition] of Object.entries(conditionsByViewType)) {
+                if (viewTypeOfLeaf === viewType && condition(targetFile, filePathOfView, l)) {
+                    leaf = l;
+                    return;
+                }
+            }
+
+            // This leaf cannot be the result of step 1, so we check if its parent can be used in step 2.
+            if (!parent && l.parent !== sourceLeaf.parent) {
+                parent = l.parent;
+            }
+        });
+
+        // Step 2: If no such existing leaf is found, create a new leaf
+        if (!leaf) {
+            leaf = this.createLeafForOpeningBacklink(viewTypes, parent);
+        }
+
+        return leaf;
+    }
+
+    /** Will replace getMarkdownLeafForLinkFromPDF in the future. */
+    getLeafForOpeningBacklinkInMarkdownFile(mdFile: TFile, sourceLeaf: WorkspaceLeaf): WorkspaceLeaf {
+        return this.getLeafForOpeningBacklink(mdFile, sourceLeaf, {
+            'markdown': (mdFile, filePathOrView) => filePathOrView === mdFile.path,
+            'canvas': (mdFile, filePathOrView) => this.lib.isFileEmbeddedInCanvas(mdFile.path, filePathOrView),
+        });
+    }
+
+    getLeafForOpeningBacklinkInCanvasNode(canvasFile: TFile, sourceLeaf: WorkspaceLeaf): WorkspaceLeaf {
+        return this.getLeafForOpeningBacklink(canvasFile, sourceLeaf, {
+            'canvas': (canvasFile, filePathOrView) => filePathOrView === canvasFile.path,
+        });
+    }
+
     /**
      * Given a (hypothetical) link from a PDF file to a markdown file, return a leaf to open the link in.
      * The returned leaf can be an existing one or a new one.
@@ -213,25 +281,26 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         this.app.workspace.iterateAllLeaves((leaf) => {
             if (markdownLeaf) return;
 
+            if (this.shouldIgnoreLeafWhenOpeningBacklink(leaf)) return;
+
             // The following line uses `getViewType() === 'markdown'` instead of 
             // `instanceof MarkdownView` in order to ensure a leaf with a deferred markdown views
             // are also caught.
             if (leaf.view.getViewType() === 'markdown') {
-                if (this.shouldIgnoreLeafWhenOpeningBacklink(leaf)) return;
+                if (file && this.getFilePathFromView(leaf.view) === file.path) {
+                    markdownLeaf = leaf;
+                    return;
+                }
 
                 if (!markdownLeafParent && this.canCreateNewLeafInSameParentAs(leaf, sourcePath)) {
                     markdownLeafParent = leaf.parent;
-                }
-
-                if (file && this.getFilePathFromView(leaf.view) === file.path) {
-                    markdownLeaf = leaf;
                 }
             }
         });
 
         // Step 2: If no such existing leaf is found, create a new leaf
         if (!markdownLeaf) {
-            markdownLeaf = this.createLeafForOpeningBacklink(markdownLeafParent);
+            markdownLeaf = this.createLeafForOpeningBacklink(['markdown'], markdownLeafParent);
         }
 
         return markdownLeaf;
@@ -245,11 +314,15 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
      * that `leaf.view` is an instance of `MarkdownView`.
      */
     getMarkdownLeafInSidebar(sidebarType: SidebarType) {
+        return this.getLeafOfTypesInSidebar(['markdown'], sidebarType);
+    }
+
+    getLeafOfTypesInSidebar(viewTypes: string[], sidebarType: SidebarType) {
         if (this.settings.singleMDLeafInSidebar) {
-            return this.lib.workspace.getExistingMarkdownLeafInSidebar(sidebarType)
-                ?? this.lib.workspace.getNewLeafInSidebar(sidebarType);
+            return this.getExistingLeafOfTypesInSidebar(viewTypes, sidebarType)
+                ?? this.getNewLeafInSidebar(sidebarType);
         } else {
-            return this.lib.workspace.getNewLeafInSidebar(sidebarType);
+            return this.getNewLeafInSidebar(sidebarType);
         }
     }
 
@@ -278,14 +351,14 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         return !leafSharesSameParentWithPDF;
     }
 
-    createLeafForOpeningBacklink(parent?: WorkspaceTabs | WorkspaceMobileDrawer) {
+    createLeafForOpeningBacklink(viewTypes: string[], parent?: WorkspaceTabs | WorkspaceMobileDrawer) {
         // edge case
         if (isSidebarType(this.settings.paneTypeForFirstMDLeaf)
             && this.settings.singleMDLeafInSidebar
             && parent
             && this.isInSidebar(parent)) {
-            return this.getExistingMarkdownLeafInSidebar(this.settings.paneTypeForFirstMDLeaf)
-                ?? this.lib.workspace.getNewLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
+            return this.getExistingLeafOfTypesInSidebar(viewTypes, this.settings.paneTypeForFirstMDLeaf)
+                ?? this.getNewLeafInSidebar(this.settings.paneTypeForFirstMDLeaf);
         } else {
             return parent
                 ? this.app.workspace.createLeafInParent(parent, -1)
@@ -326,12 +399,16 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
     }
 
     /**
-     * Get an existing leaf that is opened a markdown file in the sidebar
+     * Get an existing leaf that is opening a markdown file in the sidebar
      * specified by `sidebarType`, if any.
      * Note that the returned leaf can contain a deferred view, so it is not guaranteed
      * that `leaf.view` is an instance of `MarkdownView`.
      */
     getExistingMarkdownLeafInSidebar(sidebarType: SidebarType): WorkspaceLeaf | null {
+        return this.getExistingLeafOfTypesInSidebar(['markdown'], sidebarType);
+    }
+
+    getExistingLeafOfTypesInSidebar(viewTypes: string[], sidebarType: SidebarType): WorkspaceLeaf | null {
         let sidebarLeaf: WorkspaceLeaf | undefined;
         const root = sidebarType === 'right-sidebar'
             ? this.app.workspace.rightSplit
@@ -341,7 +418,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             if (sidebarLeaf || leaf.getRoot() !== root) return;
 
             // Don't use `instanceof MarkdownView` here because the view might be a deferred view.
-            if (leaf.view.getViewType() === 'markdown') sidebarLeaf = leaf;
+            if (viewTypes.includes(leaf.view.getViewType())) sidebarLeaf = leaf;
         });
 
         return sidebarLeaf ?? null;

@@ -4,10 +4,11 @@ import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { PDFBacklinkCache, PDFBacklinkIndex, PDFPageBacklinkIndex } from 'lib/pdf-backlink-index';
 import { PDFPageView, PDFViewerChild, Rect } from 'typings';
-import { MultiValuedMap, getTextLayerInfo, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
+import { MultiValuedMap, getLeafContainingNode, getTextLayerInfo, isCanvas, isEmbed, isHoverPopover, isMouseEventExternal, isNonEmbedLike } from 'utils';
 import { onBacklinkVisualizerContextMenu } from 'context-menu';
 import { BidirectionalMultiValuedMap } from 'utils';
 import { MergedRect } from 'lib/highlights/geometry';
+import { WorkspaceLib } from 'lib/workspace-lib';
 
 
 export class PDFBacklinkVisualizer extends PDFPlusComponent {
@@ -116,8 +117,8 @@ export class BacklinkDomManager extends PDFPlusComponent {
     }
 
     hookBacklinkOpeners(el: HTMLElement, cache: PDFBacklinkCache) {
-        const pos = 'position' in cache.refCache ? cache.refCache.position : undefined;
-        const lineNumber = pos?.start.line;
+        const position = 'position' in cache.refCache ? cache.refCache.position : undefined;
+        const lineNumber = position?.start.line;
 
         const state: any = { isTriggeredFromBacklinkVisualizer: true };
         if (typeof lineNumber === 'number') {
@@ -137,8 +138,28 @@ export class BacklinkDomManager extends PDFPlusComponent {
 
         this.registerDomEventForCache(cache, el, 'dblclick', (event) => {
             if (this.plugin.settings.doubleClickHighlightToOpenBacklink) {
+                // this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, paneType, pos ? { pos } : undefined);
+                const targetFile = this.app.vault.getAbstractFileByPath(cache.sourcePath);
+                const sourceLeaf = getLeafContainingNode(this.app, this.visualizer.child.containerEl);
                 const paneType = Keymap.isModEvent(event);
-                this.lib.workspace.openMarkdownLinkFromPDF(cache.sourcePath, this.file.path, paneType, pos ? { pos } : undefined);
+
+                if (targetFile instanceof TFile && sourceLeaf) {
+                    const openParams: Parameters<WorkspaceLib['openBacklinkFromPDF']>[0] = {
+                        targetFile,
+                        sourceLeaf,
+                        paneType,
+                        position,
+                    };
+
+                    if (targetFile.extension === 'canvas') {
+                        const nodeId = this.lib.getCanvasNodeIdForRef(cache.refCache);
+                        if (nodeId) {
+                            openParams.nodeId = nodeId;
+                        }
+                    }
+
+                    this.lib.workspace.openBacklinkFromPDF(openParams);
+                }
             }
         });
     }

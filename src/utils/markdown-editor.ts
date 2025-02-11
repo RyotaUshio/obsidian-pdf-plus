@@ -62,18 +62,19 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
         paneType: PaneType | boolean,
         nodeId?: string,
     }) {
-        const { targetFile, paneType, nodeId } = params;
+        const { targetFile, sourceLeaf, paneType, nodeId } = params;
 
         if (targetFile.extension === 'md') {
-            return await MarkdownEditorContainer.forMarkdownFile(plugin, targetFile, { paneType });
+            return await MarkdownEditorContainer.forMarkdownFile(plugin, targetFile, { paneType, sourceLeaf });
         }
         else if (targetFile.extension === 'canvas' && typeof nodeId === 'string') {
-            return await MarkdownEditorContainer.forCanvasNode(plugin, targetFile, nodeId, { paneType });
+            return await MarkdownEditorContainer.forCanvasNode(plugin, targetFile, nodeId, { paneType, sourceLeaf });
         }
     }
 
     static async forMarkdownFile(plugin: PDFPlus, file: TFile, options: {
         paneType: PaneType | boolean,
+        sourceLeaf: WorkspaceLeaf,
     }) {
         if (file.extension !== 'md') {
             throw new Error(`${plugin.manifest.name}: Expected a markdown file, but got ${file.path}`);
@@ -81,43 +82,30 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
         const { app, lib } = plugin;
 
-        let leaf: WorkspaceLeaf | undefined;
-        let type: 'markdown' | 'canvas' | undefined;
+        const leaf = options.paneType
+            ? app.workspace.getLeaf(options.paneType)
+            : lib.workspace.getLeafForOpeningBacklinkInMarkdownFile(file, options.sourceLeaf);
+        let viewType = leaf.view.getViewType();
 
-        // Look for a markdown view or a canvas file node that opens the markdown file
-        app.workspace.iterateAllLeaves((l) => {
-            if (leaf) return;
-
-            const viewType = l.view.getViewType();
-            if (viewType !== 'markdown' && viewType !== 'canvas') return;
-
-            const filePathOfView = lib.workspace.getFilePathFromView(l.view);
-            if (!filePathOfView) return;
-
-            if (viewType === 'markdown'
-                && filePathOfView === file.path) {
-                leaf = l;
-                type = 'markdown';
-
-
-            } else if (viewType === 'canvas'
-                && lib.isFileEmbeddedInCanvas(file.path, filePathOfView)) {
-                leaf = l;
-                type = 'canvas';
-
-            }
-        });
-
-        if (!leaf) return;
+        if (viewType === 'empty') {
+            await leaf.setViewState({
+                type: 'markdown',
+                state: {
+                    file: file.path,
+                },
+                active: false,
+            });
+            viewType = 'markdown';
+        }
 
         await leaf.loadIfDeferred();
 
-        if (type === 'markdown') {
+        if (viewType === 'markdown') {
             const mdView = leaf.view as MarkdownView;
             return new MarkdownViewContainer(plugin, mdView);
         }
 
-        if (type === 'canvas') {
+        if (viewType === 'canvas') {
             const canvasView = leaf.view as CanvasView;
             const node = Array.from(canvasView.canvas.nodes.values())
                 .find((node): node is CanvasFileNode => {
@@ -136,27 +124,27 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
     static async forCanvasNode(plugin: PDFPlus, file: TFile, nodeId: string, options: {
         paneType: PaneType | boolean,
+        sourceLeaf: WorkspaceLeaf,
     }) {
         if (file.extension !== 'canvas') {
             throw new Error(`${plugin.manifest.name}: Expected a canvas file, but got ${file.path}`);
         }
 
         const { app, lib } = plugin;
-        let leaf: WorkspaceLeaf | undefined;
 
-        app.workspace.iterateAllLeaves(async (l) => {
-            if (leaf) return;
+        const leaf = options.paneType
+            ? app.workspace.getLeaf(options.paneType)
+            : lib.workspace.getLeafForOpeningBacklinkInCanvasNode(file, options.sourceLeaf);
 
-            const viewType = l.view.getViewType();
-            if (viewType !== 'canvas') return;
-
-            const filePathOfView = lib.workspace.getFilePathFromView(l.view);
-            if (filePathOfView !== file.path) return;
-
-            leaf = l;
-        });
-
-        if (!leaf) return;
+        if (leaf.view.getViewType() === 'empty') {
+            await leaf.setViewState({
+                type: 'canvas',
+                state: {
+                    file: file.path,
+                },
+                active: false,
+            });
+        }
 
         await leaf.loadIfDeferred();
 
