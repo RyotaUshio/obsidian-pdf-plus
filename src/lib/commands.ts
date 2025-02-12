@@ -3,8 +3,7 @@ import { Command, MarkdownView, Notice, TFile, normalizePath, setIcon } from 'ob
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, DummyFileModal } from 'modals';
 import { PDFOutlines } from './outlines';
-import { TemplateProcessor } from 'template';
-import { getObsidianDebugInfo, getStyleSettings, parsePDFSubpath } from 'utils';
+import { getObsidianDebugInfo, getStyleSettings, parsePDFSubpath, TemplateProcessor } from 'utils';
 import { DestArray } from 'typings';
 import { PDFPlusSettingTab } from 'settings';
 import { SidebarView } from 'pdfjs-enums';

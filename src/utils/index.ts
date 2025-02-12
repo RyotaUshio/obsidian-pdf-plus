@@ -10,6 +10,7 @@ export * from './maps';
 export * from './obsidian-canvas';
 export * from './html-canvas';
 export * from './events';
+export * from './template'
 export * from './typescript';
 
 
