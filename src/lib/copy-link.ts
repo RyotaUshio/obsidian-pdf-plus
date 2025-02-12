@@ -799,6 +799,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         }
     }
 
+    // TODO: rewrite using MarkdownEditorContainer
     async updateAndRevealCursorInEditor(view: MarkdownView, options: { focus: boolean, goEnd: boolean }) {
         const { focus, goEnd } = options;
 
