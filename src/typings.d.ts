@@ -1027,6 +1027,8 @@ declare class MarkdownEditModeBase extends Component {
 
     get(): string;
     set(data: string, clear: boolean): void;
+    /** Toggle between live preview and source mode. */
+    toggleSource(): void;
 }
 
 declare class TableCell extends MarkdownEditModeBase { }
@@ -1559,6 +1561,7 @@ declare module 'obsidian' {
     interface MarkdownView extends IMarkdownEditor {
         editMode: MarkdownEditView;
         backlinks?: BacklinkRenderer;
+        setMode(mode: MarkdownSubView): Promise<void>;
     }
 
     interface MarkdownEditView extends MarkdownEditMode {

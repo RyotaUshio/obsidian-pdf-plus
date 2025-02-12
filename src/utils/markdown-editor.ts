@@ -1,8 +1,8 @@
-import { Component, Editor, MarkdownFileInfo, MarkdownView, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
+import { Component, Editor, MarkdownFileInfo, MarkdownRenderer, MarkdownView, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { AnyCanvasNode, CanvasTextNodeEditor, EditableMarkdownEmbedWithFile, CanvasFileNode, CanvasView, Canvas } from 'typings';
-import { getCanvasNodeContainingEl, isCanvasFileNode, getLeafContainingNode, hasOwnProperty, isCanvasView, isCanvasTextNode, callWhenInserted } from 'utils';
+import { AnyCanvasNode, CanvasTextNodeEditor, EditableMarkdownEmbedWithFile, CanvasFileNode, CanvasView, Canvas, MarkdownEditMode, EditableMarkdownEmbed } from 'typings';
+import { isCanvasFileNode, hasOwnProperty, isCanvasTextNode, callWhenInserted } from 'utils';
 import { PDFPlusComponent } from 'lib/component';
 
 
@@ -21,6 +21,7 @@ export const isCanvasTextNodeEditor = (mdEditor: MarkdownFileInfo | Component): 
         && (mdEditor.node as AnyCanvasNode).getData().type === 'text';
 };
 
+
 export abstract class MarkdownEditorContainer extends PDFPlusComponent {
     get leaf(): WorkspaceLeaf | null {
         return this.view?.leaf ?? null;
@@ -28,7 +29,11 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
     abstract get view(): View | null;
 
-    abstract get editor(): Editor | null;
+    abstract get editMode(): MarkdownEditMode | null;
+
+    abstract get previewMode(): MarkdownRenderer;
+
+    abstract setMode(mode: 'preview' | 'source'): Promise<void>;
 
     abstract open(options: { position?: Pos, line?: number }): Promise<void>;
 
@@ -44,15 +49,10 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
         }
     }
 
-    static create(plugin: PDFPlus, viewOrEmbed: MarkdownFileInfo): MarkdownEditorContainer {
-        if (isMarkdownView(viewOrEmbed)) {
-            return new MarkdownViewContainer(plugin, viewOrEmbed);
-        } else if (isEditableMarkdownEmbedWithFile(viewOrEmbed)) {
-            return EditableMarkdownEmbedWithFileContainer.create(plugin, viewOrEmbed);
-        } else if (isCanvasTextNodeEditor(viewOrEmbed)) {
-            return new CanvasTextNodeEditorContainer(plugin, viewOrEmbed);
-        } else {
-            throw new Error('Unknown markdown editor type');
+    async setState(state: { mode: 'preview' | 'source', source?: boolean }) {
+        await this.setMode(state.mode);
+        if (typeof state.source === 'boolean' && this.editMode && this.editMode.sourceMode !== state.source) {
+            this.editMode.toggleSource();
         }
     }
 
@@ -170,6 +170,7 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
     }
 }
 
+
 export class MarkdownViewContainer extends MarkdownEditorContainer {
     _view: MarkdownView;
 
@@ -186,8 +187,16 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
         return this._view;
     }
 
-    get editor() {
-        return this.view.editor;
+    get editMode() {
+        return this.view.editMode;
+    }
+
+    get previewMode() {
+        return this.view.previewMode;
+    }
+
+    async setMode(mode: 'preview' | 'source') {
+        await this.view.setMode(mode === 'preview' ? this.previewMode : this.editMode);
     }
 
     async open(options: Parameters<MarkdownEditorContainer['open']>[0]) {
@@ -214,104 +223,35 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
     }
 }
 
-export abstract class EditableMarkdownEmbedWithFileContainer extends MarkdownEditorContainer {
-    embed: EditableMarkdownEmbedWithFile;
 
-    constructor(plugin: PDFPlus, embed: EditableMarkdownEmbedWithFile) {
+export abstract class EditableMarkdownEmbedContainer<EmbedType extends EditableMarkdownEmbed> extends MarkdownEditorContainer {
+    embed: EmbedType;
+
+    constructor(plugin: PDFPlus, embed: EmbedType) {
         super(plugin);
         this.embed = embed;
+    } 
+    
+    get editMode() {
+        return this.embed.editMode ?? null;
     }
 
-    get editor() {
-        return this.embed.editor ?? null;
+    get previewMode() {
+        return this.embed.previewMode;
     }
 
-    static create(plugin: PDFPlus, embed: EditableMarkdownEmbedWithFile): MarkdownEditorContainer {
-        const leaf = getLeafContainingNode(embed.app, embed.containerEl);
-
-        if (!leaf) {
-            if (embed.containerEl.closest('.popover.hover-popover:not(.hover-editor')) {
-                // return new HoverPopoverMarkdownEditorContainer(embed);
-                throw new Error('Hover popover container is not supported yet');
-            }
-
-            throw new Error('Cannot find leaf containing the embed');
-        }
-
-        if (isCanvasView(leaf.view)) {
-            const canvas = leaf.view.canvas;
-            const node = getCanvasNodeContainingEl(canvas, embed.containerEl);
-            if (!node || !isCanvasFileNode(node)) throw new Error('Cannot find node containing the embed');
-            return new CanvasFileNodeEditorContainer(plugin, embed, leaf.view, node);
-        }
-
-        if (leaf.view instanceof MarkdownView) {
-            throw new Error('Editable transclusion in markdown view is not supported yet');
-        }
-
-        throw new Error('Unknown leaf view type');
+    async setMode(mode: 'preview' | 'source') {
+        return mode === 'preview' ? this.embed.showPreview() : this.embed.showEditor();
     }
 }
 
-// not implemented yet
-// export class HoverPopoverMarkdownEditorContainer extends EditableMarkdownEmbedWithFileContainer {
-//     get view() {
-//         return null;
-//     }
-// }
 
-interface ICanvasNodeEditor {
-    view: CanvasView;
-    canvas: Canvas;
-    node: AnyCanvasNode;
-}
+export abstract class CanvasNodeEditorContainer<EmbedType extends EditableMarkdownEmbed> extends EditableMarkdownEmbedContainer<EmbedType> {
+    abstract get view(): CanvasView;
 
-export class CanvasFileNodeEditorContainer extends EditableMarkdownEmbedWithFileContainer implements ICanvasNodeEditor {
-    _view: CanvasView;
-    node: CanvasFileNode;
+    abstract get canvas(): Canvas;
 
-    constructor(plugin: PDFPlus, embed: EditableMarkdownEmbedWithFile, view: CanvasView, node: CanvasFileNode) {
-        super(plugin, embed);
-        this._view = view;
-        this.node = node;
-    }
-
-    get view() {
-        return this._view;
-    }
-
-    get canvas() {
-        return this.view.canvas;
-    }
-
-    async open(options: Parameters<MarkdownEditorContainer['open']>[0]) {
-        return CanvasTextNodeEditorContainer.prototype.open.call(this, options);
-    }
-}
-
-export class CanvasTextNodeEditorContainer extends MarkdownEditorContainer implements ICanvasNodeEditor {
-    embed: CanvasTextNodeEditor;
-
-    constructor(plugin: PDFPlus, embed: CanvasTextNodeEditor) {
-        super(plugin);
-        this.embed = embed;
-    }
-
-    get view() {
-        return this.embed.node.canvas.view;
-    }
-
-    get canvas() {
-        return this.embed.node.canvas;
-    }
-
-    get node() {
-        return this.embed.node;
-    }
-
-    get editor() {
-        return this.embed.editor ?? null;
-    }
+    abstract get node(): AnyCanvasNode;
 
     async open(options: Parameters<MarkdownEditorContainer['open']>[0]) {
         await this.revealLeaf();
@@ -370,13 +310,48 @@ export class CanvasTextNodeEditorContainer extends MarkdownEditorContainer imple
                 // });
 
             }
-        }
+        };
 
         // It seems that there is a slight time lag before the canvas is responsive to
         // operations like `startEditing` and `zoomToBbox` after the leaf is revealed,
         // so we wait a bit before calling `focusNode`.
         // TODO: Find a better way to handle this
         setTimeout(focusNode, 100);
+    }
+}
+
+
+export class CanvasFileNodeEditorContainer extends CanvasNodeEditorContainer<EditableMarkdownEmbedWithFile> {
+    _view: CanvasView;
+    node: CanvasFileNode;
+
+    constructor(plugin: PDFPlus, embed: EditableMarkdownEmbedWithFile, view: CanvasView, node: CanvasFileNode) {
+        super(plugin, embed);
+        this._view = view;
+        this.node = node;
+    }
+
+    get view() {
+        return this._view;
+    }
+
+    get canvas() {
+        return this.view.canvas;
+    }
+}
+
+
+export class CanvasTextNodeEditorContainer extends CanvasNodeEditorContainer<CanvasTextNodeEditor> {
+    get view() {
+        return this.embed.node.canvas.view;
+    }
+
+    get canvas() {
+        return this.embed.node.canvas;
+    }
+
+    get node() {
+        return this.embed.node;
     }
 }
 
