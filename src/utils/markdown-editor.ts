@@ -1,4 +1,4 @@
-import { Component, Editor, MarkdownFileInfo, MarkdownRenderer, MarkdownView, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
+import { Component, MarkdownFileInfo, MarkdownRenderer, MarkdownView, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
 import { AnyCanvasNode, CanvasTextNodeEditor, EditableMarkdownEmbedWithFile, CanvasFileNode, CanvasView, Canvas, MarkdownEditMode, EditableMarkdownEmbed } from 'typings';
