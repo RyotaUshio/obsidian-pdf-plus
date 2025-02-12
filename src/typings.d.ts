@@ -1181,6 +1181,8 @@ interface CanvasEphemeralState extends EditableFileViewEphemeralState {
 interface Canvas {
     app: App;
     view: CanvasView;
+    /** div.canvas */
+    canvasEl: HTMLElement;
     nodes: Map<string, AnyCanvasNode>;
     edges: Map<string, CanvasEdge>;
     selection: Set<AnyCanvasNode | CanvasEdge>;

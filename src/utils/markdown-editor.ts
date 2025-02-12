@@ -253,12 +253,12 @@ export abstract class EditableMarkdownEmbedWithFileContainer extends MarkdownEdi
     }
 }
 
-// For now, I will leave this abstract = not implemented yet
-export abstract class HoverPopoverMarkdownEditorContainer extends EditableMarkdownEmbedWithFileContainer {
-    get view() {
-        return null;
-    }
-}
+// not implemented yet
+// export class HoverPopoverMarkdownEditorContainer extends EditableMarkdownEmbedWithFileContainer {
+//     get view() {
+//         return null;
+//     }
+// }
 
 interface ICanvasNodeEditor {
     view: CanvasView;
@@ -319,55 +319,64 @@ export class CanvasTextNodeEditorContainer extends MarkdownEditorContainer imple
             this.setLeafActive();
         }
 
-        // `this.node.startEditing()` also includes `zoomToBbox`, however 
-        // it might not be triggered depending on the zoom level, so we call it explicitly
-        this.canvas.zoomToBbox(this.node.getBBox());
+        const focusNode = () => {
+            // `this.node.startEditing()` also includes `zoomToBbox`, however 
+            // it might not be triggered depending on the zoom level, so we call it explicitly
+            this.canvas.zoomToBbox(this.node.getBBox());
 
-        if (options.position || typeof options.line === 'number') {
-            const startLine = options.position?.start.line ?? options.line!;
-            const endLine = options.position?.end.line ?? options.line!;
-            const endCh = options.position?.end.col ?? 0;
+            if (options.position || typeof options.line === 'number') {
+                const startLine = options.position?.start.line ?? options.line!;
+                const endLine = options.position?.end.line ?? options.line!;
+                const endCh = options.position?.end.col ?? 0;
 
-            this.node.startEditing();
+                this.node.startEditing();
 
-            const editMode = this.embed.editMode;
-            if (editMode) {
-                callWhenInserted(editMode.editorEl, () => {
-                    // Currently applyScroll does not have an option to center the line
-                    editMode.applyScroll(startLine);
+                const editMode = this.embed.editMode;
+                if (editMode) {
+                    callWhenInserted(editMode.editorEl, () => {
+                        // Currently applyScroll does not have an option to center the line
+                        editMode.applyScroll(startLine);
 
-                    const editor = editMode.editor;
+                        const editor = editMode.editor;
 
-                    editMode.editor.setCursor({ line: endLine, ch: endCh });
-                    editor.focus();
+                        editor.setCursor({ line: endLine, ch: endCh });
+                        editor.focus();
 
-                    if (editMode.iframeEl) {
-                        killFirstBlurEventFakedByIframe(editMode.iframeEl);
-                    }
-                });
+                        if (editMode.iframeEl) {
+                            killFirstBlurEventFakedByIframe(editMode.iframeEl);
+                        }
+                    });
+                }
+
+                // // This is the only way that I currently know to center the line, but it involves an awkward step of scrolling in preview mode
+                // this.embed.previewMode.renderer.applyScrollDelayed(startLine, {
+                //     highlight: false,
+                //     center: true,
+                // }, () => {
+                //     this.node.startEditing();
+
+                //     const editMode = this.embed.editMode;
+                //     if (editMode) {
+                //         callWhenInserted(editMode.editorEl, () => {
+                //             const editor = editMode.editor;
+                //             editor.setCursor({ line: endLine, ch: endCh });
+                //             editor.focus();
+
+                //             if (editMode.iframeEl) {
+                //                 killFirstBlurEventFakedByIframe(editMode.iframeEl);
+                //             }
+                //         });
+                //     }
+                // });
+
             }
-
-            // // This is the only way that I currently know to center the line, but it involves an awkward step of scrolling in preview mode
-            // this.embed.previewMode.renderer.applyScrollDelayed(startLine, {
-            //     highlight: false,
-            //     center: true,
-            // }, () => {
-            //     this.node.startEditing();
-
-            //     const editMode = this.embed.editMode;
-            //     if (editMode) {
-            //         callWhenInserted(editMode.editorEl, () => {
-            //             const editor = editMode.editor;
-            //             editMode.editor.setCursor({ line: endLine, ch: endCh });
-            //             editor.focus();
-
-            //             if (editMode.iframeEl) {
-            //                 killFirstBlurEventFakedByIframe(editMode.iframeEl);
-            //             }
-            //         });
-            //     }
-            // });
         }
+
+        // It seems that there is a slight time lag before the canvas is responsive to
+        // operations like `startEditing` and `zoomToBbox` after the leaf is revealed,
+        // so we wait a bit before calling `focusNode`.
+        // TODO: Find a better way to handle this
+        setTimeout(focusNode, 100);
     }
 }
 
