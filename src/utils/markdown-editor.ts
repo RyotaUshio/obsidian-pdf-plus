@@ -22,6 +22,14 @@ export const isCanvasTextNodeEditor = (mdEditor: MarkdownFileInfo | Component): 
 };
 
 
+interface MarkdownEditorContainerState {
+    /** "preview" = reading view, "source" = editing view */
+    mode: 'preview' | 'source';
+    /** true = source mode, false = live preview */
+    source?: boolean;
+}
+
+
 export abstract class MarkdownEditorContainer extends PDFPlusComponent {
     get leaf(): WorkspaceLeaf | null {
         return this.view?.leaf ?? null;
@@ -35,7 +43,7 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
     abstract setMode(mode: 'preview' | 'source'): Promise<void>;
 
-    abstract open(options: { position?: Pos, line?: number }): Promise<void>;
+    abstract open(options: { position?: Pos, line?: number, state?: MarkdownEditorContainerState }): Promise<void>;
 
     async revealLeaf() {
         if (this.leaf) {
@@ -49,9 +57,15 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
         }
     }
 
-    async setState(state: { mode: 'preview' | 'source', source?: boolean }) {
+    async setState(state: MarkdownEditorContainerState) {
         await this.setMode(state.mode);
-        if (typeof state.source === 'boolean' && this.editMode && this.editMode.sourceMode !== state.source) {
+        if (typeof state.source === 'boolean') {
+            this.setSourceMode(state.source);
+        }
+    }
+
+    setSourceMode(source: boolean) {
+        if (this.editMode && this.editMode.sourceMode !== source) {
             this.editMode.toggleSource();
         }
     }
@@ -219,6 +233,11 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
         if (!this.settings.dontActivateAfterOpenMD) {
             this.setLeafActive();
         }
+
+        if (options.state) {
+            await this.setState(options.state);
+        }
+
         this.view.setEphemeralState(eState);
     }
 }
@@ -230,8 +249,8 @@ export abstract class EditableMarkdownEmbedContainer<EmbedType extends EditableM
     constructor(plugin: PDFPlus, embed: EmbedType) {
         super(plugin);
         this.embed = embed;
-    } 
-    
+    }
+
     get editMode() {
         return this.embed.editMode ?? null;
     }
@@ -269,11 +288,25 @@ export abstract class CanvasNodeEditorContainer<EmbedType extends EditableMarkdo
                 const endLine = options.position?.end.line ?? options.line!;
                 const endCh = options.position?.end.col ?? 0;
 
+                if (options.state && options.state.mode === 'preview') {
+                    this.canvas.selectOnly(this.node);
+                    this.embed.previewMode.renderer.applyScrollDelayed(startLine, {
+                        highlight: true,
+                        center: true,
+                    });
+
+                    return;
+                }
+
                 this.node.startEditing();
 
                 const editMode = this.embed.editMode;
                 if (editMode) {
                     callWhenInserted(editMode.editorEl, () => {
+                        if (options.state && typeof options.state.source === 'boolean') {
+                            this.setSourceMode(options.state.source);
+                        }
+
                         // Currently applyScroll does not have an option to center the line
                         editMode.applyScroll(startLine);
 
