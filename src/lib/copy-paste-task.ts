@@ -310,7 +310,7 @@ export class SelectionLinkCopyTask extends PageLinkCopyTask {
             return plugin.addChild(new SelectionLinkCopyTask(plugin, child, file, range, text));
         }
 
-        if (this.settings.useAnotherCopyTemplateWhenNoSelection) {
+        if (plugin.settings.useAnotherCopyTemplateWhenNoSelection) {
             return plugin.addChild(new PageLinkCopyTask(plugin, child, file, info.page));
         }
 
