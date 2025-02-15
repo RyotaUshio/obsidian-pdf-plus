@@ -13,6 +13,7 @@ import { CanvasCachedMetadata, DestArray, PDFEmbed, PDFView, PDFViewerChild, PDF
 import { InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
 import { BibliographyManager } from 'bib';
+import { CopyTask, CopyResult, PasteTask } from 'lib/copy-paste-task';
 
 
 export default class PDFPlus extends Plugin {
@@ -64,11 +65,15 @@ export default class PDFPlus extends Plugin {
 	 * Used for auto-pasting.
 	 */
 	lastPasteFile: TFile | null = null;
+	/** Replaces lastPasteFile */
+	lastPasteTask: PasteTask | null = null;
 	lastActiveMarkdownFile: TFile | null = null;
 	/** Tracks the PDFViewerChild instance that an annotation popup was rendered on for the last time. */
 	lastAnnotationPopupChild: PDFViewerChild | null = null;
 	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
 	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
+	/** Replaces lastCopiedDestInfo */
+	lastCopyResult: CopyResult | null = null;
 	vimrc: string | null = null;
 	citationIdRegex: RegExp;
 	/** Maps a `div.pdf-container` element to the corresponding `PDFViewerChild` object. */

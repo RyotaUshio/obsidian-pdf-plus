@@ -146,7 +146,7 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
 
         if (mdContainer) {
             const position = 'position' in refCache ? refCache.position : undefined;
-            await mdContainer.open({ position });
+            await mdContainer.open({ focus: !this.settings.dontActivateAfterOpenMD, position });
 
             if (this.plugin.settings.dontActivateAfterOpenMD) {
                 setTimeout(() => {

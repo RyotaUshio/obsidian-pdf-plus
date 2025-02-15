@@ -1,10 +1,28 @@
-import { Component, MarkdownFileInfo, MarkdownRenderer, MarkdownView, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
+import { Component, Editor, MarkdownFileInfo, MarkdownRenderer, MarkdownView, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
 import { AnyCanvasNode, CanvasTextNodeEditor, EditableMarkdownEmbedWithFile, CanvasFileNode, CanvasView, Canvas, MarkdownEditMode, EditableMarkdownEmbed } from 'typings';
 import { isCanvasFileNode, hasOwnProperty, isCanvasTextNode, callWhenInserted } from 'utils';
 import { PDFPlusComponent } from 'lib/component';
 
+
+/** Scroll to the cursor position if it is not visible */
+export function revealCursor(editor: Editor) {
+    const coords = editor.coordsAtPos(editor.getCursor(), true);
+    if (coords) {
+        const scrollInfo = editor.getScrollInfo();
+        if (coords.top < scrollInfo.top || coords.top > scrollInfo.top + scrollInfo.clientHeight) {
+            // It was `view.currentMode.applyScroll(line);` before, where
+            // `const line = goEnd ? editor.lineCount() - 1 : editor.getCursor().line;`,
+            // but it resulted in the following unnatural behavior:
+            // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/142
+            editor.scrollIntoView({
+                from: editor.getCursor('from'),
+                to: editor.getCursor('to')
+            }, true);
+        }
+    }
+}
 
 export const isMarkdownView = (mdEditor: MarkdownFileInfo | Component): mdEditor is MarkdownView => {
     return mdEditor instanceof MarkdownView;
@@ -43,7 +61,9 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
     abstract setMode(mode: 'preview' | 'source'): Promise<void>;
 
-    abstract open(options: { position?: Pos, line?: number, state?: MarkdownEditorContainerState }): Promise<void>;
+    abstract open(options: { focus: boolean, position?: Pos, line?: number, state?: MarkdownEditorContainerState }): Promise<void>;
+
+    abstract save(): Promise<void>;
 
     async revealLeaf() {
         if (this.leaf) {
@@ -53,7 +73,7 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
     setLeafActive() {
         if (this.leaf) {
-            this.app.workspace.setActiveLeaf(this.leaf);
+            this.app.workspace.setActiveLeaf(this.leaf, { focus: true });
         }
     }
 
@@ -73,7 +93,7 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
     static async forFile(plugin: PDFPlus, params: {
         targetFile: TFile,
         sourceLeaf: WorkspaceLeaf,
-        paneType: PaneType | boolean,
+        paneType?: PaneType | boolean,
         nodeId?: string,
     }) {
         const { targetFile, sourceLeaf, paneType, nodeId } = params;
@@ -87,7 +107,7 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
     }
 
     static async forMarkdownFile(plugin: PDFPlus, file: TFile, options: {
-        paneType: PaneType | boolean,
+        paneType?: PaneType | boolean,
         sourceLeaf: WorkspaceLeaf,
     }) {
         if (file.extension !== 'md') {
@@ -137,7 +157,7 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
     }
 
     static async forCanvasNode(plugin: PDFPlus, file: TFile, nodeId: string, options: {
-        paneType: PaneType | boolean,
+        paneType?: PaneType | boolean,
         sourceLeaf: WorkspaceLeaf,
     }) {
         if (file.extension !== 'canvas') {
@@ -214,9 +234,7 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
     }
 
     async open(options: Parameters<MarkdownEditorContainer['open']>[0]) {
-        const eState: any = {
-            focus: !this.settings.dontActivateAfterOpenMD
-        };
+        const eState: any = { focus: options.focus };
 
         if (options.position) {
             const { start, end } = options.position;
@@ -230,7 +248,7 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
         eState.scroll = eState.line;
 
         await this.revealLeaf();
-        if (!this.settings.dontActivateAfterOpenMD) {
+        if (options.focus) {
             this.setLeafActive();
         }
 
@@ -239,6 +257,10 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
         }
 
         this.view.setEphemeralState(eState);
+    }
+
+    async save() {
+        await this.view.save();
     }
 }
 
@@ -274,7 +296,7 @@ export abstract class CanvasNodeEditorContainer<EmbedType extends EditableMarkdo
 
     async open(options: Parameters<MarkdownEditorContainer['open']>[0]) {
         await this.revealLeaf();
-        if (!this.settings.dontActivateAfterOpenMD) {
+        if (options.focus) {
             this.setLeafActive();
         }
 
@@ -371,6 +393,10 @@ export class CanvasFileNodeEditorContainer extends CanvasNodeEditorContainer<Edi
     get canvas() {
         return this.view.canvas;
     }
+
+    async save() {
+        await this.embed.save();
+    }
 }
 
 
@@ -385,6 +411,10 @@ export class CanvasTextNodeEditorContainer extends CanvasNodeEditorContainer<Can
 
     get node() {
         return this.embed.node;
+    }
+
+    async save() {
+        await this.view.save();
     }
 }
 

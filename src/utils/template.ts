@@ -3,6 +3,7 @@ import * as obsidian from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusLib } from 'lib';
+import { replaceAsync } from 'utils';
 
 
 export class TemplateProcessor {
@@ -136,21 +137,39 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
 
 export class AsyncTemplateProcessor {
     variables: Record<string, any> = {};
-    
+
     setVariables(newVariables: Record<string, any>) {
         Object.assign(this.variables, newVariables);
+        return this;
     }
 
     clearVariables() {
         this.variables = {};
+        return this;
     }
 
-    async evalTemplate(template: string): Promise<string> {
+    async evalTemplate(template: string, brace: '{{' | '{{{' = '{{') {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncFunction
-        const AsyncFunction = async function () {}.constructor;
-        return new (AsyncFunction as typeof Function)(
-            ...Object.keys(this.variables),
-            'return `' + template + '`;'
-        )(...Object.values(this.variables));
+        const AsyncFunction = async function () { }.constructor;
+        const regex = brace === '{{' ? /{{([\s\S]*?)}}/g : /{{{([\s\S]*?)}}}/g;
+
+        return await replaceAsync(template, regex, async (match, expr) => {
+            try {
+                const result = await new (AsyncFunction as typeof Function)(
+                    ...Object.keys(this.variables),
+                    'return ' + expr,
+                )(...Object.values(this.variables));
+                if (result === undefined) {
+                    return '';
+                }
+                return result;
+            } catch (error) {
+                this.reportError(error, expr);
+            }
+        });
+    }
+
+    reportError(error: Error, expr: string) {
+        throw Error(`Error evaluating expression "${expr}": ${error.message}`);
     }
 }

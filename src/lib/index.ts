@@ -460,8 +460,10 @@ export class PDFPlusLib {
      * the `alias` parameter for non-markdown files.
      * This function fixes that issue. Other than that, it is the same as the original function.
      * 
-     * Note that this problem has been fixed in Obsidian 1.7. However, it will make sense to keep using this
-     * function for make this plugin work for older versions of Obsidian without an extra `requireApiVersion` check.
+     * Note that this problem has been fixed in Obsidian 1.7. However, there is still another problem
+     * that the original function uses an empty display text for non-markdown files when `useMarkdownLinks` is `true`.
+     * 
+     * Therefore, we still need this function.
      */
     generateMarkdownLink(file: TFile, sourcePath: string, subpath?: string, alias?: string) {
         const app = this.app;

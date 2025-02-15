@@ -4,6 +4,7 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerInfo, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams, PDFPlusTemplateProcessor } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
+import { CopyTask, SelectionLinkCopyTask, PageLinkCopyTask } from './copy-paste-task';
 
 
 export type AutoFocusTarget =
@@ -13,6 +14,7 @@ export type AutoFocusTarget =
     | 'last-paste-then-last-active'
     | 'last-paste-then-last-active-and-open'
     | 'last-active-and-open-then-last-paste';
+
 
 export class copyLinkLib extends PDFPlusLibSubmodule {
     statusDurationMs = 2000;
@@ -256,6 +258,26 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     }
 
     copyLinkToSelection(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, colorName?: string, autoPaste?: boolean): boolean {
+        const selection = activeWindow.getSelection();
+        if (!selection || !selection.anchorNode) return false;
+        const child = this.lib.getPDFViewerChildAssociatedWithNode(selection.anchorNode);
+        if (!child) return false;
+        const copyTask = SelectionLinkCopyTask.create(this.plugin, child);
+        if (!copyTask) return false;
+
+        if (!checking) {
+            copyTask.copy({
+                color: colorName ?? null,
+                displayTextFormat: templates.displayTextFormat ?? child.palette?.getDisplayTextFormat() ?? this.settings.displayTextFormats[this.settings.defaultDisplayTextFormatIndex].template,
+                copyFormat: copyTask instanceof SelectionLinkCopyTask ? templates.copyFormat : this.settings.copyTemplateWhenNoSelection,
+                sourcePath: '',
+            });
+        }
+
+        return true;
+    }
+
+    _copyLinkToSelection(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, colorName?: string, autoPaste?: boolean): boolean {
         const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
 
         if (variables) {
@@ -843,6 +865,11 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
             const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
             const copiedTextNormalized = text.replace(/\r\n/g, '\n');
+
+            console.log({
+                id: evt.clipboardData.getData('pdf-plus/copy-task-id'),
+                stringComparison: clipboardTextNormalized === copiedTextNormalized,
+            })
 
             if (clipboardTextNormalized === copiedTextNormalized) {
                 this.plugin.lastPasteFile = info.file;

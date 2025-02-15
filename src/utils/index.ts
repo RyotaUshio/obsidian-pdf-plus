@@ -11,6 +11,7 @@ export * from './obsidian-canvas';
 export * from './html-canvas';
 export * from './events';
 export * from './template'
+export * from './obsidian-api';
 export * from './typescript';
 
 
@@ -650,4 +651,19 @@ export async function loadComponentAsync(component: Component) {
         const promises = component._children.map(loadComponentAsync);
         await Promise.all(promises);
     }
+}
+
+export function generateRandomId(length: number) {
+    return Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+}
+
+// https://stackoverflow.com/a/73891404
+export async function replaceAsync(string: string, regexp: RegExp, replacer: (substring: string, ...args: any[]) => Promise<string>) {
+    const replacements = await Promise.all(
+        Array.from(string.matchAll(regexp),
+            // @ts-ignored
+            (match) => replacer(...match))
+    );
+    let i = 0;
+    return string.replace(regexp, () => replacements[i++]);
 }
