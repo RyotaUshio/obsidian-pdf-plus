@@ -29,7 +29,7 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
         this.registerEvent(this.app.metadataCache.on('changed', this.onChanged, this));
         if (this.includeBacklinksInCanvas) {
             this.registerEvent(this.plugin.on('canvas-index-changed', this.onCanvasIndexChanged, this));
-            // the following listenr is necessary for the case where the Canvas core plugin is enabled after PDF++
+            // the following listener is necessary for the case where the Canvas core plugin is enabled after PDF++
             this.registerEvent(this.plugin.on('canvas-index-initialized', this.onCanvasIndexInitialized, this));
         }
         // the 'changed' event is not fired when a file is deleted!
