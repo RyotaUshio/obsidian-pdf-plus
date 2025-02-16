@@ -1,4 +1,4 @@
-import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
+import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
 import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects, waitTextLayerRendering as waitForTextLayerRendering } from 'utils';
@@ -29,11 +29,13 @@ export interface TemplateEvaluationParams {
 
 
 export abstract class CopyTask extends PDFPlusComponent {
-    templateProcessors: Record<'displayText' | 'body', AsyncTemplateProcessor>;
     child: PDFViewerChild;
     /** the PDF file */
     file: TFile;
     result?: CopyResult;
+
+    templateProcessors: Record<'displayText' | 'body', AsyncTemplateProcessor>;
+    callbacks: Array<(pasteTask: PasteTask) => any> = [];
 
     constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile) {
         super(plugin);
@@ -45,7 +47,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         };
     }
 
-    public async copy(params: TemplateEvaluationParams) {
+    public async run(params: TemplateEvaluationParams) {
         let copiedText = '';
         try {
             copiedText = await this.evalTemplates(params);
@@ -60,6 +62,11 @@ export abstract class CopyTask extends PDFPlusComponent {
         this.result = this.addChild(new CopyResult(this.plugin, this, copiedText, params, dest));
     }
 
+    public onPaste(callback: (pasteTask: PasteTask) => any) {
+        this.callbacks.push(callback);
+        return this;
+    }
+
     protected abstract evalTemplates(params: TemplateEvaluationParams): Promise<string>;
 
     protected abstract computeDestination(): DestArray | string | null;
@@ -71,6 +78,7 @@ export class CopyResult extends PDFPlusComponent {
     copiedText: string;
     params: TemplateEvaluationParams;
     dest: { array: DestArray } | { name: string } | null;
+    lastPastTask: PasteTask | null = null;
 
     constructor(plugin: PDFPlus, copyTask: CopyTask, copiedText: string, params: TemplateEvaluationParams, dest: DestArray | string | null) {
         super(plugin);
@@ -122,7 +130,7 @@ export class CopyResult extends PDFPlusComponent {
         // new PasteTask(this.plugin).paste(text);
     }
 
-    isClipboardDataFromThisCopyTask(clipboardData: DataTransfer): boolean {
+    private isClipboardDataFromThisCopyTask(clipboardData: DataTransfer): boolean {
         const clipboardText = clipboardData.getData('text/plain');
         // Get rid of the influences of the OS-dependent line endings
         // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
@@ -131,7 +139,7 @@ export class CopyResult extends PDFPlusComponent {
         return clipboardTextNormalized === copiedTextNormalized;
     }
 
-    onEditorPaste(evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) {
+    private onEditorPaste(evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) {
         // From the Obsidian developer docs: 
         // "Check for evt.defaultPrevented before attempting to handle this event, and return if it has been already handled."
         if (evt.defaultPrevented) return;
@@ -143,6 +151,19 @@ export class CopyResult extends PDFPlusComponent {
             this.copyTask.unload();
             return;
         }
+
+        const mdContainer = MarkdownEditorContainer.wrap(this.plugin, info);
+
+        if (mdContainer) {
+            // Prevent the default paste behavior. Without this, the copied text will be pasted twice.
+            evt.preventDefault();
+
+            PasteTask.create(this.plugin, this, mdContainer)
+                .run();
+            return;
+        }
+
+        console.log('Failed to create a MarkdownEditorContainer');
 
         let file = info.file;
         let fileSaver: { save(): any } | null = null;
@@ -452,13 +473,14 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
             const display = getFilenameFromPath(imagePath);
             const imageLinkWithDisplay = useWikilinks ? `[[${imagePath}|${display}]]` : `[${display}](${imagePath})`;
 
-            return { imagePath, imageLinktext, imageLink, display, imageLinkWithDisplay };
+            // I do want to avoid side effects in this method, but I don't know how to do it here.
+            this.onPaste(async (pasteTask) => {
+                if (pasteTask.isFirstPaste()) {
+                    await this.createImageFile(imagePath)
+                }
+            });
 
-            // if (autoPaste) {
-            //     await this.createImageFile(imagePath);
-            // } else {
-            //     this.onPaste(() => this.createImageFile(imagePath));
-            // }
+            return { imagePath, imageLinktext, imageLink, display, imageLinkWithDisplay };
         }
 
         // rectImageFormat === 'data-url'
@@ -529,7 +551,6 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
     computeSubpathWithoutColor(): string {
         const { page, annotData } = this;
         let subpath = `#page=${page}&annotation=${annotData.id}`;
-        // TODO: fix the duplicate rectangle issue when visualizing
         if (annotData.subtype === 'Square') {
             const rect = annotData.rect;
             subpath += `&rect=${rect.map((num) => Math.round(num)).join(',')}`;
@@ -586,13 +607,89 @@ export class OutlineItemLinkCopyTask extends PageLinkWithTextCopyTask {
         const name = typeof item.item.dest === 'string' ? item.item.dest : undefined;
         const text = item.item.title;
 
-        return plugin.addChild(new OutlineItemLinkCopyTask(plugin, child, file, page, text, dest, name));        
+        return plugin.addChild(new OutlineItemLinkCopyTask(plugin, child, file, page, text, dest, name));
     }
 }
 
 
-export abstract class PasteTask extends PDFPlusComponent {
+export class PasteTask extends PDFPlusComponent {
+    copyResult: CopyResult;
+    mdContainer: MarkdownEditorContainer;
 
+    constructor(plugin: PDFPlus, copyResult: CopyResult, mdContainer: MarkdownEditorContainer) {
+        super(plugin);
+        this.copyResult = copyResult;
+        this.mdContainer = mdContainer;
+    }
+
+    get copyTask() {
+        return this.copyResult.copyTask;
+    }
+
+    static create(plugin: PDFPlus, copyResult: CopyResult, mdContainer: MarkdownEditorContainer) {
+        return new PasteTask(plugin, copyResult, mdContainer);
+    }
+
+    public async run() {
+        const text = this.copyResult.copiedText;
+        await this.paste(text);
+        await Promise.all(this.copyTask.callbacks.map((callback) => callback(this)));
+        
+        this.copyResult.lastPastTask = this;
+    }
+
+    private async paste(text: string) {
+        await this.pasteByEditor(text);
+    }
+
+    private async pasteByEditor(text: string) {
+        await this.withEditor(async (editor) => {
+            if (this.settings.respectCursorPositionWhenAutoPaste) {
+                editor.replaceSelection(text);
+            } else {
+                let data = editor.getValue();
+                data = this.appendTextTo(text, data);
+                editor.setValue(data);
+                editor.exec('goEnd');
+            }
+
+            // Automatic saving is debounced, so we need to
+            // explicitly save the new data right after pasting so that
+            // the backlink highlight will be visibile as soon as possible.
+            await this.mdContainer.save();
+        });
+    }
+
+    private async pasteByVault(text: string) {
+        throw Error('not implemented yet');
+    }
+
+    private async withEditor(callback: (editor: Editor) => any) {
+        if (this.mdContainer.getMode() !== 'source') {
+            await this.mdContainer.setMode('source');
+        }
+
+        if (this.mdContainer.editMode) {
+            await callback(this.mdContainer.editMode.editor);
+        }
+    }
+
+    /**
+     * 
+     * @param text Text to be appended
+     * @param data The old file content
+     * @returns Modified file content
+     */
+    private appendTextTo(text: string, data: string) {
+        data = data.trimEnd();
+        if (data) data += this.settings.blankLineAboveAppendedContent ? '\n\n' : '\n';
+        data += text;
+        return data;
+    }
+
+    public isFirstPaste(): boolean {
+        return this.copyResult.lastPastTask === null;
+    }
 }
 
 

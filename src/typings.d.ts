@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, MarkdownRenderer, Editor, HoverParent, MarkdownSubView, Point } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, MarkdownRenderer, Editor, HoverParent, MarkdownSubView, Point, MarkdownViewModeType } from 'obsidian';
 import { CanvasData, CanvasFileData, CanvasGroupData, CanvasLinkData, CanvasNodeData, CanvasTextData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -1079,13 +1079,15 @@ declare abstract class EditableMarkdownEmbed extends Component implements Markdo
     get editor(): Editor | undefined;
     get scroll(): number;
 
+    requestSave: Debouncer<[], void>;
+
     // save(text: string, clear?: boolean): void;
     set(data: string, clear: boolean): void;
     showSearch(isReplace?: boolean): void;
     destroyEditor(save?: boolean): void;
     showPreview(save?: boolean): void;
     showEditor(coords?: Point): void;
-    getMode(): 'preview' | 'source';
+    getMode(): MarkdownViewModeType;
     toggleMode(): void;
     /** Triggers the "markdown-scroll" workspace event. */
     onMarkdownScroll(): void;
@@ -1316,7 +1318,7 @@ declare abstract class FileIndex<Metadata> extends Component {
     get(file: TFile): Metadata | null;
 
     abstract canProcess(file: TFile): boolean;
-    abstract process(file: TFile): Promise<Metadata>;
+    abstract process(file: TFile): Promise<Metadata | null>;
 
     onCreate(file: TFile): void;
     onModify(file: TFile): void;
@@ -1329,7 +1331,7 @@ declare abstract class FileIndex<Metadata> extends Component {
 declare class CanvasIndex extends FileIndex<CanvasCachedMetadata> {
     refNodeIds: WeakMap<Reference, string>;
     canProcess(file: TFile): boolean;
-    process(file: TFile): Promise<CanvasCachedMetadata>;
+    process(file: TFile): Promise<CanvasCachedMetadata | null>;
     parseText(text: string): Promise<CachedMetadata>;
 }
 

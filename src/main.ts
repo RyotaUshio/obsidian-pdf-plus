@@ -713,7 +713,7 @@ export default class PDFPlus extends Plugin {
 	on(evt: 'highlight', callback: (data: { type: 'selection' | 'annotation', source: 'obsidian' | 'pdf-plus', pageNumber: number, child: PDFViewerChild }) => any, context?: any): EventRef;
 	on(evt: 'color-palette-state-change', callback: (data: { source: ColorPalette }) => any, context?: any): EventRef;
 	on(evt: 'update-dom', callback: () => any, context?: any): EventRef;
-	on(evt: 'canvas-index-changed', callback: (file: TFile, cache: CanvasCachedMetadata) => any, context?: any): EventRef;
+	on(evt: 'canvas-index-changed', callback: (file: TFile, cache: CanvasCachedMetadata | null) => any, context?: any): EventRef;
 	on(evt: 'canvas-index-initialized', callback: () => any, context?: any): EventRef;
 
 	on(evt: string, callback: (...data: any) => any, context?: any): EventRef {
@@ -732,7 +732,7 @@ export default class PDFPlus extends Plugin {
 	trigger(evt: 'color-palette-state-change', data: { source: ColorPalette }): void;
 	trigger(evt: 'update-dom'): void;
 	trigger(evt: 'canvas-index-initialized'): void;
-	trigger(evt: 'canvas-index-changed', file: TFile, cache: CanvasCachedMetadata): void;
+	trigger(evt: 'canvas-index-changed', file: TFile, cache: CanvasCachedMetadata | null): void;
 
 	trigger(evt: string, ...args: any[]): void {
 		this.events.trigger(evt, ...args);

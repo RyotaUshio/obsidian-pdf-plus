@@ -43,7 +43,7 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
         this.trigger('update');
     }
 
-    onCanvasIndexChanged(file: TFile, canvasCache: CanvasCachedMetadata) {
+    onCanvasIndexChanged(file: TFile, canvasCache: CanvasCachedMetadata | null) {
         this.updateCacheForCanvas(file.path, canvasCache);
         this.trigger('update');
     }
@@ -110,8 +110,10 @@ export class PDFBacklinkIndex extends PDFPlusComponent {
         }
     }
 
-    updateCacheForCanvas(sourcePath: string, canvasCache: CanvasCachedMetadata) {
+    updateCacheForCanvas(sourcePath: string, canvasCache: CanvasCachedMetadata | null) {
         this.deleteCachesForSourcePath(sourcePath);
+
+        if (!canvasCache) return; // canvas file is empty
 
         for (const cache of Object.values(canvasCache.caches)) {
             const refs = [...cache.links ?? [], ...cache.embeds ?? [], ...cache.frontmatterLinks ?? []];

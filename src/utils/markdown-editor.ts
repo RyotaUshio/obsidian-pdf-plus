@@ -1,8 +1,8 @@
-import { Component, Editor, MarkdownFileInfo, MarkdownRenderer, MarkdownView, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
+import { Component, Editor, MarkdownFileInfo, MarkdownRenderer, MarkdownView, MarkdownViewModeType, PaneType, Pos, TFile, View, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
 import { AnyCanvasNode, CanvasTextNodeEditor, EditableMarkdownEmbedWithFile, CanvasFileNode, CanvasView, Canvas, MarkdownEditMode, EditableMarkdownEmbed } from 'typings';
-import { isCanvasFileNode, hasOwnProperty, isCanvasTextNode, callWhenInserted } from 'utils';
+import { isCanvasFileNode, hasOwnProperty, isCanvasTextNode, callWhenInserted, getLeafContainingNode } from 'utils';
 import { PDFPlusComponent } from 'lib/component';
 
 
@@ -42,7 +42,7 @@ export const isCanvasTextNodeEditor = (mdEditor: MarkdownFileInfo | Component): 
 
 interface MarkdownEditorContainerState {
     /** "preview" = reading view, "source" = editing view */
-    mode: 'preview' | 'source';
+    mode: MarkdownViewModeType;
     /** true = source mode, false = live preview */
     source?: boolean;
 }
@@ -59,7 +59,9 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
 
     abstract get previewMode(): MarkdownRenderer;
 
-    abstract setMode(mode: 'preview' | 'source'): Promise<void>;
+    abstract getMode(): MarkdownViewModeType;
+
+    abstract setMode(mode: MarkdownViewModeType): Promise<void>;
 
     abstract open(options: { focus: boolean, position?: Pos, line?: number, state?: MarkdownEditorContainerState }): Promise<void>;
 
@@ -75,6 +77,14 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
         if (this.leaf) {
             this.app.workspace.setActiveLeaf(this.leaf, { focus: true });
         }
+    }
+
+    getState(): MarkdownEditorContainerState {
+        const state: MarkdownEditorContainerState = { mode: this.getMode() };
+        if (this.editMode) {
+            state.source = this.editMode.sourceMode;
+        }
+        return state;
     }
 
     async setState(state: MarkdownEditorContainerState) {
@@ -202,6 +212,45 @@ export abstract class MarkdownEditorContainer extends PDFPlusComponent {
             return new CanvasFileNodeEditorContainer(plugin, embed, canvasView, node);
         }
     }
+
+    static wrap(plugin: PDFPlus, info: MarkdownView | MarkdownFileInfo) {
+        if (isMarkdownView(info)) {
+            return new MarkdownViewContainer(plugin, info);
+        }
+
+        if (isCanvasTextNodeEditor(info)) {
+            return new CanvasTextNodeEditorContainer(plugin, info);
+        }
+
+        if (isEditableMarkdownEmbedWithFile(info) && 'containerEl' in info) {
+            const el = info.containerEl as HTMLElement;
+            const canvasNodeContentEl = el.closest('.canvas-node-content.markdown-embed');
+
+            if (canvasNodeContentEl) {
+                const leaf = getLeafContainingNode(plugin.app, canvasNodeContentEl);
+                if (!leaf) return null;
+
+                if (leaf.view.getViewType() === 'canvas') {
+                    // We can safely assume that the view is not deferred because canvasNodeContentEl is already rendered
+                    const view = leaf.view as CanvasView;
+                    const node = Array.from(view.canvas.nodes.values())
+                        .find((node) => node.nodeEl.contains(canvasNodeContentEl));
+                    if (node && isCanvasFileNode(node)) {
+                        return new CanvasFileNodeEditorContainer(plugin, info, view, node);
+                    }
+                }
+
+                else if (leaf.view.getViewType() === 'excalidraw') {
+                    // not implemented yet
+                }
+            }
+
+            // info is either inside a markdown embed or a hover popover
+            // not implemented yet
+        }
+
+        return null;
+    }
 }
 
 
@@ -229,7 +278,11 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
         return this.view.previewMode;
     }
 
-    async setMode(mode: 'preview' | 'source') {
+    getMode() {
+        return this.view.getMode();
+    }
+
+    async setMode(mode: MarkdownViewModeType) {
         await this.view.setMode(mode === 'preview' ? this.previewMode : this.editMode);
     }
 
@@ -281,7 +334,11 @@ export abstract class EditableMarkdownEmbedContainer<EmbedType extends EditableM
         return this.embed.previewMode;
     }
 
-    async setMode(mode: 'preview' | 'source') {
+    getMode() {
+        return this.embed.getMode();
+    }
+
+    async setMode(mode: MarkdownViewModeType) {
         return mode === 'preview' ? this.embed.showPreview() : this.embed.showEditor();
     }
 }
@@ -395,7 +452,12 @@ export class CanvasFileNodeEditorContainer extends CanvasNodeEditorContainer<Edi
     }
 
     async save() {
-        await this.embed.save();
+        // this.embed.save() throws an error which I don't know how to handle,
+        // so here I force-trigger the auto-save mechanism.
+        // The Vault interface is also a possible option, but it may has some unwanted side effects.
+        const debouncedSave = this.embed.requestSave;
+        debouncedSave();
+        debouncedSave.run(); // run immediately
     }
 }
 

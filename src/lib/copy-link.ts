@@ -266,7 +266,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (!copyTask) return false;
 
         if (!checking) {
-            copyTask.copy({
+            copyTask.run({
                 color: colorName ?? null,
                 displayTextFormat: templates.displayTextFormat ?? child.palette?.getDisplayTextFormat() ?? this.settings.displayTextFormats[this.settings.defaultDisplayTextFormatIndex].template,
                 copyFormat: copyTask instanceof TextSelectionLinkCopyTask ? templates.copyFormat : this.settings.copyTemplateWhenNoSelection,
