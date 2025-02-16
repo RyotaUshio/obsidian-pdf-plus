@@ -50,7 +50,9 @@ export abstract class CopyTask extends PDFPlusComponent {
         try {
             copiedText = await this.evalTemplates(params);
         } catch (error) {
-            new Notice(`${this.plugin.manifest.name}: An error occured while evaluating templates.\n> ${error}`);
+            new Notice(`${this.plugin.manifest.name}: An error occured while evaluating templates.\n> ${error}`, 0);
+            console.error(error);
+            return;
         }
         await navigator.clipboard.writeText(copiedText);
         this.child.palette?.setStatus('Link copied');
