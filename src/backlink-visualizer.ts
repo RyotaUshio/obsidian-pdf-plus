@@ -530,6 +530,12 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     }
 
     processFitR(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        // If very item of `caches` also has "annotation" parameter (i.e. "...&annotation=...&rect=..."),
+        // it means  that the annotation is a Square annotation, and the "rect" parameter is used
+        // just for the purpose of embedding the region in notes. Therefore, we don't need to visualize it in the PDF viewer.
+        const isSquareAnnotation = Array.from(caches).every((cache) => !!cache.annotation);
+        if (isSquareAnnotation) return;
+
         super.processFitR(pageNumber, id, caches);
 
         const pageView = this.child.getPage(pageNumber);
