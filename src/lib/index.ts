@@ -994,9 +994,7 @@ export class PDFPlusLib {
      */
     async pdfPageToImageArrayBuffer(page: PDFPageProxy, options?: { type?: string, encoderOptions?: number, resolution?: number, cropRect?: Rect }): Promise<ArrayBuffer> {
         const dataUrl = await this.pdfPageToImageDataUrl(page, options);
-        const base64 = dataUrl.match(/^data:image\/\w+;base64,(.*)/)?.[1];
-        if (!base64) throw new Error('Failed to convert data URL to base64');
-        return base64ToArrayBuffer(base64);
+        return utils.dataUrlToArrayBuffer(dataUrl);
     }
 
     getSelectedText(textContentItems: TextContentItem[], beginIndex: number, beginOffset: number, endIndex: number, endOffset: number) {

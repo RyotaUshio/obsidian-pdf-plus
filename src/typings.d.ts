@@ -474,6 +474,7 @@ interface TextLayerBuilder {
     /** This property exists since Obsidian v1.8.0. It was private and inaccessible before then. */
     textLayer: TextLayer | null;
     render(): Promise<any>;
+    renderingDone: boolean;
 }
 
 /**
@@ -486,6 +487,10 @@ interface OldTextLayerBuilder {
     textDivs: HTMLElement[];
     /** This property does NOT exist since Obsidian 1.8.0. */
     textContentItems: TextContentItem[]; // Specific to Obsidian's customized PDF.js
+    renderingDone: boolean;
+    textLayerRenderingTask: {
+        readonly promise: Promise<void>;
+    }
 }
 
 /**
@@ -499,10 +504,13 @@ interface OldTextLayerBuilder {
  * The following typings are based on the PDF.js version bundled with Obsidian v1.8.0.
  */
 interface TextLayer {
-    textDivs: HTMLElement[];
-    textContentItemsStr: string[];
+    readonly textDivs: HTMLElement[];
+    readonly textContentItemsStr: string[];
     /** Specific to Obsidian's customized PDF.js */
-    textContentItems: TextContentItem[];
+    readonly textContentItems: TextContentItem[];
+    readonly renderingTask: {
+        promise: Promise<void>;
+    }
 }
 
 interface AnnotationLayerBuilder {

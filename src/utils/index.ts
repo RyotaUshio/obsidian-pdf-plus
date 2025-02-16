@@ -1,4 +1,4 @@
-import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener, apiVersion, App, WorkspaceLeaf } from 'obsidian';
+import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener, apiVersion, App, WorkspaceLeaf, base64ToArrayBuffer } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
 import { ObsidianViewer, OldTextLayerBuilder, PDFPageView, Rect, TextContentItem, TextLayerBuilder } from 'typings';
@@ -666,4 +666,25 @@ export async function replaceAsync(string: string, regexp: RegExp, replacer: (su
     );
     let i = 0;
     return string.replace(regexp, () => replacements[i++]);
+}
+
+export function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
+    const base64 = dataUrl.match(/^data:image\/\w+;base64,(.*)/)?.[1];
+    if (!base64) throw new Error(`PDF++: Failed to convert data URL to base64`);
+    return base64ToArrayBuffer(base64);
+}
+
+export function getFilenameFromPath(path: string) {
+    const index = path.lastIndexOf('/');
+    return index === -1 ? path : path.slice(index + 1);
+}
+
+export async function waitTextLayerRendering(textLayer: NonNullable<PDFPageView['textLayer']>) {
+    if (!textLayer.renderingDone) {
+        if ('textLayer' in textLayer) {
+            await textLayer.textLayer?.renderingTask.promise;
+        } else {
+            await textLayer.textLayerRenderingTask.promise;
+        }
+    }
 }

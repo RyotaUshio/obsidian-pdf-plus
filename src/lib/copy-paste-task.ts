@@ -1,9 +1,10 @@
 import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { AsyncTemplateProcessor, encodeLinktext, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer } from 'utils';
+import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects, waitTextLayerRendering as waitForTextLayerRendering } from 'utils';
 import { PDFPlusComponent } from './component';
-import { DestArray, PDFViewerChild } from 'typings';
+import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView } from 'typings';
+import { PDFPageProxy } from 'pdfjs-dist';
 
 
 export interface TextPosition {
@@ -44,7 +45,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         };
     }
 
-    async copy(params: TemplateEvaluationParams) {
+    public async copy(params: TemplateEvaluationParams) {
         let copiedText = '';
         try {
             copiedText = await this.evalTemplates(params);
@@ -53,12 +54,13 @@ export abstract class CopyTask extends PDFPlusComponent {
         }
         await navigator.clipboard.writeText(copiedText);
         this.child.palette?.setStatus('Link copied');
-        this.result = this.addChild(new CopyResult(this.plugin, this, copiedText, params));
+        const dest = this.computeDestArray();
+        this.result = this.addChild(new CopyResult(this.plugin, this, copiedText, params, dest));
     }
 
-    abstract evalTemplates(params: TemplateEvaluationParams): Promise<string>;
+    protected abstract evalTemplates(params: TemplateEvaluationParams): Promise<string>;
 
-    abstract computeDestArray(): DestArray | null;
+    protected abstract computeDestArray(): DestArray | null;
 }
 
 
@@ -68,12 +70,12 @@ export class CopyResult extends PDFPlusComponent {
     params: TemplateEvaluationParams;
     dest: DestArray | null;
 
-    constructor(plugin: PDFPlus, copyTask: CopyTask, copiedText: string, params: TemplateEvaluationParams) {
+    constructor(plugin: PDFPlus, copyTask: CopyTask, copiedText: string, params: TemplateEvaluationParams, dest: DestArray | null) {
         super(plugin);
         this.copyTask = copyTask;
         this.copiedText = copiedText;
         this.params = params;
-        this.dest = this.copyTask.computeDestArray();
+        this.dest = dest;
         this.plugin.lastCopyResult = this;
     }
 
@@ -167,11 +169,21 @@ export class PageLinkCopyTask extends CopyTask {
     }
 
     onload() {
-        this.initializeTemplateProcessors(this.child);
+        this.initializeTemplateProcessors();
     }
 
-    initializeTemplateProcessors(child: PDFViewerChild) {
-        const { file, page, app, lib } = this;
+    getPageView() {
+        return this.child.getPage(this.page);
+    }
+
+    initializeTemplateProcessors() {
+        for (const processor of Object.values(this.templateProcessors)) {
+            this.initializeTemplateProcessor(processor);
+        }
+    }
+
+    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
+        const { file, page, app, child, lib } = this;
         const pageCount = child.pdfViewer.pagesCount;
         const pageLabel = child.getPage(page).pageLabel ?? ('' + page);
         const obsidian = getObsidianApi();
@@ -180,22 +192,20 @@ export class PageLinkCopyTask extends CopyTask {
         // @ts-ignore
         const quickAddApi = app.plugins.plugins.quickadd?.api;
 
-        for (const processor of Object.values(this.templateProcessors)) {
-            processor.setVariables({
-                file,
-                pdf: file, // alias
-                page,
-                pageLabel,
-                pageCount,
-                // additional variables
-                folder: file.parent,
-                calloutType: this.settings.calloutType,
-                app,
-                obsidian,
-                dv,
-                quickAddApi,
-            });
-        }
+        processor.setVariables({
+            file,
+            pdf: file, // alias
+            page,
+            pageLabel,
+            pageCount,
+            // additional variables
+            folder: file.parent,
+            calloutType: this.settings.calloutType,
+            app,
+            obsidian,
+            dv,
+            quickAddApi,
+        });
 
         // TODO: take care of the following
 
@@ -215,6 +225,10 @@ export class PageLinkCopyTask extends CopyTask {
 
     computeSubpathWithoutColor(): string {
         return `#page=${this.page}`;
+    }
+
+    async addTemplateVariables(): Promise<Record<string, any>> {
+        return {};
     }
 
     async evalTemplates(params: TemplateEvaluationParams): Promise<string> {
@@ -243,6 +257,8 @@ export class PageLinkCopyTask extends CopyTask {
         const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
         const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined).slice(1);
 
+        const additionalVariables = await this.addTemplateVariables();
+
         return await this.templateProcessors['body']
             .setVariables({
                 color,
@@ -254,6 +270,7 @@ export class PageLinkCopyTask extends CopyTask {
                 linkWithDisplay,
                 linkToPage,
                 linkToPageWithDisplay,
+                ...additionalVariables,
             })
             .evalTemplate(copyFormat);
     }
@@ -265,16 +282,33 @@ export class PageLinkCopyTask extends CopyTask {
     }
 }
 
-
-export class SelectionLinkCopyTask extends PageLinkCopyTask {
-    range: TextRange;
+abstract class PageLinkWithTextCopyTask extends PageLinkCopyTask {
     text: string;
+
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string) {
+        super(plugin, child, file, page);
+        this.text = text;
+    }
+
+    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
+        super.initializeTemplateProcessor(processor);
+
+        const { text } = this;
+        processor.setVariables({
+            text,
+            selection: text,
+        });
+    }
+}
+
+
+export class TextSelectionLinkCopyTask extends PageLinkWithTextCopyTask {
+    range: TextRange;
 
     constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, range: TextRange, text: string) {
         const page = range.from.page;
-        super(plugin, child, file, page);
+        super(plugin, child, file, page, text);
         this.range = range;
-        this.text = text;
     }
 
     static create(plugin: PDFPlus, child: PDFViewerChild) {
@@ -307,7 +341,7 @@ export class SelectionLinkCopyTask extends PageLinkCopyTask {
                 },
             }
 
-            return plugin.addChild(new SelectionLinkCopyTask(plugin, child, file, range, text));
+            return plugin.addChild(new TextSelectionLinkCopyTask(plugin, child, file, range, text));
         }
 
         if (plugin.settings.useAnotherCopyTemplateWhenNoSelection) {
@@ -315,18 +349,6 @@ export class SelectionLinkCopyTask extends PageLinkCopyTask {
         }
 
         return null;
-    }
-
-    initializeTemplateProcessors(child: PDFViewerChild) {
-        super.initializeTemplateProcessors(child);
-        const { text } = this;
-
-        for (const processor of Object.values(this.templateProcessors)) {
-            processor.setVariables({
-                text,
-                selection: text,
-            });
-        }
     }
 
     computeSubpathWithoutColor(): string {
@@ -357,6 +379,198 @@ export class SelectionLinkCopyTask extends PageLinkCopyTask {
         return null;
     }
 }
+
+
+export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
+    rect: Rect;
+    _pdfPage: PDFPageProxy;
+
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, rect: Rect) {
+        super(plugin, child, file, page);
+        this.rect = rect;
+    }
+
+    static create(plugin: PDFPlus, child: PDFViewerChild, page: number, rect: Rect) {
+        const file = child.file;
+        if (!file) return null;
+
+        if (rect.some((coord) => isNaN(coord))) {
+            child.palette?.setStatus('Invalid selection');
+            return null;
+        }
+
+        return plugin.addChild(new RectangularSelectionLinkCopyTask(plugin, child, file, page, rect));
+    }
+
+    computeSubpathWithoutColor(): string {
+        const { page, rect } = this;
+        return `#page=${page}&rect=${rect.map((num) => Math.round(num)).join(',')}`;
+    }
+
+    computeDestArray(): DestArray | null {
+        const { page, rect } = this;
+        return [page - 1, 'FitR', ...rect];
+    }
+
+    async getPdfPage() {
+        if (this._pdfPage) return this._pdfPage
+
+        let pdfPage = this.getPageView().pdfPage;
+
+        // I don't know why, but if the PDF viewer is in a popup window (i.e. !== window),
+        // font rendering fails and characters are rendered as boxes.
+        // Therefore, we need to load the PDF document again.
+        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/323
+
+        // Also, we also have to reload the PDF document when the PDF page is already destroyed
+        // (which happens if the PDF viewer is already closed)
+        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/326 
+        if (this.child.containerEl.win !== window || pdfPage.destroyed) {
+            const doc = await this.lib.loadPDFDocument(this.file);
+            pdfPage = await doc.getPage(this.page);
+        }
+        this._pdfPage = pdfPage;
+
+        return pdfPage;
+    }
+
+    async addTemplateVariables() {
+        if (!this.settings.rectEmbedStaticImage) return {};
+
+        if (this.settings.rectImageFormat === 'file') {
+            const imagePath = await this.computeImagePath();
+            const useWikilinks = !this.app.vault.getConfig('useMarkdownLinks');
+            const imageLinktext = useWikilinks ? imagePath : encodeLinktext(imagePath);
+            const imageLink = useWikilinks ? `[[${imagePath}]]` : `[](${imagePath})`;
+            const display = getFilenameFromPath(imagePath);
+            const imageLinkWithDisplay = useWikilinks ? `[[${imagePath}|${display}]]` : `[${display}](${imagePath})`;
+
+            return { imagePath, imageLinktext, imageLink, display, imageLinkWithDisplay };
+
+            // if (autoPaste) {
+            //     await this.createImageFile(imagePath);
+            // } else {
+            //     this.onPaste(() => this.createImageFile(imagePath));
+            // }
+        }
+
+        // rectImageFormat === 'data-url'
+        const pdfPage = await this.getPdfPage();
+        const extension = this.settings.rectImageExtension;
+        const dataUrl = await this.lib.pdfPageToImageDataUrl(pdfPage, { type: `image/${extension}`, cropRect: this.rect });
+        return { dataUrl };
+    }
+
+    async computeImagePath() {
+        // const processor = new AsyncTemplateProcessor();
+        // this.initializeTemplateProcessor(processor);
+        // return await processor.evalTemplate(this.settings.rectImageFilenameFormat);
+        const { file } = this;
+        const extension = this.settings.rectImageExtension;
+        return await this.app.fileManager.getAvailablePathForAttachment(`Rectangular selection from ${file.basename}.${extension}`, '');
+    }
+
+    async createImageFile(imagePath: string) {
+        const pdfPage = await this.getPdfPage();
+
+        const buffer = await this.lib.pdfPageToImageArrayBuffer(pdfPage, {
+            type: `image/${this.settings.rectImageExtension}`,
+            cropRect: this.rect
+        });
+        return await this.app.vault.createBinary(imagePath, buffer);
+    }
+}
+
+
+export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
+    annotData: AnnotationElement['data'];
+
+    static async create(plugin: PDFPlus, child: PDFViewerChild, page: number, annotData: AnnotationElement['data']) {
+        const file = child.file;
+        if (!file) return;
+
+        const pageView = child.getPage(page);
+
+        const textLayer = pageView.textLayer;
+        if (!textLayer) return;
+
+        if (annotData.quadPoints) {
+            const rects = pdfJsQuadPointsToArrayOfRects(annotData.quadPoints);
+            if (!rects.length) return;
+
+            await waitForTextLayerRendering(textLayer);
+
+            const text = rects
+                .map((rect) => child.getTextByRect(pageView, rect))
+                .join(' ')
+                .trim();
+
+            return plugin.addChild(new AnnotationLinkCopyTask(plugin, child, file, page, text));
+        }
+    }
+
+    async evalTemplates(params: Omit<TemplateEvaluationParams, 'color'>): Promise<string> {
+        return super.evalTemplates({ ...params, color: this.getColorStr() });
+    }
+
+    async addTemplateVariables() {
+        let comment = this.annotData.contentsObj?.str ?? '';
+        comment = this.lib.toSingleLine(comment);
+        return { comment }
+    }
+
+    computeSubpathWithoutColor(): string {
+        const { page, annotData } = this;
+        let subpath = `#page=${page}&annotation=${annotData.id}`;
+        // TODO: fix the duplicate rectangle issue when visualizing
+        if (annotData.subtype === 'Square') {
+            const rect = annotData.rect;
+            subpath += `&rect=${rect.map((num) => Math.round(num)).join(',')}`;
+        }
+        return subpath;
+    }
+
+    computeDestArray(): DestArray | null {
+        const { page, annotData } = this;
+        const rect = annotData.rect;
+        const left = rect[0];
+        const top = rect[3];
+        return [page - 1, 'XYZ', left, top, null];
+    }
+
+    getColorStr() {
+        const { annotData } = this;
+        return annotData.color ? `${annotData.color[0]},${annotData.color[1]},${annotData.color[2]}` : '';
+    }
+}
+
+// export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
+//     annotationId: string;
+
+//     constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string, annotationId: string) {
+//         super(plugin, child, file, page, text);
+//         this.annotationId = annotationId;
+//     }
+
+//     static create(plugin: PDFPlus, child: PDFViewerChild, annotationId: string) {
+//         const file = child.file;
+//         if (!file) return;
+
+//         const annotation = child.pdfViewer.getAnnotationById(annotationId);
+//         if (!annotation) return;
+
+//         const page = annotation.pageNumber;
+//         const text = annotation.getContents() ?? '';
+
+//         return plugin.addChild(new AnnotationLinkCopyTask(plugin, child, file, page, text, annotationId));
+//     }
+
+//     computeSubpathWithoutColor(): string {
+//         const { page, annotationId } = this;
+//         return `#page=${page}&annotation=${annotationId}`;
+//     }
+// }
+
 
 
 export abstract class PasteTask extends PDFPlusComponent {

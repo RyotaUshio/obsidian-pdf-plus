@@ -4,7 +4,7 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerInfo, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams, PDFPlusTemplateProcessor } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
-import { CopyTask, SelectionLinkCopyTask, PageLinkCopyTask } from './copy-paste-task';
+import { CopyTask, TextSelectionLinkCopyTask, PageLinkCopyTask } from './copy-paste-task';
 
 
 export type AutoFocusTarget =
@@ -262,14 +262,14 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (!selection || !selection.anchorNode) return false;
         const child = this.lib.getPDFViewerChildAssociatedWithNode(selection.anchorNode);
         if (!child) return false;
-        const copyTask = SelectionLinkCopyTask.create(this.plugin, child);
+        const copyTask = TextSelectionLinkCopyTask.create(this.plugin, child);
         if (!copyTask) return false;
 
         if (!checking) {
             copyTask.copy({
                 color: colorName ?? null,
                 displayTextFormat: templates.displayTextFormat ?? child.palette?.getDisplayTextFormat() ?? this.settings.displayTextFormats[this.settings.defaultDisplayTextFormatIndex].template,
-                copyFormat: copyTask instanceof SelectionLinkCopyTask ? templates.copyFormat : this.settings.copyTemplateWhenNoSelection,
+                copyFormat: copyTask instanceof TextSelectionLinkCopyTask ? templates.copyFormat : this.settings.copyTemplateWhenNoSelection,
                 sourcePath: '',
             });
         }
@@ -865,11 +865,6 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
             const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
             const copiedTextNormalized = text.replace(/\r\n/g, '\n');
-
-            console.log({
-                id: evt.clipboardData.getData('pdf-plus/copy-task-id'),
-                stringComparison: clipboardTextNormalized === copiedTextNormalized,
-            })
 
             if (clipboardTextNormalized === copiedTextNormalized) {
                 this.plugin.lastPasteFile = info.file;
