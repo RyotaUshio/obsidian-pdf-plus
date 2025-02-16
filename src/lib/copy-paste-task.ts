@@ -3,7 +3,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile } from 'obsidian'
 import PDFPlus from 'main';
 import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects, waitTextLayerRendering as waitForTextLayerRendering } from 'utils';
 import { PDFPlusComponent } from './component';
-import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView } from 'typings';
+import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode } from 'typings';
 import { PDFPageProxy } from 'pdfjs-dist';
 
 
@@ -54,13 +54,13 @@ export abstract class CopyTask extends PDFPlusComponent {
         }
         await navigator.clipboard.writeText(copiedText);
         this.child.palette?.setStatus('Link copied');
-        const dest = this.computeDestArray();
+        const dest = this.computeDestination();
         this.result = this.addChild(new CopyResult(this.plugin, this, copiedText, params, dest));
     }
 
     protected abstract evalTemplates(params: TemplateEvaluationParams): Promise<string>;
 
-    protected abstract computeDestArray(): DestArray | null;
+    protected abstract computeDestination(): DestArray | string | null;
 }
 
 
@@ -68,14 +68,19 @@ export class CopyResult extends PDFPlusComponent {
     copyTask: CopyTask;
     copiedText: string;
     params: TemplateEvaluationParams;
-    dest: DestArray | null;
+    dest: { array: DestArray } | { name: string } | null;
 
-    constructor(plugin: PDFPlus, copyTask: CopyTask, copiedText: string, params: TemplateEvaluationParams, dest: DestArray | null) {
+    constructor(plugin: PDFPlus, copyTask: CopyTask, copiedText: string, params: TemplateEvaluationParams, dest: DestArray | string | null) {
         super(plugin);
         this.copyTask = copyTask;
         this.copiedText = copiedText;
         this.params = params;
-        this.dest = dest;
+        this.dest = null;
+        if (Array.isArray(dest)) {
+            this.dest = { array: dest };
+        } else if (typeof dest === 'string') {
+            this.dest = { name: dest };
+        }
         this.plugin.lastCopyResult = this;
     }
 
@@ -275,7 +280,7 @@ export class PageLinkCopyTask extends CopyTask {
             .evalTemplate(copyFormat);
     }
 
-    computeDestArray(): DestArray | null {
+    computeDestination(): DestArray | string | null {
         const { file, page } = this;
         this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', null, null, null] };
         return [page - 1, 'XYZ', null, null, null];
@@ -356,7 +361,7 @@ export class TextSelectionLinkCopyTask extends PageLinkWithTextCopyTask {
         return `#page=${page}&selection=${range.from.position.index},${range.from.position.offset},${range.to.position.index},${range.to.position.offset}`;
     }
 
-    computeDestArray(): DestArray | null {
+    computeDestination(): DestArray | null {
         const { file, page, range } = this;
 
         const textLayer = this.child.getPage(page).textLayer;
@@ -407,7 +412,7 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
         return `#page=${page}&rect=${rect.map((num) => Math.round(num)).join(',')}`;
     }
 
-    computeDestArray(): DestArray | null {
+    computeDestination(): DestArray {
         const { page, rect } = this;
         return [page - 1, 'FitR', ...rect];
     }
@@ -530,7 +535,7 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
         return subpath;
     }
 
-    computeDestArray(): DestArray | null {
+    computeDestination(): DestArray {
         const { page, annotData } = this;
         const rect = annotData.rect;
         const left = rect[0];
@@ -544,33 +549,44 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
     }
 }
 
-// export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
-//     annotationId: string;
 
-//     constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string, annotationId: string) {
-//         super(plugin, child, file, page, text);
-//         this.annotationId = annotationId;
-//     }
+export class OutlineItemLinkCopyTask extends PageLinkWithTextCopyTask {
+    explicitDest: DestArray;
+    namedDest?: string;
 
-//     static create(plugin: PDFPlus, child: PDFViewerChild, annotationId: string) {
-//         const file = child.file;
-//         if (!file) return;
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string, explicitDest: DestArray, namedDest?: string) {
+        super(plugin, child, file, page, text);
+        this.explicitDest = explicitDest;
+        this.namedDest = namedDest;
+    }
 
-//         const annotation = child.pdfViewer.getAnnotationById(annotationId);
-//         if (!annotation) return;
+    computeSubpathWithoutColor(): string {
+        return this.lib.destArrayToSubpath(this.explicitDest);
+    }
 
-//         const page = annotation.pageNumber;
-//         const text = annotation.getContents() ?? '';
+    computeDestination() {
+        return this.namedDest ?? this.explicitDest;
+    }
 
-//         return plugin.addChild(new AnnotationLinkCopyTask(plugin, child, file, page, text, annotationId));
-//     }
+    async addTemplateVariables() {
+        return {
+            name: this.namedDest ?? '',
+        }
+    }
 
-//     computeSubpathWithoutColor(): string {
-//         const { page, annotationId } = this;
-//         return `#page=${page}&annotation=${annotationId}`;
-//     }
-// }
+    static async create(plugin: PDFPlus, child: PDFViewerChild, item: PDFOutlineTreeNode) {
+        const file = child.file;
+        if (!file) return;
 
+        const pdfJsDest = await item.getExplicitDestination();
+        const page = await item.getPageNumber();
+        const dest = plugin.lib.normalizePDFJsDestArray(pdfJsDest, page);
+        const name = typeof item.item.dest === 'string' ? item.item.dest : undefined;
+        const text = item.item.title;
+
+        return plugin.addChild(new OutlineItemLinkCopyTask(plugin, child, file, page, text, dest, name));        
+    }
+}
 
 
 export abstract class PasteTask extends PDFPlusComponent {
