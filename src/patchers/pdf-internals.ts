@@ -89,7 +89,6 @@ const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerC
                 const ret = await old.call(this, file, subpath);
 
                 this.then((child) => {
-                    child.parent = this;
                     if (!this.visualizer || this.visualizer.file !== file) {
                         this.visualizer?.unload();
                         this.visualizer = this.addChild(PDFViewerBacklinkVisualizer.create(plugin, file, child));
