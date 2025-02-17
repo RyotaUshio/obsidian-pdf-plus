@@ -1,7 +1,7 @@
-import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
+import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects, waitTextLayerRendering as waitForTextLayerRendering } from 'utils';
+import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
 import { PDFPlusComponent } from './component';
 import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode } from 'typings';
 import { PDFPageProxy } from 'pdfjs-dist';
@@ -441,9 +441,12 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
         return plugin.settings.rectCopyFormat;
     }
 
+    computeRectStr() {
+        return this.rect.map((num) => Math.round(num)).join(',');
+    }
+
     computeSubpathWithoutColor(): string {
-        const { page, rect } = this;
-        return `#page=${page}&rect=${rect.map((num) => Math.round(num)).join(',')}`;
+        return `#page=${this.page}&rect=${this.computeRectStr()}`;
     }
 
     computeDestination(): DestArray {
@@ -502,12 +505,23 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
     }
 
     async computeImagePath() {
-        // const processor = new AsyncTemplateProcessor();
-        // this.initializeTemplateProcessor(processor);
-        // return await processor.evalTemplate(this.settings.rectImageFilenameFormat);
-        const { file } = this;
         const extension = this.settings.rectImageExtension;
-        return await this.app.fileManager.getAvailablePathForAttachment(`Rectangular selection from ${file.basename}.${extension}`, '');
+        const rect = this.computeRectStr();
+
+        const processor = new AsyncTemplateProcessor();
+        this.initializeTemplateProcessor(processor);
+        processor.setVariables({ rect })
+        let pathWithoutExtension = await processor.evalTemplate(this.settings.rectImageFilePathTemplate);
+
+        if (pathWithoutExtension) {
+            if (pathWithoutExtension.endsWith('.' + extension)) {
+                pathWithoutExtension = pathWithoutExtension.slice(0, - extension.length - 1);
+            }
+            pathWithoutExtension = normalizePath(pathWithoutExtension);
+            return this.app.vault.getAvailablePath(pathWithoutExtension, extension);
+        }
+
+        return await this.app.fileManager.getAvailablePathForAttachment(`${this.file.basename} ${rect}.${extension}`, '');
     }
 
     async createImageFile(imagePath: string) {
@@ -545,9 +559,9 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
 
         const pageView = child.getPage(page);
 
-        const annotData = typeof annot === 'string' 
-        ? pageView.annotationLayer?.annotationLayer.getAnnotation(annot)?.data
-        : annot;
+        const annotData = typeof annot === 'string'
+            ? pageView.annotationLayer?.annotationLayer.getAnnotation(annot)?.data
+            : annot;
         if (!annotData) return null;
 
         if (annotData.quadPoints) {
@@ -576,7 +590,7 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
     async evalTemplates(params: Omit<TemplateEvaluationParams, 'color'>): Promise<string> {
         return super.evalTemplates({ ...params, color: this.getColorStr() });
     }
-    
+
     async addTemplateVariables() {
         let comment = this.annotData.contentsObj?.str ?? '';
         comment = this.lib.toSingleLine(comment);

@@ -173,7 +173,8 @@ export default class PDFPlus extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(this.getDefaultSettings(), await this.loadData());
+		const oldSettings = await this.loadData();
+		this.settings = Object.assign(this.getDefaultSettings(), oldSettings);
 
 		this.setCitationIdRegex();
 
@@ -248,6 +249,16 @@ export default class PDFPlus extends Plugin {
 		this.renameCommand('pdf-plus:toggle-select-to-copy', `${this.manifest.id}:toggle-auto-copy`);
 
 		this.renameSetting('removeWhitespaceBetweenCJKChars', 'removeWhitespaceBetweenCJChars');
+
+		// When updating from 0.40.x, set the default value of `rectImageFilePathTemplate` 
+		// according to Obsidian's "default location for attachments" setting.
+		if (!oldSettings.hasOwnProperty('rectImageFilePathTemplate')) {
+			const attachmentFolderPath = this.app.vault.getConfig('attachmentFolderPath');
+			let pathTemplate =  attachmentFolderPath.replace(/^(.\/)/, '{{folder.path}}/');
+			if (!pathTemplate.endsWith('/')) pathTemplate += '/';
+			pathTemplate += '{{file.basename}} {{rect}}';
+			this.settings.rectImageFilePathTemplate = pathTemplate;
+		}
 
 		this.loadContextMenuConfig();
 	}

@@ -254,6 +254,7 @@ export interface PDFPlusSettings {
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
 	rectImageExtension: ImageExtension;
+	rectImageFilePathTemplate: string;
 	rectCopyFormat: string;
 	rectCopyFormatImageFile: string;
 	rectCopyFormatImageDataUrl: string;
@@ -541,6 +542,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	rectEmbedStaticImage: false,
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
+	rectImageFilePathTemplate: 'PDF++ rectanguler selections/{{ file.basename }} {{ rect }}',
 	rectCopyFormat: '!{{link}}',
 	rectCopyFormatImageFile: '!{{imageLink}}\n\n{{linkWithDisplay}}',
 	rectCopyFormatImageDataUrl: '![]({{dataUrl}})\n\n{{linkWithDisplay}}',
