@@ -39,21 +39,23 @@ export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
     }
 
     async addAnnotationToSelection(annotator: Annotator) {
-        // TODO: separate logic for getting page number and selection range
-        const variables = this.lib.copyLink.getTemplateVariables({});
-        if (!variables) return;
-        const { subpath, child } = variables;
-        const result = parsePDFSubpath(subpath);
-        if (result && 'beginIndex' in result) {
-            const { page, beginIndex, beginOffset, endIndex, endOffset } = result;
-            return {
-                child,
-                file: child.file,
-                page,
-                ...await this.addAnnotationToTextRange(annotator, child, page, beginIndex, beginOffset, endIndex, endOffset)
-            };
-        }
-        return null;
+        const windowSelection = activeWindow.getSelection();
+        if (!windowSelection) return null;
+
+        const pageAndSelection = this.lib.copyLink.getPageAndTextRangeFromSelection(windowSelection);
+        if (!pageAndSelection || !pageAndSelection.selection) return null;
+
+        const { page, selection: { beginIndex, beginOffset, endIndex, endOffset } } = pageAndSelection;
+
+        const child = this.lib.getPDFViewerChildFromSelection(windowSelection);
+        if (!child) return null;
+
+        return {
+            child,
+            file: child.file,
+            page,
+            ...await this.addAnnotationToTextRange(annotator, child, page, beginIndex, beginOffset, endIndex, endOffset)
+        };
     }
 
     /** Add a highlight annotation to a text selection specified by a subpath of the form `#page=<pageNumber>&selection=<beginIndex>,<beginOffset>,<endIndex>,<endOffset>`. */

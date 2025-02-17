@@ -265,6 +265,11 @@ export class PDFPlusLib {
         return child ?? null;
     }
 
+    getPDFViewerChildFromSelection(selection: Selection) {
+        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        return range ? this.getPDFViewerChildAssociatedWithNode(range.startContainer) : null;
+    }
+
     /** 
      * Convert a destination name (see the PDF spec (PDF 32000-1:2008), 12.3.2.3 "Named Destinations")
      * into a subpath of the form `#page=<pageNumber>&offset=<left>,<top>,<zoom>`.
