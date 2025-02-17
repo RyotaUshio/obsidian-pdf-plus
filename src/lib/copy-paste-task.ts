@@ -793,38 +793,3 @@ export class PasteTask extends PDFPlusComponent {
 //         }
 //         this.plugin.lastPasteFile = file;
 //     }
-
-//     /**
-//      * @param text Text to be appended
-//      * @param data Old file content
-//      * @returns Modified file content
-//      */
-//     appendTextTo(text: string, data: string) {
-//         data = data.trimEnd();
-//         if (data) data += this.settings.blankLineAboveAppendedContent ? '\n\n' : '\n';
-//         data += text;
-//         return data;
-//     }
-
-//     async pasteText(mdContainer: MarkdownEditorContainer, text: string, forceUseVault = false) {
-//         // If the file is already opened in some tab, use the editor interface to respect the current cursor position
-//         // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/71
-//         if (mdContainer.editMode) {
-//             const editor = mdContainer.editMode.editor;
-
-//             if (this.settings.respectCursorPositionWhenAutoPaste) {
-//                 editor.replaceSelection(text);
-//             } else {
-//                 let data = editor.getValue();
-//                 data = this.appendTextTo(text, data);
-//                 editor.setValue(data);
-//                 editor.exec('goEnd');
-//             }
-
-//             // Automatic saving is debounced, so we need to
-//             // explicitly save the new data right after pasting so that
-//             // the backlink highlight will be visibile as soon as possible.
-//             await mdContainer.save();
-//         }
-//     }
-// }
