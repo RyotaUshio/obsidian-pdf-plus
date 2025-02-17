@@ -4,7 +4,7 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerInfo, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams, PDFPlusTemplateProcessor } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
-import { CopyTask, TextSelectionLinkCopyTask, PageLinkCopyTask } from './copy-paste-task';
+import { CopyTask, TextSelectionLinkCopyTask, PageLinkCopyTask, RectangularSelectionLinkCopyTask } from './copy-paste-task';
 
 
 export type AutoFocusTarget =
@@ -432,6 +432,22 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     }
 
     copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, colorName?: string, autoPaste?: boolean, sourcePath?: string): boolean {
+        const task = RectangularSelectionLinkCopyTask.create(this.plugin, child, pageNumber, rect);
+        if (!task) return false;
+
+        if (!checking) {
+            task.run({
+                color: colorName ?? null,
+                displayTextFormat: 'hoge',
+                copyFormat: '![]({{dataUrl}}) \n> !{{linkWithDisplay}}',
+                sourcePath: '',
+            });
+        }
+
+        return true;
+    }
+
+    _copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, colorName?: string, autoPaste?: boolean, sourcePath?: string): boolean {
         autoPaste ||= this.settings.autoPaste;
 
         if (!child.file) return false;

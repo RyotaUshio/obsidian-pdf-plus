@@ -1,7 +1,7 @@
 import { Editor, MarkdownFileInfo, MarkdownView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects, waitTextLayerRendering as waitForTextLayerRendering } from 'utils';
+import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects, waitTextLayerRendering as waitForTextLayerRendering } from 'utils';
 import { PDFPlusComponent } from './component';
 import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode } from 'typings';
 import { PDFPageProxy } from 'pdfjs-dist';
@@ -52,7 +52,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         try {
             copiedText = await this.evalTemplates(params);
         } catch (error) {
-            new Notice(`${this.plugin.manifest.name}: An error occured while evaluating templates.\n> ${error}`, 0);
+            new Notice(`${this.plugin.manifest.name}: An error occured while evaluating templates.\n> ${error}`, 10e3);
             console.error(error);
             return;
         }
@@ -255,7 +255,7 @@ export class PageLinkCopyTask extends CopyTask {
         return `#page=${this.page}`;
     }
 
-    async addTemplateVariables(): Promise<Record<string, any>> {
+    async addTemplateVariables(params: TemplateEvaluationParams): Promise<Record<string, any>> {
         return {};
     }
 
@@ -285,7 +285,7 @@ export class PageLinkCopyTask extends CopyTask {
         const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
         const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined).slice(1);
 
-        const additionalVariables = await this.addTemplateVariables();
+        const additionalVariables = await this.addTemplateVariables(params);
 
         return await this.templateProcessors['body']
             .setVariables({
@@ -462,21 +462,21 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
         return pdfPage;
     }
 
-    async addTemplateVariables() {
+    async addTemplateVariables(params: TemplateEvaluationParams) {
         if (!this.settings.rectEmbedStaticImage) return {};
 
         if (this.settings.rectImageFormat === 'file') {
             const imagePath = await this.computeImagePath();
             const useWikilinks = !this.app.vault.getConfig('useMarkdownLinks');
             const imageLinktext = useWikilinks ? imagePath : encodeLinktext(imagePath);
-            const imageLink = useWikilinks ? `[[${imagePath}]]` : `[](${imagePath})`;
+            const imageLink = useWikilinks ? `[[${imageLinktext}]]` : `[](${imageLinktext})`;
             const display = getFilenameFromPath(imagePath);
-            const imageLinkWithDisplay = useWikilinks ? `[[${imagePath}|${display}]]` : `[${display}](${imagePath})`;
+            const imageLinkWithDisplay = useWikilinks ? `[[${imageLinktext}|${display}]]` : `[${display}](${imageLinktext})`;
 
             // I do want to avoid side effects in this method, but I don't know how to do it here.
             this.onPaste(async (pasteTask) => {
                 if (pasteTask.isFirstPaste()) {
-                    await this.createImageFile(imagePath)
+                    await this.createImageFile(imagePath);
                 }
             });
 
@@ -506,6 +506,13 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
             type: `image/${this.settings.rectImageExtension}`,
             cropRect: this.rect
         });
+
+        // Create parent folders if they don't exist
+        const folderPath = getFolderPathFromFilePath(imagePath);
+        if (!this.app.vault.getFolderByPath(folderPath)) {
+            await this.app.vault.createFolder(folderPath);
+        }
+
         return await this.app.vault.createBinary(imagePath, buffer);
     }
 }

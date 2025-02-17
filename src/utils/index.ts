@@ -679,6 +679,11 @@ export function getFilenameFromPath(path: string) {
     return index === -1 ? path : path.slice(index + 1);
 }
 
+export function getFolderPathFromFilePath(path: string) {
+    const index = path.lastIndexOf('/');
+    return index === -1 ? '' : path.slice(0, index);
+}
+
 export async function waitTextLayerRendering(textLayer: NonNullable<PDFPageView['textLayer']>) {
     if (!textLayer.renderingDone) {
         if ('textLayer' in textLayer) {
