@@ -263,7 +263,7 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
         super(plugin);
         this._view = view;
     }
-    
+
     get sourcePath() {
         return this.view.file ? this.view.file.path : '';
     }
@@ -366,7 +366,8 @@ export abstract class CanvasNodeEditorContainer<EmbedType extends EditableMarkdo
         const focusNode = () => {
             // `this.node.startEditing()` also includes `zoomToBbox`, however 
             // it might not be triggered depending on the zoom level, so we call it explicitly
-            this.canvas.zoomToBbox(this.node.getBBox());
+            if (this.settings.centerCanvasNode) this.canvas.zoomToBbox(this.node.getBBox());
+            else this.canvas.panIntoView(this.node.getBBox());
 
             if (options.position || typeof options.line === 'number') {
                 const startLine = options.position?.start.line ?? options.line!;

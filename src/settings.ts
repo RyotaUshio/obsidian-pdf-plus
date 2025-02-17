@@ -137,6 +137,7 @@ export interface PDFPlusSettings {
 	doubleClickHighlightToOpenBacklink: boolean;
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
 	paneTypeForFirstMDLeaf: ExtendedPaneType;
+	centerCanvasNode: boolean;
 	singleMDLeafInSidebar: boolean;
 	alwaysUseSidebar: boolean;
 	ignoreExistingMarkdownTabIn: ('leftSplit' | 'rightSplit' | 'floatingSplit')[];
@@ -413,6 +414,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	doubleClickHighlightToOpenBacklink: true,
 	hoverHighlightAction: 'preview',
 	paneTypeForFirstMDLeaf: 'right',
+	centerCanvasNode: false,
 	singleMDLeafInSidebar: true,
 	alwaysUseSidebar: true,
 	ignoreExistingMarkdownTabIn: [],
@@ -1650,7 +1652,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					inputEl.toggleClass('error', !inputEl.value);
 				});
 			// this.addToggleSetting('enableEditEncryptedPDF')
-				// .setName('Enable editing encrypted PDF files');
+			// .setName('Enable editing encrypted PDF files');
 		}
 
 
