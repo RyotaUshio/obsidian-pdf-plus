@@ -402,6 +402,11 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     }
 
     processSelection(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        if (this.settings.highlightColorSpecifiedOnly) {
+            caches = new Set(Array.from(caches).filter((cache) => cache.getColor()));
+            if (!caches.size) return;
+        }
+
         super.processSelection(pageNumber, id, caches);
 
         const pageView = this.child.getPage(pageNumber);
