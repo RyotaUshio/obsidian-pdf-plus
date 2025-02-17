@@ -4,7 +4,7 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerInfo, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams, PDFPlusTemplateProcessor } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
-import { CopyTask, TextSelectionLinkCopyTask, PageLinkCopyTask, RectangularSelectionLinkCopyTask } from './copy-paste-task';
+import { CopyTask, TextSelectionLinkCopyTask, PageLinkCopyTask, RectangularSelectionLinkCopyTask, AnnotationLinkCopyTask } from './copy-paste-task';
 
 
 export type AutoFocusTarget =
@@ -333,6 +333,21 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
     }
 
     copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
+        const task = AnnotationLinkCopyTask.create(this.plugin, child, page, id);
+        if (!task) return false;
+
+        if (!checking) {
+            task.run({
+                displayTextFormat: templates.displayTextFormat ?? child.palette?.getDisplayTextFormat() ?? this.settings.displayTextFormats[this.settings.defaultDisplayTextFormatIndex].template,
+                copyFormat: templates.copyFormat,
+                sourcePath: '',
+            });
+        }
+
+        return true;
+    }
+
+    _copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
         const file = child.file;
         if (!file) return false;
 

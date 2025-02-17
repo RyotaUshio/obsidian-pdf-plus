@@ -532,34 +532,51 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
 export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
     annotData: AnnotationElement['data'];
 
-    static async create(plugin: PDFPlus, child: PDFViewerChild, page: number, annotData: AnnotationElement['data']) {
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string, annotData: AnnotationElement['data']) {
+        super(plugin, child, file, page, text);
+        this.annotData = annotData;
+    }
+
+    static create(plugin: PDFPlus, child: PDFViewerChild, page: number, annotId: string): AnnotationLinkCopyTask | null;
+    static create(plugin: PDFPlus, child: PDFViewerChild, page: number, annotData: AnnotationElement['data']): AnnotationLinkCopyTask | null;
+    static create(plugin: PDFPlus, child: PDFViewerChild, page: number, annot: string | AnnotationElement['data']) {
         const file = child.file;
-        if (!file) return;
+        if (!file) return null;
 
         const pageView = child.getPage(page);
 
-        const textLayer = pageView.textLayer;
-        if (!textLayer) return;
+        const annotData = typeof annot === 'string' 
+        ? pageView.annotationLayer?.annotationLayer.getAnnotation(annot)?.data
+        : annot;
+        if (!annotData) return null;
 
         if (annotData.quadPoints) {
             const rects = pdfJsQuadPointsToArrayOfRects(annotData.quadPoints);
-            if (!rects.length) return;
+            if (!rects.length) return null;
 
-            await waitForTextLayerRendering(textLayer);
+            const textLayer = pageView.textLayer;
+            if (!textLayer) return null;
+            // await waitForTextLayerRendering(textLayer);
 
             const text = rects
                 .map((rect) => child.getTextByRect(pageView, rect))
                 .join(' ')
                 .trim();
 
-            return plugin.addChild(new AnnotationLinkCopyTask(plugin, child, file, page, text));
+            return plugin.addChild(new AnnotationLinkCopyTask(plugin, child, file, page, text, annotData));
         }
+
+        return null;
+    }
+
+    async run(params: Omit<TemplateEvaluationParams, 'color'>) {
+        await super.run({ ...params, color: this.getColorStr() });
     }
 
     async evalTemplates(params: Omit<TemplateEvaluationParams, 'color'>): Promise<string> {
         return super.evalTemplates({ ...params, color: this.getColorStr() });
     }
-
+    
     async addTemplateVariables() {
         let comment = this.annotData.contentsObj?.str ?? '';
         comment = this.lib.toSingleLine(comment);
