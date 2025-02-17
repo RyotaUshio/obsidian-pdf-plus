@@ -436,10 +436,12 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (!task) return false;
 
         if (!checking) {
+            const copyFormat = RectangularSelectionLinkCopyTask.getCopyFormat(this.plugin);
+
             task.run({
                 color: colorName ?? null,
-                displayTextFormat: 'hoge',
-                copyFormat: '![]({{dataUrl}}) \n> !{{linkWithDisplay}}',
+                displayTextFormat: child.palette?.getDisplayTextFormat() ?? this.settings.displayTextFormats[this.settings.defaultDisplayTextFormatIndex].template,
+                copyFormat,
                 sourcePath: '',
             });
         }

@@ -430,6 +430,17 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
         return plugin.addChild(new RectangularSelectionLinkCopyTask(plugin, child, file, page, rect));
     }
 
+    static getCopyFormat(plugin: PDFPlus) {
+        if (plugin.settings.rectEmbedStaticImage) {
+            if (plugin.settings.rectImageFormat === 'file') {
+                return plugin.settings.rectCopyFormatImageFile;
+            }
+            return plugin.settings.rectCopyFormatImageDataUrl;
+        }
+
+        return plugin.settings.rectCopyFormat;
+    }
+
     computeSubpathWithoutColor(): string {
         const { page, rect } = this;
         return `#page=${page}&rect=${rect.map((num) => Math.round(num)).join(',')}`;
@@ -641,7 +652,7 @@ export class PasteTask extends PDFPlusComponent {
         const text = this.copyResult.copiedText;
         await this.paste(text);
         await Promise.all(this.copyTask.callbacks.map((callback) => callback(this)));
-        
+
         this.copyResult.lastPastTask = this;
     }
 

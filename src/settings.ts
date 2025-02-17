@@ -254,6 +254,9 @@ export interface PDFPlusSettings {
 	rectEmbedStaticImage: boolean;
 	rectImageFormat: 'file' | 'data-url';
 	rectImageExtension: ImageExtension;
+	rectCopyFormat: string;
+	rectCopyFormatImageFile: string;
+	rectCopyFormatImageDataUrl: string;
 	rectEmbedResolution: number;
 	zoomToFitRect: boolean;
 	includeColorWhenCopyingRectLink: boolean;
@@ -538,6 +541,9 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	rectEmbedStaticImage: false,
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
+	rectCopyFormat: '!{{link}}',
+	rectCopyFormatImageFile: '!{{imageLink}}\n\n{{linkWithDisplay}}',
+	rectCopyFormatImageDataUrl: '![]({{dataUrl}})\n\n{{linkWithDisplay}}',
 	zoomToFitRect: false,
 	rectEmbedResolution: 100,
 	includeColorWhenCopyingRectLink: true,
