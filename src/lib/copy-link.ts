@@ -318,36 +318,37 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         if (!selection) return false;
         const text = this.lib.toSingleLine(selection.toString());
         if (!text) return false;
+        const subtype = this.settings.selectionBacklinkVisualizeStyle === 'highlight' ? 'Highlight' : 'Underline';
 
         if (!checking) {
             const palette = this.lib.getColorPaletteAssociatedWithSelection();
             palette?.setStatus('Writing highlight annotation into file...', 10000);
-            this.lib.highlight.writeFile.addTextMarkupAnnotationToSelection(
-                this.settings.selectionBacklinkVisualizeStyle === 'highlight' ? 'Highlight' : 'Underline',
-                colorName
-            )
+            this.lib.highlight.writeFile.addTextMarkupAnnotationToSelection(subtype, colorName)
                 .then((result) => {
                     if (!result) return;
 
                     const { child, file, page, annotationID, rects } = result;
-                    if (!annotationID || !file) return;
+                    if (!annotationID || !file || !rects) return;
 
                     setTimeout(() => {
-                        // After the file modification, the PDF viewer DOM is reloaded, so we need to 
-                        // get the new DOM to access the newly loaded color palette instance.
-                        const newPalette = this.lib.getColorPaletteFromChild(child);
-                        newPalette?.setStatus('Link copied', this.statusDurationMs);
-                        const { r, g, b } = this.plugin.domManager.getRgb(colorName);
-                        this.copyLinkToAnnotationWithGivenTextAndFile(text, file, child, false, templates, page, annotationID, `${r}, ${g}, ${b}`, autoPaste);
+                        const task = AnnotationLinkCopyTask.createDirectly({
+                            plugin: this.plugin,
+                            child,
+                            file,
+                            page,
+                            id: annotationID,
+                            rect: this.lib.highlight.geometry.mergeRectangles(...rects),
+                            color: this.plugin.domManager.getRgb(colorName),
+                            text,
+                            subtype,
+                        });
+                        if (!task) return;
 
-                        // TODO: Needs refactor
-                        if (rects) {
-                            const left = Math.min(...rects.map((rect) => rect[0]));
-                            const top = Math.max(...rects.map((rect) => rect[3]));
-                            if (typeof left === 'number' && typeof top === 'number') {
-                                this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
-                            }
-                        }
+                        task.run({
+                            displayTextFormat: templates.displayTextFormat ?? child.palette?.getDisplayTextFormat() ?? this.settings.displayTextFormats[this.settings.defaultDisplayTextFormatIndex].template,
+                            copyFormat: templates.copyFormat,
+                            sourcePath: '',
+                        });
                     }, 300);
                 });
         }

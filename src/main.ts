@@ -60,16 +60,14 @@ export default class PDFPlus extends Plugin {
 		PDFViewerChild?: Constructor<PDFViewerChild>;
 		PDFEmbed?: Constructor<PDFEmbed>;
 	} = {};
-	/** 
-	 * Tracks the markdown file that a link to a PDF text selection or an annotation was pasted into for the last time. 
-	 * Used for auto-pasting.
-	 */
+	// /** 
+	//  * Tracks the markdown file that a link to a PDF text selection or an annotation was pasted into for the last time. 
+	//  * Used for auto-pasting.
+	//  */
 	// lastPasteFile: TFile | null = null;
 	lastActiveMarkdownFile: TFile | null = null;
 	/** Tracks the PDFViewerChild instance that an annotation popup was rendered on for the last time. */
 	lastAnnotationPopupChild: PDFViewerChild | null = null;
-	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
-	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
 	/** Replaces lastCopiedDestInfo and lastPasteFile */
 	lastCopyResult: CopyResult | null = null;
 	vimrc: string | null = null;

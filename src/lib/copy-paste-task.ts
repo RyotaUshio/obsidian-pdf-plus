@@ -1,4 +1,4 @@
-import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, TFile, WorkspaceLeaf } from 'obsidian';
+import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, RGB, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
 import { AsyncTemplateProcessor, CanvasTextNodeEditorContainer, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getPDFViewerState, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
@@ -450,11 +450,31 @@ export class RectangularSelectionLinkCopyTask extends AbstractPageLinkCopyTask {
 
 
 export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
-    annotData: AnnotationElement['data'];
+    id: string;
+    rect: Rect;
+    color?: RGB;
+    comment?: string;
+    subtype: string;
 
-    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string, annotData: AnnotationElement['data']) {
+    constructor(params: {
+        plugin: PDFPlus,
+        child: PDFViewerChild,
+        file: TFile,
+        page: number,
+        id: string,
+        rect: Rect,
+        color?: RGB,
+        text: string,
+        comment?: string,
+        subtype: string,
+    }) {
+        const { plugin, child, file, page, id, rect, color, text, comment } = params;
         super(plugin, child, file, page, text);
-        this.annotData = annotData;
+        this.id = id;
+        this.rect = rect;
+        this.color = color;
+        this.comment = comment;
+        this.subtype = params.subtype;
     }
 
     static create(plugin: PDFPlus, child: PDFViewerChild, page: number, annotId: string): AnnotationLinkCopyTask | null;
@@ -483,10 +503,31 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
                 .join(' ')
                 .trim();
 
-            return plugin.addChild(new AnnotationLinkCopyTask(plugin, child, file, page, text, annotData));
+            let color: RGB | undefined;
+            if (annotData.color && annotData.color.length === 3) {
+                const r = annotData.color[0];
+                const g = annotData.color[1];
+                const b = annotData.color[2];
+                if (typeof r === 'number' && typeof g === 'number' && typeof b === 'number') {
+                    color = { r, g, b };
+                }
+            }
+
+            return plugin.addChild(new AnnotationLinkCopyTask({
+                plugin, child, file, page, text,
+                id: annotData.id,
+                rect: annotData.rect,
+                color,
+                comment: annotData.contentsObj?.str,
+                subtype: annotData.subtype,
+            }));
         }
 
         return null;
+    }
+
+    static createDirectly(params: ConstructorParameters<typeof AnnotationLinkCopyTask>[0]) {
+        return params.plugin.addChild(new AnnotationLinkCopyTask(params));
     }
 
     async run(params: Omit<TemplateEvaluationParams, 'color'>) {
@@ -498,7 +539,7 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
     }
 
     getAdditionalTemplateVariablesForAllProcessors() {
-        let comment = this.annotData.contentsObj?.str ?? '';
+        let comment = this.comment ?? '';
         comment = this.lib.toSingleLine(comment);
         return {
             ...super.getAdditionalTemplateVariablesForAllProcessors(),
@@ -507,26 +548,23 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
     }
 
     computeSubpathWithoutColor(): string {
-        const { page, annotData } = this;
-        let subpath = `#page=${page}&annotation=${annotData.id}`;
-        if (annotData.subtype === 'Square') {
-            const rect = annotData.rect;
-            subpath += `&rect=${rect.map((num) => Math.round(num)).join(',')}`;
+        let subpath = `#page=${this.page}&annotation=${this.id}`;
+        if (this.subtype === 'Square') {
+            subpath += `&rect=${this.rect.map((num) => Math.round(num)).join(',')}`;
         }
         return subpath;
     }
 
     computeDestination(): DestArray {
-        const { page, annotData } = this;
-        const rect = annotData.rect;
+        const { page, rect } = this;
         const left = rect[0];
         const top = rect[3];
         return [page - 1, 'XYZ', left, top, null];
     }
 
     getColorStr() {
-        const { annotData } = this;
-        return annotData.color ? `${annotData.color[0]},${annotData.color[1]},${annotData.color[2]}` : '';
+        const { color } = this;
+        return color ? `${color.r},${color.g},${color.b}` : '';
     }
 }
 
@@ -594,7 +632,7 @@ export class OffsetLinkCopyTask extends AbstractOffsetLinkCopyTask {
         // the 1-based page number that the link's destination points to, not the page number that contains the link
         const targetPage = await doc.getPageIndex(pdfJsDestArray[0]) + 1;
         const explicitDest = plugin.lib.normalizePDFJsDestArray(pdfJsDestArray, targetPage);
-        
+
         return OffsetLinkCopyTask.create(plugin, child, targetPage, explicitDest, namedDest);
     }
 }
