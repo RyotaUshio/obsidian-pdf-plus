@@ -292,23 +292,6 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return true;
     }
 
-    copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, colorName: string, autoPaste?: boolean) {
-        if (!checking) {
-            (async () => {
-                const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, `#page=${page}&annotation=${id}`, text, colorName);
-                await navigator.clipboard.writeText(evaluated);
-                // this.onCopyFinish(evaluated);
-                this.watchPaste(text);
-
-                const palette = this.lib.getColorPaletteFromChild(child);
-                palette?.setStatus('Link copied', this.statusDurationMs);
-                this.autoFocusOrAutoPaste(evaluated, autoPaste, palette ?? undefined);
-            })();
-        }
-
-        return true;
-    }
-
     // TODO: A better, more concise function name 😅
     writeHighlightAnnotationToSelectionIntoFileAndCopyLink(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, colorName?: string, autoPaste?: boolean): boolean {
         // Get and store the selected text before writing file because
@@ -712,32 +695,6 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 editor.scrollIntoView(range, true);
             }
         }
-    }
-
-    watchPaste(text: string, onPaste?: () => any) {
-        // watch for a manual paste for updating this.lastPasteFile
-        this.plugin.registerOneTimeEvent(this.app.workspace, 'editor-paste', (evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-            if (info.file?.extension !== 'md') return;
-            if (!evt.clipboardData) return;
-
-            const clipboardText = evt.clipboardData.getData('text/plain');
-            // Get rid of the influences of the OS-dependent line endings
-            // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
-            const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
-            const copiedTextNormalized = text.replace(/\r\n/g, '\n');
-
-            if (clipboardTextNormalized === copiedTextNormalized) {
-                // this.plugin.lastPasteFile = info.file;
-                onPaste?.();
-            }
-
-            if (info instanceof MarkdownView) {
-                // MarkdownView's file saving is debounced, so we need to
-                // explicitly save the new data right after pasting so that
-                // the backlink highlight will be visibile as soon as possible.
-                setTimeout(() => info.save());
-            }
-        });
     }
 
     /**
