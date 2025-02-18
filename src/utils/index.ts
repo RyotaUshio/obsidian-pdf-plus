@@ -1,7 +1,7 @@
 import { Component, Modifier, Platform, CachedMetadata, ReferenceCache, parseLinktext, Menu, Scope, KeymapEventListener, apiVersion, App, WorkspaceLeaf, base64ToArrayBuffer } from 'obsidian';
 import { PDFDict, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
-import { ObsidianViewer, OldTextLayerBuilder, PDFPageView, Rect, TextContentItem, TextLayerBuilder } from 'typings';
+import { ObsidianViewer, OldTextLayerBuilder, PDFPageView, PDFViewer, PDFViewExtraState, Rect, TextContentItem, TextLayerBuilder } from 'typings';
 
 export * from './color';
 export * from './suggest';
@@ -692,4 +692,17 @@ export async function waitTextLayerRendering(textLayer: NonNullable<PDFPageView[
             await textLayer.textLayerRenderingTask.promise;
         }
     }
+}
+
+export function getPDFViewerState(pdfViewer: PDFViewer): PDFViewExtraState {
+    return {
+        // When the PDF viewer's top edge is on the lower half of the previous page,
+        // pdfViewer._location?.pageNumber points to the previous page, but 
+        // currentPageNumber points to the current page.
+        // For our purpose, the former is preferable, so we use it if available.
+        page: pdfViewer._location?.pageNumber ?? pdfViewer.currentPageNumber,
+        left: pdfViewer._location?.left,
+        top: pdfViewer._location?.top,
+        zoom: pdfViewer.currentScale,
+    };
 }

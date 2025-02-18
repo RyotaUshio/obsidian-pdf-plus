@@ -9,6 +9,7 @@ import { PDFPlusSettingTab } from 'settings';
 import { SidebarView } from 'pdfjs-enums';
 import { showContextMenuAtSelection } from 'context-menu';
 import { RestoreDefaultModal } from 'modals/restore-default-modal';
+import { OffsetLinkCopyTask } from './copy-paste-task';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -318,30 +319,21 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     copyLinkToPageView(checking: boolean) {
-        const view = this.lib.getPDFView(true);
-        if (!view || !view.file) return false;
+        const child = this.lib.getPDFViewerChild(true);
+        if (!child) return false;
 
-        const state = view.getState();
-        if (typeof state.left !== 'number' || typeof state.top !== 'number') return false;
+        const task = OffsetLinkCopyTask.fromCurrentPageView(this.plugin, child);
+        if (!task) return false;
 
         if (!checking) {
-            // TODO: rewrite using lib.viewStateToSubpath and lib.viewStateToDestArray
-            let subpath = `#page=${state.page}`;
-            let destArray: DestArray;
-            const scaleValue = view.viewer.child?.pdfViewer.pdfViewer?.currentScaleValue;
-            if (scaleValue === 'page-width') { // Destination type = "FitBH"
-                subpath += `&offset=,${state.top},`;
-                destArray = [state.page - 1, 'FitBH', state.top];
-            } else { // Destination type = "XYZ"
-                subpath += `&offset=${state.left},${state.top},${state.zoom ?? 0}`;
-                destArray = [state.page - 1, 'XYZ', state.left, state.top, state.zoom ?? 0];
-            }
-            const display = view.viewer.child?.getPageLinkAlias(state.page);
-            const link = this.lib.generateMarkdownLink(view.file, '', subpath, display).slice(1);
-            navigator.clipboard.writeText(link);
-            new Notice(`${this.plugin.manifest.name}: Link copied to clipboard`);
-
-            this.plugin.lastCopiedDestInfo = { file: view.file, destArray };
+            task
+                .run({
+                    color: null,
+                    displayTextFormat: '{{file.basename}}, p.{{pageLabel}}',
+                    copyFormat: '{{linkWithDisplay}}',
+                    sourcePath: '',
+                })
+                .then(() => new Notice(`${this.plugin.manifest.name}: Link copied to clipboard`));
         }
 
         return true;

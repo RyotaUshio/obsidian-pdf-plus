@@ -1,7 +1,7 @@
 import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { AsyncTemplateProcessor, CanvasTextNodeEditorContainer, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
+import { AsyncTemplateProcessor, CanvasTextNodeEditorContainer, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getPDFViewerState, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
 import { PDFPlusComponent } from './component';
 import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode } from 'typings';
 import { PDFPageProxy } from 'pdfjs-dist';
@@ -563,6 +563,19 @@ export class OffsetLinkCopyTask extends AbstractOffsetLinkCopyTask {
         const file = child.file;
         if (!file) return null;
         return plugin.addChild(new OffsetLinkCopyTask(plugin, child, file, page, explicitDest, namedDest));
+    }
+
+    static fromCurrentPageView(plugin: PDFPlus, child: PDFViewerChild) {
+        const pdfViewer = child.pdfViewer?.pdfViewer;
+        if (!pdfViewer) return null;
+
+        const state = getPDFViewerState(pdfViewer);
+        const isFitBH = pdfViewer.currentScaleValue === 'page-width';
+
+        const dest = plugin.lib.viewStateToDestArray(state, isFitBH);
+        if (!dest) return null;
+
+        return OffsetLinkCopyTask.create(plugin, child, state.page, dest);
     }
 }
 

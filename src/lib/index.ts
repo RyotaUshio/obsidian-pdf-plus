@@ -385,7 +385,7 @@ export class PDFPlusLib {
         return subpath;
     }
 
-    viewStateToSubpath(state: PDFViewState, fitBH: boolean = false) {
+    viewStateToSubpath(state: PDFViewExtraState, fitBH: boolean = false) {
         if (typeof state.left === 'number' && typeof state.top === 'number') {
             let subpath = `#page=${state.page}`;
             if (fitBH) { // Destination type = "FitBH"
@@ -398,7 +398,7 @@ export class PDFPlusLib {
         return null;
     }
 
-    viewStateToDestArray(state: PDFViewState, fitBH: boolean = false): DestArray | null {
+    viewStateToDestArray(state: PDFViewExtraState, fitBH: boolean = false): DestArray | null {
         if (typeof state.left === 'number' && typeof state.top === 'number') {
             if (fitBH) { // Destination type = "FitBH"
                 return [state.page - 1, 'FitBH', state.top];
