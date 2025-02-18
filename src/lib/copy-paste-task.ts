@@ -3,8 +3,8 @@ import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, TFile, W
 import PDFPlus from 'main';
 import { AsyncTemplateProcessor, CanvasTextNodeEditorContainer, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getPDFViewerState, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
 import { PDFPlusComponent } from './component';
-import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode } from 'typings';
-import { PDFPageProxy } from 'pdfjs-dist';
+import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode, PDFJsDestArray } from 'typings';
+import { PDFPageProxy, PDFDocumentProxy } from 'pdfjs-dist';
 
 
 export interface TextPosition {
@@ -576,6 +576,26 @@ export class OffsetLinkCopyTask extends AbstractOffsetLinkCopyTask {
         if (!dest) return null;
 
         return OffsetLinkCopyTask.create(plugin, child, state.page, dest);
+    }
+
+    static async fromPDFInternalLink(plugin: PDFPlus, child: PDFViewerChild, doc: PDFDocumentProxy, dest: PDFJsDestArray | string) {
+        let pdfJsDestArray: PDFJsDestArray | null = null;
+        let namedDest: string | undefined;
+        if (typeof dest === 'string') {
+            namedDest = dest;
+
+            const result = await doc.getDestination(namedDest);
+            if (!result) return null;
+            pdfJsDestArray = result as PDFJsDestArray;
+        } else {
+            pdfJsDestArray = dest;
+        }
+
+        // the 1-based page number that the link's destination points to, not the page number that contains the link
+        const targetPage = await doc.getPageIndex(pdfJsDestArray[0]) + 1;
+        const explicitDest = plugin.lib.normalizePDFJsDestArray(pdfJsDestArray, targetPage);
+        
+        return OffsetLinkCopyTask.create(plugin, child, targetPage, explicitDest, namedDest);
     }
 }
 

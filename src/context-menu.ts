@@ -3,14 +3,14 @@ import { Menu, MenuItem, Notice, Platform, TFile } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import { PDFOutlineMoveModal, PDFOutlineTitleModal, PDFComposerModal, PDFAnnotationDeleteModal, PDFAnnotationEditModal } from 'modals';
-import { PDFOutlineTreeNode, PDFViewerChild } from 'typings';
+import { DestArray, PDFJsDestArray, PDFOutlineTreeNode, PDFViewerChild } from 'typings';
 import { PDFViewerBacklinkVisualizer } from 'backlink-visualizer';
 import { PDFBacklinkCache } from 'lib/pdf-backlink-index';
 import { addProductMenuItems, getSelectedItemsRecursive, fixOpenSubmenu, registerVimKeybindsToMenu } from 'utils/menu';
 import { DEFAULT_SETTINGS, NamedTemplate } from 'settings';
 import { ColorPalette } from 'color-palette';
 import { PDFPlusComponent } from 'lib/component';
-import { OutlineItemLinkCopyTask, PageLinkCopyTask } from 'lib/copy-paste-task';
+import { OffsetLinkCopyTask, OutlineItemLinkCopyTask, PageLinkCopyTask } from 'lib/copy-paste-task';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
@@ -625,36 +625,39 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
 
                 if (annot.data.subtype === 'Link' && isVisible('link')) {
                     const doc = child.pdfViewer.pdfViewer?.pdfDocument;
-                    if ('dest' in annot.data && typeof annot.data.dest === 'string' && doc && child.file) {
-                        const destId = annot.data.dest;
-                        const file = child.file;
+                    if ('dest' in annot.data && doc && child.file) {
+                        const dest: PDFJsDestArray | string = annot.data.dest;
+
                         // copy PDF internal link as Obsidian wikilink (or markdown link) //
                         this.addItem((item) => {
                             item.setSection('link')
                                 .setTitle('Copy PDF link')
                                 .setIcon('lucide-copy')
                                 .onClick(async () => {
-                                    const subpath = await lib.destIdToSubpath(destId, doc);
-                                    if (typeof subpath === 'string') {
-                                        let display = annotatedText;
-                                        if (!display && annot.data.rect) {
-                                            display = child.getTextByRect(pageView, annot.data.rect);
-                                        }
-                                        const link = lib.generateMarkdownLink(file, '', subpath, display ?? undefined).slice(1);
-                                        // How does the electron version differ?
-                                        navigator.clipboard.writeText(link);
-                                        plugin.lastCopiedDestInfo = { file, destName: destId };
+                                    const task = await OffsetLinkCopyTask.fromPDFInternalLink(plugin, child, doc, dest);
+                                    if (!task) return;
+
+                                    let displayText = annotatedText;
+                                    if (!displayText && annot.data.rect) {
+                                        displayText = child.getTextByRect(pageView, annot.data.rect);
                                     }
+
+                                    await task.run({
+                                        displayTextFormat: displayText ?? child.palette?.getDisplayTextFormat() ?? plugin.settings.displayTextFormats[plugin.settings.defaultDisplayTextFormatIndex].template,
+                                        copyFormat: '{{linkWithDisplay}}',
+                                        color: null,
+                                        sourcePath: '',
+                                    });
                                 });
                         });
 
-                        if (plugin.lib.isCitationId(destId)) {
+                        if (plugin.lib.isCitationId(dest)) {
                             this.addItem((item) => {
                                 item.setSection('link')
                                     .setTitle('Search on Google Scholar')
                                     .setIcon('lucide-search')
                                     .onClick(() => {
-                                        const url = this.child.bib?.getGoogleScholarSearchUrlFromDest(destId);
+                                        const url = this.child.bib?.getGoogleScholarSearchUrlFromDest(dest);
 
                                         if (typeof url !== 'string') {
                                             new Notice(`${plugin.manifest.name}: Failed to find bibliographic information.`);
