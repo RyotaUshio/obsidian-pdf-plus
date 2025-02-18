@@ -718,7 +718,7 @@ export class PDFPlusLib {
     }
 
     getAnnotation(id: string) {
-        return this.getPage(true)?.annotationLayer?.annotationLayer.getAnnotation(id);
+        return this.getPage(true)?.annotationLayer?.annotationLayer?.getAnnotation(id);
     }
 
     getTextContentItems() {

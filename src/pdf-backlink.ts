@@ -50,7 +50,7 @@ export class BacklinkPanePDFManager extends PDFPlusComponent {
 
                     viewer.then((child) => {
                         const pageView = child.getPage(pageNumber);
-                        const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(annotId);
+                        const annot = pageView.annotationLayer?.annotationLayer?.getAnnotation(annotId);
                         if (annot) {
                             rectEl = this.lib.highlight.viewer.placeRectInPage(annot.data.rect, pageView);
                             rectEl.addClass('pdf-plus-annotation-bounding-rect');

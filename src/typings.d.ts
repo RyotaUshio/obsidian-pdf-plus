@@ -516,7 +516,8 @@ interface AnnotationLayerBuilder {
     div: HTMLDivElement; // div.annotationLayer
     pageDiv: HTMLDivElement; // div.page
     pdfPage: PDFPageProxy;
-    annotationLayer: AnnotationLayer;
+    /** null if the page does not contain any annotations */
+    annotationLayer: AnnotationLayer | null;
     annotationStorage: AnnotationStorage;
     renderForms: boolean;
     render(): Promise<any>;

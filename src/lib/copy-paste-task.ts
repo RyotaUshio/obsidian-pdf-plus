@@ -466,7 +466,7 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
         const pageView = child.getPage(page);
 
         const annotData = typeof annot === 'string'
-            ? pageView.annotationLayer?.annotationLayer.getAnnotation(annot)?.data
+            ? pageView.annotationLayer?.annotationLayer?.getAnnotation(annot)?.data
             : annot;
         if (!annotData) return null;
 

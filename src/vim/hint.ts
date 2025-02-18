@@ -144,7 +144,7 @@ export class VimHintMode extends VimBindingsMode {
         } else if (VimHintMode.isNonLinkAnnot(el)) {
             doubleClick(el);
             const id = el.dataset.annotationId;
-            const annot = id && pageView?.annotationLayer?.annotationLayer.getAnnotation(id);
+            const annot = id && pageView?.annotationLayer?.annotationLayer?.getAnnotation(id);
             if (annot) {
                 this.vim.child?.renderAnnotationPopup(annot);
             }

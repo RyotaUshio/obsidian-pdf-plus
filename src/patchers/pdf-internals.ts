@@ -336,7 +336,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             const annotationId = el.dataset.annotationId;
                             if (!annotationId) return;
 
-                            const annot = pageView.annotationLayer?.annotationLayer.getAnnotation(annotationId);
+                            const annot = pageView.annotationLayer?.annotationLayer?.getAnnotation(annotationId);
                             if (!annot) return;
 
                             // Needed to avoid registering the event listeners on the same annotation container element multiple times
