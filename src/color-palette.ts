@@ -544,11 +544,7 @@ export class ColorPalette extends PDFPlusComponent {
 
                 // Copy an embed link to the selection
                 this.lib.copyLink.copyEmbedLinkToRect(
-                    false, child, pageView.id, rect,
-                    this.plugin.settings.includeColorWhenCopyingRectLink
-                        ? this.selectedColorName ?? undefined
-                        : undefined,
-                    autoPaste
+                    false, child, pageView.id, rect, this.selectedColorName ?? undefined, autoPaste
                 );
                 toggle();
             };

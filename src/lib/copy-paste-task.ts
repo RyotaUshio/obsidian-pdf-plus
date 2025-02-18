@@ -123,6 +123,10 @@ export abstract class CopyTask extends PDFPlusComponent {
 
     protected abstract computeSubpathWithoutColor(): string;
 
+    protected includeColorInSubpath() {
+        return true;
+    }
+
     protected getAdditionalTemplateVariablesForAllProcessors(): Record<string, any> {
         return {};
     }
@@ -133,7 +137,8 @@ export abstract class CopyTask extends PDFPlusComponent {
 
     protected async evalTemplates(params: TemplateEvaluationParams): Promise<string> {
         const { file } = this;
-        const { color, displayTextFormat, copyFormat, sourcePath } = params;
+        const { displayTextFormat, copyFormat, sourcePath } = params;
+        let color = (params.color ?? '').toLowerCase();
 
         const display = this.templateProcessors['displayText']
             .setVariables({
@@ -143,7 +148,7 @@ export abstract class CopyTask extends PDFPlusComponent {
             .evalTemplate(displayTextFormat);
 
         let subpath = this.computeSubpathWithoutColor();
-        if (color) {
+        if (color && this.includeColorInSubpath()) {
             subpath += `&color=${color}`;
         }
 
@@ -349,8 +354,12 @@ export class RectangularSelectionLinkCopyTask extends AbstractPageLinkCopyTask {
         return this.rect.map((num) => Math.round(num)).join(',');
     }
 
-    computeSubpathWithoutColor(): string {
+    computeSubpathWithoutColor() {
         return `#page=${this.page}&rect=${this.computeRectStr()}`;
+    }
+
+    includeColorInSubpath() {
+        return this.settings.includeColorWhenCopyingRectLink;
     }
 
     computeDestination(): DestArray {
@@ -556,6 +565,10 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
             subpath += `&rect=${this.rect.map((num) => Math.round(num)).join(',')}`;
         }
         return subpath;
+    }
+
+    includeColorInSubpath() {
+        return false;
     }
 
     computeDestination(): DestArray {
