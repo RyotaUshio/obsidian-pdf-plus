@@ -135,7 +135,7 @@ export class PDFPlusTemplateProcessor extends TemplateProcessor {
 }
 
 
-export class AsyncTemplateProcessor {
+abstract class BaseTemplateProcessor {
     variables: Record<string, any> = {};
 
     setVariables(newVariables: Record<string, any>) {
@@ -148,6 +148,35 @@ export class AsyncTemplateProcessor {
         return this;
     }
 
+    abstract evalTemplate(template: string, brace: '{{' | '{{{'): string | Promise<string>;
+
+    reportError(error: Error, expr: string) {
+        throw Error(`Error evaluating expression "${expr}": ${error.message}`);
+    }
+}
+
+export class SyncTemplateProcessor extends BaseTemplateProcessor {
+    evalTemplate(template: string, brace: '{{' | '{{{' = '{{') {
+        const regex = brace === '{{' ? /{{([\s\S]*?)}}/g : /{{{([\s\S]*?)}}}/g;
+
+        return template.replace(regex, (match, expr) => {
+            try {
+                const result = new Function(
+                    ...Object.keys(this.variables),
+                    'return ' + expr,
+                )(...Object.values(this.variables));
+                if (result === undefined) {
+                    return '';
+                }
+                return result;
+            } catch (error) {
+                this.reportError(error, expr);
+            }
+        });
+    }
+}
+
+export class AsyncTemplateProcessor extends BaseTemplateProcessor {
     async evalTemplate(template: string, brace: '{{' | '{{{' = '{{') {
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncFunction
         const AsyncFunction = async function () { }.constructor;
@@ -167,9 +196,5 @@ export class AsyncTemplateProcessor {
                 this.reportError(error, expr);
             }
         });
-    }
-
-    reportError(error: Error, expr: string) {
-        throw Error(`Error evaluating expression "${expr}": ${error.message}`);
     }
 }

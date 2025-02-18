@@ -1,7 +1,7 @@
 import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, RGB, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { AsyncTemplateProcessor, CanvasTextNodeEditorContainer, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getPDFViewerState, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
+import { AsyncTemplateProcessor, CanvasTextNodeEditorContainer, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getPDFViewerState, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects, SyncTemplateProcessor } from 'utils';
 import { PDFPlusComponent } from './component';
 import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode, PDFJsDestArray } from 'typings';
 import { PDFPageProxy, PDFDocumentProxy } from 'pdfjs-dist';
@@ -34,7 +34,10 @@ export abstract class CopyTask extends PDFPlusComponent {
     file: TFile;
     result?: CopyResult;
 
-    templateProcessors: Record<'displayText' | 'body', AsyncTemplateProcessor>;
+    templateProcessors: {
+        'displayText': SyncTemplateProcessor;
+        'body': AsyncTemplateProcessor;
+    };
     callbacks: Array<(pasteTask: PasteTask) => any> = [];
 
     constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile) {
@@ -42,7 +45,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         this.child = child;
         this.file = file;
         this.templateProcessors = {
-            displayText: new AsyncTemplateProcessor(),
+            displayText: new SyncTemplateProcessor(),
             body: new AsyncTemplateProcessor(),
         };
     }
@@ -57,7 +60,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         }
     }
 
-    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
+    initializeTemplateProcessor(processor: SyncTemplateProcessor | AsyncTemplateProcessor) {
         const { file, app, child } = this;
         const pageCount = child.pdfViewer.pagesCount;
         const obsidian = getObsidianApi();
@@ -132,7 +135,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         const { file } = this;
         const { color, displayTextFormat, copyFormat, sourcePath } = params;
 
-        const display = await this.templateProcessors['displayText']
+        const display = this.templateProcessors['displayText']
             .setVariables({
                 color,
                 colorName: color, // deprecated alias
