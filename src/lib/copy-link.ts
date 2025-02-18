@@ -4,7 +4,7 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerInfo, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams, PDFPlusTemplateProcessor } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
-import { CopyTask, TextSelectionLinkCopyTask, PageLinkCopyTask, RectangularSelectionLinkCopyTask, AnnotationLinkCopyTask } from './copy-paste-task';
+import { CopyTask, TextSelectionLinkCopyTask, RectangularSelectionLinkCopyTask, AnnotationLinkCopyTask, SearchLinkCopyTask } from './copy-paste-task';
 
 
 export type AutoFocusTarget =
@@ -277,61 +277,6 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return true;
     }
 
-    _copyLinkToSelection(checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, colorName?: string, autoPaste?: boolean): boolean {
-        const variables = this.getTemplateVariables(colorName ? { color: colorName.toLowerCase() } : {});
-
-        if (variables) {
-            const { child, file, subpath, page, text } = variables;
-
-            if (!text) {
-                if (this.settings.useAnotherCopyTemplateWhenNoSelection) {
-                    templates.copyFormat = this.settings.copyTemplateWhenNoSelection;
-                } else {
-                    return false;
-                }
-            }
-
-            if (!checking) {
-                (async () => {
-                    const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, subpath, text, colorName?.toLowerCase() ?? '');
-                    // Without await, the focus can move to a different document before `writeText` is completed
-                    // if auto-focus is on and the PDF is opened in a secondary window, which causes the copy to fail.
-                    // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/93
-                    await navigator.clipboard.writeText(evaluated);
-                    this.onCopyFinish(evaluated);
-
-                    const palette = this.lib.getColorPaletteFromChild(child);
-                    palette?.setStatus('Link copied', this.statusDurationMs);
-                    this.autoFocusOrAutoPaste(evaluated, autoPaste, palette ?? undefined);
-
-                    // TODO: Needs refactor
-                    const result = parsePDFSubpath(subpath);
-                    if (result && 'beginIndex' in result) {
-                        const textLayer = child.getPage(page).textLayer;
-                        if (textLayer) {
-                            const textLayerInfo = getTextLayerInfo(textLayer);
-                            if (textLayerInfo) {
-                                const { textContentItems } = textLayerInfo;
-                                const item = textContentItems[result.beginIndex];
-                                if (item) {
-                                    const left = item.transform[4];
-                                    const top = item.transform[5] + item.height;
-                                    if (typeof left === 'number' && typeof top === 'number') {
-                                        this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
-                                    }
-                                }
-                            }
-                        }
-                    }
-                })();
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
     copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
         const task = AnnotationLinkCopyTask.create(this.plugin, child, page, id);
         if (!task) return false;
@@ -347,49 +292,13 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return true;
     }
 
-    _copyLinkToAnnotation(child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, autoPaste?: boolean, shouldShowStatus?: boolean): boolean {
-        const file = child.file;
-        if (!file) return false;
-
-        if (!checking) {
-            const pageView = child.getPage(page);
-            child.getAnnotatedText(pageView, id)
-                .then(async (text) => {
-                    const annotData = pageView.annotationLayer?.annotationLayer?.getAnnotation(id)?.data ?? (await pageView.pdfPage.getAnnotations()).find((annot) => annot.id === id);
-                    const color = annotData?.color ? `${annotData.color[0]}, ${annotData.color[1]}, ${annotData.color[2]}` : '';
-                    let subpath = `#page=${page}&annotation=${id}`;
-                    if (annotData.subtype === 'Square') {
-                        const rect = annotData.rect;
-                        subpath += `&rect=${rect[0]},${rect[1]},${rect[2]},${rect[3]}`;
-                    }
-                    const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, subpath, text ?? '', color);
-                    await navigator.clipboard.writeText(evaluated);
-                    this.onCopyFinish(evaluated);
-
-                    const palette = this.lib.getColorPaletteFromChild(child);
-                    // This can be redundant because the copy button already shows the status.
-                    if (shouldShowStatus) palette?.setStatus('Link copied', this.statusDurationMs);
-                    this.autoFocusOrAutoPaste(evaluated, autoPaste, palette ?? undefined);
-
-                    // TODO: Needs refactor
-                    const rect = annotData?.rect;
-                    const left = rect?.[0];
-                    const top = rect?.[3];
-                    if (typeof left === 'number' && typeof top === 'number') {
-                        this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
-                    }
-                });
-        }
-
-        return true;
-    }
-
     copyLinkToAnnotationWithGivenTextAndFile(text: string, file: TFile, child: PDFViewerChild, checking: boolean, templates: { copyFormat: string, displayTextFormat?: string }, page: number, id: string, colorName: string, autoPaste?: boolean) {
         if (!checking) {
             (async () => {
                 const evaluated = this.getTextToCopy(child, templates.copyFormat, templates.displayTextFormat, file, page, `#page=${page}&annotation=${id}`, text, colorName);
                 await navigator.clipboard.writeText(evaluated);
-                this.onCopyFinish(evaluated);
+                // this.onCopyFinish(evaluated);
+                this.watchPaste(text);
 
                 const palette = this.lib.getColorPaletteFromChild(child);
                 palette?.setStatus('Link copied', this.statusDurationMs);
@@ -464,100 +373,17 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
         return true;
     }
 
-    _copyEmbedLinkToRect(checking: boolean, child: PDFViewerChild, pageNumber: number, rect: Rect, colorName?: string, autoPaste?: boolean, sourcePath?: string): boolean {
-        autoPaste ||= this.settings.autoPaste;
-
-        if (!child.file) return false;
-        const file = child.file;
-
-        const palette = this.lib.getColorPaletteFromChild(child);
-
-        if (rect.some((coord) => isNaN(coord))) {
-            palette?.setStatus('Invalid selection', this.statusDurationMs);
-            return false;
-        }
+    copyLinkToSearch(checking: boolean, child: PDFViewerChild, query: string): boolean {
+        const task = SearchLinkCopyTask.create(this.plugin, child, query);
+        if (!task) return false;
 
         if (!checking) {
-            const display = this.getDisplayText(child, undefined, file, pageNumber, '');
-            let subpath = `#page=${pageNumber}&rect=${rect.map((num) => Math.round(num)).join(',')}`;
-            if (colorName) subpath += `&color=${colorName}`;
-            const embedLink = this.lib.generateMarkdownLink(file, sourcePath ?? '', subpath, display);
-
-            (async () => {
-                let text = embedLink;
-                let page = child.getPage(pageNumber).pdfPage;
-                const extension = this.settings.rectImageExtension;
-
-                if (!this.settings.rectEmbedStaticImage) {
-                    await navigator.clipboard.writeText(text);
-
-                    this.onCopyFinish(text);
-                } else if (this.settings.rectImageFormat === 'file') {
-                    const imagePath = await this.app.fileManager.getAvailablePathForAttachment(file.basename + '.' + extension, '');
-                    const useWikilinks = !this.app.vault.getConfig('useMarkdownLinks');
-                    const imageEmbedLink = useWikilinks ? `![[${imagePath}]]` : `![](${encodeLinktext(imagePath)})`;
-                    text = imageEmbedLink + '\n\n' + embedLink.slice(1);
-
-                    await navigator.clipboard.writeText(text);
-
-                    const createImageFile = async () => {
-                        // I don't know why, but if the PDF viewer is in a popup window (i.e. !== window),
-                        // font rendering fails and characters are rendered as boxes.
-                        // Therefore, we need to load the PDF document again.
-                        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/323
-                        //
-                        // Also, we also have to reload the PDF document when the PDF page is already destroyed
-                        // (which happens if the PDF viewer is already closed)
-                        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/326
-                        if (child.containerEl.win !== window || page.destroyed) {
-                            const doc = await this.lib.loadPDFDocument(file);
-                            page = await doc.getPage(pageNumber);
-                        }
-                        const buffer = await this.lib.pdfPageToImageArrayBuffer(page, { type: `image/${extension}`, cropRect: rect });
-                        return await this.app.vault.createBinary(imagePath, buffer);
-                    };
-                    if (autoPaste) {
-                        await createImageFile();
-                        this.onCopyFinish(text);
-                    } else {
-                        this.onCopyFinish(text, createImageFile);
-                    }
-                } else {
-                    const dataUrl = await this.lib.pdfPageToImageDataUrl(page, { type: `image/${extension}`, cropRect: rect });
-                    const imageEmbedLink = `![](${dataUrl})`;
-                    text = imageEmbedLink + '\n\n' + embedLink.slice(1);
-
-                    await navigator.clipboard.writeText(text);
-
-                    this.onCopyFinish(text);
-                }
-
-                this.plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'FitR', ...rect] };
-
-                palette?.setStatus('Link copied', this.statusDurationMs);
-                await this.autoFocusOrAutoPaste(text, autoPaste, palette ?? undefined);
-            })();
-        }
-
-        return true;
-    }
-
-    copyLinkToSearch(checking: boolean, child: PDFViewerChild, pageNumber: number, query: string, autoPaste?: boolean, sourcePath?: string): boolean {
-        if (!child.file) return false;
-        const file = child.file;
-
-        const palette = this.lib.getColorPaletteFromChild(child);
-
-        if (!checking) {
-            const display = this.lib.copyLink.getDisplayText(child, undefined, file, pageNumber, query);
-            const link = this.lib.generateMarkdownLink(file, '', `#search=${query}`, display).slice(1);
-
-            (async () => {
-                await navigator.clipboard.writeText(link);
-                this.onCopyFinish(link);
-                palette?.setStatus('Link copied', this.statusDurationMs);
-                await this.autoFocusOrAutoPaste(link, autoPaste, palette ?? undefined);
-            })();
+            task.run({
+                color: null,
+                displayTextFormat: 'Search "{{query}}" in {{file.basename}}',
+                copyFormat: '{{linkWithDisplay}}',
+                sourcePath: '',
+            });
         }
 
         return true;
@@ -631,7 +457,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 if (file && file.extension === 'md') {
                     this.app.workspace.offref(eventRef);
                     await this.pasteTextToFile(text, file, true);
-                    this.plugin.lastPasteFile = file;
+                    // this.plugin.lastPasteFile = file;
                     resolve(true);
                 }
             });
@@ -717,7 +543,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
     getAutoFocusOrAutoPasteTarget(target: AutoFocusTarget): TFile | null {
         const lastActiveFile = this.plugin.lastActiveMarkdownFile;
-        const lastPasteFile = this.plugin.lastPasteFile;
+        const lastPasteFile = this.plugin.lastCopyResult?.lastPastTask?.fileInfo?.file ?? null;
         const isLastActiveFileOpened = !!(lastActiveFile && this.lib.workspace.isMarkdownFileOpened(lastActiveFile));
         let targetFile: TFile | null = null;
 
@@ -900,7 +726,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             const copiedTextNormalized = text.replace(/\r\n/g, '\n');
 
             if (clipboardTextNormalized === copiedTextNormalized) {
-                this.plugin.lastPasteFile = info.file;
+                // this.plugin.lastPasteFile = info.file;
                 onPaste?.();
             }
 
@@ -911,12 +737,6 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 setTimeout(() => info.save());
             }
         });
-    }
-
-    onCopyFinish(text: string, onPaste?: () => any) {
-        this.watchPaste(text, onPaste);
-        // update this.lastCopiedDestArray
-        this.plugin.lastCopiedDestInfo = null;
     }
 
     /**

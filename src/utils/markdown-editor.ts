@@ -49,7 +49,11 @@ interface MarkdownEditorContainerState {
 
 
 export abstract class MarkdownEditorContainer extends PDFPlusComponent {
-    abstract get sourcePath(): string;
+    abstract get sourceFile(): TFile | null;
+
+    get sourcePath() {
+        return this.sourceFile ? this.sourceFile.path : '';
+    }
 
     get leaf(): WorkspaceLeaf | null {
         return this.view?.leaf ?? null;
@@ -264,8 +268,8 @@ export class MarkdownViewContainer extends MarkdownEditorContainer {
         this._view = view;
     }
 
-    get sourcePath() {
-        return this.view.file ? this.view.file.path : '';
+    get sourceFile() {
+        return this.view.file;
     }
 
     get leaf() {
@@ -351,6 +355,10 @@ export abstract class EditableMarkdownEmbedContainer<EmbedType extends EditableM
 
 
 export abstract class CanvasNodeEditorContainer<EmbedType extends EditableMarkdownEmbed> extends EditableMarkdownEmbedContainer<EmbedType> {
+    get canvasFile() {
+        return this.view.file;
+    }
+
     abstract get view(): CanvasView;
 
     abstract get canvas(): Canvas;
@@ -450,8 +458,8 @@ export class CanvasFileNodeEditorContainer extends CanvasNodeEditorContainer<Edi
         this.node = node;
     }
 
-    get sourcePath() {
-        return this.embed.file ? this.embed.file.path : '';
+    get sourceFile() {
+        return this.embed.file;
     }
 
     get view() {
@@ -474,8 +482,8 @@ export class CanvasFileNodeEditorContainer extends CanvasNodeEditorContainer<Edi
 
 
 export class CanvasTextNodeEditorContainer extends CanvasNodeEditorContainer<CanvasTextNodeEditor> {
-    get sourcePath() {
-        return '';
+    get sourceFile() {
+        return null;
     }
 
     get view() {

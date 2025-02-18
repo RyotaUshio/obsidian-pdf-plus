@@ -10,6 +10,7 @@ import { addProductMenuItems, getSelectedItemsRecursive, fixOpenSubmenu, registe
 import { DEFAULT_SETTINGS, NamedTemplate } from 'settings';
 import { ColorPalette } from 'color-palette';
 import { PDFPlusComponent } from 'lib/component';
+import { OutlineItemLinkCopyTask, PageLinkCopyTask } from 'lib/copy-paste-task';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
@@ -91,9 +92,15 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                 item.setTitle(title)
                     .setIcon('lucide-copy')
                     .onClick(() => {
-                        (evt.view ?? activeWindow).navigator.clipboard.writeText(link);
-                        const file = child.file;
-                        if (file) plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'XYZ', null, null, null] };
+                        const task = PageLinkCopyTask.create(plugin, child, pageNumber);
+                        if (!task) return;
+
+                        task.run({
+                            displayTextFormat: plugin.settings.thumbnailLinkDisplayTextFormat,
+                            copyFormat: plugin.settings.thumbnailLinkCopyFormat,
+                            color: child.palette?.getColorName() ?? null,
+                            sourcePath: '',
+                        });
                     });
             });
 
@@ -190,17 +197,15 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                 .setTitle(title)
                 .setIcon('lucide-copy')
                 .onClick(async () => {
-                    const evaluated = await lib.copyLink.getTextToCopyForOutlineItem(child, file, item);
-                    (evt.view ?? activeWindow).navigator.clipboard.writeText(evaluated);
+                    const task = await OutlineItemLinkCopyTask.create(plugin, child, item);
+                    if (!task) return;
 
-                    const dest = item.item.dest;
-                    if (typeof dest === 'string') {
-                        plugin.lastCopiedDestInfo = { file, destName: dest };
-                    } else {
-                        const pageNumber = await item.getPageNumber();
-                        const destArray = lib.normalizePDFJsDestArray(dest, pageNumber);
-                        plugin.lastCopiedDestInfo = { file, destArray };
-                    }
+                    task.run({
+                        displayTextFormat: plugin.settings.outlineLinkDisplayTextFormat,
+                        copyFormat: plugin.settings.outlineLinkCopyFormat,
+                        color: child.palette?.getColorName() ?? null,
+                        sourcePath: '',
+                    });
                 });
         });
 
@@ -676,32 +681,22 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
         // Add a PDF internal link to selection
         if (selectedText && selection
             && lib.isEditable(child)
-            && plugin.lastCopiedDestInfo
-            && plugin.lastCopiedDestInfo.file === child.file
+            && plugin.lastCopyResult
+            && plugin.lastCopyResult.copyTask.file === child.file
+            && plugin.lastCopyResult.dest
             && isVisible('link')) {
-            if ('destArray' in plugin.lastCopiedDestInfo) {
-                const destArray = plugin.lastCopiedDestInfo.destArray;
-                this.addItem((item) => {
-                    return item
-                        .setSection('link')
-                        .setTitle('Paste copied PDF link to selection')
-                        .setIcon('lucide-clipboard-paste')
-                        .onClick(() => {
-                            lib.highlight.writeFile.addLinkAnnotationToSelection(destArray);
-                        });
-                });
-            } else if ('destName' in plugin.lastCopiedDestInfo) {
-                const destName = plugin.lastCopiedDestInfo.destName;
-                this.addItem((item) => {
-                    return item
-                        .setSection('link')
-                        .setTitle('Paste copied link to selection')
-                        .setIcon('lucide-clipboard-paste')
-                        .onClick(() => {
-                            lib.highlight.writeFile.addLinkAnnotationToSelection(destName);
-                        });
-                });
-            }
+            const dest = plugin.lastCopyResult.dest;
+            this.addItem((item) => {
+                return item
+                    .setSection('link')
+                    .setTitle('Paste copied link to selection')
+                    .setIcon('lucide-clipboard-paste')
+                    .onClick(() => {
+                        lib.highlight.writeFile.addLinkAnnotationToSelection(
+                            dest.type === 'explicit' ? dest.array : dest.name
+                        );
+                    });
+            });
         }
 
         // copy selected text only //
@@ -738,7 +733,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                     .setTitle('Copy link to search')
                     .setIcon('lucide-search')
                     .onClick(() => {
-                        lib.copyLink.copyLinkToSearch(false, child, pageNumber, selectedText.trim());
+                        lib.copyLink.copyLinkToSearch(false, child, selectedText.trim());
                     });
             });
         }
@@ -759,11 +754,14 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                 item.setSection('page')
                     .setTitle('Copy link to page')
                     .setIcon('lucide-copy')
-                    .onClick((evt) => {
-                        const link = child.getMarkdownLink(`#page=${pageNumber}`, child.getPageLinkAlias(pageNumber));
-                        evt.win.navigator.clipboard.writeText(link);
-                        const file = child.file;
-                        if (file) plugin.lastCopiedDestInfo = { file, destArray: [pageNumber - 1, 'XYZ', null, null, null] };
+                    .onClick(() => {
+                        PageLinkCopyTask.create(plugin, child, pageNumber)
+                            ?.run({
+                                displayTextFormat: plugin.settings.thumbnailLinkDisplayTextFormat,
+                                copyFormat: plugin.settings.thumbnailLinkCopyFormat,
+                                color: child.palette?.getColorName() ?? null,
+                                sourcePath: '',
+                            });
                     });
             });
         }

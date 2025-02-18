@@ -64,15 +64,13 @@ export default class PDFPlus extends Plugin {
 	 * Tracks the markdown file that a link to a PDF text selection or an annotation was pasted into for the last time. 
 	 * Used for auto-pasting.
 	 */
-	lastPasteFile: TFile | null = null;
-	/** Replaces lastPasteFile */
-	lastPasteTask: PasteTask | null = null;
+	// lastPasteFile: TFile | null = null;
 	lastActiveMarkdownFile: TFile | null = null;
 	/** Tracks the PDFViewerChild instance that an annotation popup was rendered on for the last time. */
 	lastAnnotationPopupChild: PDFViewerChild | null = null;
 	/** Stores the file and the explicit destination array corresponding to the last link copied with the "Copy link to current page view" command */
 	lastCopiedDestInfo: { file: TFile, destArray: DestArray } | { file: TFile, destName: string } | null = null;
-	/** Replaces lastCopiedDestInfo */
+	/** Replaces lastCopiedDestInfo and lastPasteFile */
 	lastCopyResult: CopyResult | null = null;
 	vimrc: string | null = null;
 	citationIdRegex: RegExp;
@@ -594,12 +592,12 @@ export default class PDFPlus extends Plugin {
 			}));
 		}
 
-		// Keep the last-pasted file up-to-date
-		this.registerEvent(this.app.vault.on('delete', (file) => {
-			if (file instanceof TFile && file === this.lastPasteFile) {
-				this.lastPasteFile = null;
-			}
-		}));
+		// // Keep the last-pasted file up-to-date
+		// this.registerEvent(this.app.vault.on('delete', (file) => {
+		// 	if (file instanceof TFile && file === this.lastPasteFile) {
+		// 		this.lastPasteFile = null;
+		// 	}
+		// }));
 		// See also: lib.copyLink.watchPaste()
 
 		// Keep the template path for the command "Create new note for auto-focus or auto-paste" up-to-date

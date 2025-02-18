@@ -1,7 +1,7 @@
 import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import PDFPlus from 'main';
-import { AsyncTemplateProcessor, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
+import { AsyncTemplateProcessor, CanvasTextNodeEditorContainer, encodeLinktext, getFilenameFromPath, getFolderPathFromFilePath, getObsidianApi, getTextLayerInfo, isCanvasTextNodeEditor, isEditableMarkdownEmbedWithFile, MarkdownEditorContainer, pdfJsQuadPointsToArrayOfRects } from 'utils';
 import { PDFPlusComponent } from './component';
 import { AnnotationElement, DestArray, PDFViewerChild, Rect, PDFPageView, PDFOutlineTreeNode } from 'typings';
 import { PDFPageProxy } from 'pdfjs-dist';
@@ -47,161 +47,8 @@ export abstract class CopyTask extends PDFPlusComponent {
         };
     }
 
-    public async run(params: TemplateEvaluationParams) {
-        let copiedText = '';
-        try {
-            copiedText = await this.evalTemplates(params);
-        } catch (error) {
-            new Notice(`${this.plugin.manifest.name}: An error occured while evaluating templates.\n> ${error}`, 10e3);
-            console.error(error);
-            return;
-        }
-        await navigator.clipboard.writeText(copiedText);
-        this.child.palette?.setStatus('Link copied');
-        const dest = this.computeDestination();
-        this.result = this.addChild(new CopyResult(this.plugin, this, copiedText, params, dest));
-    }
-
-    public onPaste(callback: (pasteTask: PasteTask) => any) {
-        this.callbacks.push(callback);
-        return this;
-    }
-
-    protected abstract evalTemplates(params: TemplateEvaluationParams): Promise<string>;
-
-    protected abstract computeDestination(): DestArray | string | null;
-}
-
-
-export class CopyResult extends PDFPlusComponent {
-    copyTask: CopyTask;
-    copiedText: string;
-    params: TemplateEvaluationParams;
-    dest: { array: DestArray } | { name: string } | null;
-    lastPastTask: PasteTask | null = null;
-
-    constructor(plugin: PDFPlus, copyTask: CopyTask, copiedText: string, params: TemplateEvaluationParams, dest: DestArray | string | null) {
-        super(plugin);
-        this.copyTask = copyTask;
-        this.copiedText = copiedText;
-        this.params = params;
-        this.dest = null;
-        if (Array.isArray(dest)) {
-            this.dest = { array: dest };
-        } else if (typeof dest === 'string') {
-            this.dest = { name: dest };
-        }
-        this.plugin.lastCopyResult = this;
-    }
-
-    onload() {
-        // we have to use Obsidian's editor-paste event instead of the browser's paste event
-        // because the browser's paste event is not fired when the paste happens inside an iframe (e.g. canvas)
-        this.registerEvent(this.app.workspace.on('editor-paste', this.onEditorPaste, this));
-
-        if (this.settings.autoPaste) {
-            // await new AutoPasteTask(this.plugin).run();
-        } else if (this.settings.autoFocus) {
-            // await new AutoFocusTask(this.plugin).run();
-        }
-    }
-
-    onunload() {
-        this.plugin.lastCopyResult = null;
-    }
-
-    async paste(params: Partial<TemplateEvaluationParams>) {
-        /* 
-         * !!!!!!!!!!!!!!!!!!!!!!!!!
-         * We CANNOT re-evaluate the templates because the template may contain some operations
-         * that cannot be repeated without side effects. For example: file creation, dialog opening, etc.
-         * 
-         * Therefore, template evaluation can be done only once - either when the use executes the copy command
-         * or when the user executes the paste command.
-         * 
-         * Moreover, considering that the same text selection/annotation/etc may be copied multiple times,
-         * it must be when the user executes the copy command.
-         * 
-         * それか、たとえば{{   }}は毎回再評価されるが{{{    }}}は最初の一回だけ評価されるとか、
-         * そういう仕組みを作るかもしれない。
-         * !!!!!!!!!!!!!!!!!!!!!!!!!
-         */
-        // const text = await this.copyTask.evalTemplates(...args);
-        // new PasteTask(this.plugin).paste(text);
-    }
-
-    private isClipboardDataFromThisCopyTask(clipboardData: DataTransfer): boolean {
-        const clipboardText = clipboardData.getData('text/plain');
-        // Get rid of the influences of the OS-dependent line endings
-        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
-        const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
-        const copiedTextNormalized = this.copiedText.replace(/\r\n/g, '\n');
-        return clipboardTextNormalized === copiedTextNormalized;
-    }
-
-    private onEditorPaste(evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) {
-        // From the Obsidian developer docs: 
-        // "Check for evt.defaultPrevented before attempting to handle this event, and return if it has been already handled."
-        if (evt.defaultPrevented) return;
-
-        if (!evt.clipboardData) return;
-
-        if (!this.isClipboardDataFromThisCopyTask(evt.clipboardData)) {
-            // Terminate this copy task if the clipboard has been overwritten
-            this.copyTask.unload();
-            return;
-        }
-
-        const mdContainer = MarkdownEditorContainer.wrap(this.plugin, info);
-
-        if (mdContainer) {
-            // Prevent the default paste behavior. Without this, the copied text will be pasted twice.
-            evt.preventDefault();
-
-            PasteTask.create(this.plugin, this, mdContainer)
-                .run();
-            return;
-        }
-
-        console.log('Failed to create a MarkdownEditorContainer');
-
-        let file = info.file;
-        let fileSaver: { save(): any } | null = null;
-        if (info instanceof MarkdownView || isEditableMarkdownEmbedWithFile(info)) {
-            fileSaver = info;
-        }
-        if (!file && isCanvasTextNodeEditor(info)) {
-            file = info.node.canvas.view.file;
-            fileSaver = info.node.canvas.view;
-        }
-        if (!file) return;
-
-        const sourcePath = info.file ? info.file.path : '';
-
-        this.plugin.lastPasteFile = file;
-
-        // TextFileView's file saving is debounced, so we need to
-        // explicitly save the new data right after pasting so that
-        // the backlink highlight will be visibile as soon as possible.
-        setTimeout(() => fileSaver && fileSaver.save());
-    }
-}
-
-
-export class PageLinkCopyTask extends CopyTask {
-    page: number; // 1-based
-
-    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number) {
-        super(plugin, child, file);
-        this.page = page;
-    }
-
     onload() {
         this.initializeTemplateProcessors();
-    }
-
-    getPageView() {
-        return this.child.getPage(this.page);
     }
 
     initializeTemplateProcessors() {
@@ -211,9 +58,8 @@ export class PageLinkCopyTask extends CopyTask {
     }
 
     initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
-        const { file, page, app, child, lib } = this;
+        const { file, app, child } = this;
         const pageCount = child.pdfViewer.pagesCount;
-        const pageLabel = child.getPage(page).pageLabel ?? ('' + page);
         const obsidian = getObsidianApi();
         // @ts-ignore
         const dv = app.plugins.plugins.dataview?.api;
@@ -223,8 +69,6 @@ export class PageLinkCopyTask extends CopyTask {
         processor.setVariables({
             file,
             pdf: file, // alias
-            page,
-            pageLabel,
             pageCount,
             // additional variables
             folder: file.parent,
@@ -251,16 +95,36 @@ export class PageLinkCopyTask extends CopyTask {
         // this.setVariable('linkedFileProperties', linkedFileProperties);
     }
 
-    computeSubpathWithoutColor(): string {
-        return `#page=${this.page}`;
+    public async run(params: TemplateEvaluationParams) {
+        let copiedText = '';
+        try {
+            copiedText = await this.evalTemplates(params);
+        } catch (error) {
+            new Notice(`${this.plugin.manifest.name}: An error occured while evaluating templates.\n> ${error}`, 10e3);
+            console.error(error);
+            return;
+        }
+        await navigator.clipboard.writeText(copiedText);
+        this.child.palette?.setStatus('Link copied');
+        const dest = this.computeDestination();
+        this.result = this.addChild(new CopyResult(this.plugin, this, copiedText, params, dest));
     }
 
-    async addTemplateVariables(params: TemplateEvaluationParams): Promise<Record<string, any>> {
+    public onPaste(callback: (pasteTask: PasteTask) => any) {
+        this.callbacks.push(callback);
+        return this;
+    }
+
+    protected abstract computeDestination(): DestArray | string | null;
+    
+    protected abstract computeSubpathWithoutColor(): string;
+    
+    protected async addTemplateVariables(params: TemplateEvaluationParams, display: string): Promise<Record<string, any>> {
         return {};
     }
 
-    async evalTemplates(params: TemplateEvaluationParams): Promise<string> {
-        const { file, page } = this;
+    protected async evalTemplates(params: TemplateEvaluationParams): Promise<string> {
+        const { file } = this;
         const { color, displayTextFormat, copyFormat, sourcePath } = params;
 
         const display = await this.templateProcessors['displayText']
@@ -282,10 +146,7 @@ export class PageLinkCopyTask extends CopyTask {
         }
         const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display || undefined).slice(1);
 
-        const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
-        const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined).slice(1);
-
-        const additionalVariables = await this.addTemplateVariables(params);
+        const additionalVariables = await this.addTemplateVariables(params, display);
 
         return await this.templateProcessors['body']
             .setVariables({
@@ -296,21 +157,55 @@ export class PageLinkCopyTask extends CopyTask {
                 link,
                 linktext,
                 linkWithDisplay,
-                linkToPage,
-                linkToPageWithDisplay,
                 ...additionalVariables,
             })
             .evalTemplate(copyFormat);
     }
+}
+
+
+abstract class AbstractPageLinkCopyTask extends CopyTask {
+    page: number; // 1-based
+
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number) {
+        super(plugin, child, file);
+        this.page = page;
+    }
+
+    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
+        super.initializeTemplateProcessor(processor);
+
+        const { page } = this;
+        const pageLabel = this.getPageView().pageLabel ?? ('' + page);
+
+        processor.setVariables({
+            page,
+            pageLabel,
+        });
+    }
+
+    getPageView() {
+        return this.child.getPage(this.page);
+    }
+
+    computeSubpathWithoutColor(): string {
+        return `#page=${this.page}`;
+    }
+
+    async addTemplateVariables(params: TemplateEvaluationParams, display: string): Promise<Record<string, any>> {
+        const { file, page } = this;
+        const { sourcePath } = params;
+        const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
+        const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined).slice(1);
+        return { linkToPage, linkToPageWithDisplay };
+    }
 
     computeDestination(): DestArray | string | null {
-        const { file, page } = this;
-        this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', null, null, null] };
-        return [page - 1, 'XYZ', null, null, null];
+        return [this.page - 1, 'XYZ', null, null, null];
     }
 }
 
-abstract class PageLinkWithTextCopyTask extends PageLinkCopyTask {
+abstract class PageLinkWithTextCopyTask extends AbstractPageLinkCopyTask {
     text: string;
 
     constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string) {
@@ -397,7 +292,6 @@ export class TextSelectionLinkCopyTask extends PageLinkWithTextCopyTask {
                     const left = item.transform[4];
                     const top = item.transform[5] + item.height;
                     if (typeof left === 'number' && typeof top === 'number') {
-                        this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
                         return [page - 1, 'XYZ', left, top, null];
                     }
                 }
@@ -409,7 +303,7 @@ export class TextSelectionLinkCopyTask extends PageLinkWithTextCopyTask {
 }
 
 
-export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
+export class RectangularSelectionLinkCopyTask extends AbstractPageLinkCopyTask {
     rect: Rect;
     _pdfPage: PDFPageProxy;
 
@@ -476,7 +370,7 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
         return pdfPage;
     }
 
-    async addTemplateVariables(params: TemplateEvaluationParams) {
+    async addTemplateVariables(params: TemplateEvaluationParams, display: string) {
         if (!this.settings.rectEmbedStaticImage) return {};
 
         if (this.settings.rectImageFormat === 'file') {
@@ -484,8 +378,8 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
             const useWikilinks = !this.app.vault.getConfig('useMarkdownLinks');
             const imageLinktext = useWikilinks ? imagePath : encodeLinktext(imagePath);
             const imageLink = useWikilinks ? `[[${imageLinktext}]]` : `[](${imageLinktext})`;
-            const display = getFilenameFromPath(imagePath);
-            const imageLinkWithDisplay = useWikilinks ? `[[${imageLinktext}|${display}]]` : `[${display}](${imageLinktext})`;
+            const imageName = getFilenameFromPath(imagePath);
+            const imageLinkWithDisplay = useWikilinks ? `[[${imageLinktext}|${imageName}]]` : `[${imageName}](${imageLinktext})`;
 
             // I do want to avoid side effects in this method, but I don't know how to do it here.
             this.onPaste(async (pasteTask) => {
@@ -494,7 +388,7 @@ export class RectangularSelectionLinkCopyTask extends PageLinkCopyTask {
                 }
             });
 
-            return { imagePath, imageLinktext, imageLink, display, imageLinkWithDisplay };
+            return { imagePath, imageLinktext, imageLink, display: imageName, imageLinkWithDisplay };
         }
 
         // rectImageFormat === 'data-url'
@@ -648,7 +542,7 @@ export class OutlineItemLinkCopyTask extends PageLinkWithTextCopyTask {
 
     static async create(plugin: PDFPlus, child: PDFViewerChild, item: PDFOutlineTreeNode) {
         const file = child.file;
-        if (!file) return;
+        if (!file) return null;
 
         const pdfJsDest = await item.getExplicitDestination();
         const page = await item.getPageNumber();
@@ -661,14 +555,184 @@ export class OutlineItemLinkCopyTask extends PageLinkWithTextCopyTask {
 }
 
 
+export class PageLinkCopyTask extends AbstractPageLinkCopyTask {
+    static create(plugin: PDFPlus, child: PDFViewerChild, page: number) {
+        const file = child.file;
+        if (!file) return null;
+        return plugin.addChild(new PageLinkCopyTask(plugin, child, file, page));
+    }
+}
+
+
+export class SearchLinkCopyTask extends CopyTask {
+    query: string;
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, query: string) {
+        super(plugin, child, file);
+        this.query = query;
+    }
+
+    static create(plugin: PDFPlus, child: PDFViewerChild, query: string) {
+        const file = child.file;
+        if (!file) return null;
+        return plugin.addChild(new SearchLinkCopyTask(plugin, child, file, query));
+    }
+
+    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
+        super.initializeTemplateProcessor(processor);
+        processor.setVariables({
+            query: this.query,
+        });
+    }
+
+    computeDestination() {
+        return null;
+    }
+
+    computeSubpathWithoutColor() {
+        return `#search=${this.query}`;
+    }
+}
+
+
+export class CopyResult extends PDFPlusComponent {
+    copyTask: CopyTask;
+    copiedText: string;
+    params: TemplateEvaluationParams;
+    dest: { type: 'explicit', array: DestArray } | { type: 'named', name: string } | null;
+    lastPastTask: PasteTask | null = null;
+
+    constructor(plugin: PDFPlus, copyTask: CopyTask, copiedText: string, params: TemplateEvaluationParams, dest: DestArray | string | null) {
+        super(plugin);
+        this.copyTask = copyTask;
+        this.copiedText = copiedText;
+        this.params = params;
+        this.dest = null;
+        if (Array.isArray(dest)) {
+            this.dest = { type: 'explicit', array: dest };
+        } else if (typeof dest === 'string') {
+            this.dest = { type: 'named', name: dest };
+        }
+        this.plugin.lastCopyResult = this;
+    }
+
+    onload() {
+        // we have to use Obsidian's editor-paste event instead of the browser's paste event
+        // because the browser's paste event is not fired when the paste happens inside an iframe (e.g. canvas)
+        this.registerEvent(this.app.workspace.on('editor-paste', this.onEditorPaste, this));
+
+        if (this.settings.autoPaste) {
+            // await new AutoPasteTask(this.plugin).run();
+        } else if (this.settings.autoFocus) {
+            // await new AutoFocusTask(this.plugin).run();
+        }
+    }
+
+    onunload() {
+        this.plugin.lastCopyResult = null;
+    }
+
+    async paste(params: Partial<TemplateEvaluationParams>) {
+        /* 
+         * !!!!!!!!!!!!!!!!!!!!!!!!!
+         * We CANNOT re-evaluate the templates because the template may contain some operations
+         * that cannot be repeated without side effects. For example: file creation, dialog opening, etc.
+         * 
+         * Therefore, template evaluation can be done only once - either when the use executes the copy command
+         * or when the user executes the paste command.
+         * 
+         * Moreover, considering that the same text selection/annotation/etc may be copied multiple times,
+         * it must be when the user executes the copy command.
+         * 
+         * それか、たとえば{{   }}は毎回再評価されるが{{{    }}}は最初の一回だけ評価されるとか、
+         * そういう仕組みを作るかもしれない。
+         * !!!!!!!!!!!!!!!!!!!!!!!!!
+         */
+        // const text = await this.copyTask.evalTemplates(...args);
+        // new PasteTask(this.plugin).paste(text);
+    }
+
+    private isClipboardDataFromThisCopyTask(clipboardData: DataTransfer): boolean {
+        const clipboardText = clipboardData.getData('text/plain');
+        // Get rid of the influences of the OS-dependent line endings
+        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/54
+        const clipboardTextNormalized = clipboardText.replace(/\r\n/g, '\n');
+        const copiedTextNormalized = this.copiedText.replace(/\r\n/g, '\n');
+        return clipboardTextNormalized === copiedTextNormalized;
+    }
+
+    private onEditorPaste(evt: ClipboardEvent, editor: Editor, info: MarkdownView | MarkdownFileInfo) {
+        // From the Obsidian developer docs: 
+        // "Check for evt.defaultPrevented before attempting to handle this event, and return if it has been already handled."
+        if (evt.defaultPrevented) return;
+
+        if (!evt.clipboardData) return;
+
+        if (!this.isClipboardDataFromThisCopyTask(evt.clipboardData)) {
+            // Terminate this copy task if the clipboard has been overwritten
+            this.copyTask.unload();
+            return;
+        }
+
+        const mdContainer = MarkdownEditorContainer.wrap(this.plugin, info);
+
+        if (mdContainer) {
+            // Prevent the default paste behavior. Without this, the copied text will be pasted twice.
+            evt.preventDefault();
+
+            PasteTask.create(this.plugin, this, mdContainer)
+                .run();
+            return;
+        }
+
+        console.log('Failed to create a MarkdownEditorContainer');
+
+        let file = info.file;
+        let fileSaver: { save(): any } | null = null;
+        if (info instanceof MarkdownView || isEditableMarkdownEmbedWithFile(info)) {
+            fileSaver = info;
+        }
+        if (!file && isCanvasTextNodeEditor(info)) {
+            file = info.node.canvas.view.file;
+            fileSaver = info.node.canvas.view;
+        }
+        if (!file) return;
+
+        const sourcePath = info.file ? info.file.path : '';
+
+        // this.plugin.lastPasteFile = file;
+
+        // TextFileView's file saving is debounced, so we need to
+        // explicitly save the new data right after pasting so that
+        // the backlink highlight will be visibile as soon as possible.
+        setTimeout(() => fileSaver && fileSaver.save());
+    }
+}
+
+
 export class PasteTask extends PDFPlusComponent {
     copyResult: CopyResult;
     mdContainer: MarkdownEditorContainer;
+    fileInfo: { type: 'markdown', file: TFile }
+        | { type: 'canvas', file: TFile, nodeId: string }
+        | null;
 
     constructor(plugin: PDFPlus, copyResult: CopyResult, mdContainer: MarkdownEditorContainer) {
         super(plugin);
         this.copyResult = copyResult;
         this.mdContainer = mdContainer;
+
+        if (mdContainer instanceof CanvasTextNodeEditorContainer) {
+            this.fileInfo = mdContainer.canvasFile ? {
+                type: 'canvas',
+                file: mdContainer.canvasFile,
+                nodeId: mdContainer.node.id,
+            } : null;
+        } else {
+            this.fileInfo = mdContainer.sourceFile ? {
+                type: 'markdown',
+                file: mdContainer.sourceFile,
+            } : null;
+        }
     }
 
     get copyTask() {
