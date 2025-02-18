@@ -51,7 +51,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         this.initializeTemplateProcessors();
     }
 
-    initializeTemplateProcessors() {
+    private initializeTemplateProcessors() {
         for (const processor of Object.values(this.templateProcessors)) {
             this.initializeTemplateProcessor(processor);
         }
@@ -77,6 +77,7 @@ export abstract class CopyTask extends PDFPlusComponent {
             obsidian,
             dv,
             quickAddApi,
+            ...this.getAdditionalTemplateVariablesForAllProcessors(),
         });
 
         // TODO: take care of the following
@@ -116,10 +117,14 @@ export abstract class CopyTask extends PDFPlusComponent {
     }
 
     protected abstract computeDestination(): DestArray | string | null;
-    
+
     protected abstract computeSubpathWithoutColor(): string;
-    
-    protected async addTemplateVariables(params: TemplateEvaluationParams, display: string): Promise<Record<string, any>> {
+
+    protected getAdditionalTemplateVariablesForAllProcessors(): Record<string, any> {
+        return {};
+    }
+
+    protected async getAdditionalTemplateVariablesForBodyProcessor(params: TemplateEvaluationParams, display: string): Promise<Record<string, any>> {
         return {};
     }
 
@@ -146,7 +151,7 @@ export abstract class CopyTask extends PDFPlusComponent {
         }
         const linkWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, subpath, display || undefined).slice(1);
 
-        const additionalVariables = await this.addTemplateVariables(params, display);
+        const additionalVariables = await this.getAdditionalTemplateVariablesForBodyProcessor(params, display);
 
         return await this.templateProcessors['body']
             .setVariables({
@@ -172,18 +177,6 @@ abstract class AbstractPageLinkCopyTask extends CopyTask {
         this.page = page;
     }
 
-    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
-        super.initializeTemplateProcessor(processor);
-
-        const { page } = this;
-        const pageLabel = this.getPageView().pageLabel ?? ('' + page);
-
-        processor.setVariables({
-            page,
-            pageLabel,
-        });
-    }
-
     getPageView() {
         return this.child.getPage(this.page);
     }
@@ -192,12 +185,27 @@ abstract class AbstractPageLinkCopyTask extends CopyTask {
         return `#page=${this.page}`;
     }
 
-    async addTemplateVariables(params: TemplateEvaluationParams, display: string): Promise<Record<string, any>> {
+    getAdditionalTemplateVariablesForAllProcessors() {
+        const { page } = this;
+        const pageLabel = this.getPageView().pageLabel ?? ('' + page);
+
+        return {
+            ...super.getAdditionalTemplateVariablesForAllProcessors(),
+            page,
+            pageLabel,
+        };
+    }
+
+    async getAdditionalTemplateVariablesForBodyProcessor(params: TemplateEvaluationParams, display: string): Promise<Record<string, any>> {
         const { file, page } = this;
         const { sourcePath } = params;
         const linkToPage = this.app.fileManager.generateMarkdownLink(file, sourcePath, `#page=${page}`).slice(1);
         const linkToPageWithDisplay = this.lib.generateMarkdownLink(file, sourcePath, `#page=${page}`, display || undefined).slice(1);
-        return { linkToPage, linkToPageWithDisplay };
+        return {
+            ...await super.getAdditionalTemplateVariablesForBodyProcessor(params, display),
+            linkToPage,
+            linkToPageWithDisplay
+        };
     }
 
     computeDestination(): DestArray | string | null {
@@ -213,14 +221,13 @@ abstract class PageLinkWithTextCopyTask extends AbstractPageLinkCopyTask {
         this.text = text;
     }
 
-    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
-        super.initializeTemplateProcessor(processor);
-
+    getAdditionalTemplateVariablesForAllProcessors() {
         const { text } = this;
-        processor.setVariables({
+        return {
+            ...super.getAdditionalTemplateVariablesForAllProcessors(),
             text,
             selection: text,
-        });
+        };
     }
 }
 
@@ -370,8 +377,10 @@ export class RectangularSelectionLinkCopyTask extends AbstractPageLinkCopyTask {
         return pdfPage;
     }
 
-    async addTemplateVariables(params: TemplateEvaluationParams, display: string) {
-        if (!this.settings.rectEmbedStaticImage) return {};
+    async getAdditionalTemplateVariablesForBodyProcessor(params: TemplateEvaluationParams, display: string) {
+        const additionalVariables = await super.getAdditionalTemplateVariablesForBodyProcessor(params, display);
+
+        if (!this.settings.rectEmbedStaticImage) return additionalVariables;
 
         if (this.settings.rectImageFormat === 'file') {
             const imagePath = await this.computeImagePath();
@@ -388,14 +397,17 @@ export class RectangularSelectionLinkCopyTask extends AbstractPageLinkCopyTask {
                 }
             });
 
-            return { imagePath, imageLinktext, imageLink, display: imageName, imageLinkWithDisplay };
+            return {
+                ...additionalVariables,
+                imagePath, imageLinktext, imageLink, display: imageName, imageLinkWithDisplay
+            };
         }
 
         // rectImageFormat === 'data-url'
         const pdfPage = await this.getPdfPage();
         const extension = this.settings.rectImageExtension;
         const dataUrl = await this.lib.pdfPageToImageDataUrl(pdfPage, { type: `image/${extension}`, cropRect: this.rect });
-        return { dataUrl };
+        return { ...additionalVariables, dataUrl };
     }
 
     async computeImagePath() {
@@ -485,10 +497,13 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
         return super.evalTemplates({ ...params, color: this.getColorStr() });
     }
 
-    async addTemplateVariables() {
+    getAdditionalTemplateVariablesForAllProcessors() {
         let comment = this.annotData.contentsObj?.str ?? '';
         comment = this.lib.toSingleLine(comment);
-        return { comment }
+        return {
+            ...super.getAdditionalTemplateVariablesForAllProcessors(),
+            comment
+        }
     }
 
     computeSubpathWithoutColor(): string {
@@ -516,12 +531,12 @@ export class AnnotationLinkCopyTask extends PageLinkWithTextCopyTask {
 }
 
 
-export class OutlineItemLinkCopyTask extends PageLinkWithTextCopyTask {
+abstract class AbstractOffsetLinkCopyTask extends AbstractPageLinkCopyTask {
     explicitDest: DestArray;
     namedDest?: string;
 
-    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, text: string, explicitDest: DestArray, namedDest?: string) {
-        super(plugin, child, file, page, text);
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, explicitDest: DestArray, namedDest?: string) {
+        super(plugin, child, file, page);
         this.explicitDest = explicitDest;
         this.namedDest = namedDest;
     }
@@ -534,13 +549,33 @@ export class OutlineItemLinkCopyTask extends PageLinkWithTextCopyTask {
         return this.namedDest ?? this.explicitDest;
     }
 
-    async addTemplateVariables() {
+    getAdditionalTemplateVariablesForAllProcessors() {
         return {
+            ...super.getAdditionalTemplateVariablesForAllProcessors(),
             name: this.namedDest ?? '',
         }
     }
+}
+
+
+export class OffsetLinkCopyTask extends AbstractOffsetLinkCopyTask {
+    static create(plugin: PDFPlus, child: PDFViewerChild, page: number, explicitDest: DestArray, namedDest?: string) {
+        const file = child.file;
+        if (!file) return null;
+        return plugin.addChild(new OffsetLinkCopyTask(plugin, child, file, page, explicitDest, namedDest));
+    }
+}
+
+
+export class OutlineItemLinkCopyTask extends AbstractOffsetLinkCopyTask {
+    title: string;
+
+    constructor(plugin: PDFPlus, child: PDFViewerChild, file: TFile, page: number, title: string, explicitDest: DestArray, namedDest?: string) {
+        super(plugin, child, file, page, explicitDest, namedDest);
+    }
 
     static async create(plugin: PDFPlus, child: PDFViewerChild, item: PDFOutlineTreeNode) {
+
         const file = child.file;
         if (!file) return null;
 
@@ -551,6 +586,14 @@ export class OutlineItemLinkCopyTask extends PageLinkWithTextCopyTask {
         const text = item.item.title;
 
         return plugin.addChild(new OutlineItemLinkCopyTask(plugin, child, file, page, text, dest, name));
+    }
+
+    getAdditionalTemplateVariablesForAllProcessors() {
+        return {
+            ...super.getAdditionalTemplateVariablesForAllProcessors(),
+            title: this.title,
+            text: this.title,
+        };
     }
 }
 
@@ -577,11 +620,11 @@ export class SearchLinkCopyTask extends CopyTask {
         return plugin.addChild(new SearchLinkCopyTask(plugin, child, file, query));
     }
 
-    initializeTemplateProcessor(processor: AsyncTemplateProcessor) {
-        super.initializeTemplateProcessor(processor);
-        processor.setVariables({
+    getAdditionalTemplateVariablesForAllProcessors() {
+        return {
+            ...super.getAdditionalTemplateVariablesForAllProcessors(),
             query: this.query,
-        });
+        };
     }
 
     computeDestination() {
