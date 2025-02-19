@@ -358,7 +358,10 @@ export function subpathToParams(subpath: string): URLSearchParams {
     return new URLSearchParams(subpath);
 }
 
-export function parsePDFSubpath(subpath: string): { page: number } | { page: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number } | { page: number, annotation: string } | null {
+export function parsePDFSubpath(subpath: string): { type: 'page', page: number }
+    | { type: 'selection', page: number, beginIndex: number, beginOffset: number, endIndex: number, endOffset: number }
+    | { type: 'annotation', page: number, annotation: string }
+    | null {
     const params = subpathToParams(subpath);
     if (!params.has('page')) return null;
     const page = +params.get('page')!;
@@ -367,13 +370,13 @@ export function parsePDFSubpath(subpath: string): { page: number } | { page: num
         const selectionPos = params.get('selection')!.split(',').map((s) => parseInt(s.trim()));
         if (selectionPos.length !== 4 || selectionPos.some((pos) => isNaN(pos))) return null;
         const [beginIndex, beginOffset, endIndex, endOffset] = selectionPos;
-        return { page, beginIndex, beginOffset, endIndex, endOffset };
+        return { type: 'selection', page, beginIndex, beginOffset, endIndex, endOffset };
     }
     if (params.has('annotation')) {
         const annotation = params.get('annotation')!;
-        return { page, annotation };
+        return { type: 'annotation', page, annotation };
     }
-    return { page };
+    return { type: 'page', page };
 }
 
 export function paramsToSubpath(params: Record<string, any>) {

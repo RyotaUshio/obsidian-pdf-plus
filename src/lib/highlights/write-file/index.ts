@@ -3,7 +3,7 @@ import { Notice, TFile } from 'obsidian';
 import PDFPlus from 'main';
 import { PdfLibIO } from './pdf-lib';
 import { PDFPlusLibSubmodule } from 'lib/submodule';
-import { getTextLayerInfo, parsePDFSubpath } from 'utils';
+import { getTextLayerInfo } from 'utils';
 import { DestArray, PDFViewerChild, Rect } from 'typings';
 
 

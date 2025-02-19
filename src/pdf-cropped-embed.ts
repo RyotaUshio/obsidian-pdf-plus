@@ -1,7 +1,8 @@
 import { App, Component, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
-import { Embed, EmbedContext, Rect } from 'typings';
+import { AnnotationElement, Embed, EmbedContext, Rect } from 'typings';
+import { parsePDFSubpath } from 'utils';
 
 
 export class PDFCroppedEmbed extends Component implements Embed {
@@ -25,6 +26,16 @@ export class PDFCroppedEmbed extends Component implements Embed {
         const doc = await this.lib.loadPDFDocument(this.file);
         this.register(() => doc.destroy());
         const page = await doc.getPage(this.pageNumber);
+        
+        const result = parsePDFSubpath(this.subpath);
+        if (result && result.type === 'annotation') {
+            const annotations = await page.getAnnotations();
+            const annotation: AnnotationElement['data'] = annotations.find((annot) => annot.id === result.annotation);
+            if (annotation && Array.isArray(annotation.rect)) {
+                this.rect = window.pdfjsLib.Util.normalizeRect(annotation.rect);
+            }
+        } 
+        
         const dataUrl = await this.lib.pdfPageToImageDataUrl(page, {
             type: 'image/bmp',
             encoderOptions: 1.0,
