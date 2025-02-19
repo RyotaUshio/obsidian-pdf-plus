@@ -295,9 +295,9 @@ export class TextSelectionLinkCopyTask extends PageLinkWithTextCopyTask {
     }
 
     computeDestination(): DestArray | null {
-        const { file, page, range } = this;
+        const { page, range } = this;
 
-        const textLayer = this.child.getPage(page).textLayer;
+        const textLayer = this.getPageView().textLayer;
         if (textLayer) {
             const textLayerInfo = getTextLayerInfo(textLayer);
             if (textLayerInfo) {
