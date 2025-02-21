@@ -460,8 +460,8 @@ export class ColorPalette extends PDFPlusComponent {
         const cropButtonEl = this.cropButtonEl;
         if (!cropButtonEl) return;
 
-        const child = this.lib.getPDFViewerChildAssociatedWithNode(this.paletteEl!);
-        if (!child || !child.pdfViewer.dom?.viewerEl) return;
+        const child = this.child;
+        if (!child.pdfViewer.dom?.viewerEl) return;
 
         const viewerEl = child.pdfViewer.dom.viewerEl;
 

@@ -477,8 +477,9 @@ export default class PDFPlus extends Plugin {
 				const pageNumber = parseInt(params.get('page')!);
 				const rect = params.get('rect')!.split(',').map((n) => parseFloat(n));
 				const width = params.has('width') ? parseFloat(params.get('width')!) : undefined;
+				const annotationId = params.get('annotation') ?? undefined;
 				if (Number.isInteger(pageNumber) && rect.length === 4) {
-					embed = new PDFCroppedEmbed(this, ctx, file, subpath, pageNumber, rect as Rect, width);
+					embed = new PDFCroppedEmbed(this, ctx, file, subpath, pageNumber, rect as Rect, width, annotationId);
 				}
 			}
 

@@ -1,7 +1,7 @@
 import { Setting, TFile, TextAreaComponent, MarkdownRenderer, RGB, ColorComponent, DropdownComponent } from 'obsidian';
 
 import PDFPlus from 'main';
-import { hexToRgb, hookInternalLinkMouseEventHandlers, rgbToHex } from 'utils';
+import { getModifierNameInPlatform, hexToRgb, hookInternalLinkMouseEventHandlers, rgbToHex } from 'utils';
 import { PDFDict } from '@cantoo/pdf-lib';
 import { PDFPlusModal } from 'modals';
 
@@ -81,6 +81,10 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
 
         this.containerEl.addClass('pdf-plus-annotation-edit-modal');
         this.buttonContainerEl = this.modalEl.createDiv();
+
+        this.scope.register(['Mod'], 'Enter', () => {
+            this.onSaveButtonClick();
+        });
     }
 
     async readOldValues() {
@@ -279,7 +283,21 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                     if (this.plugin.settings.renderMarkdownInStickyNote) {
                         setting.setDesc(`Press ${this.app.hotkeyManager.printHotkeyForCommand('markdown:toggle-preview')} to toggle preview.`);
                     } else {
-                        setting.setDesc('Tip: There is an option called "Render markdown in annotation popups when the annotation has text contents".');
+                        setting.setDesc(createFragment((el) => {
+                            const anchorEl = createEl('a', {
+                                text: '"Render markdown in annotation popups when the annotation has text contents"',
+                             }, (el) => {
+                                el.onclick = (evt) => {
+                                    const tab = this.plugin.openSettingTab();
+                                    tab.scrollTo('renderMarkdownInStickyNote', { behavior: 'smooth' });
+                                    tab.updateHeaderElClassOnScroll(evt);
+                                };
+                             });
+                                
+                            el.append('Tip: There is an option called ');
+                            el.append(anchorEl);
+                            el.append('.');
+                        }));
                     }
                 })
                 .addTextArea((textarea) => {
@@ -308,8 +326,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                     .setButtonText('Save')
                     .setCta()
                     .onClick(() => {
-                        this.writeNewValues();
-                        this.close();
+                        this.onSaveButtonClick();
                     });
             })
             .addButton((button) => {
@@ -317,7 +334,16 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
                     .setButtonText('Cancel')
                     .onClick(() => this.close());
             })
-            .then((setting) => setting.setClass('no-border'));
+            .setClass('no-border');
+        this.buttonContainerEl.createDiv({
+            cls: 'pdf-plus-annotation-edit-modal-save-instructions',
+            text: `Press ${getModifierNameInPlatform('Mod')} + Enter to save.`
+        });
+    }
+
+    onSaveButtonClick() {
+        this.writeNewValues();
+        this.close();
     }
 
     async onOpen() {

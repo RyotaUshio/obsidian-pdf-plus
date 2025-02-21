@@ -236,7 +236,9 @@ export class BacklinkPanePDFPageTracker extends PDFPlusComponent {
             if (this.lib.isPDFView(view)) {
                 view.viewer.then((child) => {
                     this.renderer.backlinkDom.filter = (file, linkCache) => {
-                        return child.pdfViewer.pdfViewer ? this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache) : true;
+                        return (child.pdfViewer && child.pdfViewer.pdfViewer)
+                            ? this.filter(child.pdfViewer.pdfViewer.currentPageNumber, linkCache)
+                            : true;
                     };
                     this.updateBacklinkDom();
 

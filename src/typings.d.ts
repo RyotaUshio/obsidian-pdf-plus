@@ -149,7 +149,6 @@ interface PDFViewerChild {
     // Added by this plugin //
     //////////////////////////
     component?: Component;
-    parent?: PDFViewerComponent;
     hoverPopover: HoverPopover | null;
     /** The color palette (and other PDF++-related UI elements) mounted on this PDF viewer. */
     palette: ColorPalette | null;

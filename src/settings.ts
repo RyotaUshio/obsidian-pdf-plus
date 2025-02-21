@@ -132,7 +132,6 @@ export interface PDFPlusSettings {
 	colorPaletteInEmbedToolbar: boolean;
 	quietColorPaletteTooltip: boolean;
 	showStatusInToolbar: boolean;
-	/** Currently not working due to the major refactor in 0.37.0. */
 	highlightColorSpecifiedOnly: boolean;
 	doubleClickHighlightToOpenBacklink: boolean;
 	hoverHighlightAction: keyof typeof HOVER_HIGHLIGHT_ACTIONS;
@@ -1048,7 +1047,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						this.plugin.settings[settingName] = getNewAttachmentFolderPath();
 						await this.plugin.saveSettings();
 					});
-				new FuzzyFolderSuggest(this.app, text.inputEl);
+				new FuzzyFolderSuggest(this.app, text.inputEl)
+					.onSelect(() => {
+						setTimeout(async () => {
+							// @ts-ignore
+							this.plugin.settings[settingName] = getNewAttachmentFolderPath();
+							await this.plugin.saveSettings();
+						});
+					});
 				folderPathText = text;
 			});
 		const subfolderPathSetting = this.addSetting()
@@ -1640,7 +1646,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					inputEl.toggleClass('error', !inputEl.value);
 				});
 			// this.addToggleSetting('enableEditEncryptedPDF')
-				// .setName('Enable editing encrypted PDF files');
+			// .setName('Enable editing encrypted PDF files');
 		}
 
 
@@ -1740,24 +1746,20 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				.setClass('no-border');
 		}
 
-		// Commented out because the `highlightColorSpecifiedOnly` option is currently not working
-		// due to the major refactoring of the backlink highlighting feature in 0.37.0.
-		// TODO: Fix this!
+		this.addToggleSetting('highlightColorSpecifiedOnly', () => this.redisplay())
+			.setName('Highlight a backlink only if a color is specified')
+			.setDesc('By default, all backlinks are highlighted. If this option is enabled, a backlink will be highlighted only when a color is specified in the link text.');
 
-		// this.addToggleSetting('highlightColorSpecifiedOnly', () => this.redisplay())
-		// 	.setName('Highlight a backlink only if a color is specified')
-		// 	.setDesc('By default, all backlinks are highlighted. If this option is enabled, a backlink will be highlighted only when a color is specified in the link text.');
-
-		// if (!this.plugin.settings.highlightColorSpecifiedOnly) {
-		this.addDropdownSetting(
-			'defaultColor',
-			['', ...Object.keys(this.plugin.settings.colors)],
-			(option) => option || 'Obsidian default',
-			() => this.plugin.loadStyle()
-		)
-			.setName('Default highlight color')
-			.setDesc('If no color is specified in link text, this color will be used.');
-		// }
+		if (!this.plugin.settings.highlightColorSpecifiedOnly) {
+			this.addDropdownSetting(
+				'defaultColor',
+				['', ...Object.keys(this.plugin.settings.colors)],
+				(option) => option || 'Obsidian default',
+				() => this.plugin.loadStyle()
+			)
+				.setName('Default highlight color')
+				.setDesc('If no color is specified in link text, this color will be used.');
+		}
 
 		this.addHeading('Backlink indicator bounding rectangles', 'backlink-bounding-rect');
 		this.addToggleSetting('showBoundingRectForBacklinkedAnnot')

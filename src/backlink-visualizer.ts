@@ -402,6 +402,11 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     }
 
     processSelection(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        if (this.settings.highlightColorSpecifiedOnly) {
+            caches = new Set(Array.from(caches).filter((cache) => cache.getColor()));
+            if (!caches.size) return;
+        }
+
         super.processSelection(pageNumber, id, caches);
 
         const pageView = this.child.getPage(pageNumber);
@@ -511,6 +516,12 @@ export class PDFViewerBacklinkVisualizer extends PDFBacklinkVisualizer implement
     }
 
     processFitR(pageNumber: number, id: string, caches: Set<PDFBacklinkCache>) {
+        // If very item of `caches` also has "annotation" parameter (i.e. "...&annotation=...&rect=..."),
+        // it means  that the annotation is a Square annotation, and the "rect" parameter is used
+        // just for the purpose of embedding the region in notes. Therefore, we don't need to visualize it in the PDF viewer.
+        caches = new Set(Array.from(caches).filter((cache) => !cache.annotation));
+        if (!caches.size) return;
+
         super.processFitR(pageNumber, id, caches);
 
         const pageView = this.child.getPage(pageNumber);

@@ -75,6 +75,9 @@ const reloadPDFViewerComponent = (viewer: PDFViewerComponent, file: TFile | null
     const oldEscapeHandler = viewer.scope.keys.find((handler) => handler.modifiers === '' && handler.key === 'Escape');
     if (oldEscapeHandler) viewer.scope.unregister(oldEscapeHandler);
 
+    // I thought the following line should be replaced by `await loadComponentAsync(viewer)` (with this function marked as async),
+    // but it seems that it works fine without it.
+    // So I'm leaving it as it is for now following the spirit of "if it ain't broke, don't fix it".
     viewer.load();
     if (file) viewer.loadFile(file, subpath);
 };
@@ -86,7 +89,6 @@ const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerC
                 const ret = await old.call(this, file, subpath);
 
                 this.then((child) => {
-                    child.parent = this;
                     if (!this.visualizer || this.visualizer.file !== file) {
                         this.visualizer?.unload();
                         this.visualizer = this.addChild(PDFViewerBacklinkVisualizer.create(plugin, file, child));
@@ -110,7 +112,7 @@ const patchPDFViewerComponent = (plugin: PDFPlus, pdfViewerComponent: PDFViewerC
                         return false;
                     });
                 }
-                
+
                 VimBindings.register(plugin, this);
 
                 return ret;
@@ -212,8 +214,13 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 addColorPaletteToToolbar();
                 plugin.on('update-dom', addColorPaletteToToolbar);
 
-                // Use !isMobile, not isDesktopApp, because in app.js, PDFViewerChild.onMobileCopy is called when isMobile is true.
-                if (!Platform.isMobile) {
+                if (// Use !isMobile, not isDesktopApp, because in app.js, PDFViewerChild.onMobileCopy is called when isMobile is true.
+                    !Platform.isMobile
+                    // Without this, the following error can occur when opening a canvas file containing a PDF file node after initializing the plugin
+                    // using a non-canvas PDF viewer.
+                    // TypeError: Cannot read properties of null (reading 'eventBus')
+                    && this.pdfViewer
+                ) {
                     const eventBus = this.pdfViewer.eventBus;
                     if (eventBus) {
                         eventBus.on('textlayerrendered', ({ source: pageView }) => {
@@ -259,6 +266,19 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         },
         loadFile(old) {
             return async function (this: PDFViewerChild, file: TFile, subpath?: string) {
+                // Without this, if the plugin is loaded with a PDF embed open, `loadFile` seems to be called
+                // before `load` (in the second half of PDFViewerComponent.onload, the callback functions in `this.next`
+                // are called and `child.loadFile()` is registered as one of them in `PDFViewerComponent.prototype.loadFile`.
+                // I'm not sure why this happens even after calling `PDFViewerComponent.prototype.unload` which clears `this.next`).
+                // This causes the `pdfViewer` property to be undefined and the following error to occur:
+                // - TypeError: Cannot read properties of null (reading 'isEmbed')
+                // - TypeError: Cannot read properties of null (reading 'eventBus')
+                // (also reported in https://github.com/RyotaUshio/obsidian-pdf-plus/issues/315)
+                // In fact, Obsidian's original `loadFile` method also has this condition check.
+                if (this.unloaded || !this.pdfViewer) {
+                    return;
+                }
+
                 if (!this.component) {
                     this.component = plugin.addChild(new Component());
                 }
