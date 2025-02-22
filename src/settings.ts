@@ -1033,7 +1033,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					return;
 				}
 				locationDropdown.setValue('folder');
-				folderPathText.setValue(value !== defaultSubfolder ? defaultSubfolder : '');
+				folderPathText.setValue(value !== defaultSubfolder ? value : '');
 				return;
 			}
 			locationDropdown.setValue('current');
@@ -1059,7 +1059,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 						this.plugin.settings[settingName] = getNewAttachmentFolderPath();
 						await this.plugin.saveSettings();
 					});
-				new FuzzyFolderSuggest(this.app, text.inputEl);
+				new FuzzyFolderSuggest(this.app, text.inputEl)
+					.onSelect(() => {
+						setTimeout(async () => {
+							// @ts-ignore
+							this.plugin.settings[settingName] = getNewAttachmentFolderPath();
+							await this.plugin.saveSettings();
+						});
+					});
 				folderPathText = text;
 			});
 		const subfolderPathSetting = this.addSetting()
