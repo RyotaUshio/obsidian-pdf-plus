@@ -1021,7 +1021,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					return;
 				}
 				locationDropdown.setValue('folder');
-				folderPathText.setValue(value !== defaultSubfolder ? defaultSubfolder : '');
+				folderPathText.setValue(value !== defaultSubfolder ? value : '');
 				return;
 			}
 			locationDropdown.setValue('current');
