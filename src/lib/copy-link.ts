@@ -459,7 +459,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                             const doc = await this.lib.loadPDFDocument(file);
                             page = await doc.getPage(pageNumber);
                         }
-                        const buffer = await this.lib.pdfPageToImageArrayBuffer(page, { type: `image/${extension}`, cropRect: rect });
+                        const buffer = await this.lib.pdfPageToImageArrayBuffer(page, { type: `image/${extension}`, cropRect: rect, renderParams: this.lib.getOptionalRenderParameters() });
                         return await this.app.vault.createBinary(imagePath, buffer);
                     };
                     if (autoPaste) {
