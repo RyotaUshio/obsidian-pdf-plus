@@ -21,22 +21,6 @@ import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
 import * as utils from 'utils';
 import { DummyFileManager } from './dummy-file-manager';
-import { RenderParameters } from 'pdfjs-dist/types/src/display/api';
-
-
-type OptionalRenderParameters = Omit<RenderParameters, 'canvasContext' | 'viewport' | 'transform'>
-    & {
-        // Added by Obsidian in their customized PDF.js
-        invert?: boolean;
-    };
-
-interface PDFPageToImageOptions {
-    type?: string;
-    encoderOptions?: number;
-    resolution?: number;
-    cropRect?: Rect;
-    renderParams?: OptionalRenderParameters;
-}
 
 
 export class PDFPlusLib {
@@ -899,7 +883,7 @@ export class PDFPlusLib {
         return new Promise<void>((resolve) => this.app.metadataCache.onCleanCache(resolve));
     }
 
-    async renderPDFPageToCanvas(page: PDFPageProxy, resolution?: number, renderParams: OptionalRenderParameters = {}): Promise<HTMLCanvasElement> {
+    async renderPDFPageToCanvas(page: PDFPageProxy, resolution?: number): Promise<HTMLCanvasElement> {
         const canvas = createEl('canvas');
         const canvasContext = canvas.getContext('2d')!;
 
@@ -918,7 +902,7 @@ export class PDFPlusLib {
 
         const transform = [outputScale, 0, 0, outputScale, 0, 0];
 
-        await page.render({ canvasContext, transform, viewport, ...renderParams }).promise;
+        await page.render({ canvasContext, transform, viewport }).promise;
 
         return canvas;
     }
@@ -930,7 +914,7 @@ export class PDFPlusLib {
      * - resolution: The resolution of the PDF page rendering.
      * - cropRect: The rectangle to crop the PDF page to. The coordinates are in PDF space.
      */
-    async pdfPageToImageDataUrl(page: PDFPageProxy, options?: PDFPageToImageOptions): Promise<string> {
+    async pdfPageToImageDataUrl(page: PDFPageProxy, options?: { type?: string, encoderOptions?: number, resolution?: number, cropRect?: Rect }): Promise<string> {
         const [left, bottom, right, top] = page.view;
         const pageWidth = right - left;
         const pageHeight = top - bottom;
@@ -946,8 +930,7 @@ export class PDFPlusLib {
         }
         const cropRect = options?.cropRect;
 
-        const renderParams = options?.renderParams;
-        const canvas = await this.renderPDFPageToCanvas(page, resolution, renderParams);
+        const canvas = await this.renderPDFPageToCanvas(page, resolution);
 
         if (!cropRect) return canvas.toDataURL(type, encoderOptions);
 
@@ -967,19 +950,11 @@ export class PDFPlusLib {
     /**
      * @param options Supports the same options as pdfPageToImageDataUrl.
      */
-    async pdfPageToImageArrayBuffer(page: PDFPageProxy, options?: PDFPageToImageOptions): Promise<ArrayBuffer> {
+    async pdfPageToImageArrayBuffer(page: PDFPageProxy, options?: { type?: string, encoderOptions?: number, resolution?: number, cropRect?: Rect }): Promise<ArrayBuffer> {
         const dataUrl = await this.pdfPageToImageDataUrl(page, options);
         const base64 = dataUrl.match(/^data:image\/\w+;base64,(.*)/)?.[1];
         if (!base64) throw new Error('Failed to convert data URL to base64');
         return base64ToArrayBuffer(base64);
-    }
-
-    getOptionalRenderParameters(): OptionalRenderParameters {
-        return this.plugin.settings.rectFollowAdaptToTheme && this.app.loadLocalStorage('pdfjs-is-themed')
-            ? {
-                background: document.body.getCssPropertyValue('--pdf-page-background'),
-                invert: document.body.hasClass('theme-dark'),
-            } : {};
     }
 
     getSelectedText(textContentItems: TextContentItem[], beginIndex: number, beginOffset: number, endIndex: number, endOffset: number) {

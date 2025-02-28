@@ -266,8 +266,7 @@ interface PDFSidebar {
     setInitialView(view?: number): void;
     open(): void;
     close(): void;
-    /** Until Obsidian 1.7.x, the signature was `toggle(open: boolean): void`, but in Obsidian 1.8.x it changed. */
-    toggle(closeOption?: unknown, forceOpen?: boolean): void;
+    toggle(open: boolean): void;
 }
 
 interface PDFOutlineViewer {

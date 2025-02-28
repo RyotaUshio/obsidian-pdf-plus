@@ -227,9 +227,6 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                                 .onClick(() => {
                                     app.saveLocalStorage('pdfjs-is-themed', isThemed ? null : 'true');
                                     child.onCSSChange();
-                                    // I also considered replacing the above line with this.app.workspace.trigger('css-change'),
-                                    // but I decided to use PDF++'s custom event to avoid potential conflicts with core features.
-                                    this.plugin.trigger('adapt-to-theme-change', { adapt: !isThemed });
                                 });
                         })
                         .addItem((item) => {

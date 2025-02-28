@@ -561,12 +561,6 @@ export class ColorPalette extends PDFPlusComponent {
             this.registerDomEvent(pageEl, 'pointerup', onPointerUp);
         };
 
-        const onKeyDown = (evt: KeyboardEvent) => {
-            if (evt.key === 'Escape') {
-                toggle();
-            }
-        };
-
         const toggle = () => {
             cropButtonEl.toggleClass('is-active', !cropButtonEl.hasClass('is-active'));
             viewerEl.toggleClass('pdf-plus-selecting', cropButtonEl.hasClass('is-active'));
@@ -579,10 +573,8 @@ export class ColorPalette extends PDFPlusComponent {
                 // We have to explicitly remove the event listeners not just when the selection is done, but also
                 // when this component gets unloaded.
                 this.registerDomEvent(viewerEl, 'pointerdown', onPointerDown);
-                this.registerDomEvent(viewerEl.doc, 'keydown', onKeyDown);
             } else {
                 viewerEl.removeEventListener('pointerdown', onPointerDown);
-                viewerEl.doc.removeEventListener('keydown', onKeyDown);
             }
         };
 

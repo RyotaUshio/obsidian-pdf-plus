@@ -254,7 +254,6 @@ export interface PDFPlusSettings {
 	rectImageExtension: ImageExtension;
 	rectEmbedResolution: number;
 	zoomToFitRect: boolean;
-	rectFollowAdaptToTheme: boolean;
 	includeColorWhenCopyingRectLink: boolean;
 	backlinkIconSize: number;
 	showBacklinkIconForSelection: boolean;
@@ -263,7 +262,6 @@ export interface PDFPlusSettings {
 	showBacklinkIconForRect: boolean;
 	showBoundingRectForBacklinkedAnnot: boolean;
 	hideReplyAnnotation: boolean;
-	hideStampAnnotation: boolean;
 	searchLinkHighlightAll: 'true' | 'false' | 'default';
 	searchLinkCaseSensitive: 'true' | 'false' | 'default';
 	searchLinkMatchDiacritics: 'true' | 'false' | 'default';
@@ -538,7 +536,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	rectImageFormat: 'file',
 	rectImageExtension: 'webp',
 	zoomToFitRect: false,
-	rectFollowAdaptToTheme: true,
 	rectEmbedResolution: 100,
 	includeColorWhenCopyingRectLink: true,
 	backlinkIconSize: 50,
@@ -548,7 +545,6 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	showBacklinkIconForRect: false,
 	showBoundingRectForBacklinkedAnnot: false,
 	hideReplyAnnotation: false,
-	hideStampAnnotation: false,
 	searchLinkHighlightAll: 'true',
 	searchLinkCaseSensitive: 'true',
 	searchLinkMatchDiacritics: 'default',
@@ -1791,6 +1787,9 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'You can embed a specified rectangular area from a PDF page into your note. [Learn more](https://ryotaushio.github.io/obsidian-pdf-plus/embedding-rectangular-selections.html)'
 				], setting.descEl);
 			});
+		this.addSliderSetting('rectEmbedResolution', 10, 200, 1)
+			.setName('Rendering resolution')
+			.setDesc('The higher the value, the better the rendering quality, but the longer time it takes to render. The default value is 100.');
 		this.addToggleSetting('rectEmbedStaticImage', () => this.redisplay())
 			.setName('Paste as image')
 			.setDesc('By default, rectangular selection embeds are re-rendered every time you open the markdown file, which can slow down the loading time. Turn on this option to replace them with static images and improve the performance.');
@@ -1806,12 +1805,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					.setName('Image file format');
 			}
 		}
-		this.addToggleSetting('rectFollowAdaptToTheme')
-			.setName('Follow "adapt to theme" setting')
-			.setDesc('If enabled, rectangular selection embeds will be inverted in color when the "Adapt to theme" setting is enabled in the PDF toolbar. This will help you reduce eye strain in dark mode.');
-		this.addSliderSetting('rectEmbedResolution', 10, 200, 1)
-			.setName('Rendering resolution')
-			.setDesc('The higher the value, the better the rendering quality, but the longer time it takes to render. The default value is 100.');
 		this.addToggleSetting('includeColorWhenCopyingRectLink')
 			.setName('Include the selected color\'s name when copying a link to a rectangular selection')
 			.setDesc('When enabled, the name of the color selected in the color palette will be included in the link text. As a result, the rectangular selection will be highlighted with the specified color in the PDF viewer.');
@@ -2093,10 +2086,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 			this.addProductMenuSetting('annotationProductMenuConfig', 'Copy link to annotation');
 			this.addToggleSetting('updateColorPaletteStateFromContextMenu')
 				.setName('Update color palette from context menu')
-				.setDesc(
-					'In the context menu, the items (color, copy format and display text format) set in the color palette are selected by default. If this option is enabled, selecting a menu item will also update the color palette state and hence the default-selected items in the context menu as well.'
-					+ ` Even if this option is enabled, you can prevent the color palette from being updated by holding down the ${getModifierNameInPlatform('Mod')} key while selecting the menu item.`
-				);
+				.setDesc('In the context menu, the items (color, copy format and display text format) set in the color palette are selected by default. If this option is enabled, clicking a menu item will also update the color palette state and hence the default-selected items in the context menu as well.');
 		}
 
 
@@ -3338,9 +3328,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'This is a temporary fix for the issue that PDF.js (the library Obsidian\'s PDF viewer is based on) does not fulfill the PDF specification in that it renders reply annotations as if a standalone annotation.',
 				], setting.descEl);
 			});
-		this.addToggleSetting('hideStampAnnotation')
-			.setName('Disable popups for rubber stamp annotations')
-			.setDesc('A rubber stamp annotation is a type of annotation that displays text or graphics intended to look like a rubber stamp. However, some applications, including iOS/iPadOS\'s "Markup", use this type of annotation also for handwriting. Often, all pieces of handwriting in a single page are grouped into a single rubber stamp annotation, which tends to be so large that it covers the entire page. In this case, annotation popups can be annoying, so you can disable them here.');
 		this.addToggleSetting('removeWhitespaceBetweenCJChars')
 			.setName('Remove half-width whitespace between two Chinese/Japanese characters when copying text')
 			.setDesc('Such whitespace can be introduced as a result of poor post-processing of OCR (optical character recognition). Enable this option to remove it when copying links to text selections.');

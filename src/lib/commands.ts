@@ -60,10 +60,6 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 name: 'Close PDF sidebar',
                 checkCallback: (checking) => this.closeSidebar(checking)
             }, {
-                id: 'toggle-sidebar',
-                name: 'Toggle PDF sidebar',
-                checkCallback: (checking) => this.toggleSidebar(checking)
-            }, {
                 id: 'fit-width',
                 name: 'Fit width',
                 checkCallback: (checking) => this.setScaleValue(checking, 'page-width')
@@ -411,15 +407,6 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         if (!sidebar.isOpen) return false;
         if (!checking) {
             sidebar.close();
-        }
-        return true;
-    }
-
-    toggleSidebar(checking: boolean) {
-        const sidebar = this.lib.getObsidianViewer(true)?.pdfSidebar;
-        if (!sidebar) return false;
-        if (!checking) {
-            sidebar.isOpen ? sidebar.close() : sidebar.open();
         }
         return true;
     }
