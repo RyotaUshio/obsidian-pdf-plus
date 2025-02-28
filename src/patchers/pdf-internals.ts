@@ -350,7 +350,11 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
 
                             // Avoid rendering annotations that are replies to other annotations
                             // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/68
-                            if (plugin.settings.hideReplyAnnotation && annot.data.inReplyTo && annot.data.replyType === 'R') {
+                            if (
+                                (plugin.settings.hideReplyAnnotation && annot.data.inReplyTo && annot.data.replyType === 'R')
+                                ||
+                                (annot.data.subtype === 'Stamp' && plugin.settings.hideStampAnnotation)
+                            ) {
                                 annot.container.hide();
                             }
 

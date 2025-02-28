@@ -1,4 +1,4 @@
-import { Menu, MenuItem, Notice, Platform, TFile } from 'obsidian';
+import { Keymap, Menu, MenuItem, Notice, Platform, TFile } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
@@ -886,8 +886,8 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
         for (let i = this.showNoColorButton ? -1 : 0; i < colorNames.length; i++) {
             menu.addItem((item) => {
                 item.setTitle(i >= 0 ? colorNames[i] : 'Don\'t specify color')
-                    .onClick(() => {
-                        this.finish({ colorName: i >= 0 ? colorNames[i] : null });
+                    .onClick((evt) => {
+                        this.finish({ colorName: i >= 0 ? colorNames[i] : null }, evt);
                     });
 
                 if (menu !== this.rootMenu) item.setChecked(i === selectedColorIndex);
@@ -907,12 +907,12 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
         fixOpenSubmenu(menu, 100);
     }
 
-    private addNamedTemplateItems(menu: Menu, templates: NamedTemplate[], checkedIndex: number, map: Map<MenuItem, string>, onClick: (template: NamedTemplate) => any) {
+    private addNamedTemplateItems(menu: Menu, templates: NamedTemplate[], checkedIndex: number, map: Map<MenuItem, string>, onClick: (template: NamedTemplate, evt: MouseEvent | KeyboardEvent) => any) {
         for (let i = 0; i < templates.length; i++) {
             menu.addItem((item) => {
                 item.setTitle(templates[i].name)
-                    .onClick(() => {
-                        onClick(templates[i]);
+                    .onClick((evt) => {
+                        onClick(templates[i], evt);
                     });
 
                 if (menu !== this.rootMenu) item.setChecked(i === checkedIndex);
@@ -932,7 +932,7 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
             this.settings.displayTextFormats,
             this.palette.getState().displayTextFormatIndex,
             this.itemToDisplayTextFormat,
-            ({ template }) => this.finish({ displayTextFormat: template })
+            ({ template }, evt) => this.finish({ displayTextFormat: template }, evt)
         );
     }
 
@@ -942,7 +942,7 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
             this.settings.copyCommands,
             this.palette.getState().actionIndex,
             this.itemToCopyFormat,
-            ({ template }) => this.finish({ copyFormat: template })
+            ({ template }, evt) => this.finish({ copyFormat: template }, evt)
         );
     }
 
@@ -1002,10 +1002,10 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
         this.plugin.trigger('color-palette-state-change', { source: this.palette });
     }
 
-    private finish(optionOverrides: Partial<PDFPlusProductMenuOptions>) {
+    private finish(optionOverrides: Partial<PDFPlusProductMenuOptions>, evt: MouseEvent | KeyboardEvent) {
         const options = this.getOptions(optionOverrides);
 
-        if (this.settings.updateColorPaletteStateFromContextMenu) {
+        if (this.settings.updateColorPaletteStateFromContextMenu && !Keymap.isModifier(evt, 'Mod')) {
             this.updateColorPaletteState(options);
         }
 

@@ -1,14 +1,18 @@
-import { App, Component, TFile } from 'obsidian';
+import { App, Component, Platform, TFile } from 'obsidian';
+import pLimit from 'p-limit';
 
 import PDFPlus from 'main';
 import { AnnotationElement, Embed, EmbedContext, Rect } from 'typings';
-import { PDFDocumentProxy } from 'pdfjs-dist';
 
 
 export class PDFCroppedEmbed extends Component implements Embed {
+    // Limit the number of concurrent PDF rendering tasks to avoid running out of memory
+    // especially on mobile devices, which will cause the app to crash.
+    // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/397
+    private static readonly limit = pLimit(Platform.isMobile ? 3 : 10);
+
     app: App;
     containerEl: HTMLElement;
-    doc?: PDFDocumentProxy;
 
     get lib() {
         return this.plugin.lib;
@@ -33,13 +37,14 @@ export class PDFCroppedEmbed extends Component implements Embed {
                 }
             }));
         }
-    }
 
-    onunload() {
-        super.onunload();
-
-        if (this.doc) {
-            this.doc.destroy();
+        if (this.plugin.settings.rectFollowAdaptToTheme) {
+            this.registerEvent(this.app.workspace.on('css-change', () => {
+                this.loadFile();
+            }));
+            this.registerEvent(this.plugin.on('adapt-to-theme-change', () => {
+                this.loadFile();
+            }));
         }
     }
 
@@ -48,23 +53,7 @@ export class PDFCroppedEmbed extends Component implements Embed {
     }
 
     async loadFile() {
-        const doc = await this.lib.loadPDFDocument(this.file);
-        this.doc = doc;
-        const page = await doc.getPage(this.pageNumber);
-
-        if (this.annotationId) {
-            const annotations = await page.getAnnotations();
-            const annotation: AnnotationElement['data'] = annotations.find((annot) => annot.id === this.annotationId);
-            if (annotation && Array.isArray(annotation.rect)) {
-                this.rect = window.pdfjsLib.Util.normalizeRect(annotation.rect);
-            }
-        }
-
-        const dataUrl = await this.lib.pdfPageToImageDataUrl(page, {
-            type: 'image/bmp',
-            encoderOptions: 1.0,
-            cropRect: this.rect,
-        });
+        const dataUrl: string = await PDFCroppedEmbed.limit(this.computeDataUrl.bind(this));
 
         await new Promise<void>((resolve, reject) => {
             this.containerEl.empty();
@@ -79,5 +68,28 @@ export class PDFCroppedEmbed extends Component implements Embed {
             });
             activeWindow.setTimeout(() => reject(), 5000);
         });
+    }
+
+    async computeDataUrl() {
+        const doc = await this.lib.loadPDFDocument(this.file);
+        const page = await doc.getPage(this.pageNumber);
+
+        if (this.annotationId) {
+            const annotations = await page.getAnnotations();
+            const annotation: AnnotationElement['data'] = annotations.find((annot) => annot.id === this.annotationId);
+            if (annotation && Array.isArray(annotation.rect)) {
+                this.rect = window.pdfjsLib.Util.normalizeRect(annotation.rect);
+            }
+        }
+
+        const dataUrl = await this.lib.pdfPageToImageDataUrl(page, {
+            type: 'image/png',
+            cropRect: this.rect,
+            renderParams: this.lib.getOptionalRenderParameters(),
+        });
+
+        await doc.destroy();
+
+        return dataUrl;
     }
 }
