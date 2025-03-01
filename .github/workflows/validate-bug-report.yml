@@ -26,7 +26,7 @@ jobs:
         # Validate the content length
         if [ ${#DEBUG_INFO_CONTENT} -lt $MINIMUM_CHARACTERS ]; then
           echo "⚠️ 'Debug info' section is missing."
-          COMMENT_BODY="**🚨 Oops! Looks like the Debug Info section got left out. 🚨**\n\nDebugging without this information is often *painfully* slow — it is like trying to solve a mystery without clues. 😅\n\nPlease run the \`PDF++: Copy debug info\` command and paste the result into that section.\n\nThanks for helping me help you! 🙌"
+          COMMENT_BODY="**🚨 Oops! Looks like the Debug Info section got left out. 🚨**\n\nDebugging without this information is often *painfully* slow — it is like trying to solve a mystery without clues. 😅\n\nPlease run the \`PDF++: Copy debug info\` command and paste the result into that section.\n\nThanks! 🙌"
 
           # Post a comment back to the issue
           curl -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
