@@ -63,4 +63,4 @@ body:
     id: error
     attributes:
       label: Error messages (optional)
-      description: Open the developer tool by `Ctrl`+`Shift`+`I` (or `Cmd`+`Option`+`I` on macOS) and open the `Console` tab. Do you see any error message on a red background? If so, take a screenshot and paste it here.
+      description: If you are on desktop, open the developer tool by `Ctrl`+`Shift`+`I` (or `Cmd`+`Option`+`I` on macOS) and open the `Console` tab. If you are on mobile, install the [vConsole](https://obsidian.md/plugins?id=vconsole) plugin and tap the "vConsole" button to open the developer console. Do you see any error message on a red background? If so, take a screenshot and paste it here.
