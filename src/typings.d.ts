@@ -43,6 +43,10 @@ declare global {
         };
     }
 
+    interface Document {
+        caretPositionFromPoint(x: number, y: number, options?: CaretPositionFromPointOptions): CaretPosition | null;
+    }
+
     interface Navigator {
         userAgentData?: {
             /** Returns an array of brand information containing the browser name and version. */

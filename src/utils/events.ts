@@ -220,3 +220,48 @@ export function matchModifiers(evt: MouseEvent, modifiers: Modifier[]): boolean 
         return !Keymap.isModifier(evt, modifier);
     });
 }
+
+export function selectDoubleClickedWord(evt: MouseEvent) {
+    const window = evt.win;
+    const document = evt.doc;
+
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    let range = null;
+
+    if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(evt.clientX, evt.clientY);
+    } else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(evt.clientX, evt.clientY);
+        if (!pos) return;
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+    }
+
+    if (!range) return;
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    selection.modify('move', 'backward', 'word');
+    selection.modify('extend', 'forward', 'word');
+}
+
+export function selectTrippleClickedTextLayerNode(evt: MouseEvent) {
+    if (evt.detail < 3) return;
+    
+    if (!isTargetNode(evt, evt.target)) return;
+
+    const textLayerNode = evt.target.nodeName === 'SPAN' ? evt.target : evt.target.parentElement;
+    if (!textLayerNode || !textLayerNode.instanceOf(HTMLSpanElement) || !textLayerNode.hasClass('textLayerNode')) return;
+
+    const selection = evt.win.getSelection();
+    if (!selection) return;
+
+    const range = evt.doc.createRange();
+    range.selectNode(textLayerNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
