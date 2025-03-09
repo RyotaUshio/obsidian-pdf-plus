@@ -1081,7 +1081,7 @@ declare module 'obsidian' {
                     activePopovers: (HoverPopover & { toggleMinimized(): void, togglePin(value?: boolean): void })[];
                     spawnPopover(initiatingEl?: HTMLElement, onShowCallback?: () => unknown): WorkspaceLeaf;
                 };
-                ['obsidian-tts']?: Plugin & {
+                ['edge-tts']?: Plugin & {
                     say(text: string, languageCode?: string): Promise<void>
                 };
                 [id: string]: Plugin | undefined;
