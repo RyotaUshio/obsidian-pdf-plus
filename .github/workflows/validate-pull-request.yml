@@ -1,0 +1,37 @@
+name: PR Compliance Check
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  check_pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR description for acknowledgment
+        id: check
+        run: |
+          PR_BODY=$(jq -r .pull_request.body "$GITHUB_EVENT_PATH")
+          if ! echo "$PR_BODY" | grep -q "\- \[x\] I have read the \[CONTRIBUTING.md\]"; then
+            echo "❌ ERROR: Your PR must include acknowledgment of reading CONTRIBUTING.md."
+            echo "Please check the corresponding box in the PR description before submitting."
+            echo "::set-output name=error::true"
+            exit 1
+          fi
+
+  comment_on_failure:
+    needs: check_pr
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Leave a comment on PR
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: "⚠️ Your PR is missing acknowledgment of reading [CONTRIBUTING.md](https://github.com/RyotaUshio/obsidian-pdf-plus/blob/main/.github/CONTRIBUTING.md). Please check the corresponding box (`- [x]`) in the PR description and update your PR."
+            })
