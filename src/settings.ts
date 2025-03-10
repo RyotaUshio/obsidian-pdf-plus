@@ -2042,7 +2042,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 								else if (section.id === 'speech') {
 									setting.setDesc(createFragment((el) => {
 										el.appendText('Requires the ');
-										el.createEl('a', { text: 'Text to Speech', href: 'obsidian://show-plugin?id=obsidian-tts' });
+										el.createEl('a', { text: 'Text to Speech', href: 'obsidian://show-plugin?id=edge-tts' });
 										el.appendText(' plugin to be enabled.');
 									}));
 								}
