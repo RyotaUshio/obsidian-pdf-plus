@@ -1,6 +1,10 @@
 Thank you for considering contributing to this plugin!
 Before proceeding, please take a moment to review the following guidelines.
 
+### How to build the plugin
+
+After cloning the repository, run `pnpm install` to install the dependencies. Then, run `pnpm dev` or `pnpm build` to build the `main.js` file.
+
 ### General Guidelines
 
 - Create an issue before submitting a pull request (except for trivial bug fixes or typo corrections). This helps us discuss your proposal before any major work is done.
