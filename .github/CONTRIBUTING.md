@@ -3,7 +3,7 @@ Before proceeding, please take a moment to review the following guidelines.
 
 ### General Guidelines
 
-Create an issue before submitting a pull request (except for trivial bug fixes or typo corrections). This helps us discuss your proposal before any major work is done.
+Create an issue before submitting a pull request. This helps us discuss your proposal before any major work is done.
 
 ### How to build the plugin
 
