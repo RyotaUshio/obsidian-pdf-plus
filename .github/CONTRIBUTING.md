@@ -10,7 +10,7 @@ Create an issue before submitting a pull request. This helps us discuss your pro
 After cloning the repository, run `pnpm install` to install the dependencies. Then, run `pnpm dev` or `pnpm build` to build the `main.js` file.
 
 > [!TIP]
-> The PDF++ plugin instance can be accessed as a global variable `pdfPlus`. This is only for debugging purpose.
+> The PDF++ plugin instance can be accessed as a global variable `pdfPlus`. This is only for debugging purposes.
 
 ### How to load debug info
 
