@@ -7,8 +7,8 @@ import { AutoCopyMode } from 'auto-copy';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
-import { DEFAULT_SETTINGS, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
-import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement } from 'utils';
+import { DEFAULT_SETTINGS, NamedTemplate, PDFPlusSettings, PDFPlusSettingTab } from 'settings';
+import { subpathToParams, OverloadParameters, focusObsidian, isTargetHTMLElement, KeysOfType } from 'utils';
 import { DestArray, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect } from 'typings';
 import { InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
@@ -116,6 +116,8 @@ export default class PDFPlus extends Plugin {
 		this.addSettingTab(this.settingTab = new PDFPlusSettingTab(this));
 
 		this.registerStyleSettings();
+
+		this.checkDeprecatedSettings();
 	}
 
 	async onunload() {
@@ -280,6 +282,95 @@ export default class PDFPlus extends Plugin {
 		if (this.settings.autoFocus && this.settings.autoPaste) {
 			this.settings.autoFocus = false;
 		}
+	}
+
+	checkDeprecatedSettings() {
+		if (document.querySelectorAll('.pdf-plus-deprecated-setting-notice').length > 0) {
+			return;
+		}
+
+		const showNotice = (settingId: keyof PDFPlusSettings, setMessage: (fragment: DocumentFragment, linkEl: HTMLAnchorElement) => void) => {
+
+			const notice = new Notice('', 0)
+				.setMessage(createFragment((el) => {
+					const linkEl = createEl('a', {
+						href: 'obsidian://pdf-plus?setting=' + settingId
+					});
+					el.append('PDF++: ');
+					setMessage(el, linkEl);
+				}));
+			notice.containerEl.addClass('pdf-plus-deprecated-setting-notice');
+			notice.messageEl.setCssStyles({
+				color: 'var(--text-warning)',
+			});
+		}
+
+		if (this.settings.trimSelectionEmbed) {
+			showNotice('trimSelectionEmbed', (el, linkEl) => {
+				el.append('The option ');
+				linkEl.textContent = 'Trim selection/annotation embeds';
+				el.append(linkEl);
+				el.append(' is deprecated and will be removed in the near future. It is recommended to disable it and use the rectangular selection tool instead.');
+			});
+		}
+
+		const expressionUsesVariable = (expression: string, variable: string) => {
+			const regex = new RegExp(`\\b${variable}\\b`);
+			return regex.test(expression);
+		}
+
+		const templateUsesVariable = (template: string, variable: string) => {
+			for (const match of template.matchAll(/{{(.*?)}}/g)) {
+				if (expressionUsesVariable(match[1], variable)) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		const checkNamedTemplate = (settingId: KeysOfType<PDFPlusSettings, string | NamedTemplate[]>) => {
+			const setting = this.settings[settingId];
+			let shouldShowNotice = false;
+
+			if (typeof setting === 'string') {
+				shouldShowNotice = templateUsesVariable(setting, 'linkedFile') || templateUsesVariable(setting, 'linkedFileProperties');
+			} else if (Array.isArray(setting)) {
+				shouldShowNotice = setting.some(({ template }) => {
+					return templateUsesVariable(template, 'linkedFile') || templateUsesVariable(template, 'linkedFileProperties');
+				});
+			}
+
+			if (shouldShowNotice) {
+				showNotice(settingId, (el, linkEl) => {
+					el.append('The template variables ');
+					el.createEl('code', {
+						text: 'linkedFile'
+					});
+					el.append(' and ');
+					el.createEl('code', {
+						text: 'linkedFileProperties'
+					});
+					el.append(' are deprecated and will be removed in the near future. Please ');
+					linkEl.textContent = 'remove them from your templates';
+					el.append(linkEl);
+					el.append('.');
+				});
+			}
+		}
+
+		const settingIdsToCheck: KeysOfType<PDFPlusSettings, string | NamedTemplate[]>[] = [
+			'displayTextFormats',
+			'copyCommands',
+			'outlineLinkDisplayTextFormat',
+			'outlineLinkCopyFormat',
+			'thumbnailLinkDisplayTextFormat',
+			'thumbnailLinkCopyFormat',
+			'copyOutlineAsHeadingsDisplayTextFormat',
+			'copyOutlineAsListDisplayTextFormat',
+			'copyOutlineAsListFormat',
+			'copyOutlineAsHeadingsFormat',
+		];
+		settingIdsToCheck.forEach(checkNamedTemplate);
 	}
 
 	async saveSettings() {

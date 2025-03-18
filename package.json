@@ -1,31 +1,37 @@
 {
     "name": "obsidian-pdf-plus",
-    "version": "0.40.27",
+    "version": "0.40.28",
     "description": "The most Obsidian-native PDF annotation tool ever.",
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+        "lint": "eslint src/ --ext .ts,.tsx",
+        "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
         "version": "node version-bump.mjs && git add manifest.json versions.json"
     },
     "keywords": [],
     "author": "Ryota Ushio",
     "license": "MIT",
     "devDependencies": {
-        "@cantoo/pdf-lib": "^2.2.4",
+        "@cantoo/pdf-lib": "^2.3.0",
         "@capacitor/app": "^7.0.0",
         "@capacitor/core": "^7.0.1",
         "@capacitor/device": "^7.0.0",
-        "@types/node": "^22.10.6",
-        "@typescript-eslint/eslint-plugin": "7.x",
-        "@typescript-eslint/parser": "7.x",
-        "builtin-modules": "4.0.0",
-        "electron": "^32.2.5",
-        "esbuild": "0.25.0",
+        "@eslint/eslintrc": "^3.3.0",
+        "@eslint/js": "^9.22.0",
+        "@types/node": "^22.13.10",
+        "@typescript-eslint/eslint-plugin": "8.x",
+        "@typescript-eslint/parser": "8.x",
+        "builtin-modules": "5.0.0",
+        "electron": "^35.0.1",
+        "esbuild": "0.25.1",
+        "eslint": "^9.22.0",
+        "globals": "^16.0.0",
         "monkey-around": "^3.0.0",
-        "obsidian": "^1.7.2",
+        "obsidian": "^1.8.7",
         "p-limit": "^6.2.0",
         "pdfjs-dist": "^4.10.38",
         "tslib": "2.8.1",
-        "typescript": "4.x"
+        "typescript": "5.x"
     }
 }

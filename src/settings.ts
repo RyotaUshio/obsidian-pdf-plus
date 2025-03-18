@@ -1580,6 +1580,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		// in case the user has accidentally closed it.
 		InstallerVersionModal.openIfNecessary(this.plugin);
 
+		this.plugin.checkDeprecatedSettings();
+
 
 		// Setting tab rendering starts here
 
@@ -2195,11 +2197,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				'',
 				'- `md`: The markdown file associated with the PDF file ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). If there is no such file, this is `null`.',
 				'- `properties`: The properties of `md` as an `Object` mapping each property name to the corresponding value. If `md` is `null` or the `md` has no properties, this is an empty object `{}`.',
-				'',
-				'Furthermore, the following variables are available when the PDF tab is linked to another tab:',
-				'',
-				'- `linkedFile`: The file opened in the linked tab ([`TFile`](https://docs.obsidian.md/Reference/TypeScript+API/TFile)). If there is no such file, this is `null`.',
-				'- `linkedFileProperties`: The properties of `linkedFile` as an `Object` mapping each property name to the corresponding value. If there is no `linkedFile` or the `linkedFile` has no properties, this is an empty object `{}`.'
+				'\n<span style="color: var(--text-warning);">The following variables are deprecated and will be removed in the near future</span>: `linkedFile`, `linkedFileProperties`. Remove them from your templates if you are using them.',
 			], setting.descEl));
 		this.addTextSetting('proxyMDProperty', undefined, () => this.redisplay())
 			.setName('Property to associate a markdown file to a PDF file')
@@ -2208,11 +2206,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'Create a markdown file with this property to associate it with a PDF file. The PDF file is specified by a link, e.g. `[[file.pdf]]`.',
 					'It can be used to store properties/metadata that can be used when copying links.',
 					'',
-					'If you have the [Dataview](obsidian://show-plugin?id=dataview) plugin installed, you can use Dataview\'s inline field syntax such as `' + this.plugin.settings.proxyMDProperty + ':: [[file.pdf]]`.',
+					'<span style="color: var(--text-warning);">[Dataview](obsidian://show-plugin?id=dataview)\'s inline field syntax such as `' + this.plugin.settings.proxyMDProperty + ':: [[file.pdf]]` is supported for the time being, but it is deprecated and will likely not work in the future.</span>',
 					'',
 					'Remarks:',
 					'- Make sure the associated markdown file can be uniquely identified. For example, if you have two markdown files `file1.md` and `file2.md` and both of their `' + this.plugin.settings.proxyMDProperty + '` properties point to the same PDF file, PDF++ cannot determine which markdown file is associated with `file.pdf`.',
-					'- If you are in Source Mode and using front matter instead of Dataview inline fields, be sure to enclose the link in double quotes.',
+					'- If you are in Source Mode, be sure to enclose the link in double quotes.',
 				], setting.descEl);
 			});
 		this.addSetting('displayTextFormats')

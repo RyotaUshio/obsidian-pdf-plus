@@ -1,4 +1,4 @@
-import { Command, MarkdownView, Notice, TFile, normalizePath, setIcon } from 'obsidian';
+import { Command, MarkdownView, Notice, TFile, WorkspaceLeaf, normalizePath, setIcon } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
 import { PDFComposerModal, PDFCreateModal, PDFPageDeleteModal, PDFPageLabelEditModal, PDFOutlineTitleModal, DummyFileModal } from 'modals';
@@ -206,7 +206,33 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
     }
 
     registerCommands() {
-        Object.values(this.commands).forEach((command) => this.plugin.addCommand(command));
+        Object.values(this.commands).forEach((command) => {
+            this.plugin.addCommand(this.restorePDFLeafFocus(command));
+        });
+    }
+
+    restorePDFLeafFocus(command: Command): Command {
+        // Temporary workaround for the Obsidian bug
+        // https://forum.obsidian.md/t/pdf-view-loses-focus-after-closing-command-palette-causing-some-commands-to-fail-to-run/97973/7
+        const original = command.checkCallback;
+        if (!original) return command;
+
+        let activePDFLeaf: WorkspaceLeaf | null = null;
+
+        return {
+            ...command,
+            checkCallback: (checking: boolean) => {
+                if (checking) {
+                    activePDFLeaf = this.lib.workspace.getActivePDFView()?.leaf ?? null;
+                    return original(checking);
+                }
+                if (activePDFLeaf && activePDFLeaf !== this.app.workspace.activeLeaf) {
+                    this.app.workspace.setActiveLeaf(activePDFLeaf, { focus: true });
+                    activePDFLeaf = null;
+                }
+                return original(checking);
+            }
+        };
     }
 
     getCommand(id: string) {
@@ -987,6 +1013,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                     }
 
                 } catch (err) {
+                    console.error(err);
                     new Notice(`${this.plugin.manifest.name}: Debug info not found in clipboard.`);
                 }
             })();

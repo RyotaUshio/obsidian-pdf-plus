@@ -111,7 +111,7 @@ export class VimCommandLineMode extends VimBindingsMode {
                 return;
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            // eslint-disable-next-line @typescript-eslint/no-require-imports 
             const { exec } = require('child_process') as typeof import('child_process');
             const env = process.env;
             if (this.settings.PATH) env.PATH = this.settings.PATH;

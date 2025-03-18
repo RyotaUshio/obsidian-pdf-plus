@@ -276,13 +276,34 @@ export function getInstallerVersion(): string | null {
         null;
 }
 
+export function getAndroidWebViewVersion() {
+    if (!Platform.isAndroidApp) {
+        return null;
+    }
+
+    if ('userAgentData' in navigator && navigator.userAgentData) {
+        const androidWebViewBrand = navigator.userAgentData.brands.find((brand) => brand.brand === 'Android WebView');
+        if (androidWebViewBrand) {
+            return androidWebViewBrand.version;
+        }
+    }
+
+    const match = navigator.userAgent.match(/Chrome\/([\d]+)/);
+    if (match) {
+        return match[1];
+    }
+
+    return null;
+}
+
 /**
  * Get the information about the Obsidian app and the system.
  * This is the same as the "SYSTEM INFO" section in the result of the "Show debug info" command.
  */
 export async function getSystemInfo(): Promise<any> {
     if (window.electron) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+         
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const os = require('os') as typeof import('os');
         return {
             'Obsidian version': window.electron.ipcRenderer.sendSync('version'),
@@ -291,13 +312,19 @@ export async function getSystemInfo(): Promise<any> {
             'Operating system': os.version() + ' ' + os.release(),
         };
     }
+
     const appInfo = await window.Capacitor.Plugins.App.getInfo();
     const deviceInfo = await window.Capacitor.Plugins.Device.getInfo();
-    return {
+    const info: any = {
         'Obsidian version': `${appInfo.version} (${appInfo.build})`,
         'API version': apiVersion,
         'Operating system': `${deviceInfo.platform} ${deviceInfo.osVersion} (${deviceInfo.manufacturer} ${deviceInfo.model})`,
     };
+    const androidWebViewVersion = getAndroidWebViewVersion();
+    if (androidWebViewVersion) {
+        info['Android WebView version'] = androidWebViewVersion;
+    }
+    return info;
 }
 
 /** Selected subset of the "Show debug info" command's result with some additional entries. */

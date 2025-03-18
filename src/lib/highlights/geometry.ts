@@ -153,9 +153,9 @@ export class HighlightGeometryLib extends PDFPlusLibSubmodule {
     }
 
     areRectanglesMergeableVertically(rect1: Rect, rect2: Rect): boolean {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         const [left1, bottom1, right1, top1] = rect1;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         const [left2, bottom2, right2, top2] = rect2;
         const width1 = Math.abs(right1 - left1);
         const width2 = Math.abs(right2 - left2);

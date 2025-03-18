@@ -40,7 +40,25 @@ declare global {
                 App: typeof CapacitorAppPlugin;
                 Device: typeof Device;
             }
-        }
+        };
+    }
+
+    interface Document {
+        caretPositionFromPoint(x: number, y: number, options?: CaretPositionFromPointOptions): CaretPosition | null;
+    }
+
+    interface Navigator {
+        userAgentData?: {
+            /** Returns an array of brand information containing the browser name and version. */
+            brands: Array<{
+                brand: string;
+                version: string;
+            }>;
+            /** Returns true if the user-agent is running on a mobile device. */
+            mobile: boolean;
+            /** Returns the platform brand the user-agent is running on. */
+            platform: string;
+        };
     }
 
     interface Selection {
@@ -1280,7 +1298,8 @@ declare module 'obsidian' {
         transition(): void;
     }
 
-    interface AbstractTextComponent {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface AbstractTextComponent<T> {
         changeCallback?: (value: string) => any;
     }
 

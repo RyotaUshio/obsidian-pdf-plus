@@ -142,7 +142,7 @@ export class BibliographyManager extends PDFPlusComponent {
             // Clean up the file when this PDF viewer is unloaded
             this.register(() => app.vault.adapter.remove(anystyleInputPath));
 
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            // eslint-disable-next-line @typescript-eslint/no-require-imports 
             const { spawn } = require('child_process') as typeof import('child_process');
 
             return new Promise<any>((resolve) => {
