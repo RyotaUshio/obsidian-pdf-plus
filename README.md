@@ -285,6 +285,9 @@ For example, you can create a callout whose color matches the highlight color in
 
 #### 1. Different colors within a single callout type
 
+> [!NOTE]
+> Update: Now you have the "PDF++ callouts" feature, which allows you to get the same result without writing CSS snippets on your own.
+
 Here we use a callout type "PDF" as an example, but it can be anything you like.
 
 **Copy format**:
@@ -363,23 +366,21 @@ Another approach is to associate each highlight color to a specify callout type 
 
 ### Popover preview of PDF internal links
 
-Sometimes, You may find preview popovers too tall.
+Sometimes, you may find [page preview](https://help.obsidian.md/plugins/page-preview) popovers too tall.
 
 For example, suppose you're reading a LaTeX-generated paper.
-You can hover over an inline citation (e.g. "Author et al., 2024") to show a popover preview of the corresponding entry in the bibliography section.
-Since a bib entry is not that tall, the popover often has too much vertical space.
+You can hover over an inline citation (e.g. "Author et al., 2024") to show a popover preview of the corresponding entry in the bibliography section (see [[Citation links]]).
+Since a bib entry is usually not that tall, the popover often has too much vertical space.
 
 Now, use the following CSS snippet to remove the extra space:
 
 ```css
-.pdf-plus-pdf-internal-link-popover[data-dest^="cite."] {
-    --my-height: 200px; /* Change this to your liking */
-    height: var(--my-height) !important;
-    top: calc(var(--popover-height) - var(--my-height)) !important;
+.popover.hover-popover.pdf-plus-pdf-internal-link-popover[data-dest^="cite."] {
+    --popover-pdf-height: 100px; /* Change this to your liking */
 }
 ```
 
-The `data-dest` attribute is the ID of the named destination (i.e. link target) that the internal link points to, which starts with `cite.` for bibliographic items.
+The `data-dest` attribute is the ID of the named destination (i.e. link target) that the internal link points to, which typically starts with `cite.` for bibliographic items.
 In general, you can get the ID by the following steps:
 - Press `command`+`option`+`I` (macOS) / `Ctrl`+`Shift`+`I` (windows) to open the developer tool.
 - Click the arrow icon at the top-left corner of the dev tool to enter the inspection mode.
