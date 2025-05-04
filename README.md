@@ -4,12 +4,9 @@
 </p>
 
 > [!note] 
-> This plugin is maintained by a single voluntary student (me).
+> I’m currently working on PDF++ v1.0.0. Because this release involves extensive refactoring, you probably won’t see any major updates for a few months—aside from minor bug fixes—until I can ship the 1.0.0 beta. But don’t worry: there’s a lot going on under the hood!
 > 
-> - If you like this plugin, don't forget to star this repository!
-> - If this plugin has become an important piece of your workflow, please consider [donation](#support-development) to show some love for this project.
-> 
-> Both are greatly appreciated. Thank you!
+> ⭐ Star this repo to show your support!
 
 This is an [Obsidian.md](https://obsidian.md) plugin for a better PDF experience. Specifically:
 
