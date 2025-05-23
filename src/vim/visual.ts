@@ -114,8 +114,13 @@ export class VimVisualMode extends VimBindingsMode {
             'y': () => {
                 const selection = this.doc.getSelection();
                 if (selection) {
-                    const text = selection.toString();
-                    if (text) navigator.clipboard.writeText(text);
+                    let text = selection.toString();
+                    if (text) {
+                        if (this.settings.copyAsSingleLine) {
+                            text = this.lib.toSingleLine(text);
+                        }
+                        navigator.clipboard.writeText(text);
+                    }
                     selection.empty();
                 }
             },

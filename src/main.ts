@@ -1,4 +1,4 @@
-import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, apiVersion, loadPdfJs } from 'obsidian';
+import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, apiVersion, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
@@ -13,6 +13,7 @@ import { DestArray, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent, Rect 
 import { InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
 import { BibliographyManager } from 'bib';
+import { DataviewInlineFieldsModal, withFilesWithInlineFields } from 'lib/dataview';
 
 
 export default class PDFPlus extends Plugin {
@@ -80,6 +81,9 @@ export default class PDFPlus extends Plugin {
 	/** Stores all the shown context menu objects. Used to close all visible menus programatically. */
 	shownMenus: Set<Menu> = new Set();
 	textDivFirstIdx: number;
+	/** Whether the current version of Obsidian has the focus bug (see https://forum.obsidian.md/t/pdf-view-loses-focus-after-closing-command-palette-causing-some-commands-to-fail-to-run/97973). */
+	obsidianHasFocusBug: boolean;
+	requiresDataviewInlineFieldsMigration = false;
 	isDebugMode: boolean = false;
 
 	async onload() {
@@ -118,6 +122,9 @@ export default class PDFPlus extends Plugin {
 		this.registerStyleSettings();
 
 		this.checkDeprecatedSettings();
+		this.checkDataviewInlineFields();
+
+		this.registerAutoCheckForUpdates();
 	}
 
 	async onunload() {
@@ -149,6 +156,10 @@ export default class PDFPlus extends Plugin {
 		// https://forum.obsidian.md/t/in-1-8-0-pdf-copy-link-to-selection-fails-to-copy-proper-links-in-some-cases/93545
 		// https://github.com/RyotaUshio/obsidian-pdf-plus/issues/327
 		this.textDivFirstIdx = apiVersion === '1.8.0' ? 1 : 0;
+
+		// See:
+		// https://forum.obsidian.md/t/pdf-view-loses-focus-after-closing-command-palette-causing-some-commands-to-fail-to-run/97973
+		this.obsidianHasFocusBug = !requireApiVersion('1.9.0');
 
 		InstallerVersionModal.openIfNecessary(this);
 	}
@@ -303,7 +314,7 @@ export default class PDFPlus extends Plugin {
 			notice.messageEl.setCssStyles({
 				color: 'var(--text-warning)',
 			});
-		}
+		};
 
 		if (this.settings.trimSelectionEmbed) {
 			showNotice('trimSelectionEmbed', (el, linkEl) => {
@@ -317,7 +328,7 @@ export default class PDFPlus extends Plugin {
 		const expressionUsesVariable = (expression: string, variable: string) => {
 			const regex = new RegExp(`\\b${variable}\\b`);
 			return regex.test(expression);
-		}
+		};
 
 		const templateUsesVariable = (template: string, variable: string) => {
 			for (const match of template.matchAll(/{{(.*?)}}/g)) {
@@ -326,7 +337,7 @@ export default class PDFPlus extends Plugin {
 				}
 			}
 			return false;
-		}
+		};
 
 		const checkNamedTemplate = (settingId: KeysOfType<PDFPlusSettings, string | NamedTemplate[]>) => {
 			const setting = this.settings[settingId];
@@ -356,7 +367,7 @@ export default class PDFPlus extends Plugin {
 					el.append('.');
 				});
 			}
-		}
+		};
 
 		const settingIdsToCheck: KeysOfType<PDFPlusSettings, string | NamedTemplate[]>[] = [
 			'displayTextFormats',
@@ -371,6 +382,39 @@ export default class PDFPlus extends Plugin {
 			'copyOutlineAsHeadingsFormat',
 		];
 		settingIdsToCheck.forEach(checkNamedTemplate);
+	}
+
+	async checkDataviewInlineFields() {
+		withFilesWithInlineFields(this, (files) => {
+			if (files.length === 0) {
+				this.requiresDataviewInlineFieldsMigration = false;
+				return;
+			}
+
+			this.requiresDataviewInlineFieldsMigration = true;
+
+			const notice = new Notice(
+				createFragment((el) => el.append(
+					`PDF++: Please consider moving the "${this.settings.proxyMDProperty}" Dataview inline fields to the properties (YAML frontmatter).`,
+					createEl('br'),
+					'Click ',
+					createEl('a', {
+						text: 'here'
+					}, (a) => {
+						a.onclick = () => {
+							new DataviewInlineFieldsModal(this, files)
+								.open();
+						};
+					}),
+					' for more details.',
+				)),
+				0
+			);
+			notice.containerEl.addClass('pdf-plus-deprecated-setting-notice');
+			notice.messageEl.setCssStyles({
+				color: 'var(--text-warning)',
+			});
+		});
 	}
 
 	async saveSettings() {
@@ -713,6 +757,30 @@ export default class PDFPlus extends Plugin {
 			events.offref(eventRef);
 		}, ctx);
 		this.registerEvent(eventRef);
+	}
+
+	private registerAutoCheckForUpdates() {
+		const check = async () => {
+			if (!this.settings.autoCheckForUpdates) return;
+
+			const result = await this.lib.checkForUpdates({
+				minHoursSinceRelease: 24,
+			});
+			if (result.shouldUpdate) {
+				new Notice(createFragment((el) => {
+					el.append(
+						'PDF++: There is a newer version available! ',
+						createEl('a', {
+							text: 'Update now',
+							href: 'obsidian://show-plugin?id=pdf-plus',
+						})
+					);
+				}));
+			}
+		};
+
+		check();
+		this.registerInterval(window.setInterval(check, 1000 * 60 * 60 * 24));
 	}
 
 	private registerHoverLinkSources() {

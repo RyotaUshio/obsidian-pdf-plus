@@ -1065,4 +1065,131 @@ export class PDFPlusLib {
     isCitationId(dest: string | PDFJsDestArray): dest is string {
         return typeof dest === 'string' && this.plugin.citationIdRegex.test(dest);
     }
+
+    async checkForUpdates(options?: {
+        /** Update only if a new version was released more than or equal to this many hours ago. */
+        minHoursSinceRelease?: number;
+        /** Override the current version defined in the manifest for debugging purposes. */
+        currentVersion?: string;
+    }): Promise<{
+        success: boolean;
+        shouldUpdate: boolean;
+        detail: string;
+    }> {
+        const { result: response, error: requestError } = await tryCatchAsync(requestUrl({
+            url: 'https://api.github.com/repos/ryotaushio/obsidian-pdf-plus/releases?per_page=10&page=1',
+            headers: {
+                accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+            }
+        }));
+        if (requestError || response.status !== 200) {
+            if (requestError) {
+                console.error(requestError);
+            }
+            return {
+                success: false,
+                shouldUpdate: false,
+                detail: 'Failed to connect to GitHub to check for updates.',
+            };
+        }
+
+        const { result: releases, error: jsonError } = tryCatchSync(() => response.json as Array<{
+            tag_name: string;
+            prerelease: boolean;
+            draft: boolean;
+            published_at: string;
+            body: string;
+        }>);
+        if (jsonError) {
+            console.error(jsonError);
+            return {
+                success: false,
+                shouldUpdate: false,
+                detail: 'Failed to parse JSON releases from GitHub.',
+            };
+        }
+        if (!Array.isArray(releases) || releases.length === 0) {
+            return {
+                success: false,
+                shouldUpdate: false,
+                detail: 'No releases found on GitHub.',
+            };
+        }
+
+        releases.sort((a, b) => {
+            return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+        });
+
+        const currentVersion = options?.currentVersion ?? this.plugin.manifest.version;
+
+        const newerReleases = releases.filter((release) => {
+            return !release.prerelease && !release.draft && isVersionNewerThan(release.tag_name, currentVersion);
+        });
+        if (newerReleases.length === 0) {
+            return {
+                success: true,
+                shouldUpdate: false,
+                detail: 'Already up-to-date.',
+            };
+        }
+
+        // If there is a new release whose release note starts with `<!-- important -->`,
+        // we should update no matter how new it is.
+        const requiresImmediateUpdate = newerReleases.some((release) => {
+            const firstLineOfLatestReleaseNote = release.body.split('\n')[0];
+            return /^\s*<!--\s*important\s*-->\s*$/.test(firstLineOfLatestReleaseNote);
+        });
+        if (requiresImmediateUpdate) {
+            return {
+                success: true,
+                shouldUpdate: true,
+                detail: 'There is a newer version that should be updated to immediately.',
+            };
+        }
+
+        // Otherwise, we should update if the new release is more than `minHoursSinceRelease` hours old.
+        const nextRelease = newerReleases.last()!;
+        const hoursSinceNextRelease = (new Date().getTime() - new Date(nextRelease.published_at).getTime()) / (1000 * 60 * 60);
+        const minHoursSinceRelease = options?.minHoursSinceRelease ?? 24;
+        if (hoursSinceNextRelease < minHoursSinceRelease) {
+            return {
+                success: true,
+                shouldUpdate: false,
+                detail: `There is a newer version, but it was released less than ${minHoursSinceRelease} hours ago.`,
+            };
+        }
+
+        return {
+            success: true,
+            shouldUpdate: true,
+            detail: `There is a newer version released ${hoursSinceNextRelease.toFixed(1)} hours ago.`,
+        };
+    }
+}
+
+type TaskResult<T, E = Error> = {
+    result: T;
+    error: null;
+} | {
+    result: null;
+    error: E;
+};
+
+function tryCatchSync<T, E = Error>(task: () => T): TaskResult<T, E> {
+    try {
+        const result = task();
+        return { result, error: null };
+    } catch (error) {
+        return { result: null, error: error as E };
+    }
+}
+
+async function tryCatchAsync<T, E = Error>(task: Promise<T>): Promise<TaskResult<T, E>> {
+    try {
+        const result = await task;
+        return { result, error: null };
+    } catch (error) {
+        return { result: null, error: error as E };
+    }
 }

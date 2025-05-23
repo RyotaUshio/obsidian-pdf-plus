@@ -10,6 +10,7 @@ import { PDFPlusSettingTab } from 'settings';
 import { SidebarView } from 'pdfjs-enums';
 import { showContextMenuAtSelection } from 'context-menu';
 import { RestoreDefaultModal } from 'modals/restore-default-modal';
+import { DataviewInlineFieldsModal } from './dataview';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -196,6 +197,18 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 id: 'restore-default',
                 name: 'Restore default settings',
                 callback: () => (new RestoreDefaultModal(this.plugin)).open()
+            }, {
+                id: 'open-dataview-inline-fields-modal',
+                name: 'Check Dataview inline fields',
+                checkCallback: (checking) => {
+                    if (!this.plugin.requiresDataviewInlineFieldsMigration) {
+                        return false;
+                    }
+                    if (!checking) {
+                        DataviewInlineFieldsModal.open(this.plugin);
+                    }
+                    return true;
+                }
             }
         ];
 
@@ -207,7 +220,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
     registerCommands() {
         Object.values(this.commands).forEach((command) => {
-            this.plugin.addCommand(this.restorePDFLeafFocus(command));
+            this.plugin.addCommand(this.plugin.obsidianHasFocusBug ? this.restorePDFLeafFocus(command) : command);
         });
     }
 

@@ -306,6 +306,7 @@ export interface PDFPlusSettings {
 	vimHintChars: string;
 	vimHintArgs: string;
 	PATH: string;
+	autoCheckForUpdates: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -591,6 +592,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	vimHintChars: 'hjklasdfgyuiopqwertnmzxcvb',
 	vimHintArgs: 'all',
 	PATH: '',
+	autoCheckForUpdates: true,
 };
 
 
@@ -1148,7 +1150,6 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 	addColorSetting(index: number) {
 		const colors = this.plugin.settings.colors;
 		let [name, color] = Object.entries(colors)[index];
-		const isDefault = this.plugin.settings.defaultColor === name;
 		let previousColor = color;
 		return this.addSetting()
 			.addText((text) => {
@@ -1178,9 +1179,11 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 							}
 						}
 
+						if (this.plugin.settings.defaultColor === name) {
+							this.plugin.settings.defaultColor = newName;
+						}
 						name = newName;
 						colors[name] = color;
-						if (isDefault) this.plugin.settings.defaultColor = name;
 						await this.plugin.saveSettings();
 						this.plugin.loadStyle();
 					});
@@ -2209,7 +2212,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 					'<span style="color: var(--text-warning);">[Dataview](obsidian://show-plugin?id=dataview)\'s inline field syntax such as `' + this.plugin.settings.proxyMDProperty + ':: [[file.pdf]]` is supported for the time being, but it is deprecated and will likely not work in the future.</span>',
 					'',
 					'Remarks:',
-					'- Make sure the associated markdown file can be uniquely identified. For example, if you have two markdown files `file1.md` and `file2.md` and both of their `' + this.plugin.settings.proxyMDProperty + '` properties point to the same PDF file, PDF++ cannot determine which markdown file is associated with `file.pdf`.',
+					'- Make sure the associated markdown file can be uniquely identified. For example, if you have two markdown files `file1.md` and `file2.md` and both of their `' + this.plugin.settings.proxyMDProperty + '` properties point to the same PDF file, PDF++ cannot determine which markdown file is associated with `file.pdf`. However, PDF++ v1.0.0 or later will add support for this.',
 					'- If you are in Source Mode, be sure to enclose the link in double quotes.',
 				], setting.descEl);
 			});
@@ -3221,7 +3224,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				}),
 			this.addHeading('Visual mode', 'vim-visual'),
 			this.addToggleSetting('vimVisualMotion')
-				.setName('Enter visual mode on text selection')
+				.setName('Use motion keys to adjust text selection')
 				.then((setting) => {
 					this.renderMarkdown([
 						'When some text is selected, you can modify the range of selection using the `j,` `k`, `h`, `l`, `w`, `e`, `b`, `0`, `^`, `$`, `H`, and `L` keys, similarly to Vim\'s visual mode (`H`/`L` are mapped to `^`/`$` by default). If disabled, you can use `j`/`k`/`h`/`l`/`0`/`^`/`$`/`H`/`L` keys to scroll the page regardless of text selection. Reload the viewer or the app after changing this option.',
@@ -3316,6 +3319,13 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Misc', 'misc', 'lucide-more-horizontal');
+		this.addToggleSetting('autoCheckForUpdates', () => {
+			if (this.plugin.settings.autoCheckForUpdates) {
+				this.plugin.lib.checkForUpdates();
+			}
+		})
+			.setName('Automatically check for updates')
+			.setDesc('If enabled, PDF++ will automatically check for updates every 24 hours and notify you if a new version is available.');
 		this.addToggleSetting('showStatusInToolbar')
 			.setName('Show status in PDF toolbar')
 			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');

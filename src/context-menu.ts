@@ -896,7 +896,7 @@ export class PDFPlusProductMenuComponent extends PDFPlusComponent {
 
                 this.itemToColorName.set(item, i >= 0 ? colorNames[i] : null);
 
-                const hex = this.settings.colors[i >= 0 ? colorNames[i] : 'transparent'];
+                const hex = i >= 0 ? this.settings.colors[colorNames[i]] : 'transparent';
                 item.dom.addClass('pdf-plus-color-menu-item');
                 item.titleEl.before(createDiv('pdf-plus-color-indicator', (el) => {
                     el.setCssStyles({ backgroundColor: hex });
