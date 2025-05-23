@@ -64,7 +64,7 @@ if __name__ == '__main__':
             json.dump(package, f, indent=4)
 
     run(['pnpm', 'i'])
-    run(['git', 'add', '.'])
+    run(['git', 'add', '-u'])
     run(['git', 'commit', '-m', f'release: {args.version}'])
     run(['git', 'pull', '--rebase'])
     run(['git', 'push'])
