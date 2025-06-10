@@ -83,6 +83,8 @@ export default class PDFPlus extends Plugin {
 	textDivFirstIdx: number;
 	/** Whether the current version of Obsidian has the focus bug (see https://forum.obsidian.md/t/pdf-view-loses-focus-after-closing-command-palette-causing-some-commands-to-fail-to-run/97973). */
 	obsidianHasFocusBug: boolean;
+	/** Whether the current version of Obsidian has the text selection bug (see https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/450). */
+	obsidianHasTextSelectionBug: boolean;
 	requiresDataviewInlineFieldsMigration = false;
 	isDebugMode: boolean = false;
 
@@ -160,6 +162,10 @@ export default class PDFPlus extends Plugin {
 		// See:
 		// https://forum.obsidian.md/t/pdf-view-loses-focus-after-closing-command-palette-causing-some-commands-to-fail-to-run/97973
 		this.obsidianHasFocusBug = !requireApiVersion('1.9.0');
+
+		// See:
+		// https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/450
+		this.obsidianHasTextSelectionBug = requireApiVersion('1.9.0');
 
 		InstallerVersionModal.openIfNecessary(this);
 	}

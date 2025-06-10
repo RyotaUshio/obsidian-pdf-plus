@@ -159,8 +159,36 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         this.component?.registerDomEvent(viewerContainerEl, 'pointerup', onPointerUp);
                     });
 
-                    const onPointerUp = (evt: MouseEvent) => {
+                    const doc = viewerContainerEl.doc;
+                    const fixTextSelection = (evt: PointerEvent) => {
+                        const selection = doc.getSelection();
+                        if (!selection || selection.rangeCount === 0) return;
+                        const range = selection.getRangeAt(0);
+                        const { endContainer, endOffset } = range;
+
+                        if (selection.anchorNode && selection.focusNode === endContainer) {
+                            if (endContainer.instanceOf(HTMLElement) && endContainer.hasClass('textLayer')) {
+                                for (let i = endOffset - 1; i >= 0; i--) {
+                                    const child = endContainer.childNodes[i];
+                                    if (child.instanceOf(HTMLElement) && child.hasClass('textLayerNode') && child.lastChild && child.lastChild.nodeType === Node.TEXT_NODE) {
+                                        const anchorNode = selection.anchorNode;
+                                        const anchorOffset = selection.anchorOffset;
+                                        const focusNode = child.lastChild;
+                                        const focusOffset = focusNode.textContent!.length;
+                                        doc.getSelection()?.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    const onPointerUp = (evt: PointerEvent) => {
                         updateIsModEvent(evt);
+
+                        if (plugin.obsidianHasTextSelectionBug && plugin.settings.fixObsidianTextSelectionBug) {
+                            fixTextSelection(evt);
+                        }
 
                         if (plugin.settings.autoCopy) {
                             lib.commands.copyLink(false, false);

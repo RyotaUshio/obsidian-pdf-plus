@@ -222,20 +222,19 @@ export function matchModifiers(evt: MouseEvent, modifiers: Modifier[]): boolean 
 }
 
 export function selectDoubleClickedWord(evt: MouseEvent) {
-    const window = evt.win;
-    const document = evt.doc;
+    const doc = evt.doc;
 
-    const selection = window.getSelection();
+    const selection = doc.getSelection();
     if (!selection) return;
 
     let range = null;
 
-    if (document.caretRangeFromPoint) {
-        range = document.caretRangeFromPoint(evt.clientX, evt.clientY);
-    } else if (document.caretPositionFromPoint) {
-        const pos = document.caretPositionFromPoint(evt.clientX, evt.clientY);
+    if (doc.caretRangeFromPoint) {
+        range = doc.caretRangeFromPoint(evt.clientX, evt.clientY);
+    } else if (doc.caretPositionFromPoint) {
+        const pos = doc.caretPositionFromPoint(evt.clientX, evt.clientY);
         if (!pos) return;
-        range = document.createRange();
+        range = doc.createRange();
         range.setStart(pos.offsetNode, pos.offset);
         range.collapse(true);
     }
@@ -261,7 +260,7 @@ export function selectTrippleClickedTextLayerNode(evt: MouseEvent) {
     if (!selection) return;
 
     const range = evt.doc.createRange();
-    range.selectNode(textLayerNode);
+    range.selectNodeContents(textLayerNode);
     selection.removeAllRanges();
     selection.addRange(range);
 }

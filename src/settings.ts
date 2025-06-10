@@ -307,6 +307,7 @@ export interface PDFPlusSettings {
 	vimHintArgs: string;
 	PATH: string;
 	autoCheckForUpdates: boolean;
+	fixObsidianTextSelectionBug: boolean;
 }
 
 export const DEFAULT_SETTINGS: PDFPlusSettings = {
@@ -593,6 +594,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	vimHintArgs: 'all',
 	PATH: '',
 	autoCheckForUpdates: true,
+	fixObsidianTextSelectionBug: true,
 };
 
 
@@ -3326,6 +3328,14 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		})
 			.setName('Automatically check for updates')
 			.setDesc('If enabled, PDF++ will automatically check for updates every 24 hours and notify you if a new version is available.');
+		this.addToggleSetting('fixObsidianTextSelectionBug')
+			.setName(`Fix Obsidian 1.9's text selection bug`)
+			.then((setting) => {
+				this.renderMarkdown([
+					`As of June 10, 2025, Obsidian 1.9 has a bug related to PDF text selection that prevents Obsidian from recognizing text selection ranges properly (see [here](https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/450) for more details). `,
+					`This option adds a experimental workaround to mitigate the issue.`,
+				], setting.descEl);
+			});
 		this.addToggleSetting('showStatusInToolbar')
 			.setName('Show status in PDF toolbar')
 			.setDesc('For example, when you copy a link to a text selection in a PDF file, the status "Link copied" will be displayed in the PDF toolbar.');
