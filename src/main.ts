@@ -765,14 +765,14 @@ export default class PDFPlus extends Plugin {
 		this.registerEvent(eventRef);
 	}
 
-	private registerAutoCheckForUpdates() {
-		const check = async () => {
-			if (!this.settings.autoCheckForUpdates) return;
+	async checkForUpdatesIfNeeded() {
+		if (!this.settings.autoCheckForUpdates) return;
 
-			const result = await this.lib.checkForUpdates({
-				minHoursSinceRelease: 24,
-			});
-			if (result.shouldUpdate) {
+		const result = await this.lib.checkForUpdates({
+			minHoursSinceRelease: 24,
+		});
+		if (result.shouldUpdate) {
+			this.app.workspace.onLayoutReady(() => {
 				new Notice(createFragment((el) => {
 					el.append(
 						'PDF++: There is a newer version available! ',
@@ -782,11 +782,13 @@ export default class PDFPlus extends Plugin {
 						})
 					);
 				}));
-			}
-		};
+			});
+		}
+	}
 
-		check();
-		this.registerInterval(window.setInterval(check, 1000 * 60 * 60 * 24));
+	private registerAutoCheckForUpdates() {
+		this.checkForUpdatesIfNeeded();
+		this.registerInterval(window.setInterval(() => this.checkForUpdatesIfNeeded(), 1000 * 60 * 60 * 24));
 	}
 
 	private registerHoverLinkSources() {

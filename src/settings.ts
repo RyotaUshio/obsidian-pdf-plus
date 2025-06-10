@@ -3321,11 +3321,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 
 
 		this.addHeading('Misc', 'misc', 'lucide-more-horizontal');
-		this.addToggleSetting('autoCheckForUpdates', () => {
-			if (this.plugin.settings.autoCheckForUpdates) {
-				this.plugin.lib.checkForUpdates();
-			}
-		})
+		this.addToggleSetting('autoCheckForUpdates', () => this.plugin.checkForUpdatesIfNeeded())
 			.setName('Automatically check for updates')
 			.setDesc('If enabled, PDF++ will automatically check for updates every 24 hours and notify you if a new version is available.');
 		this.addToggleSetting('fixObsidianTextSelectionBug')
