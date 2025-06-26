@@ -609,6 +609,12 @@ body {
     --popover-width: 400px;
     --pdf-plus-bib-metadata-font-size: var(--font-ui-small);
 
+    /* Workaround to prevent bib popovers from being covered by Hover Editor
+    when the bib popover is spawned from a hover editor
+    (https://github.com/RyotaUshio/obsidian-pdf-plus/issues/459).
+    Hover Editor decides z-index based on --layer-slides, so we need to set a higher z-index. */
+    z-index: calc(var(--layer-slides) + 1);
+
     .pdf-plus-bib {
         padding: var(--size-4-3);
         font-size: var(--font-ui-medium);
