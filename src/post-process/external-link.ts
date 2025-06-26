@@ -30,7 +30,7 @@ export class PDFExternalLinkPostProcessor extends PDFPlusComponent implements Ho
     }
 
     onload() {
-        if (this.settings.popoverPreviewOnExternalLinkHover) {
+        if (this.settings.popoverPreviewOnExternalLinkHover && this.app.plugins.enabledPlugins.has('surfing')) {
             this.registerDomEvent(this.annot.container, 'mouseover', (event) => {
                 const url: string | undefined = this.annot.data.url;
                 if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
