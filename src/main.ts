@@ -164,8 +164,9 @@ export default class PDFPlus extends Plugin {
 		this.obsidianHasFocusBug = !requireApiVersion('1.9.0');
 
 		// See:
+		// https://forum.obsidian.md/t/1-9-1-pdf-deep-links-to-some-text-selections-cannot-be-copied-text-selection-is-not-smooth/101227
 		// https://github.com/RyotaUshio/obsidian-pdf-plus/discussions/450
-		this.obsidianHasTextSelectionBug = requireApiVersion('1.9.0');
+		this.obsidianHasTextSelectionBug = ['1.9.0', '1.9.1', '1.9.2'].includes(apiVersion);
 
 		InstallerVersionModal.openIfNecessary(this);
 	}
