@@ -468,7 +468,7 @@ export class BibliographyDom extends PDFPlusComponent {
                 });
             
             // Add scholar library search button
-            if (this.bib.scholarPlugin) {
+            if (this.bib.scholarPlugin && this.settings.showScholarButtonInBibPopups) {
                 const scholarButton = new ButtonComponent(el)
                     .setButtonText('📚 Checking...')
                     .onClick(async () => {
