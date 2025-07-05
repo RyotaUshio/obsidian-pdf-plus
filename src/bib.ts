@@ -38,6 +38,10 @@ export class BibliographyManager extends PDFPlusComponent {
         this.init();
     }
 
+    get scholarPlugin() {
+        return this.app.plugins.plugins.scholar ?? null;
+    }
+
     isEnabled() {
         const viewer = this.child.pdfViewer;
         return this.settings.actionOnCitationHover !== 'none'
@@ -342,6 +346,50 @@ export class BibliographyDom extends PDFPlusComponent {
         return this.bib.child;
     }
 
+    private async checkPaperInLibrary(): Promise<boolean> {
+        const scholarPlugin = this.bib.scholarPlugin;
+        if (!scholarPlugin || !scholarPlugin.api) {
+            console.debug('Scholar plugin not available');
+            return false;
+        }
+
+        const parsed = this.bib.destIdToParsedBib.get(this.destId);
+        const bibText = this.bib.destIdToBibText.get(this.destId);
+
+        let url: string | undefined;
+        let title: string | undefined;
+
+        // Use structured data when available
+        if (parsed) {
+            title = parsed.title?.[0];
+            // You could also extract URL from other parsed fields if needed
+            console.debug('Using parsed data - title:', title);
+        }
+
+        // Prepare parameters for the API call
+        const params: { url?: string, title?: string, citekey?: string, bibstring?: string } = {};
+        
+        if (title) params.title = title;
+        if (url) params.url = url;
+        if (bibText) params.bibstring = bibText;
+
+        // Need at least some data to make the call
+        if (!params.title && !params.url && !params.bibstring) {
+            console.debug('No data available for library check');
+            return false;
+        }
+
+        try {
+            console.debug('Calling scholar API with params:', params);
+            const result = await scholarPlugin.api.isPaperInLibrary(params);
+            console.debug('Scholar API result:', result?.isInLibrary || false);
+            return result?.isInLibrary || false;
+        } catch (error) {
+            console.debug('Error checking paper in scholar library:', error);
+            return false;
+        }
+    }
+
     renderParsedBib(parsed: AnystyleJson) {
         const { author, title, year, 'container-title': containerTitle } = parsed;
 
@@ -418,6 +466,45 @@ export class BibliographyDom extends PDFPlusComponent {
                     }
                     window.open(url);
                 });
+            
+            // Add scholar library search button
+            if (this.bib.scholarPlugin && this.settings.showScholarButtonInBibPopups) {
+                const scholarButton = new ButtonComponent(el)
+                    .setButtonText('📚 Checking...')
+                    .onClick(async () => {
+                        const parsed = this.bib.destIdToParsedBib.get(this.destId);
+                        const bibText = this.bib.destIdToBibText.get(this.destId);
+                        
+                        const params: { title?: string, bibstring?: string } = {};
+                        if (parsed?.title?.[0]) params.title = parsed.title[0];
+                        if (bibText) params.bibstring = bibText;
+                        
+                        if (params.title || params.bibstring) {
+                            try {
+                                await this.bib.scholarPlugin!.api.openPaper(params);
+                            } catch (error) {
+                                console.warn('Error calling searchPaperByTitle:', error);
+                                new Notice(`${this.plugin.manifest.name}: Failed to search in Scholar`);
+                            }
+                        }
+                    });
+                
+                this.checkPaperInLibrary().then(isInLibrary => {
+                    if (isInLibrary) {
+                        scholarButton.setButtonText('📚 Open in Scholar Library');
+                        scholarButton.buttonEl.style.color = '#1971c2'; // oc-blue-8
+                    } else {
+                        scholarButton.setButtonText('🔍 Search with Scholar');
+                        // scholarButton.buttonEl.style.color = '#757575'; // Gray
+                        // We just don't change the color here 
+                    }
+                }).catch((error) => {
+                    console.warn('Error checking paper in scholar library:', error);
+                    scholarButton.setButtonText('❓ Search with Scholar');
+                    scholarButton.buttonEl.style.color = '#FF9800'; // Orange
+                });
+            }
+            
             new ExtraButtonComponent(el)
                 .setIcon('lucide-settings')
                 .setTooltip('Customize...')

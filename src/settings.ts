@@ -282,6 +282,7 @@ export interface PDFPlusSettings {
 	enableBibInEmbed: boolean;
 	enableBibInHoverPopover: boolean;
 	enableBibInCanvas: boolean;
+	showScholarButtonInBibPopups: boolean;
 	citationIdPatterns: string;
 	copyAsSingleLine: boolean;
 	removeWhitespaceBetweenCJChars: boolean;
@@ -569,6 +570,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	enableBibInEmbed: false,
 	enableBibInHoverPopover: false,
 	enableBibInCanvas: true,
+	showScholarButtonInBibPopups: true,
 	citationIdPatterns: '^cite.\n^bib\\d+$',
 	copyAsSingleLine: true,
 	removeWhitespaceBetweenCJChars: true,
@@ -2643,6 +2645,8 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				() => this.plugin.settings.actionOnCitationHover !== 'none'
 			);
 
+
+
 			this.showConditionally(
 				[
 					this.addDesc('Try turning off the following options if you experience performance issues.'),
@@ -2656,6 +2660,22 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 				() => this.plugin.settings.actionOnCitationHover !== 'none',
 			);
 		}
+
+
+		this.addHeading('Obsidian Scholar integration', 'scholar-integration', 'lucide-book-plus')
+			.setDesc('Enhance your bibliography experience with the Obsidian Scholar plugin integration.');
+		this.addToggleSetting('showScholarButtonInBibPopups')
+			.setName('Show scholar buttons in bibliography popups')
+			.setDesc('If the Obsidian Scholar plugin is installed, it will show buttons to search for papers or open them directly in your Scholar library.')
+			.then((setting) => {
+				this.renderMarkdown([
+					'**Note:** This requires the [Obsidian Scholar](obsidian://show-plugin?id=scholar) plugin to be installed and enabled.',
+					'',
+					'When enabled, bibliography popups will include buttons to:',
+					'- 🔍 Search for the paper in Scholar',
+					'- 📚 Open the paper in your Scholar library (if it\'s already there)',
+				], setting.descEl);
+			});
 
 
 		this.addHeading('External links in PDF', 'pdf-external-link', 'external-link')
