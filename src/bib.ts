@@ -481,7 +481,6 @@ export class BibliographyDom extends PDFPlusComponent {
                         
                         if (params.title || params.bibstring) {
                             try {
-                                console.log(this.bib.scholarPlugin!.api);
                                 await this.bib.scholarPlugin!.api.openPaper(params);
                             } catch (error) {
                                 console.warn('Error calling searchPaperByTitle:', error);
@@ -491,13 +490,13 @@ export class BibliographyDom extends PDFPlusComponent {
                     });
                 
                 this.checkPaperInLibrary().then(isInLibrary => {
-                    console.log("isInLibrary", isInLibrary);
                     if (isInLibrary) {
                         scholarButton.setButtonText('📚 Open in Scholar Library');
-                        scholarButton.buttonEl.style.color = '#4CAF50'; // Green
+                        scholarButton.buttonEl.style.color = '#1971c2'; // oc-blue-8
                     } else {
                         scholarButton.setButtonText('🔍 Search with Scholar');
-                        scholarButton.buttonEl.style.color = '#757575'; // Gray
+                        // scholarButton.buttonEl.style.color = '#757575'; // Gray
+                        // We just don't change the color here 
                     }
                 }).catch((error) => {
                     console.warn('Error checking paper in scholar library:', error);
