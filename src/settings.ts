@@ -343,7 +343,7 @@ export const DEFAULT_SETTINGS: PDFPlusSettings = {
 	copyCommands: [
 		{
 			name: 'Quote',
-			template: '> ({{linkWithDisplay}})\n> {{selection}}\n',
+			template: '> ({{linkWithDisplay}})\n> {{text}}\n',
 		},
 		{
 			name: 'Link',
