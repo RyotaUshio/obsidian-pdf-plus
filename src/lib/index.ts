@@ -15,7 +15,7 @@ import { PDFOutlines } from './outlines';
 import { NameTree, NumberTree } from './name-or-number-trees';
 import { PDFNamedDestinations } from './destinations';
 import { PDFPageLabels } from './page-labels';
-import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap, BacklinkView } from 'typings';
+import { AnnotationElement, CanvasFileNode, CanvasNode, CanvasView, DestArray, EventBus, ObsidianViewer, PDFPageView, PDFView, PDFViewExtraState, PDFViewerChild, PDFJsDestArray, PDFViewer, PDFEmbed, PDFViewState, Rect, TextContentItem, PDFFindBar, PDFSearchSettings, PDFJsEventMap, BacklinkView, ExcalidrawView } from 'typings';
 import { PDFCroppedEmbed } from '../pdf-cropped-embed';
 import { PDFBacklinkIndex } from './pdf-backlink-index';
 import { Speech } from './speech';
@@ -632,6 +632,30 @@ export class PDFPlusLib {
             });
     }
 
+    getPDFEmbedInExcalidrawView(view: ExcalidrawView): PDFEmbed | null {
+        for (const ref of view.embeddableLeafRefs.values()) {
+            const node = ref.node;
+            if (!node) continue;
+            if ('child' in node && node.child instanceof Component) {
+                const embeds = this.getPDFEmbedsInComponent(node.child, true);
+                if (embeds.length) return embeds[0];
+            }
+        }
+        return null;
+    }
+
+    getAllPDFEmbedsInExcalidrawView(view: ExcalidrawView): PDFEmbed[] {
+        return Array.from(view.embeddableLeafRefs.values())
+            .flatMap((ref) => {
+                const node = ref.node;
+                if (!node) return [];
+                if ('child' in node && node.child instanceof Component) {
+                    return this.getPDFEmbedsInComponent(node.child, false);
+                }
+                return [];
+            });
+    }
+
     getPDFEmbedInActiveView(): PDFEmbed | null {
         const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (markdownView) {
@@ -641,6 +665,11 @@ export class PDFPlusLib {
         const canvas = this.workspace.getActiveCanvasView();
         if (canvas) {
             const embed = this.getPDFEmbedInCanvasView(canvas);
+            if (embed) return embed;
+        }
+        const excalidraw = this.workspace.getActiveExcalidrawView();
+        if (excalidraw) {
+            const embed = this.getPDFEmbedInExcalidrawView(excalidraw);
             if (embed) return embed;
         }
         return null;
@@ -662,6 +691,8 @@ export class PDFPlusLib {
                     pdfEmbed = this.getPDFEmbedInMarkdownView(view);
                 } else if (this.isCanvasView(view)) {
                     pdfEmbed = this.getPDFEmbedInCanvasView(view);
+                } else if (this.isExcalidrawView(view)) {
+                    pdfEmbed = this.getPDFEmbedInExcalidrawView(view);
                 }
             });
             if (pdfEmbed) return pdfEmbed;
@@ -889,6 +920,11 @@ export class PDFPlusLib {
     isBacklinkView(view: View): view is BacklinkView {
         // The instanceof check is necessary for correctly handling DeferredView.
         return view instanceof FileView && view.getViewType() === 'backlink';
+    }
+
+    isExcalidrawView(view: View): view is ExcalidrawView {
+        // The instanceof check is necessary for correctly handling DeferredView.
+        return view instanceof TextFileView && view.getViewType() === 'excalidraw';
     }
 
     getAvailablePathForCopy(file: TFile) {

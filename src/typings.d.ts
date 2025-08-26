@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor } from 'obsidian';
+import { App, CachedMetadata, Component, Debouncer, EditableFileView, FileView, Modal, PluginSettingTab, Scope, SearchComponent, SearchMatches, SettingTab, TFile, SearchMatchPart, IconName, TFolder, TAbstractFile, MarkdownView, MarkdownFileInfo, Events, TextFileView, Reference, ViewStateResult, HoverPopover, Hotkey, KeymapEventHandler, Constructor, WorkspaceLeaf } from 'obsidian';
 import { CanvasData, CanvasFileData, CanvasGroupData, CanvasLinkData, CanvasNodeData, CanvasTextData } from 'obsidian/canvas';
 import { EditorView } from '@codemirror/view';
 import { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -1081,6 +1081,13 @@ interface HotkeyManager {
     setHotkeys(id: string, hotkeys: Hotkey[]): void;
     removeHotkeys(id: string): void;
     printHotkeyForCommand(id: string): string;
+}
+
+interface ExcalidrawView extends TextFileView {
+    embeddableLeafRefs: Map<string, {
+        leaf: WorkspaceLeaf;
+        node?: CanvasNode;
+    }>;
 }
 
 declare module 'obsidian' {

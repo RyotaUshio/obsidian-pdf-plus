@@ -1,7 +1,7 @@
 import { HoverParent, MarkdownView, OpenViewState, PaneType, Platform, Pos, TFile, View, WorkspaceItem, WorkspaceLeaf, WorkspaceSidedock, WorkspaceSplit, WorkspaceTabs, parseLinktext, requireApiVersion } from 'obsidian';
 
 import { PDFPlusLibSubmodule } from './submodule';
-import { BacklinkView, CanvasView, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
+import { BacklinkView, CanvasView, ExcalidrawView, PDFEmbed, PDFView, PDFViewerChild, PDFViewerComponent } from 'typings';
 
 
 // Split right, left, down, or up
@@ -65,6 +65,9 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
             } else if (this.lib.isCanvasView(view)) {
                 const embeds = this.lib.getAllPDFEmbedsInCanvasView(view);
                 embeds.forEach(callback);
+            } else if (this.lib.isExcalidrawView(view)) {
+                const embeds = this.lib.getAllPDFEmbedsInExcalidrawView(view);
+                embeds.forEach(callback);
             }
         });
     }
@@ -80,6 +83,9 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
                     .forEach((embed) => callback(embed.viewer, embed.file));
             } else if (this.lib.isCanvasView(view)) {
                 this.lib.getAllPDFEmbedsInCanvasView(view)
+                    .forEach((embed) => callback(embed.viewer, embed.file));
+            } else if (this.lib.isExcalidrawView(view)) {
+                this.lib.getAllPDFEmbedsInExcalidrawView(view)
                     .forEach((embed) => callback(embed.viewer, embed.file));
             }
         });
@@ -105,6 +111,12 @@ export class WorkspaceLib extends PDFPlusLibSubmodule {
         // I believe using `activeLeaf` is inevitable here.
         const view = this.app.workspace.activeLeaf?.view;
         if (view && this.lib.isCanvasView(view)) return view;
+        return null;
+    }
+
+    getActiveExcalidrawView(): ExcalidrawView | null {
+        const view = this.app.workspace.activeLeaf?.view;
+        if (view && this.lib.isExcalidrawView(view)) return view;
         return null;
     }
 
