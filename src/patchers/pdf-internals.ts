@@ -164,6 +164,9 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                         const selection = doc.getSelection();
                         if (!selection || selection.rangeCount === 0) return;
                         const range = selection.getRangeAt(0);
+
+                        // Fix for Obsidian 1.9.0-1.9.2
+                        // https://forum.obsidian.md/t/1-9-1-pdf-deep-links-to-some-text-selections-cannot-be-copied-text-selection-is-not-smooth/101227
                         const { endContainer, endOffset } = range;
 
                         if (selection.anchorNode && selection.focusNode === endContainer) {
@@ -179,6 +182,34 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                                         break;
                                     }
                                 }
+                            }
+                        }
+
+                        // Fix for Obsidian 1.9.3(maybe)-present (1.9.12 as of 2025-08-30)
+                        // https://forum.obsidian.md/t/cannot-copy-link-to-pdf-text-selection/104454
+                        // https://github.com/RyotaUshio/obsidian-pdf-plus/issues/476
+                        const { startContainer, startOffset } = range;
+
+                        if (
+                            endOffset === 0
+                            && endContainer.instanceOf(HTMLElement)
+                            && endContainer.matches('.textLayerNode[data-idx]')
+                        ) {
+                            const endIndex = +endContainer.dataset.idx!;
+                            if (endIndex > 0) return;
+
+                            const startPageEl = plugin.lib.getPageElAssociatedWithNode(startContainer);
+                            const endPageEl = plugin.lib.getPageElAssociatedWithNode(endContainer);
+                            if (!startPageEl || !endPageEl || startPageEl === endPageEl) return;
+
+                            // Now it turned out that the end of the selection should be replaced with
+                            // the end of the last text layer node in the start page.
+                            const lastTextLayerNode = Array.from(startPageEl.querySelectorAll('.textLayerNode')).at(-1);
+                            if (lastTextLayerNode) {
+                                const selection = doc.getSelection();
+                                if (!selection) return;
+                                selection.setBaseAndExtent(startContainer, startOffset, lastTextLayerNode, lastTextLayerNode.childNodes.length);
+                                return;
                             }
                         }
                     };
