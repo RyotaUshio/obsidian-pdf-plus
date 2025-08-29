@@ -24,7 +24,7 @@ import { DummyFileManager } from './dummy-file-manager';
 import { RenderParameters } from 'pdfjs-dist/types/src/display/api';
 
 
-type OptionalRenderParameters = Omit<RenderParameters, 'canvasContext' | 'viewport' | 'transform'>
+type OptionalRenderParameters = Omit<RenderParameters, 'canvas' | 'canvasContext' | 'viewport' | 'transform'>
     & {
         // Added by Obsidian in their customized PDF.js
         invert?: boolean;
@@ -954,7 +954,7 @@ export class PDFPlusLib {
 
         const transform = [outputScale, 0, 0, outputScale, 0, 0];
 
-        await page.render({ canvasContext, transform, viewport, ...renderParams }).promise;
+        await page.render({ canvas, canvasContext, transform, viewport, ...renderParams }).promise;
 
         return canvas;
     }
