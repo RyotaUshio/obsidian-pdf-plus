@@ -1109,6 +1109,12 @@ declare module 'obsidian' {
                 ['obsidian-tts']?: Plugin & {
                     say(text: string, languageCode?: string): Promise<void>
                 };
+                scholar?: Plugin & {
+                    api: {
+                        isPaperInLibrary(params: { url?: string, title?: string, citekey?: string, bibstring?: string }): Promise<{ isInLibrary: boolean }>;
+                        openPaper(params: { title?: string, bibstring?: string }): Promise<void>;
+                    };
+                };
                 [id: string]: Plugin | undefined;
             }
             enabledPlugins: Set<string>;
