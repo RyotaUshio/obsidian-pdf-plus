@@ -8,6 +8,8 @@ export const patchPagePreview = (plugin: PDFPlus): boolean => {
     const app = plugin.app;
     const lib = plugin.lib;
     const pagePreviewInstance = app.internalPlugins.plugins['page-preview'].instance;
+    // The Page preview core plugin can be turned off, in which case there is nothing to patch.
+    if (!pagePreviewInstance) return false;
 
     // Patch the instance instead of the prototype to avoid conflicts with Hover Editor
     // https://github.com/nothingislost/obsidian-hover-editor/issues/259

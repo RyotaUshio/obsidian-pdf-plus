@@ -899,8 +899,17 @@ export default class PDFPlus extends Plugin {
 	}
 
 	requireModKeyForLinkHover(id = 'pdf-plus') {
-		// @ts-ignore
-		return this.app.internalPlugins.plugins['page-preview'].instance.overrides[id]
+		// Obsidian 1.13 renamed the page-preview plugin's per-source override record
+		// from `overrides` to `options`. Reading the old name threw a TypeError, which,
+		// because `PDFPlusSettingTab.display` is async and Obsidian does not await it,
+		// silently aborted the rendering of the settings tab halfway through.
+		// https://github.com/RyotaUshio/obsidian-pdf-plus/issues/569
+		// The page-preview plugin can also be disabled altogether, in which case there is
+		// no instance to read from, so fall back to the source's default in that case too.
+		const instance = this.app.internalPlugins.plugins['page-preview'].instance;
+		const overrides = instance?.options ?? instance?.overrides;
+
+		return overrides?.[id]
 			?? this.app.workspace.hoverLinkSources[id]?.defaultMod
 			?? false;
 	}

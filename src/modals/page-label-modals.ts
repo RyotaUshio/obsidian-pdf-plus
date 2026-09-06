@@ -15,21 +15,21 @@ import { getModifierNameInPlatform } from 'utils';
 
 abstract class PDFPageLabelModal extends PDFPlusModal {
     controlEl: HTMLElement;
-    doc: PDFDocument | null;
+    pdf: PDFDocument | null;
     pageLabels: PDFPageLabels | null;
-    docLoadingPromise: Promise<{ doc: PDFDocument, pageLabels: PDFPageLabels | null }>;
+    pdfLoadingPromise: Promise<{ pdf: PDFDocument, pageLabels: PDFPageLabels | null }>;
 
     constructor(plugin: PDFPlus, public file: TFile) {
         super(plugin);
         this.containerEl.addClass('pdf-plus-page-label-modal');
         this.controlEl = this.contentEl.createDiv();
-        this.doc = null;
+        this.pdf = null;
         this.pageLabels = null;
-        this.docLoadingPromise = (async () => {
-            this.doc = await plugin.lib.loadPdfLibDocument(file);
-            this.pageLabels = PDFPageLabels.fromDocument(this.doc);
+        this.pdfLoadingPromise = (async () => {
+            this.pdf = await plugin.lib.loadPdfLibDocument(file);
+            this.pageLabels = PDFPageLabels.fromDocument(this.pdf);
 
-            return { doc: this.doc, pageLabels: this.pageLabels };
+            return { pdf: this.pdf, pageLabels: this.pageLabels };
         })();
 
         this.scope.register([], 'Enter', () => this.redisplay());
@@ -127,7 +127,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
             text: 'Loading...'
         });
 
-        await this.docLoadingPromise;
+        await this.pdfLoadingPromise;
 
         this.display();
         this.addButtons();
@@ -139,8 +139,8 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
     }
 
     display() {
-        const { pageLabels, doc } = this;
-        if (!doc) return;
+        const { pageLabels, pdf } = this;
+        if (!pdf) return;
 
         this.controlEl.empty();
 
@@ -152,7 +152,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                         .setButtonText('Create')
                         .setCta()
                         .onClick(() => {
-                            this.pageLabels = PDFPageLabels.createEmpty(doc);
+                            this.pageLabels = PDFPageLabels.createEmpty(pdf);
                             this.redisplay();
                             this.updateButtonVisibility();
                         });
@@ -166,7 +166,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
             return;
         }
 
-        const pageCount = doc.getPageCount();
+        const pageCount = pdf.getPageCount();
 
         for (let i = 0; i < pageLabels.ranges.length; i++) {
             const rangeEl = this.controlEl.createDiv('page-label-range');
@@ -291,11 +291,11 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                         .setButtonText('Save')
                         .setCta()
                         .onClick(async () => {
-                            if (this.pageLabels && this.doc) {
+                            if (this.pageLabels && this.pdf) {
                                 if (this.pageLabels.rangeCount() > 0) {
-                                    this.pageLabels.setToDocument(this.doc);
-                                } else PDFPageLabels.removeFromDocument(this.doc);
-                                await this.app.vault.modifyBinary(this.file, await this.doc.save());
+                                    this.pageLabels.setToDocument(this.pdf);
+                                } else PDFPageLabels.removeFromDocument(this.pdf);
+                                await this.app.vault.modifyBinary(this.file, await this.pdf.save());
                             } else {
                                 new Notice(`${this.plugin.manifest.name}: Something went wrong.`);
                             }

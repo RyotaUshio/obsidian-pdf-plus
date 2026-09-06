@@ -1120,7 +1120,14 @@ declare module 'obsidian' {
                 'page-preview': {
                     instance: {
                         onLinkHover(hoverParent: HoverParent, targetEl: HTMLElement | null, linktext: string, sourcePath: string, state: any): void;
-                    }
+                        /**
+                         * Per-hover-link-source overrides of "require Mod key to trigger the preview".
+                         * Named `options` in Obsidian 1.13 and later, `overrides` before that.
+                         */
+                        options?: Record<string, boolean | undefined>;
+                        /** @deprecated Renamed to {@link options} in Obsidian 1.13. */
+                        overrides?: Record<string, boolean | undefined>;
+                    } | undefined
                     enabled: boolean;
                     enable(): void;
                     disable(): void;
@@ -1326,5 +1333,10 @@ declare module 'obsidian' {
 
     interface KeymapEventHandler {
         func: KeymapEventListener;
+    }
+
+    interface Modal {
+        /* Introduced in Obsidian 1.13 most likely */
+        readonly doc: Document;
     }
 }
