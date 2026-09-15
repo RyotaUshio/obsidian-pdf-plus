@@ -63,6 +63,16 @@ export const patchPDFView = (plugin: PDFPlus): boolean => {
                     const subpath = lib.viewStateToSubpath(state);
                     return self.viewer.loadFile(file, subpath ?? undefined);
                 };
+            },
+            onModify(old) {
+                return function (this: PDFView, file: TFile) {
+                    // Obsidian reloads the entire PDF viewer whenever its file is modified, which
+                    // PDF++'s own annotation writes do not need: the plugin keeps the document it
+                    // has and previews the new highlight instead, so that writing a highlight into
+                    // the file does not flash the viewer. See `ViewerLiveUpdate`.
+                    if (plugin.viewerLiveUpdate.consumeModify(file.path)) return;
+                    return old.call(this, file);
+                };
             }
         }));
 

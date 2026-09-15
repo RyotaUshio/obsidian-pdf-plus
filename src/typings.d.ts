@@ -71,7 +71,7 @@ declare global {
 interface PDFView extends EditableFileView {
     viewer: PDFViewerComponent;
     scope: Scope;
-    onModify(): void;
+    onModify(file: TFile): void;
     showSearch(): void;
     getState(): PDFViewState;
     setState(state: PDFViewState, result: ViewStateResult): Promise<void>;

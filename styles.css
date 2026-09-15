@@ -363,6 +363,25 @@ settings:
     pointer-events: none;
 }
 
+/* Preview of highlights that have just been written into the PDF file itself, until the viewer
+   re-reads the file (see ViewerLiveUpdate). It has to sit above the page canvas, but must not
+   swallow clicks meant for the text layer underneath. */
+.pdf-plus-live-highlight-layer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 3;
+    transform-origin: 0 0;
+    pointer-events: none;
+}
+
+.pdf-plus-live-highlight-layer .pdf-plus-live-highlight {
+    position: absolute;
+    pointer-events: none;
+}
+
 .pdf-plus-backlink-highlight-layer .pdf-plus-backlink {
     position: absolute;
     pointer-events: auto;

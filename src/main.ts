@@ -4,6 +4,7 @@ import * as pdflib from '@cantoo/pdf-lib';
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
 import { PDFPlusLib } from 'lib';
 import { AutoCopyMode } from 'auto-copy';
+import { ViewerLiveUpdate } from 'viewer-live-update';
 import { ColorPalette } from 'color-palette';
 import { DomManager } from 'dom-manager';
 import { PDFCroppedEmbed } from 'pdf-cropped-embed';
@@ -28,6 +29,8 @@ export default class PDFPlus extends Plugin {
 	domManager: DomManager;
 	/** When loaded, just selecting a range of text in a PDF viewer will run the `copy-link-to-selection` command. */
 	autoCopyMode: AutoCopyMode;
+	/** Keeps PDF viewers in sync with annotations that PDF++ writes into PDF files themselves, without reloading them. */
+	viewerLiveUpdate: ViewerLiveUpdate = new ViewerLiveUpdate(this);
 	/** A ribbon icon to toggle auto-focus mode */
 	autoFocusToggleIconEl: HTMLElement | null = null;
 	/** A ribbon icon to toggle auto-paste mode */
@@ -102,6 +105,9 @@ export default class PDFPlus extends Plugin {
 		this.domManager.registerCalloutRenderer();
 
 		this.registerRibbonIcons();
+
+		// See the docstring of `ViewerLiveUpdate`.
+		this.register(() => this.viewerLiveUpdate.unload());
 
 		this.patchObsidian();
 

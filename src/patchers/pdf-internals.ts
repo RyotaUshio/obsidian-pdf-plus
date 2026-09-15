@@ -309,6 +309,11 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
         },
         unload(old) {
             return function (this: PDFViewerChild) {
+                // The viewer is going away (tab closed, or a reload follows): previews of
+                // highlights written into the file have nothing left to stand in for.
+                // See `ViewerLiveUpdate`.
+                if (this.file) plugin.viewerLiveUpdate.clear(this.file);
+
                 this.component?.unload();
                 return old.call(this);
             };
@@ -337,6 +342,11 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 if (this.unloaded || !this.pdfViewer) {
                     return;
                 }
+
+                // The viewer is genuinely (re)reading this file now, so any preview of a highlight
+                // that PDF++ wrote earlier (see `ViewerLiveUpdate`) is superseded by the annotation
+                // in the file itself.
+                plugin.viewerLiveUpdate.clear(file);
 
                 if (!this.component) {
                     this.component = plugin.addChild(new Component());
@@ -380,6 +390,10 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                 if (pdfContainerEl) {
                     plugin.pdfViewerChildren.set(pdfContainerEl, this);
                 }
+
+                // Keep the previews of highlights written into the file (see `ViewerLiveUpdate`)
+                // alive across page re-renders.
+                plugin.viewerLiveUpdate.watch(this);
 
                 this.bib?.unload();
                 this.bib = this.component.addChild(new BibliographyManager(plugin, this));

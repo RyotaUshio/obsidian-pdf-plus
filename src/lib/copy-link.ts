@@ -384,12 +384,15 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 .then((result) => {
                     if (!result) return;
 
-                    const { child, file, page, annotationID, rects } = result;
+                    const { child, file, page, annotationID, rects, live } = result;
                     if (!annotationID || !file) return;
 
-                    setTimeout(() => {
-                        // After the file modification, the PDF viewer DOM is reloaded, so we need to 
-                        // get the new DOM to access the newly loaded color palette instance.
+                    // The status and the palette are read from the DOM that belongs to the annotation
+                    // that was just created. If the viewer was reloaded to show the annotation
+                    // (`live` is falsy), that DOM only exists once the reload has finished, hence
+                    // the delay. When PDF++ handled the write without a reload (`live`, see
+                    // `ViewerLiveUpdate`), the palette instance is still the current one.
+                    const updateStatusAndCopyLink = () => {
                         const newPalette = this.lib.getColorPaletteFromChild(child);
                         newPalette?.setStatus('Link copied', this.statusDurationMs);
                         const { r, g, b } = this.plugin.domManager.getRgb(colorName);
@@ -403,7 +406,13 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                                 this.plugin.lastCopiedDestInfo = { file, destArray: [page - 1, 'XYZ', left, top, null] };
                             }
                         }
-                    }, 300);
+                    };
+
+                    if (live) {
+                        updateStatusAndCopyLink();
+                    } else {
+                        setTimeout(updateStatusAndCopyLink, 300);
+                    }
                 });
         }
 

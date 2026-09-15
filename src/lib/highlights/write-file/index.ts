@@ -22,10 +22,55 @@ export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
     }
 
     async addTextMarkupAnnotationToSelection(subtype: TextMarkupAnnotationSubtype, colorName?: string) {
-        return this.addAnnotationToSelection(async (file, page, rects) => {
+        // A PDF annotation's appearance only exists in a freshly parsed document, so writing one
+        // into the file would normally make Obsidian reload (and blank) the whole viewer. For a
+        // filled highlight we can do better: keep the loaded document (see `ViewerLiveUpdate`) and
+        // paint the highlight ourselves. The other subtypes are thin lines, whose appearance is
+        // not reproduced faithfully by a filled rectangle, so they keep the old behaviour.
+        const previewable = subtype === 'Highlight';
+
+        const result: {
+            child: PDFViewerChild,
+            file: TFile | null,
+            page: number,
+            annotationID?: string,
+            rects?: Rect[],
+            /** `true` if the viewer kept the document it had and the highlight was previewed in place. */
+            live?: boolean
+        } | null | undefined = await this.addAnnotationToSelection(async (file, page, rects) => {
             const io = this.getPdfIo();
-            return await io.addTextMarkupAnnotation(file, page, rects, subtype, colorName);
+
+            if (previewable) {
+                this.plugin.viewerLiveUpdate.arm(file);
+            }
+
+            try {
+                return await io.addTextMarkupAnnotation(file, page, rects, subtype, colorName);
+            } finally {
+                // The write is over, so a later modification of this file must reload the viewer
+                // again (`arm`/`disarm` bracket exactly one write, never a time window).
+                if (previewable) {
+                    this.plugin.viewerLiveUpdate.disarm(file);
+                }
+            }
         });
+
+        if (!result) return result;
+
+        const { file, page, annotationID, rects } = result;
+
+        if (previewable && annotationID && file && rects && this.plugin.viewerLiveUpdate.wasSuppressed(file)) {
+            this.plugin.viewerLiveUpdate.preview(
+                file,
+                page,
+                rects,
+                colorName,
+                this.plugin.settings.writeHighlightToFileOpacity
+            );
+            result.live = true;
+        }
+
+        return result;
     }
 
     /**
