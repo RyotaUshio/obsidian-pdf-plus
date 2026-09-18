@@ -1,6 +1,7 @@
 import { Constructor, EventRef, Events, FileSystemAdapter, Keymap, Menu, Notice, ObsidianProtocolData, PaneType, Platform, Plugin, SettingTab, TFile, addIcon, apiVersion, loadPdfJs, requireApiVersion } from 'obsidian';
 import * as pdflib from '@cantoo/pdf-lib';
 
+import { patchOutlinePane } from './patchers/outline-pane';
 import { patchPDFView, patchPDFInternals, patchBacklink, patchWorkspace, patchPagePreview, patchClipboardManager, patchPDFInternalFromPDFEmbed, patchMenu } from 'patchers';
 import { PDFPlusLib } from 'lib';
 import { AutoCopyMode } from 'auto-copy';
@@ -564,6 +565,7 @@ export default class PDFPlus extends Plugin {
 			patchPagePreview(this);
 			patchMenu(this);
 		});
+		this.tryPatchUntilSuccess(patchOutlinePane);
 		this.tryPatchUntilSuccess(patchPDFView);
 		this.tryPatchUntilSuccess(patchPDFInternalFromPDFEmbed);
 		this.tryPatchUntilSuccess(patchBacklink);
