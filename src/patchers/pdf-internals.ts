@@ -443,6 +443,10 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     'outlineloaded', this.pdfViewer.eventBus, null,
                     async (data: { source: PDFOutlineViewer, outlineCount: number, currentOutlineItemPromise: Promise<void> }) => {
                         const pdfOutlineViewer = data.source;
+                        // The core Outline pane may have rendered before this PDF finished loading.
+                        plugin.app.workspace.getLeavesOfType('outline').forEach(leaf => {
+                            (leaf.view as any).requestUpdate?.();
+                        });
 
                         if (!plugin.patchStatus.pdfOutlineViewer) {
                             const success = patchPDFOutlineViewer(plugin, pdfOutlineViewer);
