@@ -11,6 +11,7 @@ import PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
 import { PAGE_LABEL_NUMBERING_STYLES, PDFPageLabelDict, PDFPageLabels, isPageLabelNumberingStyle } from 'lib/page-labels';
 import { getModifierNameInPlatform } from 'utils';
+import { t } from 'lang';
 
 
 abstract class PDFPageLabelModal extends PDFPlusModal {
@@ -53,7 +54,7 @@ class PDFPageLabelSettingsForRange {
 
     addNumberingStyleSetting() {
         this.addSetting()
-            .setName('Numbering Style')
+            .setName(t('modalsPageLabelModals.numbering-style'))
             .addDropdown((dropdown) => {
                 dropdown
                     .addOptions({ ...PAGE_LABEL_NUMBERING_STYLES, None: 'None' })
@@ -67,7 +68,7 @@ class PDFPageLabelSettingsForRange {
 
     addStartSetting() {
         this.addSetting()
-            .setName('Start counting from')
+            .setName(t('modalsPageLabelModals.start-counting-from'))
             .addText((text) => {
                 text.inputEl.type = 'number';
                 if (this.dict.start !== undefined) text.setValue('' + this.dict.start);
@@ -88,7 +89,7 @@ class PDFPageLabelSettingsForRange {
 
     addPrefixSetting() {
         return this.addSetting()
-            .setName('Prefix')
+            .setName(t('modalsPageLabelModals.prefix'))
             .addText((text) => {
                 text.setValue(this.dict.prefix ?? '')
                     .onChange((value) => {
@@ -146,10 +147,10 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
 
         if (pageLabels === null || pageLabels.rangeCount() === 0) {
             this.addHeading(this.controlEl, 'No page labels found', 'lucide-info')
-                .setDesc('This PDF document does not have any page labels.')
+                .setDesc(t('modalsPageLabelModals.this-pdf-document-does-not-have-any-page-lab.desc'))
                 .addButton((button) => {
                     button
-                        .setButtonText('Create')
+                        .setButtonText(t('modalsPageLabelModals.create'))
                         .setCta()
                         .onClick(() => {
                             this.pageLabels = PDFPageLabels.createEmpty(doc);
@@ -159,7 +160,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                 })
                 .addButton((button) => {
                     button
-                        .setButtonText('Cancel')
+                        .setButtonText(t('modalsPageLabelModals.cancel'))
                         .onClick(() => this.close());
                 });
 
@@ -182,7 +183,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                     if (pageTo > range.pageFrom) {
                         setting.addExtraButton((button) => {
                             button.setIcon('lucide-separator-horizontal')
-                                .setTooltip('Divide this labeling range')
+                                .setTooltip(t('modalsPageLabelModals.divide-this-labeling-range'))
                                 .onClick(() => {
                                     pageLabels.divideRangeAtPage(range.pageFrom + 1, false);
                                     this.redisplay();
@@ -192,7 +193,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                 })
                 .addExtraButton((button) => {
                     button.setIcon('lucide-x')
-                        .setTooltip('Label the pages in this range continuing from the previous range')
+                        .setTooltip(t('modalsPageLabelModals.label-the-pages-in-this-range-continuing-fro.tooltip'))
                         .onClick(() => {
                             pageLabels.removeRange(i);
                             this.redisplay();
@@ -200,9 +201,9 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                 });
 
             new Setting(rangeEl)
-                .setName('From')
-                .setDesc('The index of the first page in this range.')
-                .then((setting) => setting.controlEl.appendText('Page'))
+                .setName(t('modalsPageLabelModals.from'))
+                .setDesc(t('modalsPageLabelModals.the-index-of-the-first-page-in-this-range.desc'))
+                .then((setting) => setting.controlEl.appendText(t('modalsPageLabelModals.page.help')))
                 .addText((text) => {
                     text.inputEl.type = 'number';
                     text.setValue('' + range.pageFrom)
@@ -223,9 +224,9 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
 
 
             new Setting(rangeEl)
-                .setName('To')
-                .setDesc('The index of the last page in this range.')
-                .then((setting) => setting.controlEl.appendText('Page'))
+                .setName(t('modalsPageLabelModals.to'))
+                .setDesc(t('modalsPageLabelModals.the-index-of-the-last-page-in-this-range.desc'))
+                .then((setting) => setting.controlEl.appendText(t('modalsPageLabelModals.page.help-2')))
                 .addText((text) => {
                     text.inputEl.type = 'number';
                     text.setValue('' + pageTo)
@@ -268,7 +269,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
     addPreviewButton(setting: Setting, page: number) {
         return setting.addExtraButton((button) => {
             button.setIcon('lucide-message-square')
-                .setTooltip(`Hover${this.plugin.requireModKeyForLinkHover() ? ('+' + getModifierNameInPlatform('Mod').toLowerCase()) : ''} to preview`)
+                .setTooltip(t('modalsPageLabelModals.hover-to-preview.tooltip', { v0: this.plugin.requireModKeyForLinkHover() ? ('+' + getModifierNameInPlatform('Mod').toLowerCase()) : '' }))
                 .then((button) => {
                     this.component.registerDomEvent(button.extraSettingsEl, 'mouseover', (event) => {
                         this.app.workspace.trigger('hover-link', {
@@ -288,7 +289,7 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
             ?? new Setting(this.contentEl)
                 .addButton((button) => {
                     button
-                        .setButtonText('Save')
+                        .setButtonText(t('modalsPageLabelModals.save'))
                         .setCta()
                         .onClick(async () => {
                             if (this.pageLabels && this.doc) {
@@ -297,14 +298,14 @@ export class PDFPageLabelEditModal extends PDFPageLabelModal {
                                 } else PDFPageLabels.removeFromDocument(this.doc);
                                 await this.app.vault.modifyBinary(this.file, await this.doc.save());
                             } else {
-                                new Notice(`${this.plugin.manifest.name}: Something went wrong.`);
+                                new Notice(t('modalsPageLabelModals.something-went-wrong.notice', { plugin: this.plugin.manifest.name }));
                             }
                             this.close();
                         });
                 })
                 .addButton((button) => {
                     button
-                        .setButtonText('Cancel')
+                        .setButtonText(t('modalsPageLabelModals.cancel'))
                         .onClick(() => this.close());
                 })
                 .then((setting) => {

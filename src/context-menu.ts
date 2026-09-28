@@ -10,6 +10,7 @@ import { addProductMenuItems, getSelectedItemsRecursive, fixOpenSubmenu, registe
 import { DEFAULT_SETTINGS, NamedTemplate } from 'settings';
 import { ColorPalette } from 'color-palette';
 import { PDFPlusComponent } from 'lib/component';
+import { t } from 'lang';
 
 
 export const onContextMenu = async (plugin: PDFPlus, child: PDFViewerChild, evt: MouseEvent): Promise<void> => {
@@ -99,48 +100,48 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
 
         if (lib.isEditable(child)) {
             menu.addItem((item) => {
-                item.setTitle('Insert page before this page')
+                item.setTitle(t('context-menu.insert-page-before-this-page'))
                     .setIcon('lucide-plus')
                     .onClick(() => {
                         const file = child.file;
                         if (!file) {
-                            new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
+                            new Notice(t('context-menu.failed-to-insert-the-page.notice', { plugin: plugin.manifest.name }));
                             return;
                         }
                         lib.commands._insertPage(file, pageNumber, pageNumber);
                     });
             })
                 .addItem((item) => {
-                    item.setTitle('Insert page after this page')
+                    item.setTitle(t('context-menu.insert-page-after-this-page'))
                         .setIcon('lucide-plus')
                         .onClick(() => {
                             const file = child.file;
                             if (!file) {
-                                new Notice(`${plugin.manifest.name}: Failed to insert the page.`);
+                                new Notice(t('context-menu.failed-to-insert-the-page.notice', { plugin: plugin.manifest.name }));
                                 return;
                             }
                             lib.commands._insertPage(file, pageNumber + 1, pageNumber);
                         });
                 })
                 .addItem((item) => {
-                    item.setTitle('Delete page')
+                    item.setTitle(t('context-menu.delete-page'))
                         .setIcon('lucide-trash')
                         .onClick(() => {
                             const file = child.file;
                             if (!file) {
-                                new Notice(`${plugin.manifest.name}: Failed to delete the page.`);
+                                new Notice(t('context-menu.failed-to-delete-the-page.notice', { plugin: plugin.manifest.name }));
                                 return;
                             }
                             lib.commands._deletePage(file, pageNumber);
                         });
                 })
                 .addItem((item) => {
-                    item.setTitle('Extract page to new file')
+                    item.setTitle(t('context-menu.extract-page-to-new-file'))
                         .setIcon('lucide-file-output')
                         .onClick(() => {
                             const file = child.file;
                             if (!file) {
-                                new Notice(`${plugin.manifest.name}: Failed to extract the page.`);
+                                new Notice(t('context-menu.failed-to-extract-the-page.notice', { plugin: plugin.manifest.name }));
                                 return;
                             }
                             lib.commands._extractPage(file, pageNumber);
@@ -148,12 +149,12 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
 
                 })
                 .addItem((item) => {
-                    item.setTitle('Divide document at this page')
+                    item.setTitle(t('context-menu.divide-document-at-this-page'))
                         .setIcon('lucide-split-square-vertical')
                         .onClick(() => {
                             const file = child.file;
                             if (!file) {
-                                new Notice(`${plugin.manifest.name}: Failed to divide the document.`);
+                                new Notice(t('context-menu.failed-to-divide-the-document.notice', { plugin: plugin.manifest.name }));
                                 return;
                             }
                             lib.commands._dividePDF(file, pageNumber);
@@ -161,7 +162,7 @@ export const onThumbnailContextMenu = (plugin: PDFPlus, child: PDFViewerChild, e
                 })
                 .addSeparator()
                 .addItem((item) => {
-                    item.setTitle('Customize...')
+                    item.setTitle(t('context-menu.customize'))
                         .setIcon('lucide-settings')
                         .onClick(() => {
                             plugin.openSettingTab().scrollToHeading('thumbnail');
@@ -207,7 +208,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
     if (lib.isEditable(child)) {
         menu.addItem((menuItem) => {
             menuItem
-                .setTitle('Add subitem')
+                .setTitle(t('context-menu.add-subitem'))
                 .setIcon('lucide-plus')
                 .onClick(() => {
                     new PDFOutlineTitleModal(plugin, 'Add subitem to outline')
@@ -228,13 +229,13 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                     return;
                                 }
                             }
-                            new Notice(`${plugin.manifest.name}: Failed to add the subitem.`);
+                            new Notice(t('context-menu.failed-to-add-the-subitem.notice', { plugin: plugin.manifest.name }));
                         });
                 });
         })
             .addItem((menuItem) => {
                 menuItem
-                    .setTitle('Rename...')
+                    .setTitle(t('context-menu.rename'))
                     .setIcon('lucide-pencil')
                     .onClick(() => {
                         new PDFOutlineTitleModal(plugin, 'Rename outline item')
@@ -249,14 +250,14 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
             })
             .addItem((menuItem) => {
                 menuItem
-                    .setTitle('Move item to...')
+                    .setTitle(t('context-menu.move-item-to'))
                     .setIcon('lucide-folder-tree')
                     .onClick(async () => {
                         const outlines = await PDFOutlines.fromFile(file, plugin);
                         const itemToMove = await outlines.findPDFjsOutlineTreeNode(item);
 
                         if (!itemToMove) {
-                            new Notice(`${plugin.manifest.name}: Failed to load the PDF document.`);
+                            new Notice(t('context-menu.failed-to-load-the-pdf-document.notice', { plugin: plugin.manifest.name }));
                             return;
                         }
 
@@ -272,7 +273,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
             })
             .addItem((menuItem) => {
                 menuItem
-                    .setTitle('Delete')
+                    .setTitle(t('context-menu.delete'))
                     .setIcon('lucide-trash')
                     .onClick(async () => {
                         // For future reference, child === item.owner.viewer
@@ -286,7 +287,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
             })
             .addItem((menuItem) => {
                 menuItem
-                    .setTitle('Extract to new file')
+                    .setTitle(t('context-menu.extract-to-new-file'))
                     .setIcon('lucide-file-output')
                     .onClick(async () => {
                         const { lib, settings } = plugin;
@@ -295,7 +296,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                         const found = await outlines.findPDFjsOutlineTreeNode(item);
 
                         if (!found) {
-                            new Notice(`${plugin.manifest.name}: Failed to process the outline item.`);
+                            new Notice(t('context-menu.failed-to-process-the-outline-item.notice', { plugin: plugin.manifest.name }));
                             return;
                         }
 
@@ -325,12 +326,12 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                         }
 
                         if (pageNumber === null || nextPageNumber === null) {
-                            new Notice(`${plugin.manifest.name}: Failed to fetch page numbers from the outline item.`);
+                            new Notice(t('context-menu.failed-to-fetch-page-numbers-from-the-outlin.notice', { plugin: plugin.manifest.name }));
                             return;
                         }
 
                         if (pageNumber > nextPageNumber) {
-                            new Notice(`${plugin.manifest.name}: The page numbers are invalid: the beginning of this section is page ${pageNumber}, whereas the next section starts at page ${nextPageNumber}.`);
+                            new Notice(t('context-menu.the-page-numbers-are-invalid-the-beginning-o.notice', { plugin: plugin.manifest.name, pageNumber: pageNumber, nextPageNumber: nextPageNumber }));
                             return;
                         }
 
@@ -352,7 +353,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
                                 lib.composer.extractPages(file, { from: pageNumber, to: nextPageNumber! - 1 }, dstPath, false, keepLabels, inPlace)
                                     .then(async (file) => {
                                         if (!file) {
-                                            new Notice(`${plugin.manifest.name}: Failed to extract section from PDF.`);
+                                            new Notice(t('context-menu.failed-to-extract-section-from-pdf.notice', { plugin: plugin.manifest.name }));
                                             return;
                                         }
                                         if (settings.openAfterExtractPages) {
@@ -366,7 +367,7 @@ export const onOutlineItemContextMenu = (plugin: PDFPlus, child: PDFViewerChild,
             })
             .addSeparator()
             .addItem((item) => {
-                item.setTitle('Customize...')
+                item.setTitle(t('context-menu.customize'))
                     .setIcon('lucide-settings')
                     .onClick(() => {
                         plugin.openSettingTab().scrollToHeading('outline');
@@ -385,7 +386,7 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
         new Menu()
             .addItem((menuItem) => {
                 menuItem
-                    .setTitle('Add top-level item')
+                    .setTitle(t('context-menu.add-top-level-item'))
                     .setIcon('lucide-plus')
                     .onClick(() => {
                         new PDFOutlineTitleModal(plugin, 'Add item to outline')
@@ -404,7 +405,7 @@ export const onOutlineContextMenu = (plugin: PDFPlus, child: PDFViewerChild, fil
                                         return;
                                     }
                                 }
-                                new Notice(`${plugin.manifest.name}: Failed to add the item.`);
+                                new Notice(t('context-menu.failed-to-add-the-item.notice', { plugin: plugin.manifest.name }));
                             });
                     });
             })
@@ -493,7 +494,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
             this.addItem((item) => {
                 return item
                     .setSection('action')
-                    .setTitle(`Look up "${selectedText.length <= 25 ? selectedText : selectedText.slice(0, 24).trim() + '…'}"`)
+                    .setTitle(t('context-menu.look-up.title', { v0: selectedText.length <= 25 ? selectedText : selectedText.slice(0, 24).trim() + '…' }))
                     .setIcon('lucide-library')
                     .onClick(() => {
                         // @ts-ignore
@@ -524,7 +525,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                 //         this.addItem((item) => {
                 //             return item
                 //                 .setSection('selection-canvas')
-                //                 .setTitle(`Create Canvas card from selection with format "${name}"`)
+                //                 .setTitle(t('context-menu.create-canvas-card-from-selection-with-forma.title', { name: name }))
                 //                 .setIcon('lucide-sticky-note')
                 //                 .onClick(() => {
                 //                     lib.copyLink.makeCanvasTextNodeFromSelection(false, canvas, template, colorName);
@@ -574,7 +575,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                 //         this.addItem((item) => {
                 //             return item
                 //                 .setSection('annotation-canvas')
-                //                 .setTitle(`Create Canvas card from annotation with format "${name}"`)
+                //                 .setTitle(t('context-menu.create-canvas-card-from-annotation-with-form.title', { name: name }))
                 //                 .setIcon('lucide-sticky-note')
                 //                 .onClick(() => {
                 //                     lib.copyLink.makeCanvasTextNodeFromAnnotation(false, canvas, child, template, pageNumber, id);
@@ -590,7 +591,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                         this.addItem((item) => {
                             return item
                                 .setSection('modify-annotation')
-                                .setTitle('Edit annotation')
+                                .setTitle(t('context-menu.edit-annotation'))
                                 .setIcon('lucide-pencil')
                                 .onClick(() => {
                                     if (child.file) {
@@ -606,7 +607,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                         this.addItem((item) => {
                             return item
                                 .setSection('modify-annotation')
-                                .setTitle('Delete annotation')
+                                .setTitle(t('context-menu.delete-annotation'))
                                 .setIcon('lucide-trash')
                                 .onClick(() => {
                                     if (child.file) {
@@ -626,7 +627,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                         // copy PDF internal link as Obsidian wikilink (or markdown link) //
                         this.addItem((item) => {
                             item.setSection('link')
-                                .setTitle('Copy PDF link')
+                                .setTitle(t('context-menu.copy-pdf-link'))
                                 .setIcon('lucide-copy')
                                 .onClick(async () => {
                                     const subpath = await lib.destIdToSubpath(destId, doc);
@@ -646,13 +647,13 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                         if (plugin.lib.isCitationId(destId)) {
                             this.addItem((item) => {
                                 item.setSection('link')
-                                    .setTitle('Search on Google Scholar')
+                                    .setTitle(t('context-menu.search-on-google-scholar'))
                                     .setIcon('lucide-search')
                                     .onClick(() => {
                                         const url = this.child.bib?.getGoogleScholarSearchUrlFromDest(destId);
 
                                         if (typeof url !== 'string') {
-                                            new Notice(`${plugin.manifest.name}: Failed to find bibliographic information.`);
+                                            new Notice(t('context-menu.failed-to-find-bibliographic-information.notice', { plugin: plugin.manifest.name }));
                                             return;
                                         }
 
@@ -684,7 +685,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                 this.addItem((item) => {
                     return item
                         .setSection('link')
-                        .setTitle('Paste copied PDF link to selection')
+                        .setTitle(t('context-menu.paste-copied-pdf-link-to-selection.title'))
                         .setIcon('lucide-clipboard-paste')
                         .onClick(() => {
                             lib.highlight.writeFile.addLinkAnnotationToSelection(destArray);
@@ -695,7 +696,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
                 this.addItem((item) => {
                     return item
                         .setSection('link')
-                        .setTitle('Paste copied link to selection')
+                        .setTitle(t('context-menu.paste-copied-link-to-selection'))
                         .setIcon('lucide-clipboard-paste')
                         .onClick(() => {
                             lib.highlight.writeFile.addLinkAnnotationToSelection(destName);
@@ -709,7 +710,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
             this.addItem((item) => {
                 return item
                     .setSection('text')
-                    .setTitle('Copy selected text')
+                    .setTitle(t('context-menu.copy-selected-text'))
                     .setIcon('lucide-copy')
                     .onClick(() => {
                         // How does the electron version differ?
@@ -723,7 +724,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
             this.addItem((item) => {
                 return item
                     .setSection('text')
-                    .setTitle('Copy annotated text')
+                    .setTitle(t('context-menu.copy-annotated-text'))
                     .setIcon('lucide-copy')
                     .onClick(() => {
                         // How does the electron version differ?
@@ -735,7 +736,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
         if (selectedText && selection && isVisible('search')) {
             this.addItem((item) => {
                 item.setSection('search')
-                    .setTitle('Copy link to search')
+                    .setTitle(t('context-menu.copy-link-to-search'))
                     .setIcon('lucide-search')
                     .onClick(() => {
                         lib.copyLink.copyLinkToSearch(false, child, pageNumber, selectedText.trim());
@@ -746,7 +747,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
         if (lib.speech.isEnabled() && selectedText && isVisible('speech')) {
             this.addItem((item) => {
                 item.setSection('speech')
-                    .setTitle('Read aloud selected text')
+                    .setTitle(t('context-menu.read-aloud-selected-text'))
                     .setIcon('lucide-speech')
                     .onClick(() => {
                         lib.speech.speak(selectedText);
@@ -757,7 +758,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
         if (!this.items.length && isVisible('page')) {
             this.addItem((item) => {
                 item.setSection('page')
-                    .setTitle('Copy link to page')
+                    .setTitle(t('context-menu.copy-link-to-page'))
                     .setIcon('lucide-copy')
                     .onClick((evt) => {
                         const link = child.getMarkdownLink(`#page=${pageNumber}`, child.getPageLinkAlias(pageNumber));
@@ -772,7 +773,7 @@ export class PDFPlusContextMenu extends PDFPlusMenu {
             this.addItem((item) => {
                 item.setSection('settings')
                     .setIcon('lucide-settings')
-                    .setTitle('Customize menu...')
+                    .setTitle(t('context-menu.customize-menu'))
                     .onClick(() => {
                         this.plugin.openSettingTab()
                             .scrollToHeading('context-menu');
@@ -1039,7 +1040,7 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
     if (oldColor) {
         menu.addItem((item) => {
             item.setSection('color')
-                .setTitle(`Unset color`)
+                .setTitle(t('context-menu.unset-color'))
                 .setIcon('lucide-palette')
                 .onClick(() => {
                     lib.composer.linkUpdater.updateLinkColor(cache.refCache, cache.sourcePath, null);
@@ -1051,7 +1052,7 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
         if (colorName.toLowerCase() !== oldColorName?.toLowerCase()) {
             menu.addItem((item) => {
                 item.setSection('color')
-                    .setTitle(`Change color to "${colorName}"`)
+                    .setTitle(t('context-menu.change-color-to', { colorName: colorName }))
                     .setIcon('lucide-palette')
                     .onClick(() => {
                         lib.composer.linkUpdater.updateLinkColor(cache.refCache, cache.sourcePath, { type: 'name', name: colorName });
@@ -1075,7 +1076,7 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
 
     //     menu.addItem((item) => {
     //         item.setSection('copy')
-    //             .setTitle('Copy the same link')
+    //             .setTitle(t('context-menu.copy-the-same-link'))
     //             .setIcon('lucide-copy')
     //             .onClick(() => {
     //                 const { actionIndex, displayTextFormatIndex } = lib.getColorPaletteOptions();
@@ -1099,7 +1100,7 @@ export const onBacklinkVisualizerContextMenu = (evt: MouseEvent, visualizer: PDF
 
         menu.addItem((item) => {
             item.setSection('image')
-                .setTitle('Copy as image')
+                .setTitle(t('context-menu.copy-as-image'))
                 .setIcon('lucide-image')
                 .onClick(() => {
                     const blobPromise = lib.pdfPageToImageArrayBuffer(page, {

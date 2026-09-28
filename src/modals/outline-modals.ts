@@ -2,6 +2,7 @@ import { PDFOutlineItem, PDFOutlines } from 'lib/outlines';
 import PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
 import { Setting, FuzzySuggestModal } from 'obsidian';
+import { t } from 'lang';
 
 
 interface OutlineInfo {
@@ -40,7 +41,7 @@ export class PDFOutlineTitleModal extends PDFPlusModal {
         this.titleEl.setText(`${this.plugin.manifest.name}: ${this.modalTitle}`);
 
         new Setting(this.contentEl)
-            .setName('Title')
+            .setName(t('modalsOutlineModals.title'))
             .addText((text) => {
                 if (this.title !== null) {
                     text.setValue(this.title);
@@ -53,7 +54,7 @@ export class PDFOutlineTitleModal extends PDFPlusModal {
         new Setting(this.contentEl)
             .addButton((button) => {
                 button
-                    .setButtonText('Add')
+                    .setButtonText(t('modalsOutlineModals.add'))
                     .setCta()
                     .onClick(() => {
                         this.submitAndClose();
@@ -61,7 +62,7 @@ export class PDFOutlineTitleModal extends PDFPlusModal {
             })
             .addButton((button) => {
                 button
-                    .setButtonText('Cancel')
+                    .setButtonText(t('modalsOutlineModals.cancel'))
                     .onClick(() => {
                         this.close();
                     });
@@ -113,7 +114,7 @@ export class PDFOutlineMoveModal extends FuzzySuggestModal<PDFOutlineItem> {
                 }
             }
         });
-        this.setPlaceholder('Type an outline item title');
+        this.setPlaceholder(t('modalsOutlineModals.type-an-outline-item-title'));
     }
 
     askDestination() {

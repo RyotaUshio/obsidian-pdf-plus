@@ -2,6 +2,7 @@ import { Menu } from 'obsidian';
 
 import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
+import { t } from 'lang';
 
 
 export class AutoCopyMode extends PDFPlusComponent {
@@ -28,7 +29,7 @@ export class AutoCopyMode extends PDFPlusComponent {
                     const menu = new Menu();
                     menu.addItem((item) => {
                         item.setIcon('lucide-settings')
-                            .setTitle('Customize...')
+                            .setTitle(t('auto-copy.customize'))
                             .onClick(() => {
                                 this.plugin.openSettingTab().scrollToHeading('auto-copy');
                             });

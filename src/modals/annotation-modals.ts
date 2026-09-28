@@ -4,6 +4,7 @@ import PDFPlus from 'main';
 import { getModifierNameInPlatform, hexToRgb, hookInternalLinkMouseEventHandlers, rgbToHex } from 'utils';
 import { PDFDict } from '@cantoo/pdf-lib';
 import { PDFPlusModal } from 'modals';
+import { t } from 'lang';
 
 
 class PDFAnnotationModal extends PDFPlusModal {
@@ -186,8 +187,8 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
             let picker: ColorComponent;
             let dropdown: DropdownComponent;
             new Setting(this.contentEl)
-                .setName('Color')
-                .setDesc('You can choose a color from the color picker or select one from your custom named colors.')
+                .setName(t('modalsAnnotationModals.color'))
+                .setDesc(t('modalsAnnotationModals.you-can-choose-a-color-from-the-color-picker.desc'))
                 .addColorPicker((_picker) => {
                     picker = _picker;
 
@@ -220,7 +221,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     addOpacitySetting() {
         if (this.oldValues.opacity || this.allowNoValue.opacity) {
             new Setting(this.contentEl)
-                .setName('Opacity')
+                .setName(t('modalsAnnotationModals.opacity'))
                 .addSlider((slider) => {
                     slider
                         .setLimits(0, 1, 0.01)
@@ -236,7 +237,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     addBorderWidthSetting() {
         if (this.oldValues.borderWidth || this.allowNoValue.borderWidth) {
             new Setting(this.contentEl)
-                .setName('Draw border')
+                .setName(t('modalsAnnotationModals.draw-border'))
                 .addToggle((toggle) => {
                     toggle.setValue(!!(this.oldValues.borderWidth ?? 1))
                         .onChange((value) => {
@@ -249,7 +250,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     addAuthorSetting() {
         if (this.oldValues.author || this.allowNoValue.author) {
             new Setting(this.contentEl)
-                .setName('Annotation author')
+                .setName(t('modalsAnnotationModals.annotation-author'))
                 .addText((text) => {
                     text.setValue(this.oldValues.author ?? 'Author')
                         .onChange((value) => {
@@ -277,11 +278,11 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
     addContentsSetting() {
         if (this.oldValues.contents || this.allowNoValue.contents) {
             new Setting(this.contentEl)
-                .setName('Comment')
+                .setName(t('modalsAnnotationModals.comment'))
                 .then((setting) => {
                     this.previewEl = setting.controlEl.createDiv('preview-container markdown-rendered');
                     if (this.plugin.settings.renderMarkdownInStickyNote) {
-                        setting.setDesc(`Press ${this.app.hotkeyManager.printHotkeyForCommand('markdown:toggle-preview')} to toggle preview.`);
+                        setting.setDesc(t('modalsAnnotationModals.press-to-toggle-preview.desc', { v0: this.app.hotkeyManager.printHotkeyForCommand('markdown:toggle-preview') }));
                     } else {
                         setting.setDesc(createFragment((el) => {
                             const anchorEl = createEl('a', {
@@ -323,7 +324,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
         new Setting(this.buttonContainerEl)
             .addButton((button) => {
                 button
-                    .setButtonText('Save')
+                    .setButtonText(t('modalsAnnotationModals.save'))
                     .setCta()
                     .onClick(() => {
                         this.onSaveButtonClick();
@@ -331,7 +332,7 @@ export class PDFAnnotationEditModal extends PDFAnnotationModal {
             })
             .addButton((button) => {
                 button
-                    .setButtonText('Cancel')
+                    .setButtonText(t('modalsAnnotationModals.cancel'))
                     .onClick(() => this.close());
             })
             .setClass('no-border');
@@ -415,7 +416,7 @@ export class PDFAnnotationDeleteModal extends PDFAnnotationModal {
         new Setting(this.contentEl)
             .addButton((button) => {
                 button
-                    .setButtonText('Delete')
+                    .setButtonText(t('modalsAnnotationModals.delete'))
                     .setWarning()
                     .onClick(() => {
                         this.deleteAnnotation();
@@ -424,7 +425,7 @@ export class PDFAnnotationDeleteModal extends PDFAnnotationModal {
             })
             .addButton((button) => {
                 button
-                    .setButtonText('Cancel')
+                    .setButtonText(t('modalsAnnotationModals.cancel'))
                     .onClick(() => this.close());
             })
             .then((setting) => setting.setClass('no-border'));

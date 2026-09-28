@@ -5,6 +5,7 @@ import PDFPlus from 'main';
 import { PDFPlusComponent } from 'lib/component';
 import { genId, isCanvas, isEmbed, isHoverPopover, isNonEmbedLike, onModKeyPress, toSingleLine } from 'utils';
 import { PDFViewerChild, PDFJsDestArray, TextContentItem } from 'typings';
+import { t } from 'lang';
 
 
 export type AnystyleJson = Partial<{
@@ -160,13 +161,13 @@ export class BibliographyManager extends PDFPlusComponent {
                         const msg = `${plugin.manifest.name}: AnyStyle not found at the path "${anystylePath}".`;
                         if (plugin.settings.anystylePath) {
                             const notice = new Notice(msg, 8000);
-                            notice.noticeEl.appendText(' Click ');
+                            notice.noticeEl.appendText(t('bib.click.help'));
                             notice.noticeEl.createEl('a', { text: 'here' }, (anchorEl) => {
                                 anchorEl.addEventListener('click', () => {
                                     plugin.openSettingTab().scrollTo('anystylePath');
                                 });
                             });
-                            notice.noticeEl.appendText(' to update the path.');
+                            notice.noticeEl.appendText(t('bib.to-update-the-path.help'));
                             console.error(msg);
                         }
                         else console.warn(msg);
@@ -362,7 +363,7 @@ export class BibliographyDom extends PDFPlusComponent {
                         .join(', ');
                     el.appendText(authorText);
                     if (year) {
-                        el.appendText(` (${year})`);
+                        el.appendText(t('bib.year.help', { year: year }));
                     }
                 });
                 if (containerTitle) {
@@ -409,18 +410,18 @@ export class BibliographyDom extends PDFPlusComponent {
 
         this.containerEl.createDiv('button-container', (el) => {
             new ButtonComponent(el)
-                .setButtonText('Google Scholar')
+                .setButtonText(t('bib.google-scholar'))
                 .onClick(() => {
                     const url = this.bib.getGoogleScholarSearchUrlFromDest(this.destId);
                     if (!url) {
-                        new Notice(`${this.plugin.manifest.name}: ${this.bib.initialized ? 'No bibliography found' : 'Still loading the bibliography information. Please try again later.'}`);
+                        new Notice(t('bib.text.notice', { plugin: this.plugin.manifest.name, v1: this.bib.initialized ? t('bib.noBibliographyFound') : t('bib.stillLoadingBibliography') }));
                         return;
                     }
                     window.open(url);
                 });
             new ExtraButtonComponent(el)
                 .setIcon('lucide-settings')
-                .setTooltip('Customize...')
+                .setTooltip(t('bib.customize'))
                 .onClick(() => {
                     this.plugin.openSettingTab().scrollToHeading('citation');
                 });

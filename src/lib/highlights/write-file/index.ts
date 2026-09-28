@@ -5,6 +5,7 @@ import { PdfLibIO } from './pdf-lib';
 import { PDFPlusLibSubmodule } from 'lib/submodule';
 import { getTextLayerInfo } from 'utils';
 import { DestArray, PDFViewerChild, Rect } from 'typings';
+import { t } from 'lang';
 
 
 export type TextMarkupAnnotationSubtype = 'Highlight' | 'Underline' | 'Squiggly' | 'StrikeOut';
@@ -73,7 +74,7 @@ export class AnnotationWriteFileLib extends PDFPlusLibSubmodule {
                     try {
                         annotationID = await annotator(child.file, pageNumber, rects);
                     } catch (e) {
-                        new Notice(`${this.plugin.manifest.name}: An error occurred while attemping to add an annotation.`);
+                        new Notice(t('libHighlightsWriteFileIndex.an-error-occurred-while-attemping-to-add-an.notice', { plugin: this.plugin.manifest.name }));
                         console.error(e);
                     }
                     return { annotationID, rects };

@@ -3,6 +3,7 @@ import { ButtonComponent, requireApiVersion } from 'obsidian';
 import PDFPlus from 'main';
 import { PDFPlusModal } from './base-modal';
 import { getInstallerVersion, isVersionOlderThan } from 'utils';
+import { t } from 'lang';
 
 
 // See https://github.com/RyotaUshio/obsidian-pdf-plus/issues/395#issuecomment-2680378913
@@ -22,7 +23,7 @@ export class InstallerVersionModal extends PDFPlusModal {
         super.onOpen();
 
         const name = this.plugin.manifest.name;
-        this.setTitle(`${name}: Obsidian installer update is required`);
+        this.setTitle(t('modalsInstallerVersionModal.obsidian-installer-update-is-required.title', { name: name }));
         this.contentEl.createEl('p', {
             text: `Your Obsidian installer (${getInstallerVersion()}) is outdated and is incompatible with the latest ${name}. Please download the latest installer from Obsidian's website and re-install the Obsidian app.`,
         });
@@ -36,7 +37,7 @@ export class InstallerVersionModal extends PDFPlusModal {
         this.contentEl.createDiv('modal-button-container', (el) => {
             const downloadUrl = 'https://obsidian.md/download';
             new ButtonComponent(el)
-                .setButtonText('Get installer from obsidian.md')
+                .setButtonText(t('modalsInstallerVersionModal.get-installer-from-obsidian-md'))
                 .setTooltip(downloadUrl)
                 .setCta()
                 .onClick(() => {
@@ -45,7 +46,7 @@ export class InstallerVersionModal extends PDFPlusModal {
 
             const helpUrl = 'https://help.obsidian.md/Getting+started/Update+Obsidian#Installer%20updates';
             new ButtonComponent(el)
-                .setButtonText('What is "installer update"? (help.obsidian.md)')
+                .setButtonText(t('modalsInstallerVersionModal.what-is-installer-update-help-obsidian-md.button'))
                 .setTooltip(helpUrl)
                 .onClick(() => {
                     window.open(helpUrl);

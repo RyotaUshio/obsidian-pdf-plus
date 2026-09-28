@@ -6,6 +6,7 @@ import { ColorPalette } from 'color-palette';
 import { PDFToolbar, PDFViewerChild } from 'typings';
 import { showChildElOnParentElHover, showMenuUnderParentEl } from 'utils';
 import { ScrollMode, SpreadMode } from 'pdfjs-enums';
+import { t } from 'lang';
 
 
 export class PDFPlusToolbar extends PDFPlusComponent {
@@ -102,7 +103,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('zoom')
                                 .setIcon('lucide-move-horizontal')
-                                .setTitle('Fit width')
+                                .setTitle(t('toolbar.fit-width'))
                                 .setChecked(currentScaleValue === 'page-width')
                                 .onClick(() => {
                                     return eventBus.dispatch('scalechanged', {
@@ -114,7 +115,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('zoom')
                                 .setIcon('lucide-move-vertical')
-                                .setTitle('Fit height')
+                                .setTitle(t('toolbar.fit-height'))
                                 .setChecked(currentScaleValue === 'page-height')
                                 .onClick(() => {
                                     return eventBus.dispatch('scalechanged', {
@@ -126,7 +127,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('zoom')
                                 .setIcon('lucide-move')
-                                .setTitle('Fit page')
+                                .setTitle(t('toolbar.fit-page'))
                                 .setChecked(currentScaleValue === 'page-fit')
                                 .onClick(() => {
                                     return eventBus.dispatch('scalechanged', {
@@ -138,7 +139,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('scroll')
                                 .setIcon('lucide-chevrons-up-down')
-                                .setTitle('Vertical scroll')
+                                .setTitle(t('toolbar.vertical-scroll'))
                                 .setChecked(scrollMode === ScrollMode.VERTICAL)
                                 .onClick(() => {
                                     eventBus.dispatch('switchscrollmode', {
@@ -150,7 +151,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('scroll')
                                 .setIcon('lucide-chevrons-left-right')
-                                .setTitle('Hotizontal scroll')
+                                .setTitle(t('toolbar.hotizontal-scroll'))
                                 .setChecked(scrollMode === ScrollMode.HORIZONTAL)
                                 .onClick(() => {
                                     eventBus.dispatch('switchscrollmode', {
@@ -162,7 +163,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('scroll')
                                 .setIcon('lucide-sticky-note')
-                                .setTitle('In-page scroll')
+                                .setTitle(t('toolbar.in-page-scroll'))
                                 .setChecked(scrollMode === ScrollMode.PAGE)
                                 .onClick(() => {
                                     eventBus.dispatch('switchscrollmode', {
@@ -174,7 +175,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('scroll')
                                 .setIcon('lucide-wrap-text')
-                                .setTitle('Wrapped scroll')
+                                .setTitle(t('toolbar.wrapped-scroll'))
                                 .setChecked(scrollMode === ScrollMode.WRAPPED)
                                 .onClick(() => {
                                     eventBus.dispatch('switchscrollmode', {
@@ -186,7 +187,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('spread')
                                 .setIcon('lucide-rectangle-vertical')
-                                .setTitle('Single page')
+                                .setTitle(t('toolbar.single-page'))
                                 .setChecked(spreadMode === SpreadMode.NONE)
                                 .onClick(() => {
                                     eventBus.dispatch('switchspreadmode', {
@@ -198,7 +199,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection("spread")
                                 .setIcon("rectangle-vertical-double")
-                                .setTitle('Two pages (odd)')
+                                .setTitle(t('toolbar.two-pages-odd'))
                                 .setChecked(spreadMode === SpreadMode.ODD)
                                 .onClick(() => {
                                     eventBus.dispatch('switchspreadmode', {
@@ -210,7 +211,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('spread')
                                 .setIcon('rectangle-vertical-double')
-                                .setTitle('Two pages (even)')
+                                .setTitle(t('toolbar.two-pages-even'))
                                 .setChecked(spreadMode === SpreadMode.EVEN)
                                 .onClick(() => {
                                     eventBus.dispatch('switchspreadmode', {
@@ -222,7 +223,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('appearance')
                                 .setIcon("lucide-palette")
-                                .setTitle('Adapt to theme')
+                                .setTitle(t('toolbar.adapt-to-theme'))
                                 .setChecked(isThemed)
                                 .onClick(() => {
                                     app.saveLocalStorage('pdfjs-is-themed', isThemed ? null : 'true');
@@ -235,7 +236,7 @@ export class PDFPlusToolbar extends PDFPlusComponent {
                         .addItem((item) => {
                             item.setSection('settings')
                                 .setIcon('lucide-settings')
-                                .setTitle('Customize defaults...')
+                                .setTitle(t('toolbar.customize-defaults'))
                                 .onClick(() => {
                                     this.plugin.openSettingTab()
                                         .scrollToHeading('viewer-option');
