@@ -827,6 +827,7 @@ export class PDFPlusLib {
             cMapPacked: true,
             cMapUrl: '/lib/pdfjs/cmaps/',
             standardFontDataUrl: '/lib/pdfjs/standard_fonts/',
+            wasmUrl: '/lib/pdfjs/wasm/',
         });
         return await loadingTask.promise;
     }
