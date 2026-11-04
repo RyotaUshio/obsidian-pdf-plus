@@ -198,7 +198,7 @@ export class DummyFileModal extends PDFPlusModal {
                 .addExtraButton((button) => {
                     button
                         .setIcon('trash')
-                        .setTooltip(t('modalsDummyFileModals.remove-this.tooltip', { v0: this.source === 'file' ? 'file' : 'URL' }))
+                        .setTooltip(t('modalsDummyFileModals.remove-this.tooltip', { v0: this.source === 'file' ? t('modalsDummyFileModals.source.file') : t('modalsDummyFileModals.source.url') }))
                         .onClick(() => {
                             this.uris.splice(i, 1);
                             this.display();

@@ -1410,7 +1410,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		const required = this.plugin.requireModKeyForLinkHover(id);
 		return this.addSetting()
 			.setName(t('settings.misc.require-key-while-hovering', { modKey: modKey }))
-			.setDesc(t('settings.misc.currently-you-can-toggle-this-on-and-off-in', { v0: required ? 'required' : 'not required', display: display }))
+			.setDesc(t('settings.misc.currently-you-can-toggle-this-on-and-off-in', { v0: required ? t('settings.misc.required') : t('settings.misc.not-required'), display: display }))
 			.then((setting) => this.addPagePreviewSettingButton(setting));
 	}
 
@@ -1676,7 +1676,7 @@ export class PDFPlusSettingTab extends PluginSettingTab {
 		if (this.plugin.settings.paneTypeForFirstMDLeaf === 'left-sidebar' || this.plugin.settings.paneTypeForFirstMDLeaf === 'right-sidebar') {
 			this.addToggleSetting('alwaysUseSidebar')
 				.setName(t('settings.alwaysUseSidebar.name'))
-				.setDesc(t('settings.alwaysUseSidebar.desc', { v0: this.plugin.settings.paneTypeForFirstMDLeaf === 'left-sidebar' ? 'left' : 'right' }));
+				.setDesc(t('settings.alwaysUseSidebar.desc', { v0: this.plugin.settings.paneTypeForFirstMDLeaf === 'left-sidebar' ? t('settings.alwaysUseSidebar.side.left') : t('settings.alwaysUseSidebar.side.right') }));
 			this.addToggleSetting('singleMDLeafInSidebar')
 				.setName(t('settings.singleMDLeafInSidebar.name'))
 				.setDesc(t('settings.singleMDLeafInSidebar.desc'));
