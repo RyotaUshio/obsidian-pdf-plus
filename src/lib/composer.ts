@@ -5,6 +5,7 @@ import { PDFPlusLibSubmodule } from './submodule';
 import { range, encodeLinktext } from 'utils';
 import { PDFPageLabels } from './page-labels';
 import { PDFOutlines } from './outlines';
+import { t } from 'lang';
 
 
 /**
@@ -117,7 +118,7 @@ export class PDFFileOperator extends PDFPlusLibSubmodule {
 
         if (file instanceof TFile) {
             if (!existOk) {
-                new Notice(`${this.plugin.manifest.name}: File already exists: ${path}`);
+                new Notice(t('libComposer.file-already-exists.notice', { plugin: this.plugin.manifest.name, path: path }));
             }
             await this.app.vault.modifyBinary(file, buffer);
             return file;
@@ -336,7 +337,7 @@ export class PDFLinkUpdater extends PDFPlusLibSubmodule {
         await Promise.all(promises);
 
         if (counts.links) {
-            new Notice(`${this.plugin.manifest.name}: Updated ${counts.links} links in ${counts.files} files.`);
+            new Notice(t('libComposer.updated-links-in-files.notice', { plugin: this.plugin.manifest.name, links: counts.links, files: counts.files }));
         }
 
         return newFile;

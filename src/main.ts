@@ -14,6 +14,7 @@ import { InstallerVersionModal } from 'modals';
 import { PDFExternalLinkPostProcessor, PDFInternalLinkPostProcessor, PDFOutlineItemPostProcessor, PDFThumbnailItemPostProcessor } from 'post-process';
 import { BibliographyManager } from 'bib';
 import { DataviewInlineFieldsModal, withFilesWithInlineFields } from 'lib/dataview';
+import { t } from 'lang';
 
 
 export default class PDFPlus extends Plugin {
@@ -478,7 +479,7 @@ export default class PDFPlus extends Plugin {
 				const menu = new Menu();
 				menu.addItem((item) => {
 					item.setIcon('lucide-settings')
-						.setTitle('Customize...')
+						.setTitle(t('main.customize'))
 						.onClick(() => {
 							this.openSettingTab().scrollToHeading('auto-focus');
 						});
@@ -502,7 +503,7 @@ export default class PDFPlus extends Plugin {
 				const menu = new Menu();
 				menu.addItem((item) => {
 					item.setIcon('lucide-settings')
-						.setTitle('Customize...')
+						.setTitle(t('main.customize'))
 						.onClick(() => {
 							this.openSettingTab().scrollToHeading('auto-paste');
 						});

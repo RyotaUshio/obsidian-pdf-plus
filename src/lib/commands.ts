@@ -11,6 +11,7 @@ import { SidebarView } from 'pdfjs-enums';
 import { showContextMenuAtSelection } from 'context-menu';
 import { RestoreDefaultModal } from 'modals/restore-default-modal';
 import { DataviewInlineFieldsModal } from './dataview';
+import { t } from 'lang';
 
 
 export class PDFPlusCommands extends PDFPlusLibSubmodule {
@@ -22,11 +23,11 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         const commandArray: Command[] = [
             {
                 id: 'copy-link-to-selection',
-                name: 'Copy link to selection or annotation',
+                name: t('command.copy-link-to-selection.name'),
                 checkCallback: (checking) => this.copyLink(checking, false)
             }, {
                 id: 'rectangular-selection',
-                name: 'Start rectangular selection',
+                name: t('command.rectangular-selection.name'),
                 checkCallback: (checking) => this.copyEmbedLinkToRectangularSelection(checking, false)
             },
             // {
@@ -36,170 +37,170 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             // },
             {
                 id: 'context-menu',
-                name: 'Show context menu at selection',
+                name: t('command.context-menu.name'),
                 checkCallback: (checking) => this.showContextMenu(checking)
             },
             {
                 id: 'extract-annotation-and-copy-links',
-                name: 'Extract & copy annotations in this PDF',
+                name: t('command.extract-annotation-and-copy-links.name'),
                 checkCallback: (checking) => this.extractHighlightedText(checking)
             },
             {
                 id: 'copy-link-to-page-view',
-                name: 'Copy link to current page view',
+                name: t('command.copy-link-to-page-view.name'),
                 checkCallback: (checking) => this.copyLinkToPageView(checking)
             }, {
                 id: 'outline',
-                name: 'Show outline',
+                name: t('command.outline.name'),
                 checkCallback: (checking) => this.showOutline(checking)
             }, {
                 id: 'thumbnail',
-                name: 'Show thumbnail',
+                name: t('command.thumbnail.name'),
                 checkCallback: (checking) => this.showThumbnail(checking)
             }, {
                 id: 'close-sidebar',
-                name: 'Close PDF sidebar',
+                name: t('command.close-sidebar.name'),
                 checkCallback: (checking) => this.closeSidebar(checking)
             }, {
                 id: 'toggle-sidebar',
-                name: 'Toggle PDF sidebar',
+                name: t('command.toggle-sidebar.name'),
                 checkCallback: (checking) => this.toggleSidebar(checking)
             }, {
                 id: 'fit-width',
-                name: 'Fit width',
+                name: t('command.fit-width.name'),
                 checkCallback: (checking) => this.setScaleValue(checking, 'page-width')
             }, {
                 id: 'fit-height',
-                name: 'Fit height',
+                name: t('command.fit-height.name'),
                 checkCallback: (checking) => this.setScaleValue(checking, 'page-height')
             }, {
                 id: 'zoom-in',
-                name: 'Zoom in',
+                name: t('command.zoom-in.name'),
                 checkCallback: (checking) => this.zoom(checking, true)
             }, {
                 id: 'zoom-out',
-                name: 'Zoom out',
+                name: t('command.zoom-out.name'),
                 checkCallback: (checking) => this.zoom(checking, false)
             }, {
                 id: 'adapt-to-theme',
-                name: 'Adapt to theme',
+                name: t('command.adapt-to-theme.name'),
                 checkCallback: (checking) => this.toggleAdaptToTheme(checking, true)
             }, {
                 id: 'not-adapt-to-theme',
-                name: 'Don\'t adapt to theme',
+                name: t('command.not-adapt-to-theme.name'),
                 checkCallback: (checking) => this.toggleAdaptToTheme(checking, false)
             }, {
                 id: 'toggle-adapt-to-theme',
-                name: 'Toggle "adapt to theme"',
+                name: t('command.toggle-adapt-to-theme.name'),
                 checkCallback: (checking) => this.toggleAdaptToTheme(checking)
             }, {
                 id: 'go-to-page',
-                name: 'Go to page',
+                name: t('command.go-to-page.name'),
                 checkCallback: (checking) => this.focusAndSelectPageNumberEl(checking)
             }, {
                 id: 'copy-format-menu',
-                name: 'Show copy format menu',
+                name: t('command.copy-format-menu.name'),
                 checkCallback: (checking) => this.showCopyFormatMenu(checking)
             }, {
                 id: 'display-text-format-menu',
-                name: 'Show display text format menu',
+                name: t('command.display-text-format-menu.name'),
                 checkCallback: (checking) => this.showDisplayTextFormatMenu(checking)
             }, {
                 id: 'enable-pdf-edit',
-                name: 'Enable PDF edit',
+                name: t('command.enable-pdf-edit.name'),
                 checkCallback: (checking) => this.setWriteFile(checking, true)
             }, {
                 id: 'disable-pdf-edit',
-                name: 'Disable PDF edit',
+                name: t('command.disable-pdf-edit.name'),
                 checkCallback: (checking) => this.setWriteFile(checking, false)
             }, {
                 id: 'toggle-auto-focus',
-                name: 'Toggle auto-focus',
+                name: t('command.toggle-auto-focus.name'),
                 callback: () => this.toggleAutoFocus()
             }, {
                 id: 'toggle-auto-paste',
-                name: 'Toggle auto-paste',
+                name: t('command.toggle-auto-paste.name'),
                 callback: () => this.toggleAutoPaste()
             }, {
                 id: 'toggle-auto-copy',
-                name: 'Toggle auto-copy',
+                name: t('command.toggle-auto-copy.name'),
                 callback: () => this.plugin.autoCopyMode.toggle()
             }, {
                 id: 'add-page',
-                name: 'Add new page at the end',
+                name: t('command.add-page.name'),
                 checkCallback: (checking) => this.addPage(checking)
             }, {
                 id: 'insert-page-before',
-                name: 'Insert page before this page',
+                name: t('command.insert-page-before.name'),
                 checkCallback: (checking) => this.insertPage(checking, true)
             },
             {
                 id: 'insert-page-after',
-                name: 'Insert page after this page',
+                name: t('command.insert-page-after.name'),
                 checkCallback: (checking) => this.insertPage(checking, false)
             }, {
                 id: 'delete-page',
-                name: 'Delete this page',
+                name: t('command.delete-page.name'),
                 checkCallback: (checking) => this.deletePage(checking)
             }, {
                 id: 'extract-this-page',
-                name: 'Extract this page to a new file',
+                name: t('command.extract-this-page.name'),
                 checkCallback: (checking) => this.extractThisPage(checking)
             }, {
                 id: 'divide',
-                name: 'Divide this PDF into two files at this page',
+                name: t('command.divide.name'),
                 checkCallback: (checking) => this.dividePDF(checking)
             }, {
                 id: 'edit-page-labels',
-                name: 'Edit page labels',
+                name: t('command.edit-page-labels.name'),
                 checkCallback: (checking) => this.editPageLabels(checking)
             }, {
                 id: 'copy-outline-as-list',
-                name: 'Copy PDF outline as markdown list',
+                name: t('command.copy-outline-as-list.name'),
                 checkCallback: (checking) => this.copyOutline(checking, 'list')
             }, {
                 id: 'copy-outline-as-headings',
-                name: 'Copy PDF outline as markdown headings',
+                name: t('command.copy-outline-as-headings.name'),
                 checkCallback: (checking) => this.copyOutline(checking, 'heading')
             }, {
                 id: 'add-outline-item',
-                name: 'Add to outline (bookmark)',
+                name: t('command.add-outline-item.name'),
                 checkCallback: (checking) => this.addOutlineItem(checking)
             }, {
                 id: 'create-new-note',
-                name: 'Create new note for auto-focus or auto-paste',
+                name: t('command.create-new-note.name'),
                 callback: () => this.createNewNote()
             }, {
                 id: 'copy-debug-info',
-                name: 'Copy debug info',
+                name: t('command.copy-debug-info.name'),
                 callback: () => this.copyDebugInfo()
             }, {
                 id: 'load-debug-info',
-                name: 'Load debug info',
+                name: t('command.load-debug-info.name'),
                 checkCallback: (checking) => this.loadDebugInfo(checking)
             }, {
                 id: 'create-pdf',
-                name: 'Create new PDF',
+                name: t('command.create-pdf.name'),
                 callback: () => this.createPDF()
             }, {
                 id: 'import',
-                name: 'Import this PDF into vault',
+                name: t('command.import.name'),
                 checkCallback: (checking) => this.importExternalFileIntoVault(checking)
             }, {
                 id: 'open-external',
-                name: 'Open this PDF in the original location',
+                name: t('command.open-external.name'),
                 checkCallback: (checking) => this.openExternalSource(checking)
             }, {
                 id: 'create-dummy',
-                name: 'Create dummy file for external PDF',
+                name: t('command.create-dummy.name'),
                 callback: () => this.createDummyForExternalPDF()
             }, {
                 id: 'restore-default',
-                name: 'Restore default settings',
+                name: t('command.restore-default.name'),
                 callback: () => (new RestoreDefaultModal(this.plugin)).open()
             }, {
                 id: 'open-dataview-inline-fields-modal',
-                name: 'Check Dataview inline fields',
+                name: t('command.open-dataview-inline-fields-modal.name'),
                 checkCallback: (checking) => {
                     if (!this.plugin.requiresDataviewInlineFieldsMigration) {
                         return false;
@@ -383,7 +384,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
             const display = view.viewer.child?.getPageLinkAlias(state.page);
             const link = this.lib.generateMarkdownLink(view.file, '', subpath, display).slice(1);
             navigator.clipboard.writeText(link);
-            new Notice(`${this.plugin.manifest.name}: Link copied to clipboard`);
+            new Notice(t('libCommands.link-copied-to-clipboard.notice', { plugin: this.plugin.manifest.name }));
 
             this.plugin.lastCopiedDestInfo = { file: view.file, destArray };
         }
@@ -678,7 +679,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 this.lib.composer.extractPages(file, [page], dstPath, false, keepLabels, inPlace)
                     .then(async (file) => {
                         if (!file) {
-                            new Notice(`${this.plugin.manifest.name}: Failed to extract page.`);
+                            new Notice(t('libCommands.failed-to-extract-page.notice', { plugin: this.plugin.manifest.name }));
                             return;
                         }
                         if (this.settings.openAfterExtractPages) {
@@ -721,7 +722,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 this.lib.composer.extractPages(file, { from: page }, dstPath, false, keepLabels, inPlace)
                     .then(async (file) => {
                         if (!file) {
-                            new Notice(`${this.plugin.manifest.name}: Failed to divide PDF.`);
+                            new Notice(t('libCommands.failed-to-divide-pdf.notice', { plugin: this.plugin.manifest.name }));
                             return;
                         }
                         if (this.settings.openAfterExtractPages) {
@@ -813,7 +814,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 });
 
                 navigator.clipboard.writeText(text);
-                new Notice(`${this.plugin.manifest.name}: Outline copied to clipboard.`);
+                new Notice(t('libCommands.outline-copied-to-clipboard.notice', { plugin: this.plugin.manifest.name }));
             })();
         }
 
@@ -960,9 +961,9 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
                 if (data) {
                     await navigator.clipboard.writeText(data);
-                    new Notice(`${this.plugin.manifest.name}: Highlighted text copied to clipboard.`);
+                    new Notice(t('libCommands.highlighted-text-copied-to-clipboard.notice', { plugin: this.plugin.manifest.name }));
                 } else {
-                    new Notice(`${this.plugin.manifest.name}: No highlighted text found.`);
+                    new Notice(t('libCommands.no-highlighted-text-found.notice', { plugin: this.plugin.manifest.name }));
                 }
             })();
         }
@@ -999,7 +1000,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
         text += '```\n' + JSON.stringify({ settings, styleSettings, styleSheet }) + '\n```\n';
 
         await navigator.clipboard.writeText(text);
-        new Notice(`${this.plugin.manifest.name}: Debug info copied to clipboard.`);
+        new Notice(t('libCommands.debug-info-copied-to-clipboard.notice', { plugin: this.plugin.manifest.name }));
     }
 
     loadDebugInfo(checking: boolean) {
@@ -1010,7 +1011,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
                 try {
                     const { settings, styleSettings, styleSheet } = JSON.parse(await navigator.clipboard.readText());
 
-                    new Notice(`${this.plugin.manifest.name}: Debug info loaded from clipboard.`);
+                    new Notice(t('libCommands.debug-info-loaded-from-clipboard.notice', { plugin: this.plugin.manifest.name }));
 
                     console.debug('Loaded debug info:');
                     console.debug('- settings:', settings);
@@ -1027,7 +1028,7 @@ export class PDFPlusCommands extends PDFPlusLibSubmodule {
 
                 } catch (err) {
                     console.error(err);
-                    new Notice(`${this.plugin.manifest.name}: Debug info not found in clipboard.`);
+                    new Notice(t('libCommands.debug-info-not-found-in-clipboard.notice', { plugin: this.plugin.manifest.name }));
                 }
             })();
         }

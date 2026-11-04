@@ -5,6 +5,7 @@ import { VimBindingsMode } from './mode';
 import { VimCommand } from './scope';
 import { doubleClick } from 'utils';
 import { PDFPageView } from 'typings';
+import { t } from 'lang';
 
 
 export enum VimHintTarget {
@@ -83,7 +84,7 @@ export class VimHintMode extends VimBindingsMode {
         const numHints = hintableEls.length;
 
         if (numHints === 0) {
-            new Notice(`${this.plugin.manifest.name} (Vim mode): No hintable element found on this page`);
+            new Notice(t('vimHint.vim-mode-no-hintable-element-found-on-this-p.notice', { plugin: this.plugin.manifest.name }));
             this.exit();
             this.vim.enterNormalMode();
             return;

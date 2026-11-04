@@ -10,6 +10,7 @@ import PDFPlus from 'main';
 import { isAncestorOf } from 'utils';
 import { PDFOutlineTreeNode, PDFOutlineViewer, PDFViewerChild } from 'typings';
 import { PDFOutlines } from 'lib/outlines';
+import { t } from 'lang';
 
 
 export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDFOutlineViewer, child: PDFViewerChild, file: TFile) => {
@@ -58,7 +59,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                             ]);
 
                             if (!destItem || !itemToMove) {
-                                new Notice(`${plugin.manifest.name}: Failed to move the outline item.`);
+                                new Notice(t('drag.failed-to-move-the-outline-item.notice', { plugin: plugin.manifest.name }));
                                 return;
                             }
 
@@ -99,7 +100,7 @@ export const registerOutlineDrag = async (plugin: PDFPlus, pdfOutlineViewer: PDF
                     const itemToMove = await outlines?.findPDFjsOutlineTreeNode(draggedItem);
 
                     if (!itemToMove) {
-                        new Notice(`${plugin.manifest.name}: Failed to move the outline item.`);
+                        new Notice(t('drag.failed-to-move-the-outline-item.notice', { plugin: plugin.manifest.name }));
                         return;
                     }
 

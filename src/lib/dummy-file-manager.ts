@@ -3,6 +3,7 @@ import { Editor, MarkdownFileInfo, MarkdownView, normalizePath, Notice, Obsidian
 import { PDFPlusLibSubmodule } from './submodule';
 import { DummyFileModal } from 'modals';
 import { matchModifiers } from 'utils';
+import { t } from 'lang';
 
 
 export class DummyFileManager extends PDFPlusLibSubmodule {
@@ -80,7 +81,7 @@ export class DummyFileManager extends PDFPlusLibSubmodule {
             const folderPath = this.getFolderPathForDummyFiles(info.file);
             const dummyFiles = await this.createDummyFilesInFolder(folderPath, uris);
 
-            new Notice(`${this.plugin.manifest.name}: Dummy files created successfully.`);
+            new Notice(t('libDummyFileManager.dummy-files-created-successfully.notice', { plugin: this.plugin.manifest.name }));
 
             // Insert links to dummy files into the editor
             dummyFiles.forEach((dummyFile, index) => {

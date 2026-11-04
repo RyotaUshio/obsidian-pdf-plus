@@ -4,6 +4,7 @@ import { VimBindings } from './vim';
 import { VimBindingsMode } from './mode';
 import { ExCommand, exCommands } from './ex-commands';
 import { FuzzyInputSuggest } from 'utils';
+import { t } from 'lang';
 
 
 type ErrorReportMethod = 'notice' | 'console.error' | 'console.warn';
@@ -156,7 +157,7 @@ export class VimCommandLineMode extends VimBindingsMode {
             try {
                 this.executeCommand(cmd);
             } catch (err) {
-                new Notice(`${this.plugin.manifest.name} (Vim mode): Error occurred while executing the command : ${err}`);
+                new Notice(t('vimCommandLine.vim-mode-error-occurred-while-executing-the.notice', { plugin: this.plugin.manifest.name, err: err }));
                 console.error(err);
             }
         }

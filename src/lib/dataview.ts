@@ -3,6 +3,7 @@ import { ButtonComponent, Notice, setTooltip, type App, type TFile } from 'obsid
 import type PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
 import { hookInternalLinkMouseEventHandlers } from 'utils';
+import { t } from 'lang';
 
 
 type Link = { path: string };
@@ -119,7 +120,7 @@ export class DataviewInlineFieldsModal extends PDFPlusModal {
         });
 
         const propertyName = this.plugin.settings.proxyMDProperty;
-        this.setTitle(`${this.plugin.manifest.name}: About the "${propertyName}" Dataview inline fields`);
+        this.setTitle(t('libDataview.about-the-dataview-inline-fields.title', { plugin: this.plugin.manifest.name, propertyName: propertyName }));
         this.renderContent();
         this.renderButtons();
     }
@@ -228,11 +229,11 @@ export class DataviewInlineFieldsModal extends PDFPlusModal {
                                 files.map((file) => '- ' + this.app.fileManager.generateMarkdownLink(file, '')).join('\n') :
                                 this.app.fileManager.generateMarkdownLink(files[0], '');
                         await navigator.clipboard.writeText(text);
-                        new Notice(`${this.plugin.manifest.name}: Copied!`);
+                        new Notice(t('libDataview.copied.notice', { plugin: this.plugin.manifest.name }));
                     });
             }
             new ButtonComponent(el)
-                .setButtonText('Close')
+                .setButtonText(t('libDataview.close'))
                 .onClick(() => {
                     this.close();
                 });

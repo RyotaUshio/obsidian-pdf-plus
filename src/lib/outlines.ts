@@ -5,6 +5,7 @@ import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRef, PDFStrin
 import PDFPlus from 'main';
 import { DestArray, PDFOutlineTreeNode } from 'typings';
 import { PDFNamedDestinations } from './destinations';
+import { t } from 'lang';
 
 
 export class PDFOutlines {
@@ -178,7 +179,7 @@ export class PDFOutlines {
         const found = await outlines.findPDFjsOutlineTreeNode(item);
 
         if (!found) {
-            new Notice(`${plugin.manifest.name}: Failed to process the outline item.`);
+            new Notice(t('libOutlines.failed-to-process-the-outline-item.notice', { plugin: plugin.manifest.name }));
             return;
         }
 

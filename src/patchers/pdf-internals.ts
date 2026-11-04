@@ -16,6 +16,7 @@ import { AnnotationElement, PDFOutlineViewer, PDFViewerComponent, PDFViewerChild
 import { SidebarView, SpreadMode } from 'pdfjs-enums';
 import { VimBindings } from 'vim/vim';
 import { PDFPlusSettings } from 'settings';
+import { t } from 'lang';
 
 
 export const patchPDFInternals = async (plugin: PDFPlus, pdfViewerComponent: PDFViewerComponent): Promise<boolean> => {
@@ -265,7 +266,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                             });
                         }
                     } catch (e) {
-                        new Notice(`${plugin.manifest.name}: An error occurred while mounting the color palette to the toolbar.`);
+                        new Notice(t('patchersPdfInternals.an-error-occurred-while-mounting-the-color-p.notice', { plugin: plugin.manifest.name }));
                         console.error(e);
                     }
                 };
@@ -941,7 +942,7 @@ const patchPDFViewerChild = (plugin: PDFPlus, child: PDFViewerChild) => {
                     popupMetaEl.addEventListener('contextmenu', (evt) => {
                         new Menu()
                             .addItem((item) => {
-                                item.setTitle('Customize...')
+                                item.setTitle(t('patchersPdfInternals.customize'))
                                     .setIcon('lucide-settings')
                                     .onClick(() => {
                                         plugin.openSettingTab().scrollToHeading('annot');

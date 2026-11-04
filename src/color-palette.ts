@@ -4,6 +4,7 @@ import PDFPlus from 'main';
 import { KeysOfType, getEventCoords, isHexString, showMenuUnderParentEl, isTargetHTMLElement } from 'utils';
 import { PDFViewerChild, Rect } from 'typings';
 import { PDFPlusComponent } from 'lib/component';
+import { t } from 'lang';
 
 
 export type ColorPaletteState = Pick<ColorPalette, 'selectedColorName' | 'actionIndex' | 'displayTextFormatIndex' | 'writeFile'>;
@@ -126,7 +127,7 @@ export class ColorPalette extends PDFPlusComponent {
             const menu = new Menu()
                 .addItem((item) => {
                     item.setIcon('lucide-settings')
-                        .setTitle('Customize...')
+                        .setTitle(t('color-palette.customize'))
                         .onClick(() => {
                             this.plugin.openSettingTab()
                                 .scrollTo('colors');
@@ -250,7 +251,7 @@ export class ColorPalette extends PDFPlusComponent {
             },
             (menu) => {
                 menu.addItem((item) => {
-                    item.setTitle('Customize...')
+                    item.setTitle(t('color-palette.customize'))
                         .setIcon('lucide-settings')
                         .onClick(() => {
                             this.plugin.openSettingTab()
@@ -276,7 +277,7 @@ export class ColorPalette extends PDFPlusComponent {
             },
             (menu) => {
                 menu.addItem((item) => {
-                    item.setTitle('Customize...')
+                    item.setTitle(t('color-palette.customize'))
                         .setIcon('lucide-settings')
                         .onClick(() => {
                             this.plugin.openSettingTab()
@@ -305,7 +306,7 @@ export class ColorPalette extends PDFPlusComponent {
                     const menu = new Menu()
                         .addItem((item) => {
                             item.setIcon('lucide-settings')
-                                .setTitle('Enable PDF editing...')
+                                .setTitle(t('color-palette.enable-pdf-editing'))
                                 .onClick(() => {
                                     this.plugin.openSettingTab()
                                         .scrollToHeading('edit');
@@ -336,7 +337,7 @@ export class ColorPalette extends PDFPlusComponent {
                 if (this.lib.isEditable(this.child)) {
                     menu.addItem((item) => {
                         item.setIcon('lucide-settings')
-                            .setTitle('Customize...')
+                            .setTitle(t('color-palette.customize'))
                             .onClick(() => {
                                 this.plugin.openSettingTab()
                                     .scrollToHeading('annot');
@@ -399,7 +400,7 @@ export class ColorPalette extends PDFPlusComponent {
         if (!url || !file) return;
 
         if (!Platform.isDesktopApp && url.startsWith(Platform.resourcePathPrefix)) {
-            new Notice(`${this.plugin.manifest.name}: Importing local PDFs outside the vault is supported only on the desktop app.`);
+            new Notice(t('color-palette.importing-local-pdfs-outside-the-vault-is-su.notice', { plugin: this.plugin.manifest.name }));
             return;
         }
 
@@ -412,11 +413,11 @@ export class ColorPalette extends PDFPlusComponent {
             if (this.paletteEl) {
                 this.addWriteFileToggle(this.paletteEl);
             }
-            new Notice(`${this.plugin.manifest.name}: Successfully imported the PDF file into the vault.`);
+            new Notice(t('color-palette.successfully-imported-the-pdf-file-into-the.notice', { plugin: this.plugin.manifest.name }));
             return;
         }
 
-        new Notice(`${this.plugin.manifest.name}: Import failed. Response status: ${res.status}`);
+        new Notice(t('color-palette.import-failed-response-status.notice', { plugin: this.plugin.manifest.name, status: res.status }));
     }
 
     setWriteFile(value: boolean) {
@@ -440,7 +441,7 @@ export class ColorPalette extends PDFPlusComponent {
                 const menu = new Menu()
                     .addItem((item) => {
                         item.setIcon('lucide-settings')
-                            .setTitle('Customize...')
+                            .setTitle(t('color-palette.customize'))
                             .onClick(() => {
                                 this.plugin.openSettingTab()
                                     .scrollToHeading('rect');

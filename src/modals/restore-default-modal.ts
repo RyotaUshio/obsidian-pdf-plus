@@ -1,6 +1,7 @@
 import { ButtonComponent, Notice } from 'obsidian';
 
 import { PDFPlusModal } from './base-modal';
+import { t } from 'lang';
 
 
 export class RestoreDefaultModal extends PDFPlusModal {
@@ -18,15 +19,15 @@ export class RestoreDefaultModal extends PDFPlusModal {
 
         this.contentEl.createDiv('modal-button-container', (el) => {
             new ButtonComponent(el)
-                .setButtonText('I understand, restore default settings')
+                .setButtonText(t('modalsRestoreDefaultModal.i-understand-restore-default-settings.button'))
                 .setWarning()
                 .onClick(async () => {
                     await this.plugin.restoreDefaultSettings();
                     this.close();
-                    new Notice(`${this.plugin.manifest.name}: Default setting restored. Note that some options require a restart to take effect.`, 6000);
+                    new Notice(t('modalsRestoreDefaultModal.default-setting-restored-note-that-some-opti.notice', { plugin: this.plugin.manifest.name }), 6000);
                 });
             new ButtonComponent(el)
-                .setButtonText('Cancel')
+                .setButtonText(t('modalsRestoreDefaultModal.cancel'))
                 .onClick(() => {
                     this.close();
                 });

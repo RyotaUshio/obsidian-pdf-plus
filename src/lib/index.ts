@@ -22,6 +22,7 @@ import { Speech } from './speech';
 import * as utils from 'utils';
 import { DummyFileManager } from './dummy-file-manager';
 import { RenderParameters } from 'pdfjs-dist/types/src/display/api';
+import { t } from 'lang';
 
 
 type OptionalRenderParameters = Omit<RenderParameters, 'canvas' | 'canvasContext' | 'viewport' | 'transform'>
@@ -841,7 +842,7 @@ export class PDFPlusLib {
             return await PDFDocument.load(buffer, { ignoreEncryption: readonly });
         } catch (e) {
             if (e instanceof EncryptedPDFError) {
-                new Notice(`${this.plugin.manifest.name}: The PDF file is encrypted. This plugin currently does not support editing encrypted PDF files.`, 8);
+                new Notice(t('libIndex.the-pdf-file-is-encrypted-this-plugin-curren.notice', { plugin: this.plugin.manifest.name }), 8);
             }
             throw e;
         }
@@ -1074,7 +1075,7 @@ export class PDFPlusLib {
 
         if (file instanceof TFile) {
             if (!existOk) {
-                new Notice(`${this.plugin.manifest.name}: File already exists: ${path}`);
+                new Notice(t('libIndex.file-already-exists.notice', { plugin: this.plugin.manifest.name, path: path }));
             }
             if (typeof data === 'string') {
                 await this.app.vault.modify(file, data);

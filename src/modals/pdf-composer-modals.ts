@@ -3,6 +3,7 @@ import { PDFDocument, PageSizes } from '@cantoo/pdf-lib';
 
 import PDFPlus from 'main';
 import { PDFPlusModal } from 'modals';
+import { t } from 'lang';
 
 
 export class PDFPageDeleteModal extends PDFPlusModal {
@@ -39,7 +40,7 @@ export class PDFPageDeleteModal extends PDFPlusModal {
         new Setting(this.contentEl)
             .addButton((button) => {
                 button
-                    .setButtonText('Delete')
+                    .setButtonText(t('modalsPdfComposerModals.delete'))
                     .setWarning()
                     .onClick(() => {
                         this.#resolve(true);
@@ -48,7 +49,7 @@ export class PDFPageDeleteModal extends PDFPlusModal {
             })
             .addButton((button) => {
                 button
-                    .setButtonText('Cancel')
+                    .setButtonText(t('modalsPdfComposerModals.cancel'))
                     .onClick(() => {
                         this.#resolve(false);
                         this.close();
@@ -80,8 +81,8 @@ export class PDFPageDeleteModal extends PDFPlusModal {
 
 
 export const PAGE_LABEL_UPDATE_METHODS = {
-    'keep': 'Keep labels unchanged',
-    'update': 'Update',
+    'keep': t('modalsPdfComposerModals.pageLabelUpdateMethod.keep'),
+    'update': t('modalsPdfComposerModals.pageLabelUpdateMethod.update'),
 } as const;
 export type PageLabelUpdateMethod = keyof typeof PAGE_LABEL_UPDATE_METHODS;
 
@@ -136,7 +137,7 @@ export class PDFComposerModal extends PDFPlusModal {
 
         if (this.askPageLabelUpdateMethod) {
             new Setting(this.contentEl)
-                .setName('Update the page labels?')
+                .setName(t('modalsPdfComposerModals.update-the-page-labels'))
                 .setDesc(createFragment((el) => {
                     el.createEl('a', { text: 'Learn more', href: 'https://github.com/RyotaUshio/obsidian-pdf-plus/wiki/Page-labels' });
                 }))
@@ -152,7 +153,7 @@ export class PDFComposerModal extends PDFPlusModal {
 
         if (this.askInPlace) {
             new Setting(this.contentEl)
-                .setName('Remove pages from original file?')
+                .setName(t('modalsPdfComposerModals.remove-pages-from-original-file.name'))
                 .addToggle((toggle) => {
                     toggle
                         .setValue(inPlace)
@@ -165,7 +166,7 @@ export class PDFComposerModal extends PDFPlusModal {
         new Setting(this.contentEl)
             .addButton((button) => {
                 button
-                    .setButtonText('Proceed')
+                    .setButtonText(t('modalsPdfComposerModals.proceed'))
                     .setCta()
                     .onClick(() => {
                         if (pageLabelUpdateMethod === 'keep' || pageLabelUpdateMethod === 'update') {
@@ -177,7 +178,7 @@ export class PDFComposerModal extends PDFPlusModal {
             })
             .addButton((button) => {
                 button
-                    .setButtonText('Cancel')
+                    .setButtonText(t('modalsPdfComposerModals.cancel'))
                     .onClick(() => {
                         this.#resolve(null);
                         this.close();
@@ -210,7 +211,7 @@ export class PDFCreateModal extends PDFPlusModal {
         this.titleEl.setText(`${this.plugin.manifest.name}: Create new PDF`);
 
         this.addSetting()
-            .setName('Page size')
+            .setName(t('modalsPdfComposerModals.page-size'))
             .addDropdown((dropdown) => {
                 Object.keys(PageSizes)
                     .forEach((key) => dropdown.addOption(key, key));
@@ -225,7 +226,7 @@ export class PDFCreateModal extends PDFPlusModal {
             });
 
         this.addSetting()
-            .setName('Orientation')
+            .setName(t('modalsPdfComposerModals.orientation'))
             .addDropdown((dropdown) => {
                 dropdown
                     .addOption('portrait', 'Portrait')
@@ -241,7 +242,7 @@ export class PDFCreateModal extends PDFPlusModal {
         this.addSetting()
             .addButton((button) => {
                 button
-                    .setButtonText('Create')
+                    .setButtonText(t('modalsPdfComposerModals.create'))
                     .setCta()
                     .then((button) => {
                         setTimeout(() => button.buttonEl.focus());
@@ -254,7 +255,7 @@ export class PDFCreateModal extends PDFPlusModal {
             })
             .addButton((button) => {
                 button
-                    .setButtonText('Cancel')
+                    .setButtonText(t('modalsPdfComposerModals.cancel'))
                     .onClick(() => {
                         this.close();
                     });

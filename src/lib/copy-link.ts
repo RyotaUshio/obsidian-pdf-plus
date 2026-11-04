@@ -5,6 +5,7 @@ import { PDFPlusTemplateProcessor } from 'template';
 import { encodeLinktext, getOffsetInTextLayerNode, getTextLayerInfo, getTextLayerNode, paramsToSubpath, parsePDFSubpath, subpathToParams } from 'utils';
 import { Canvas, PDFOutlineTreeNode, PDFViewerChild, Rect } from 'typings';
 import { ColorPalette } from 'color-palette';
+import { t } from 'lang';
 
 
 export type AutoFocusTarget =
@@ -146,7 +147,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
                 .trim();
         } catch (err) {
             console.error(err);
-            new Notice(`${this.plugin.manifest.name}: Display text format is invalid. Error: ${err.message}`, 3000);
+            new Notice(t('libCopyLink.display-text-format-is-invalid-error.notice', { plugin: this.plugin.manifest.name, message: err.message }), 3000);
         }
     }
 
@@ -566,7 +567,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
         const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenTargetNotIdentified);
         if (!command) {
-            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenTargetNotIdentified}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
+            new Notice(t('libCopyLink.command-was-not-found-please-update-the-comm.notice', { plugin: this.plugin.manifest.name, commandToExecuteWhenTargetNotIdentified: this.settings.commandToExecuteWhenTargetNotIdentified }));
             return false;
         }
 
@@ -600,15 +601,15 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
             // However, for commands such as "Quick switcher: Open quick switcher", the file-open will be triggered after a long time.
             activeWindow.setTimeout(() => {
                 if (!isResolved) {
-                    const { noticeEl } = new Notice(`${this.plugin.manifest.name}: Could not find the auto-paste target markdown file within ${this.settings.autoPasteTargetDialogTimeoutSec} seconds.`);
-                    noticeEl.appendText(' Click ');
+                    const { noticeEl } = new Notice(t('libCopyLink.could-not-find-the-auto-paste-target-markdow.notice', { plugin: this.plugin.manifest.name, autoPasteTargetDialogTimeoutSec: this.settings.autoPasteTargetDialogTimeoutSec }));
+                    noticeEl.appendText(t('libCopyLink.click.help'));
                     noticeEl.createEl('a', { text: 'here' }, (anchorEl) => {
                         anchorEl.addEventListener('click', () => {
                             this.plugin.openSettingTab()
                                 .scrollTo('autoPasteTargetDialogTimeoutSec');
                         });
                     });
-                    noticeEl.appendText(' to change the timeout duration.');
+                    noticeEl.appendText(t('libCopyLink.to-change-the-timeout-duration.help'));
 
                     this.app.workspace.offref(eventRef);
                     resolve(false);
@@ -642,7 +643,7 @@ export class copyLinkLib extends PDFPlusLibSubmodule {
 
         const command = this.app.commands.findCommand(this.settings.commandToExecuteWhenTargetNotIdentified);
         if (!command) {
-            new Notice(`${this.plugin.manifest.name}: Command "${this.settings.commandToExecuteWhenTargetNotIdentified}" was not found. Please update the "Command to execute when pasting a link for the first time with auto-focus or auto-paste" setting.`);
+            new Notice(t('libCopyLink.command-was-not-found-please-update-the-comm.notice', { plugin: this.plugin.manifest.name, commandToExecuteWhenTargetNotIdentified: this.settings.commandToExecuteWhenTargetNotIdentified }));
             return false;
         }
 
